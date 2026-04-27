@@ -1,0 +1,149 @@
+<style>
+.risk-table { width:100%; border-collapse:collapse; font-size:12px; }
+.risk-table th { background:var(--color-background-secondary); color:var(--color-text-secondary); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.04em; padding:10px 12px; text-align:left; border-bottom:1px solid var(--color-border-tertiary); }
+.risk-table td { padding:10px 12px; border-bottom:1px solid var(--color-border-tertiary); vertical-align:top; color:var(--color-text-primary); line-height:1.5; }
+.risk-table tr:last-child td { border-bottom:none; }
+.risk-table tr:hover td { background:var(--color-background-secondary); }
+.badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; white-space:nowrap; }
+.critical { background:#FCEBEB; color:#791F1F; }
+.high { background:#FAEEDA; color:#633806; }
+.medium { background:#FEF9E1; color:#6B5B00; }
+.low { background:#E1F5EE; color:#085041; }
+.resolved { background:#E6F1FB; color:#0C447C; }
+.cat { font-size:10px; font-weight:500; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.04em; }
+.section-divider td { background:var(--color-background-tertiary); font-size:11px; font-weight:500; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.06em; padding:6px 12px; }
+</style>
+<table class="risk-table">
+<thead>
+<tr>
+  <th style="width:13%">Category</th>
+  <th style="width:22%">Risk</th>
+  <th style="width:8%">Level</th>
+  <th style="width:28%">Detail</th>
+  <th style="width:29%">Mitigation</th>
+</tr>
+</thead>
+<tbody>
+
+<tr class="section-divider"><td colspan="5">Security</td></tr>
+
+<tr>
+<td><span class="cat">Execution</span></td>
+<td>Malicious student code — reverse shell, fork bomb, privilege escalation</td>
+<td><span class="badge critical">Critical</span></td>
+<td>Student submits code that opens a reverse shell, spawns unlimited child processes, or attempts to write outside its container. Applies regardless of execution engine choice.</td>
+<td><code>--network none</code> at container level. Hard CPU + memory limits via cgroups. Kill entire container on timeout — not just the process inside it. Run as unprivileged non-root user. AST pre-check blocks <code>socket</code>, <code>subprocess</code>, <code>os.system</code> before execution.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Execution</span></td>
+<td>Student code reads other students' submissions</td>
+<td><span class="badge critical">Critical</span></td>
+<td>If containers share a volume or the host filesystem is mounted, one submission could read files from another student's grading directory.</td>
+<td>Ephemeral per-submission containers only. No shared volumes between grading jobs. Each container receives exactly its own submission via isolated temp directory. Container destroyed immediately after grading completes.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Ingestion</span></td>
+<td>ZIP path traversal attack</td>
+<td><span class="badge high">High</span></td>
+<td>A crafted ZIP can contain members with paths like <code>../../etc/passwd</code> that escape the extraction directory when unpacked naively. Instructor or TA uploading a malicious ZIP — even accidentally — could overwrite server files.</td>
+<td>Validate all member paths before any extraction. Reject any member whose resolved absolute path escapes the target directory. Use Python <code>zipfile</code> with explicit sanitization — never shell out to <code>unzip</code>.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Ingestion</span></td>
+<td>Malicious code injected via rubric or constraint upload</td>
+<td><span class="badge medium">Medium</span></td>
+<td>If rubric/constraint definitions are parsed as executable content rather than plain text, a crafted upload could inject into the grading pipeline.</td>
+<td>Rubrics and constraints parsed as structured text/JSON only. Never eval'd or exec'd. Schema validation on all uploaded config files before use.</td>
+</tr>
+
+<tr class="section-divider"><td colspan="5">Compliance</td></tr>
+
+<tr>
+<td><span class="cat">FERPA</span></td>
+<td>Student code sent to external LLM API</td>
+<td><span class="badge resolved">Resolved by design</span></td>
+<td>Sending student submission code to OpenAI, Anthropic, or any third-party API would require a university-signed Data Processing Agreement and legal review.</td>
+<td>All inference runs locally on the on-prem Mac Mini via llama-server. No student data transits any third-party infrastructure at any point in the pipeline.</td>
+</tr>
+
+<tr>
+<td><span class="cat">FERPA</span></td>
+<td>Grade data released without human review</td>
+<td><span class="badge high">High</span></td>
+<td>If AI-generated grades are surfaced to students without TA/instructor sign-off, erroneous grades attach real academic consequences before anyone can catch them.</td>
+<td>Enforced status machine: <code>ai_complete</code> → <code>ta_reviewed</code> → <code>approved</code> → <code>released</code>. No export path exists until status reaches <code>approved</code>. TA approval is a required DB field — not a UI suggestion.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Audit</span></td>
+<td>No audit trail for grade decisions</td>
+<td><span class="badge high">High</span></td>
+<td>If a student appeals a grade and there is no record of what the AI produced vs what the TA changed, the institution cannot defend the grade or demonstrate fair process.</td>
+<td>Immutable audit log stores: AI raw output, per-criterion scores, TA override (if any), final approved grade, approving user ID, and timestamp. Append-only — no record can be edited or deleted.</td>
+</tr>
+
+<tr class="section-divider"><td colspan="5">Resource — Hardware (256GB constraint)</td></tr>
+
+<tr>
+<td><span class="cat">Memory</span></td>
+<td>LLM + concurrent grading containers exhaust 256GB</td>
+<td><span class="badge medium">Medium</span></td>
+<td>On a 256GB machine: Llama 3.3 70B Q4_K_M = ~40GB. OS + stack = ~12GB. Each grading container = ~256MB. At 8 parallel jobs = ~2GB. Headroom is ~202GB — comfortable, but KV cache per active LLM session (~7.5GB each) limits simultaneous inference sessions to ~26 before pressure.</td>
+<td>Limit Celery to 8 concurrent grading workers. Limit llama-server <code>--parallel</code> to 8 slots. This keeps total memory well within 256GB budget. Monitor with <code>vm_stat</code> and alert if memory pressure reaches warning threshold. Revisit limits if/when 512GB hardware arrives.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Memory</span></td>
+<td>Large submission batch causes memory spike</td>
+<td><span class="badge medium">Medium</span></td>
+<td>An instructor uploads a ZIP of 200 submissions simultaneously. All 200 jobs enter the Celery queue at once. If workers start too many containers in parallel, memory pressure compounds quickly on 256GB hardware.</td>
+<td>Celery concurrency hard cap of 8. Job queue naturally throttles — jobs sit in Redis until a worker slot is free. No mechanism allows all 200 to execute simultaneously. This is correct behavior by design.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Throughput</span></td>
+<td>Grading throughput slower on 256GB vs 512GB</td>
+<td><span class="badge low">Low</span></td>
+<td>256GB Mac Mini M3 generates ~15–20 tok/s on Llama 3.3 70B Q4_K_M vs ~25 tok/s on M3 Ultra. At 8 parallel slots, a 200-submission batch takes approximately 25–35 minutes vs 15–20 minutes on larger hardware.</td>
+<td>Acceptable for batch grading — instructors don't wait at the screen. Set expectations: grading runs are background jobs. Consider Gemma 3 27B Q4_K_M (~18GB, faster tok/s) as an alternative model for speed-constrained deployments.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Continuity</span></td>
+<td>Single point of failure — one on-prem machine</td>
+<td><span class="badge medium">Medium</span></td>
+<td>If the Mac Mini goes offline (power, hardware failure, macOS update reboot), all grading, the web app, and the database become unavailable simultaneously.</td>
+<td>Enable macOS auto-restart after power failure. Use <code>launchd</code> service files for llama-server, FastAPI, Redis, and Celery — all restart automatically on reboot. PostgreSQL data directory on separate volume or Time Machine backup. Document manual recovery procedure. Evaluate second machine for M2.</td>
+</tr>
+
+<tr class="section-divider"><td colspan="5">Application</td></tr>
+
+<tr>
+<td><span class="cat">LLM</span></td>
+<td>AI feedback contradicts actual test results</td>
+<td><span class="badge high">High</span></td>
+<td>LLM generates a comment saying "your loop logic is correct" for a submission where the loop test failed. Student receives conflicting signals — erodes trust in the system.</td>
+<td>Prompt architecture enforces: test result is ground truth, LLM only explains it. Prompt explicitly states the test FAILED and asks only for a pedagogical explanation. LLM is never asked to re-evaluate correctness. Validate with 50 representative submissions before M1 launch.</td>
+</tr>
+
+<tr>
+<td><span class="cat">LLM</span></td>
+<td>Infinite loop / fork bomb hangs grading worker</td>
+<td><span class="badge high">High</span></td>
+<td>Student submits <code>while True: pass</code> or <code>os.fork()</code> in a loop. Without a hard container-level timeout, this hangs a Celery worker indefinitely, blocking all subsequent jobs in the queue.</td>
+<td>10-second hard timeout enforced at the Docker container level — not just pytest. <code>docker run --rm --timeout 10</code>. Container killed entirely after timeout. Job marked <code>failed:timeout</code> in queue. Worker immediately available for next job.</td>
+</tr>
+
+<tr>
+<td><span class="cat">Storage</span></td>
+<td>TEXT blob growth in PostgreSQL</td>
+<td><span class="badge low">Low</span></td>
+<td>200 students × 10 assignments × 5 attempts × ~300 lines of Python = manageable for M1 but grows unbounded over multiple semesters without a retention policy.</td>
+<td>TEXT blobs are correct for M1. Plan volume/object storage migration at M2. Add end-of-semester archiving job that compresses and moves old submissions out of the primary DB.</td>
+</tr>
+
+</tbody>
+</table>

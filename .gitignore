@@ -1,0 +1,9 @@
+# MacOS being funny
+.DS_Store
+
+# Python & other AI based fragments
+env
+venv
+.idea
+__pycache__/
+*.pyc

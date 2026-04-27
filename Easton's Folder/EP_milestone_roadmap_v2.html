@@ -1,0 +1,163 @@
+<style>
+.phases { display:flex; flex-direction:column; gap:12px; }
+.phase { border-radius:var(--border-radius-lg); border:0.5px solid var(--color-border-tertiary); overflow:hidden; }
+.phase-header { padding:12px 16px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+.phase-title { font-size:14px; font-weight:600; }
+.phase-sub { font-size:11px; color:var(--color-text-tertiary); }
+.phase-body { padding:0 16px 14px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.col-head { font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.05em; color:var(--color-text-tertiary); margin-bottom:6px; margin-top:10px; }
+.feat { font-size:12px; color:var(--color-text-secondary); line-height:1.8; }
+.feat::before { content:"→ "; color:var(--color-text-tertiary); }
+.note { font-size:11px; color:var(--color-text-tertiary); font-style:italic; margin-top:6px; padding-left:12px; border-left:2px solid var(--color-border-tertiary); }
+
+.m1 .phase-header { background:#E6F1FB; }
+.m1 .phase-title { color:#0C447C; }
+.m2 .phase-header { background:#E1F5EE; }
+.m2 .phase-title { color:#085041; }
+.m3 .phase-header { background:#FAEEDA; }
+.m3 .phase-title { color:#633806; }
+.m4 .phase-header { background:#EEEDFE; }
+.m4 .phase-title { color:#3C3489; }
+.phase { background:var(--color-background-secondary); }
+</style>
+<div class="phases">
+
+<div class="phase m1">
+  <div class="phase-header">
+    <span class="phase-title">Milestone 1 — Core grading loop</span>
+    <span class="phase-sub">Target: 6–8 weeks · Instructor/TA facing only · No student login · No Canvas API · 256GB hardware</span>
+  </div>
+  <div class="phase-body">
+    <div>
+      <div class="col-head">Auth + assignment setup</div>
+      <div class="feat">NextAuth.js local credential auth (admin, course admin, instructor, TA)</div>
+      <div class="feat">Assignment creation with name, description, due date</div>
+      <div class="feat">Rubric definition — criteria + point values</div>
+      <div class="feat">Constraint definition — separate from rubric, per-assignment</div>
+      <div class="feat">config.json generation from UI inputs</div>
+      <div class="note">No SSO in M1 — local credentials only. SSO added in M3.</div>
+    </div>
+    <div>
+      <div class="col-head">Grading pipeline</div>
+      <div class="feat">Canvas ZIP upload + filename parser</div>
+      <div class="feat">Student record mapping from filename</div>
+      <div class="feat">AST constraint checker (runs before execution)</div>
+      <div class="feat">pytest execution via autograder-sandbox (Docker, --network none)</div>
+      <div class="feat">Celery + Redis async job queue (8 concurrent workers)</div>
+      <div class="feat">llama-server LLM feedback (Llama 3.3 70B Q4_K_M)</div>
+      <div class="feat">Live job status: queued → running → complete | failed</div>
+      <div class="note">Piston vs autograder-sandbox decision required before sprint 2.</div>
+    </div>
+    <div>
+      <div class="col-head">Review + export</div>
+      <div class="feat">TA review dashboard — submission list + status</div>
+      <div class="feat">Detail view — inline comments + per-criterion scores</div>
+      <div class="feat">TA score override with justification field</div>
+      <div class="feat">Instructor approval gate (required before export)</div>
+      <div class="feat">Immutable audit log (AI output vs TA decision)</div>
+      <div class="feat">PDF report per student (WeasyPrint)</div>
+      <div class="feat">CSV / XLSX grade export (openpyxl)</div>
+    </div>
+  </div>
+</div>
+
+<div class="phase m2">
+  <div class="phase-header">
+    <span class="phase-title">Milestone 2 — Student report keys + sandbox hardening</span>
+    <span class="phase-sub">Target: 4–6 weeks post-M1 · Students get read-only report access · Execution sandbox hardened · MOSS integrated</span>
+  </div>
+  <div class="phase-body">
+    <div>
+      <div class="col-head">Student access (no login)</div>
+      <div class="feat">Submission key generation per student per assignment</div>
+      <div class="feat">Key-authenticated report download (PDF + key bundle)</div>
+      <div class="feat">Key-authenticated submission upload portal</div>
+      <div class="feat">SHA-256 hash verification on upload</div>
+      <div class="feat">Student cannot access other students' reports</div>
+      <div class="note">Key distribution via Canvas announcement or instructor email until M3.</div>
+    </div>
+    <div>
+      <div class="col-head">Sandbox hardening</div>
+      <div class="feat">Execution engine final decision: Piston vs autograder-sandbox</div>
+      <div class="feat">--network none enforced on all containers</div>
+      <div class="feat">CPU limit: 0.5 cores (--cpus 0.5)</div>
+      <div class="feat">Memory limit: 256MB (--memory 256m)</div>
+      <div class="feat">10s container-level timeout (kill container, not process)</div>
+      <div class="feat">Non-root unprivileged user inside container</div>
+      <div class="feat">Ephemeral containers — destroyed after each job</div>
+    </div>
+    <div>
+      <div class="col-head">Data + integrity</div>
+      <div class="feat">MOSS plagiarism integration (mosspy)</div>
+      <div class="feat">Similarity report in TA dashboard</div>
+      <div class="feat">Local volume storage for submission files (replaces TEXT blobs)</div>
+      <div class="feat">End-of-semester archiving job</div>
+      <div class="feat">Automated DB backup to external volume</div>
+      <div class="note">No S3 or Railway — all storage remains on-prem per FERPA posture.</div>
+    </div>
+  </div>
+</div>
+
+<div class="phase m3">
+  <div class="phase-header">
+    <span class="phase-title">Milestone 3 — Canvas integration + SSO</span>
+    <span class="phase-sub">Target: 4–6 weeks post-M2 · Requires university IT coordination · InCommon TLS cert · LTI or CSV decision</span>
+  </div>
+  <div class="phase-body">
+    <div>
+      <div class="col-head">Canvas integration</div>
+      <div class="feat">Feasibility study: LTI 1.3 AGS vs CSV/XLSX grade upload</div>
+      <div class="feat">canvasapi grade passback to Canvas gradebook</div>
+      <div class="feat">Canvas course + student roster sync</div>
+      <div class="feat">Assignment sync from Canvas course shell</div>
+      <div class="note">Requires Canvas admin + university IT coordination. Start conversations at M2 kickoff.</div>
+    </div>
+    <div>
+      <div class="col-head">Auth + network</div>
+      <div class="feat">University SSO via NextAuth.js (Azure AD or Canvas OIDC)</div>
+      <div class="feat">Role claims mapped from SSO identity token</div>
+      <div class="feat">InCommon / Sectigo TLS cert for *.uvu.edu</div>
+      <div class="feat">Nginx production config with HSTS + CSP headers</div>
+      <div class="feat">University data center static IP + DNS entry</div>
+    </div>
+    <div>
+      <div class="col-head">Student access upgrade</div>
+      <div class="feat">Student login via university SSO (policy permitting)</div>
+      <div class="feat">Student can view own submission history</div>
+      <div class="feat">Student can view approved feedback directly in portal</div>
+      <div class="feat">Retire key-based access (or keep as fallback)</div>
+    </div>
+  </div>
+</div>
+
+<div class="phase m4">
+  <div class="phase-header">
+    <span class="phase-title">Milestone 4 — Analytics, scale + LLM tuning</span>
+    <span class="phase-sub">Target: post-launch · Driven by real usage data · RAG on UVU curriculum</span>
+  </div>
+  <div class="phase-body">
+    <div>
+      <div class="col-head">Analytics</div>
+      <div class="feat">Common error pattern detection across class</div>
+      <div class="feat">Class-wide misconception heatmap per assignment</div>
+      <div class="feat">Per-student progress tracking over semester</div>
+      <div class="feat">TA grading consistency metrics</div>
+      <div class="feat">Assignment difficulty scoring from submission data</div>
+    </div>
+    <div>
+      <div class="col-head">LLM improvement</div>
+      <div class="feat">RAG on UVU course materials (syllabi, lecture notes)</div>
+      <div class="feat">Fine-tune on approved feedback from M1–M3 grading history</div>
+      <div class="feat">Benchmark Gemma 3 27B vs Llama 3.3 70B on UVU assignments</div>
+    </div>
+    <div>
+      <div class="col-head">Scale + plugins</div>
+      <div class="feat">Multi-course support across departments</div>
+      <div class="feat">AI content detection plugin (open-source or Turnitin)</div>
+      <div class="feat">HTML/CSS assignment support (beyond Python)</div>
+      <div class="feat">Mobile-responsive TA dashboard</div>
+    </div>
+  </div>
+</div>
+
+</div>
