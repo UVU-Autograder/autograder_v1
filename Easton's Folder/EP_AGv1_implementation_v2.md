@@ -9,10 +9,10 @@
 ## Status
 
 - [x] Architecture decided — local-first, no cloud inference
-- [ ] Stack proposal — Next.js + FastAPI + llama-server + PostgreSQL
+- [x] Stack proposal — Next.js + FastAPI + llama-server + PostgreSQL
 - [x] Open-source component analysis complete (Autolab, Submitty)
-- [ ] Risk register drafted
-- [ ] Functional requirements drafted (M1)
+- [x] Risk register drafted
+- [x] Functional requirements drafted (M1)
 - [ ] Config JSON schema finalized
 - [ ] Product backlog written
 - [ ] Repo scaffolding
@@ -64,11 +64,7 @@ Students (browser — no login in M1)
         ↓
    PostgreSQL — submissions, grades, audit log, job status
 ```
-
-# Hardware Section — Drop-in Replacement
-# Replace the existing "### Hardware" section in EP_AGv1_implementation_v3.md with this block.
-
-### Hardware
+### Hardware for our project
 
 | Component | Hardware | Role |
 |-----------|----------|------|
@@ -501,7 +497,7 @@ constraint system. Each assignment has one `config.json` stored alongside its te
 
 ### Milestone 4 — Analytics, scale + LLM tuning (target: post-launch, based on real usage)
 
-**Goal:** Surface class-wide patterns. Tune LLM on UVU curriculum. Scale to multi-course. Upgrade hardware if supply allows.
+**Goal:** Surface class-wide patterns. Tune LLM on UVU curriculum. Scale to multi-course. 
 
 **Deliverables:**
 - Common error pattern detection across submissions
@@ -512,8 +508,6 @@ constraint system. Each assignment has one `config.json` stored alongside its te
 - RAG pipeline on UVU course materials (syllabi, lecture notes, past assignments)
 - Fine-tune on TA-approved feedback history from M1–M3
 - Benchmark Gemma 3 27B vs Llama 3.3 70B on real UVU assignment data
-- Hardware upgrade to 512GB if available (unlocks Llama 405B, higher concurrent sessions)
-- Second Mac Mini for redundancy (eliminates single point of failure)
 - Multi-course support across departments
 - AI content detection plugin (open-source or Turnitin)
 - HTML/CSS assignment grading support (beyond Python)
@@ -528,8 +522,8 @@ constraint system. Each assignment has one `config.json` stored alongside its te
 - [ ] **Constraint penalty model:** Should violations deduct from the final score automatically, or flag for TA review only? Should be instructor-configurable per assignment. Design needed before M1 FR freeze.
 - [ ] **LLM hallucination guard:** Prompt must receive actual pytest output as ground truth. LLM explains failures — it does not re-evaluate correctness. Requires 50-submission validation set before M1 launch.
 - [ ] **Student key distribution in M1:** Keys delivered via Canvas announcement, instructor email, or manual distribution before Canvas integration exists. Process needs to be defined before M1 go-live.
-- [ ] **Multi-section TA access:** If multiple TAs grade different sections of the same course, can they see each other's grades? Access control model needs design decision.
-- [ ] **FERPA sign-off:** University legal review of architecture required before go-live. Even with local inference, the university counsel should review the data flow diagram. Who initiates?
+- [ ] **Multi-section TA access:** If multiple TAs grade different sections of the same course, can they see each other's grades? Access control model needs design decision-- authH vs AuthZ.
+- [ ] **FERPA sign-off:** University legal review of architecture required before go-live. (probably, IDK)
 - [ ] **512GB hardware timeline:** What is the current lead time estimate from procurement? This directly affects M4 planning and the LLM upgrade path.
 
 ---
