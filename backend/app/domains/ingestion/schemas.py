@@ -1,0 +1,1 @@
+# Canvas batch manifest placeholder.

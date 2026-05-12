@@ -1,0 +1,1 @@
+# Grading workflow schema placeholder.

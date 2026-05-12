@@ -1,0 +1,1 @@
+# Rate limiting adapter placeholder.
