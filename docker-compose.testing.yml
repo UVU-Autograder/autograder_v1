@@ -34,19 +34,66 @@ services:
       timeout: 5s
       retries: 5
 
-  piston:
-    image: ghcr.io/engineer-man/piston:latest
-    container_name: uvu-autograder-piston
+  judge0:
+    image: judge0/judge0:1.13.1
+    container_name: uvu-autograder-judge0
     restart: unless-stopped
     ports:
-      - "2000:2000"
+      - "2358:2358"
     environment:
-      PISTON_DISABLE_NETWORKING: "true"
+      REDIS_URL: redis://redis:6379
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: autograder
+      POSTGRES_USER: autograder
+      POSTGRES_PASSWORD: autograder_dev_password
+      AUTH_TOKEN: judge0-testing-token
+      ALLOW_ENABLE_NETWORK: "false"
+      CPU_TIME_LIMIT: "10"
+      MAX_CPU_TIME_LIMIT: "15"
+      WALL_TIME_LIMIT: "20"
+      MAX_WALL_TIME_LIMIT: "30"
+      MEMORY_LIMIT: "262144"
+      MAX_MEMORY_LIMIT: "524288"
+      RAILS_ENV: production
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:2000/api/v2/runtimes || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:2358/languages || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
+
+  judge0-worker:
+    image: judge0/judge0:1.13.1
+    container_name: uvu-autograder-judge0-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: autograder
+      POSTGRES_USER: autograder
+      POSTGRES_PASSWORD: autograder_dev_password
+      AUTH_TOKEN: judge0-testing-token
+      ALLOW_ENABLE_NETWORK: "false"
+      CPU_TIME_LIMIT: "10"
+      MAX_CPU_TIME_LIMIT: "15"
+      WALL_TIME_LIMIT: "20"
+      MAX_WALL_TIME_LIMIT: "30"
+      MEMORY_LIMIT: "262144"
+      MAX_MEMORY_LIMIT: "524288"
+      RAILS_ENV: production
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /judge0 && bundle exec rails db:prepare && bundle exec rake resque:work QUEUE=default
 
   backend:
     image: python:3.11-slim
@@ -58,13 +105,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      piston:
+      judge0:
         condition: service_healthy
     environment:
       POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
-      PISTON_URL: http://piston:2000
+      JUDGE0_URL: http://judge0:2358
+      JUDGE0_AUTH_TOKEN: judge0-testing-token
       AZURE_OPENAI_API_KEY: replace-me
       AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
       MOSS_USER_ID: replace-me
@@ -92,13 +140,14 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      piston:
+      judge0:
         condition: service_healthy
     environment:
       POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
-      PISTON_URL: http://piston:2000
+      JUDGE0_URL: http://judge0:2358
+      JUDGE0_AUTH_TOKEN: judge0-testing-token
       AZURE_OPENAI_API_KEY: replace-me
       AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
       MOSS_USER_ID: replace-me

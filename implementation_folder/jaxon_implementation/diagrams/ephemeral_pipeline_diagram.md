@@ -1,4 +1,4 @@
-Ephemeral grading pipeline model only. This diagram represents RAM-only or temp-workspace objects created during an active official batch or sandbox grading request and destroyed after completion or session exit.
+Ephemeral grading pipeline model only. This diagram represents RAM-only or temp-workspace objects created during an active official batch or sandbox grading request and destroyed after completion or session exit. It also includes transient Judge0 submission/result artifacts and Kata-backed execution artifacts, which must be deleted or invalidated immediately after retrieval.
 
 ```mermaid
 classDiagram
@@ -31,12 +31,30 @@ classDiagram
         +Boolean blocks_execution
     }
 
+    class Judge0Submission {
+        +String submission_token
+        +Int language_id
+        +Boolean delete_verified
+    }
+
+    class KataExecutionContext {
+        +String vm_runtime
+        +Boolean network_disabled
+        +Boolean destroyed_after_run
+    }
+
     class TestExecutionResult {
-        +String status
+        +Int status_id
+        +String status_description
         +Int passed_count
         +Int failed_count
         +Int earned_points
+        +String compile_output
+        +Int memory_kb
+        +Int exit_code
+        +String exit_signal
         +Float execution_time_s
+        +Float wall_time_s
     }
 
     class TracebackBundle {
@@ -90,7 +108,9 @@ classDiagram
     SubmissionBundle "1" *-- "many" StudentCode : extracts
     SubmissionBundle "1" --> "1" ConstraintCheckResult : checked_by
     ConstraintCheckResult "1" --> "1" SubmissionBundle : gates_execution
-    SubmissionBundle "1" --> "1" TestExecutionResult : executed_as
+    SubmissionBundle "1" --> "0..1" Judge0Submission : submits_to
+    Judge0Submission "1" --> "1" KataExecutionContext : executes_in
+    Judge0Submission "1" --> "1" TestExecutionResult : returns
     TestExecutionResult "1" --> "0..1" TracebackBundle : emits
     SubmissionBundle "1" --> "0..1" AIHintRequest : builds
     AIHintRequest "1" --> "0..1" AIHintResponse : receives
