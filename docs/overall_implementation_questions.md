@@ -16,3 +16,5 @@ The teacher/IA workflow is not completely nailed down:
 `Upload ZIP of all submissions -> autograding, plagiarism checks, etc. -> ?`
 
 Should there be a manual check on each assignment, where the teacher/IA clicks "accept" through a queue of each assignment and its test outcomes (and maybe AI comments), or should they be able to upload files and download grades directly, with manual review as an optional spot-check for surprising results?
+
+**Jaxon:** No strong opinion on this one.

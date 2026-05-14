@@ -161,8 +161,8 @@ Before live student data is sent through this pipeline, Azure OpenAI privacy rea
 - [ ] Hallucination guard enforced: tests remain ground truth and the LLM explains rather than re-evaluates correctness
 - [ ] Celery grading chain supports both official runs and sandbox runs
 - [ ] Celery worker concurrency aligned to documented Judge0 + Kata execution capacity
-- [ ] Run status endpoint returns queue/run/complete/failure state
-- [ ] Staff and student views show live status through polling where appropriate
+- [ ] `GET /runs/{id}/status` endpoint returns `queue`/`run`/`complete`/`failure` state from Redis-backed transient run status
+- [ ] Staff and student views poll `GET /runs/{id}/status` every `2s` while state is `queue` or `run`
 - [ ] Monaco-backed code review and editor workflows are ready where Sprint 2 execution results surface code context
 - [ ] Failed jobs retry up to 3 times with backoff
 - [ ] Timeout handling frees the worker immediately and records `failed:timeout`
@@ -588,7 +588,7 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 | ----- | ----------------------------------------------------------------------------------------- | --- | -------- |
 | E7-01 | Official run list with aggregate status and timestamps                                    | 2   | Must     |
 | E7-02 | In-session official-run detail view with counts, warnings, and failures                   | 2   | Must     |
-| E7-03 | Live polling for per-run status                                                           | 1   | Must     |
+| E7-03 | `GET /runs/{id}/status` live polling at `2s` cadence for per-run status                   | 1   | Must     |
 | E7-04 | Per-student HTML preview before export                                                    | 2   | Must     |
 | E7-05 | Filtering for success, warning, hard-block, timeout, parse failure, and plagiarism status | 1   | Should   |
 | E7-06 | Surface MOSS report URL prominently with instructor save warning                          | 1   | Must     |

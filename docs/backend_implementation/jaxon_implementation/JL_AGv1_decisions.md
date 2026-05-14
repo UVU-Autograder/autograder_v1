@@ -95,6 +95,8 @@
 - Judge0 is hosted as a separate Kata-backed isolated privileged execution service rather than inside the main Railway app stack.
 - Judge0 submission and result artifacts, plus Kata-backed execution artifacts, must be deleted or invalidated immediately after retrieval so the zero-retention contract still holds.
 - Async grading failures retry up to `3` times with backoff before surfacing a permanent failure state.
+- Run-status delivery contract is `GET /runs/{id}/status`, backed by Redis transient status storage.
+- Staff and student clients poll `GET /runs/{id}/status` at a fixed `2s` cadence until terminal state.
 - Celery concurrency must remain aligned to documented Judge0 execution capacity to avoid container exhaustion.
 - Cleanup runs immediately after official export completion and after sandbox completion or session exit.
 - Azure OpenAI privacy or ZDR posture must be confirmed before live grading with student code.

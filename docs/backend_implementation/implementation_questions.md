@@ -39,6 +39,10 @@ These are now treated as aligned and resolved:
   - separate dedicated execution infrastructure (Jaxon style),
   - or Railway-hosted privileged execution service in the same platform narrative?
 
+**Jaxon**
+
+- No opinion. Need to do more research.
+
 ---
 
 ## 2. What is the canonical frontend code-view tooling contract?
@@ -52,22 +56,13 @@ These are now treated as aligned and resolved:
 
 - Is Monaco required for M1 code-edit/review surfaces, with Prism optional for static previews only?
 
----
+**Jaxon**
 
-## 3. What is the minimum canonical M1 schema at Sprint 0?
-
-**Current drift**
-
-- Jaxon technical specs explicitly include `staff_access`, `assignment_concept_overrides`, `assignment_artifacts`, `test_cases`, and `run_summaries`.
-- Easton sprint v3 Sprint-0 schema list includes `assignment_artifacts` and `run_summaries`, but omits `staff_access`, `assignment_concept_overrides`, and `test_cases` in that specific early schema contract.
-
-**Question to resolve**
-
-- Should Sprint 0 require the full Jaxon-style schema from day one, or allow phased introduction of the omitted tables with explicit milestone ownership?
+- No strong opinion, but I like a simplicity-first M1 with as few tools as possible.
 
 ---
 
-## 4. What is the exact IA permission boundary in M1?
+## 3. What is the exact IA permission boundary in M1?
 
 **Current drift**
 
@@ -78,9 +73,13 @@ These are now treated as aligned and resolved:
 
 - Should IA permissions follow Jaxon’s strict-by-default matrix, or should IA be functionally equivalent to instructor in assignment/config workflows?
 
+**Jaxon**
+
+- No strong opinion.
+
 ---
 
-## 5. What is the required Judge0 artifact-deletion contract?
+## 4. What is the required Judge0 artifact-deletion contract?
 
 **Current drift**
 
@@ -91,17 +90,8 @@ These are now treated as aligned and resolved:
 
 - Is explicit Judge0 submission/result artifact deletion (or invalidation) a mandatory acceptance criterion for both official and sandbox runs?
 
----
+**Jaxon**
 
-## 6. What is the canonical run-status delivery contract?
-
-**Current drift**
-
-- Easton sprint v3 specifies `GET /runs/{id}/status` backed by Redis and a 2-second polling cadence.
-- Jaxon docs specify async pipeline/status tracking behavior but do not lock polling interval or a single status endpoint contract at that precision.
-
-**Question to resolve**
-
-- Should M1 standardize on the Easton status endpoint + polling cadence, or define a broader status contract that allows alternate delivery mechanisms?
+- No strong opinion. Need to do more research.
 
 ---

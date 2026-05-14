@@ -48,8 +48,6 @@ This file captures unresolved differences between:
 ## Clarification Notes for Frontend Team
 
 - **Framework/language baseline (PDF p.7):** Use **Next.js + React + TypeScript** for M1. HTML/CSS are output/styling layers, but implementation should be TS/TSX (not plain JS pages).
-- **Styling/components baseline (PDF p.7):** Tailwind + shadcn-style components are acceptable direction; keep component APIs typed.
 - **Validation baseline (PDF p.7):** Prefer schema validation (for example Zod) for frontend form/input validation.
-- **Shared editor workflow baseline (PDF p.2, p.7):** The split-pane “LeetCode-style” workspace should be treated as a shared pattern across staff review and student sandbox flows.
 - **Retention baseline (PDF p.3):** “History/attempts before session end” is session-lifetime UI only. Do not implement persistent student attempt history for M1.
 - **Download baseline (PDF p.6):** Do not add direct student-code download UX by default in M1; canonical export remains staff grade CSV + HTML feedback ZIP.

@@ -210,6 +210,13 @@ Notes:
 - Sandbox output never becomes a downloadable artifact.
 - Sandbox cleanup runs on completion, timeout, failure, or session exit.
 
+### Run status delivery contract
+
+- Delivery contract endpoint: `GET /runs/{id}/status`.
+- Backend status reads are backed by Redis transient run-state storage.
+- `GET /runs/{id}/status` must surface `queue`, `run`, `complete`, or `failure` state.
+- Staff and student clients poll this endpoint every `2s` while state is `queue` or `run`, then stop polling after `complete` or `failure`.
+
 ## 9. Output Formats
 
 ### Official CSV
