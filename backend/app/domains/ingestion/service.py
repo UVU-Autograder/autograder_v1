@@ -1,1 +1,1 @@
-# Official upload ingestion service placeholder.
+# Official upload ingestion service placeholder for Canvas ZIP validation, path traversal protection, one-student-target filename mapping, and shared ephemeral workspace extraction orchestration for section-scoped official runs.

@@ -7,7 +7,6 @@ classDiagram
     class User {
         +UUID id
         +String email
-        +String name
         +Boolean is_active
     }
 
@@ -72,7 +71,7 @@ classDiagram
         +UUID id
         +UUID assignment_id
         +String artifact_type
-        +String storage_path
+        +String storage_ref
         +String display_name
     }
 
@@ -82,7 +81,7 @@ classDiagram
         +String criterion_label
         +String student_visible_description
         +Int point_value
-        +String pytest_path
+        +String pytest_artifact_ref
     }
 
     class RunSummary {
@@ -98,23 +97,23 @@ classDiagram
         +Int warning_count
         +Int failure_count
         +Int timeout_count
-        +Int prompt_tokens
-        +Int completion_tokens
+        +JSON token_usage_metadata
         +String failure_summary
+        +String moss_report_url
     }
 
     %% Relationships
     Role "1" --> "many" StaffAccess : assigned_in
     User "1" --> "many" StaffAccess : granted
     Course "1" *-- "many" Section : contains
-    Course "1" --> "many" StaffAccess : scopes
-    Section "0..1" --> "many" StaffAccess : optionally_scopes
+    Course "1" --> "many" StaffAccess : scopes_visibility
+    Section "0..1" --> "many" StaffAccess : scopes_edit_and_run_authority
     Course "1" *-- "many" Assignment : owns
     Course "1" *-- "many" ConceptSet : provides_defaults
     Assignment "1" *-- "1" AssignmentConfig : stores
     Assignment "1" *-- "0..1" AssignmentConceptOverride : overrides
     Assignment "1" *-- "many" AssignmentArtifact : stores
     Assignment "1" *-- "many" TestCase : grades_with
-    Assignment "1" *-- "many" RunSummary : tracks
+    Assignment "1" *-- "many" RunSummary : tracks_section_scoped_runs
     User "1" --> "many" RunSummary : initiates
 ```

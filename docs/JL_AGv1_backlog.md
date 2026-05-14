@@ -1,5 +1,7 @@
 # UVU Autograder v1 - Canonical Backlog and Sprint Plan
 
+> Supporting architecture and product decisions live in `JL_AGv1_decisions.md` and `JL_AGv1_technical_specs.md`. This file is the canonical backlog and sprint execution document.
+
 > Target: Testable M1 for zero-retention grading and sandbox workflows for `@uvu.edu` users
 > Team: 5 developers, half time (~35-65 hrs/week total)
 > Window: 8-9 weeks
@@ -8,84 +10,14 @@
 
 ---
 
-## Decision Log
+## Planning Context
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Backlog tool | GitHub Projects (Issues + Milestones) | Lives in the repo, free, no external dependency |
-| Data retention | Zero-retention for student submissions and grading artifacts | Minimizes FERPA risk and simplifies M1 operations |
-| Database scope | Store staff, courses, assignments, configs, and sanitized run metadata only | Keeps the persistent footprint small and non-sensitive |
-| Execution engine | Piston (Dockerized on Railway) | Clean service boundary for sandboxed code execution |
-| AI inference | Azure OpenAI API | Uses university-approved cloud inference instead of local LLM operations |
-| Plagiarism detection | Stanford MOSS via `mosspy` | Optional staff review aid using ephemeral batch files only |
-| Auth (M1) | NextAuth + Microsoft OAuth | Fastest realistic path to trusted UVU identity |
-| UVU restriction | Reject any login not ending in `@uvu.edu` in the NextAuth callback | Keeps M1 access bounded to UVU accounts |
-| Student access | Students may sign in for sandbox use only; no student records are stored beyond the active session | Restores the projected-feedback workflow without persistent retention |
-| Assignment content | Canvas-canonical | Assignment description, rosters, and final grade distribution remain in Canvas |
-| Rubric/config setup | Basic wizard plus raw `config.json` import/export in M1 | Supports both guided setup and direct JSON editing without overbuilding |
-| Concept policy | `Concepts Covered` progressive whitelist | Aligns AST checks and LLM feedback to the course timeline |
-| Output format | Staff: CSV + master ZIP of per-student HTML feedback. Students: on-screen projected feedback only | Keeps official exports lightweight while preserving zero-retention for sandbox usage |
-| Canvas redistribution | Bulk grade upload/import is assumed possible; bulk feedback upload remains future research | Keeps M1 wording specific without committing to unsolved Canvas feedback automation |
-| Hosting target | Railway-first for M1 production hosting | Removes deployment ambiguity and keeps the environment simple |
+Implementation decisions, permission semantics, storage contracts, and technical architecture are maintained in:
 
----
+- `JL_AGv1_decisions.md`
+- `JL_AGv1_technical_specs.md`
 
-## Locked M1 Assumptions
-
-These assumptions should be treated as fixed for implementation unless the product direction changes.
-
-- `Actors`
-  - M1 actors are `admin`, `instructor`, `IA`, and `student`
-  - staff accounts and role assignments are stored persistently
-  - student access is session-based and zero-retention
-
-- `Assignments`
-  - store grading metadata needed to run future batches and sandbox sessions
-  - Canvas remains canonical for assignment instructions, student identity, due dates, and final grade distribution
-  - app-owned artifacts include rubric config, course-linked concepts defaults, pytest files, model solution, and student-visible test descriptions
-  - staff may create/edit assignment config via either a basic wizard or direct `config.json`
-  - the resulting `config.json` must be viewable, editable, and downloadable
-
-- `Official batch processing`
-  - instructor or IA uploads a Canvas ZIP for a single assignment run
-  - malformed or non-Canvas ZIPs are rejected before queueing
-  - extraction occurs only in memory or an ephemeral temp directory
-  - optional plagiarism detection may submit the current ephemeral batch to Stanford MOSS via `mosspy`
-  - when MOSS returns a URL, the UI must surface it prominently and warn the instructor to save it before leaving the page
-  - student files, generated intermediate files, and detailed grading output are destroyed after the export package is returned
-  - the system may keep sanitized run metadata such as timestamps, counts, and failure summaries, but not student code or detailed feedback files
-
-- `Student sandbox processing`
-  - student selects an assignment, uploads code, and receives projected score and feedback on screen
-  - sandbox uploads are strictly limited to `5 uploads per hour` per authenticated student identity
-  - sandbox uploads are processed only in ephemeral working storage
-  - sandbox artifacts are destroyed when processing completes or when the session exits
-  - student sandbox output is not downloadable and is not stored persistently
-
-- `Concepts Covered`
-  - M1 uses a progressive whitelist, not a blacklist
-  - the allowed concepts list is enforced in AST checks before execution
-  - the same allowed concepts list is injected into the LLM prompt context
-
-- `Output`
-  - official grading produces a grade CSV and a master ZIP containing per-student HTML feedback files
-  - sandbox grading produces on-screen projected feedback only
-  - no PDF output is generated
-  - no in-app long-term student result history is retained
-
----
-
-## Sprint Calendar
-
-```text
-Sprint 0  Environment + metadata foundation
-Sprint 1  Shadow SSO + assignment/config setup + ephemeral ingestion
-Sprint 2  Grading pipeline + Azure OpenAI + zero-retention controls
-Sprint 3  Student sandbox + instructor batch UX + export packaging
-Sprint 4  Integration testing + FERPA/compliance hardening
-```
-
-Sprint 4 is a hardening buffer. If Sprints 1-3 land cleanly, Sprint 4 is reserved for end-to-end validation, security checks, and documentation polish.
+This backlog focuses on sprint planning, deliverables, and acceptance criteria.
 
 ---
 
@@ -93,7 +25,7 @@ Sprint 4 is a hardening buffer. If Sprints 1-3 land cleanly, Sprint 4 is reserve
 
 ### Goal
 
-Every developer can run the stack locally, and the persistent model reflects the reduced M1 footprint.
+Every developer can run the stack locally, and the persistent model matches the reduced M1 footprint.
 
 ### Deliverables
 
@@ -101,19 +33,19 @@ Every developer can run the stack locally, and the persistent model reflects the
 - [ ] Next.js app bootstrapped
 - [ ] FastAPI app bootstrapped with routers, schemas, services, and prompt integration boundaries
 - [ ] PostgreSQL initial schema and Alembic migration for non-sensitive core tables:
-  - `users`, `roles`, `courses`, `sections`, `assignments`, `assignment_configs`, `concept_sets`, `assignment_artifacts`, `run_summaries`
+  - `users`, `roles`, `courses`, `sections`, `staff_access`, `assignments`, `assignment_configs`, `concept_sets`, `assignment_concept_overrides`, `assignment_artifacts`, `test_cases`, `run_summaries`
 - [ ] Redis running locally
 - [ ] Celery connected to Redis
 - [ ] Piston running locally
 - [ ] Railway deployment shape documented for `nextjs`, `fastapi`, `postgres`, `redis`, `celery`, and `piston`
-- [ ] Docker Compose covers `postgres`, `redis`, `celery`, `fastapi`, `nextjs`, `piston`
+- [ ] Docker Compose supports local development and integration-style testing for `postgres`, `redis`, `celery`, `fastapi`, `nextjs`, and `piston`
 - [ ] `.env.example` documents required environment variables including Azure OpenAI settings
 - [ ] README gets the full stack running locally
 - [ ] Seed script creates 1 course, 1 assignment, 1 generated `config.json`, 1 concepts default set, and 1 model solution
 
 ### Exit Criteria
 
-`docker compose up` brings the stack online. FastAPI health check returns 200. A test Celery task runs successfully. Piston executes a Hello World Python script. The seeded assignment loads with its stored config and concepts defaults.
+`docker compose -f docker-compose.testing.yml up` brings the testing stack online. FastAPI health check returns 200. A test Celery task runs successfully. Piston executes a Hello World Python script. The seeded assignment loads with its stored config and concepts defaults.
 
 ---
 
@@ -149,7 +81,7 @@ UVU users can authenticate, staff can configure assignments through either the w
 
 ### Exit Criteria
 
-An instructor signs in with a `@uvu.edu` account. A non-UVU login is rejected. The instructor creates an assignment through the wizard or by importing valid raw `config.json`, confirms the `Concepts Covered` selections, downloads the resulting `config.json`, uploads a Canvas ZIP, and the system parses the archive into a transient official run without storing student code as persistent records.
+An instructor signs in with a `@uvu.edu` account. A non-UVU login is rejected. The instructor creates an assignment through the wizard or by importing valid raw `config.json`, confirms the `Concepts Covered` selections, downloads the resulting `config.json`, uploads a Canvas ZIP for an explicitly assigned section, and the system parses the archive into a transient official run without storing student code persistently.
 
 ---
 
@@ -170,10 +102,10 @@ The system grades official runs and sandbox uploads end to end using ephemeral f
 - [ ] pytest execution via Piston
 - [ ] pytest output parser returns structured test results
 - [ ] `python_submitty_utils` output normalization integrated
-- [ ] Minimal test artifact management for M1:
-  - upload/edit pytest files
-  - link each test to one primary rubric criterion
-  - store a student-visible description per test
+- [ ] Minimal test and artifact management for M1:
+  - upload/edit pytest file bodies through storage-backed artifact references
+  - link each `TestCase` to one primary rubric criterion
+  - store a student-visible description per `TestCase`
   - upload and run a model solution against the test suite
 - [ ] model solution validation runs inside Piston, not on the host
 - [ ] Azure OpenAI integration for rubric-context explanation and feedback generation
@@ -266,6 +198,8 @@ Validate the full M1 workflow under realistic conditions and verify the zero-ret
   - non-UVU login is rejected
 - [ ] Validate access control:
   - admin, instructor, and IA routes respect role checks
+  - instructors can view assigned courses but edit only explicitly assigned sections
+  - IAs can view only explicitly assigned sections for grading validation
   - student users can access sandbox features but not staff workflow pages
 - [ ] Validate security:
   - network access from Piston execution is blocked
@@ -370,9 +304,9 @@ A teammate unfamiliar with the codebase can complete the M1 workflow without ass
 | FR-02.4 | Instructor or IA can edit stored config through a rendered form and download the current `config.json` | S1 |
 | FR-02.5 | Instructor or IA can set or override a `Concepts Covered` checklist per assignment | S1 |
 | FR-02.6 | Instructor or IA can upload a bulk Canvas ZIP for official grading | S1 |
-| FR-02.7 | Instructor or IA can manage assignment pytest artifacts and run a model solution inside Piston | S2 |
+| FR-02.7 | Instructor or IA can manage `TestCase` grading records, storage-backed pytest artifacts, and run a model solution inside Piston | S2 |
 | FR-02.8 | Instructor or IA can monitor official-run status and inspect in-session results | S3 |
-| FR-02.9 | Instructor or IA can optionally run plagiarism detection for an official run and review the returned MOSS output | S3 |
+| FR-02.9 | Instructor or IA can optionally run plagiarism detection for an authorized official run and review the returned MOSS URL and output | S3 |
 | FR-02.10 | Instructor or IA can download a CSV and a master ZIP of per-student HTML feedback | S3 |
 
 ### FR-03 - Student Sandbox
@@ -403,7 +337,7 @@ A teammate unfamiliar with the codebase can complete the M1 workflow without ass
 | FR-04.10 | System destroys student files and detailed official-run artifacts after the request concludes | S2 |
 | FR-04.11 | Official grading jobs run asynchronously via Celery | S2 |
 | FR-04.12 | System rejects malformed or non-Canvas ZIPs before queueing official grading work | S1 |
-| FR-04.13 | System logs Azure token usage as non-sensitive metadata for official runs | S2 |
+| FR-04.13 | System logs Azure token usage and optional safe MOSS URL metadata for official runs | S2 |
 
 ### FR-05 - Ephemeral Student Sandbox Processing
 
@@ -477,7 +411,7 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 
 | ID | Story | Pts | Priority |
 |----|-------|-----|----------|
-| E1-01 | Docker Compose: postgres, redis, celery, fastapi, nextjs, piston | 2 | Must |
+| E1-01 | Docker Compose for local development and integration-style testing: postgres, redis, celery, fastapi, nextjs, piston | 2 | Must |
 | E1-02 | FastAPI project structure with routers, schemas, services, and prompt boundaries | 2 | Must |
 | E1-03 | Next.js project structure with App Router | 2 | Must |
 | E1-04 | PostgreSQL schema + Alembic initial migration for metadata-only tables | 2 | Must |

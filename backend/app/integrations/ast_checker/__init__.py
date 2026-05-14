@@ -1,0 +1,2 @@
+# AST checker integration placeholder.
+

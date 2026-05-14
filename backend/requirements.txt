@@ -1,1 +1,1 @@
-# Dependency placeholder for the backend skeleton.
+# Backend dependency placeholder including FastAPI, Celery, Redis, httpx, mosspy, Azure OpenAI client dependencies, and any non-stdlib AST support only if required for artifact-backed pytest execution and official-run orchestration.

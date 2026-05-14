@@ -1,1 +1,1 @@
-# Canvas batch manifest placeholder.
+# Ingestion schema placeholder for Canvas ZIP upload requests, validated manifest data, one-student-target filename mapping results, duplicate or ambiguous match failures, and malformed-archive reporting.

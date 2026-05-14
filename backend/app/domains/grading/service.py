@@ -1,1 +1,1 @@
-# Grading service placeholder.
+# Grading service placeholder for AST check, artifact-backed pytest/Piston execution, Azure explanation generation, HTML response shaping, safe MOSS URL handoff, and zero-retention cleanup orchestration.

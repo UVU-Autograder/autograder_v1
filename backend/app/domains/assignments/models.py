@@ -1,2 +1,1 @@
-# Assignment model placeholder for assignment metadata, config references, concept selections, and artifact records.
-
+# Assignment model placeholder for course-linked assignments, section-aware edit boundaries, config references, concept overrides, test metadata links, and artifact references.

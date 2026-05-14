@@ -1,0 +1,119 @@
+name: uvu-autograder-testing
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uvu-autograder-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: autograder
+      POSTGRES_USER: autograder
+      POSTGRES_PASSWORD: autograder_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autograder -d autograder"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: uvu-autograder-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: uvu-autograder-piston
+    restart: unless-stopped
+    ports:
+      - "2000:2000"
+    environment:
+      PISTON_DISABLE_NETWORKING: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:2000/api/v2/runtimes || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    image: python:3.11-slim
+    container_name: uvu-autograder-backend
+    restart: unless-stopped
+    working_dir: /workspace/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      piston:
+        condition: service_healthy
+    environment:
+      POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      PISTON_URL: http://piston:2000
+      AZURE_OPENAI_API_KEY: replace-me
+      AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
+      MOSS_USER_ID: replace-me
+      SANDBOX_UPLOAD_LIMIT: "5"
+      SANDBOX_UPLOAD_WINDOW_SECONDS: "3600"
+      CLEANUP_TTL_SECONDS: "0"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/workspace
+    command:
+      - sh
+      - -c
+      - |
+        echo "Backend service placeholder: replace this command with uvicorn once the FastAPI app is executable."
+        sleep infinity
+
+  celery-worker:
+    image: python:3.11-slim
+    container_name: uvu-autograder-celery-worker
+    restart: unless-stopped
+    working_dir: /workspace/backend
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      piston:
+        condition: service_healthy
+    environment:
+      POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      PISTON_URL: http://piston:2000
+      AZURE_OPENAI_API_KEY: replace-me
+      AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
+      MOSS_USER_ID: replace-me
+      SANDBOX_UPLOAD_LIMIT: "5"
+      SANDBOX_UPLOAD_WINDOW_SECONDS: "3600"
+      CLEANUP_TTL_SECONDS: "0"
+    volumes:
+      - ./:/workspace
+    command:
+      - sh
+      - -c
+      - |
+        echo "Celery worker placeholder: replace this command with a real Celery worker once tasks are executable."
+        sleep infinity
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -4,7 +4,7 @@ Ephemeral grading pipeline model only. This diagram represents RAM-only or temp-
 classDiagram
     direction TB
 
-    class Workspace {
+    class EphemeralWorkspace {
         +UUID workspace_id
         +String workflow_type
         +String temp_path
@@ -28,6 +28,7 @@ classDiagram
         +String status
         +List warnings
         +List hard_blocks
+        +Boolean blocks_execution
     }
 
     class TestExecutionResult {
@@ -35,6 +36,7 @@ classDiagram
         +Int passed_count
         +Int failed_count
         +Int earned_points
+        +Float execution_time_s
     }
 
     class TracebackBundle {
@@ -58,6 +60,7 @@ classDiagram
         +Int projected_score
         +List warnings
         +String rendered_feedback
+        +String html_output
     }
 
     class ExportBundle {
@@ -76,16 +79,17 @@ classDiagram
 
     class AssignmentArtifact {
         <<persistent input>>
+        +String storage_ref
     }
 
     class TestCase {
         <<persistent input>>
     }
 
-    %% Pipeline relationships
-    Workspace "1" *-- "many" SubmissionBundle : contains
+    EphemeralWorkspace "1" *-- "many" SubmissionBundle : contains
     SubmissionBundle "1" *-- "many" StudentCode : extracts
     SubmissionBundle "1" --> "1" ConstraintCheckResult : checked_by
+    ConstraintCheckResult "1" --> "1" SubmissionBundle : gates_execution
     SubmissionBundle "1" --> "1" TestExecutionResult : executed_as
     TestExecutionResult "1" --> "0..1" TracebackBundle : emits
     SubmissionBundle "1" --> "0..1" AIHintRequest : builds
@@ -93,9 +97,8 @@ classDiagram
     SubmissionBundle "1" --> "1" FeedbackDraft : assembles
     AIHintResponse "0..1" --> "1" FeedbackDraft : enriches
     TestExecutionResult "1" --> "1" FeedbackDraft : grounds
-    Workspace "1" --> "0..1" ExportBundle : packages_official_results
+    EphemeralWorkspace "1" --> "0..1" ExportBundle : packages_official_results
 
-    %% Persistent inputs
     Assignment "1" --> "many" SubmissionBundle : scopes
     AssignmentConfig "1" --> "many" AIHintRequest : informs
     AssignmentArtifact "1" --> "many" SubmissionBundle : supports
