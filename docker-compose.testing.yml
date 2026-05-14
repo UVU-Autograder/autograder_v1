@@ -1,5 +1,10 @@
 name: uvu-autograder-testing
 
+# Local/integration testing harness for the app stack plus Judge0 connectivity.
+# Canonical production execution uses Judge0 with Kata-backed VM isolation on
+# separate execution infrastructure; this Compose file does not attempt to
+# fully reproduce the Kata runtime layer.
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -56,6 +61,7 @@ services:
       MEMORY_LIMIT: "262144"
       MAX_MEMORY_LIMIT: "524288"
       RAILS_ENV: production
+      EXECUTION_ISOLATION_EXPECTATION: kata-in-production
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:2358/languages || exit 1"]
       interval: 20s
@@ -89,6 +95,7 @@ services:
       MEMORY_LIMIT: "262144"
       MAX_MEMORY_LIMIT: "524288"
       RAILS_ENV: production
+      EXECUTION_ISOLATION_EXPECTATION: kata-in-production
     command:
       - /bin/sh
       - -c
@@ -113,6 +120,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       JUDGE0_URL: http://judge0:2358
       JUDGE0_AUTH_TOKEN: judge0-testing-token
+      EXECUTION_ENGINE: judge0
+      EXECUTION_ISOLATION_LAYER: kata
+      JUDGE0_RETENTION_MODE: delete_after_retrieval
       AZURE_OPENAI_API_KEY: replace-me
       AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
       MOSS_USER_ID: replace-me
@@ -148,6 +158,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       JUDGE0_URL: http://judge0:2358
       JUDGE0_AUTH_TOKEN: judge0-testing-token
+      EXECUTION_ENGINE: judge0
+      EXECUTION_ISOLATION_LAYER: kata
+      JUDGE0_RETENTION_MODE: delete_after_retrieval
       AZURE_OPENAI_API_KEY: replace-me
       AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
       MOSS_USER_ID: replace-me

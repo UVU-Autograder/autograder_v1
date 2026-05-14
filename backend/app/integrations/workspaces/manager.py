@@ -1,1 +1,1 @@
-# Shared ephemeral workspace manager placeholder for `EphemeralWorkspace` lifecycle management, zero-retention temp directory creation, extraction, packaging support, and guaranteed cleanup after official or sandbox workflows.
+# Shared ephemeral workspace manager placeholder for `EphemeralWorkspace` lifecycle management, zero-retention temp directory creation, Judge0/Kata submission packaging, and guaranteed cleanup after official or sandbox workflows.

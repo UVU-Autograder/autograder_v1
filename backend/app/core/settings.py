@@ -1,1 +1,1 @@
-# Strict environment settings placeholder for Azure OpenAI, Piston, Redis/Celery, MOSS, sandbox rate limits, storage backend selection, and optional cleanup settings.
+# Strict environment settings placeholder for Azure OpenAI, Judge0, Kata-capable execution configuration, Redis/Celery, MOSS, sandbox rate limits, storage backend selection, and optional cleanup settings.
