@@ -1,6 +1,8 @@
 # UVU Autograder v1 - Jaxon's Changes and Clarifications to Easton's Model
 
-This document is a companion to Easton's implementation notes. It captures changes and clarifications I want to make to his model while keeping his overall direction as the baseline.
+> This document is part of the canonical Jaxon-authored M1 implementation baseline. Preserved Easton reference docs in this folder are non-authoritative when they conflict with the choices here.
+
+This document captures the canonical M1 changes and clarifications needed to align the project around Railway, Azure OpenAI, Piston, zero-retention grading, and Canvas-canonical assignment content.
 
 ## Proposed Changes and Clarifications
 
@@ -24,8 +26,8 @@ This document is a companion to Easton's implementation notes. It captures chang
     - Instructors should be able to dynamically execute the real pytest files on a model solution inside the same Piston environment used for student code (M1: supported via editor + run).
     - Instructors can also set a template for students (M2).
 
-- I am assuming tests live in the database and are tied to individual assignments.
-  - The UI edits real pytest files.
+- I am assuming tests are tied to individual assignments and represented as explicit grading metadata plus storage-backed artifact references.
+  - The UI edits real pytest files through an artifact-backed storage layer.
   - Students should only see a description of the tests, not the exact test files.
   - Rubric criteria should map to tests, even if that mapping is not perfectly enforceable in the UI at first.
 
@@ -35,6 +37,7 @@ This document is a companion to Easton's implementation notes. It captures chang
     - an official staff-run Canvas batch flow
     - a student sandbox flow for projected grading
   - The instructor or IA uploads an official Canvas ZIP for a single batch run.
+  - Official batch execution is authorized only within explicitly assigned section scope.
   - The official upload path should reject malformed or non-Canvas ZIPs before they enter the grading queue.
   - The student sandbox lets a student choose an assignment, upload code, and receive projected feedback on screen.
   - The student sandbox must be rate-limited to `5 uploads per hour` per authenticated `@uvu.edu` student identity.
@@ -78,4 +81,5 @@ This document is a companion to Easton's implementation notes. It captures chang
   - Railway should be treated as the authoritative M1 hosting target for frontend, backend, PostgreSQL, Redis, Celery workers, and Piston deployment.
   - Local Docker Compose remains the development environment, not the production hosting assumption.
   - Azure OpenAI token usage should be logged as non-sensitive metadata per assignment-linked official run and per sandbox run.
+  - Returned MOSS URLs may be retained as safe run metadata, but student code and detailed feedback artifacts must not be retained.
   - Celery worker concurrency must be aligned to Piston's maximum supported container parallelism to avoid container exhaustion during large batches.

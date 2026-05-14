@@ -1,5 +1,7 @@
 # UVU Autograder v1 — Comprehensive Overview & Workflow
 
+> This document is part of the canonical Jaxon-authored M1 implementation baseline. Preserved Easton reference docs in this folder are non-authoritative when they conflict with the choices here.
+
 **Status:** Implementation Blueprint
 **Target Audience:** Admins, Instructors, IAs, and Students of UVU CS 1400/1410
 **Core Philosophy:** A stateless, FERPA-compliant, high-speed processing pipeline that uses AI and automated analysis to provide actionable grading support while avoiding persistent storage of student submissions and detailed student feedback.
@@ -39,7 +41,10 @@ The database only stores operational metadata:
 
 - `Users` (Admins, Instructors, and IAs only)
 - `Courses` & `Sections`
-- `Assignments` (Rubrics, Config JSONs, and Test Cases)
+- `Assignments` (course-owned, with section-scoped edit/run authority enforced through staff access)
+- `Assignment Configs`, `Concept Sets`, `Assignment Concept Overrides`
+- `Assignment Artifacts` and `Test Cases`
+- `Sanitized Run Summaries`
 - _Note: Student accounts, submissions, projected runs, and detailed feedback artifacts are NOT stored persistently._
 
 ### D. In-Memory Plagiarism Detection
@@ -89,7 +94,7 @@ _Canvas remains the definitive source of truth for assignment descriptions, due 
 1.  **Creation:** The instructor creates an assignment linked to a course.
 2.  **Guided Setup or Direct JSON:** The instructor or IA can either use a basic wizard for the core assignment/rubric/config fields or paste/import a raw `config.json`.
 3.  **Round-Trip Editing:** The app renders the current config in an editable interface, keeps the JSON synchronized, and allows the current `config.json` to be downloaded.
-4.  **Concept Mapping:** The instructor toggles the "Concepts Covered" whitelist for that specific assignment, defining what tools the students (and the AI) are allowed to use.
+4.  **Concept Mapping:** The instructor toggles the "Concepts Covered" whitelist for that specific assignment, with course defaults plus assignment-specific overrides defining what tools the students and AI are allowed to use.
 5.  **Test Validation:** The instructor or IA can create a model solution and run the test cases against it inside the same Piston environment used for student code, guaranteeing environment parity.
 
 ## Future Enhancements

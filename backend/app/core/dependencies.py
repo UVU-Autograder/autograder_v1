@@ -1,0 +1,1 @@
+# Shared FastAPI dependency wiring placeholder for settings, section-scoped official-run authorization, hybrid artifact storage, sandbox-only rate limiting, shared ephemeral workspace lifecycle access, and safe run-summary metadata handling.
