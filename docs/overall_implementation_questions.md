@@ -18,3 +18,18 @@ The teacher/IA workflow is not completely nailed down:
 Should there be a manual check on each assignment, where the teacher/IA clicks "accept" through a queue of each assignment and its test outcomes (and maybe AI comments), or should they be able to upload files and download grades directly, with manual review as an optional spot-check for surprising results?
 
 **Jaxon:** No strong opinion on this one.
+
+## 3. IA Access to Courses
+
+**TA/IA permissions: can they CRUD assignments and grading setup?**  
+ The UI/UX PDF TA views include broad assignment actions (including CRUD language), while backend permission docs scope IA privileges to assigned sections and more limited grading authority.
+
+**Jaxon**: We need to decide whether just teachers can edit assignment rubrics or if IAs can as well.
+
+## 4. Result override workflow: is manual score/feedback override in M1 scope?
+
+The UI/UX PDF includes TA “override feedback, grade,” but backend docs do not explicitly lock an override model in M1.
+
+**Jaxon**: We need to lock in an override model for the future.
+
+**Keomony**: oh okay. I will double check the M1 scope. If override isn't in M1 scope, then we can just forget about it for now and keep it for the future.

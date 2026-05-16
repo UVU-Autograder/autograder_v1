@@ -66,7 +66,7 @@ Every developer can run the stack locally, and the persistent model matches the 
 - [ ] Next.js app bootstrapped
 - [ ] FastAPI app bootstrapped with routers, schemas, services, and prompt integration boundaries
 - [ ] PostgreSQL initial schema and Alembic migration for non-sensitive core tables:
-  - `users`, `roles`, `courses`, `sections`, `staff_access`, `assignments`, `assignment_configs`, `concept_sets`, `assignment_concept_overrides`, `assignment_artifacts`, `test_cases`, `run_summaries`
+  - `users`, `roles`, `courses`, `sections`, `staff_access`, `course_enrollments`, `assignments`, `assignment_configs`, `concept_sets`, `assignment_concept_overrides`, `assignment_artifacts`, `test_cases`, `run_summaries`
 - [ ] Redis running locally
 - [ ] Celery connected to Redis
 - [ ] Judge0 execution service running locally or in a compatible integration environment
@@ -92,7 +92,7 @@ Every developer can run the stack locally, and the persistent model matches the 
 
 ### Goal
 
-UVU users can authenticate, staff can configure assignments through either the wizard or raw JSON, and official batch uploads can be prepared without persistent student submission records.
+UVU users can authenticate, staff can configure assignments through a comprehensive wizard with `config.json` import/export support, and official batch uploads can be prepared without persistent student submission records.
 
 ### Deliverables
 
@@ -102,12 +102,16 @@ UVU users can authenticate, staff can configure assignments through either the w
 - [ ] Role-based API protection in FastAPI
 - [ ] Minimal staff role management for admin, instructor, and IA
 - [ ] Student sign-in path exists for sandbox access without creating persistent student records
+- [ ] Minimal student-course authorization mapping exists for sandbox access control (Microsoft identity -> authorized course list) without creating full student profiles
+- [ ] Instructor can upload an initial Canvas roster per course/section to seed student-course authorization mapping
+- [ ] Student sandbox dashboard shows authorized configured courses only; users with no authorization mapping see an empty sandbox course list
 - [ ] Assignment creation form stores name, course linkage, due date, and Canvas reference metadata
-- [ ] Basic config wizard captures core assignment/rubric/config fields
+- [ ] Comprehensive config wizard captures all instructor-relevant assignment/rubric/config fields
 - [ ] Wizard generates valid `config.json`
-- [ ] Raw `config.json` paste/import UI with validation and error display
-- [ ] Stored config editor/view renders editable fields from the current `config.json`
+- [ ] `config.json` import UI with validation and error display
+- [ ] Stored config editor/view renders all instructor-relevant editable fields from the current `config.json`
 - [ ] Staff can download the current `config.json`
+- [ ] IA rubric/config authoring permission remains explicitly deferred rather than implicitly locked by Sprint 1 config work
 - [ ] `Concepts Covered` checklist UI seeded from course timeline defaults
 - [ ] Instructor override support for assignment-specific concepts selections
 - [ ] Canvas ZIP upload endpoint with size and type validation
@@ -120,7 +124,7 @@ UVU users can authenticate, staff can configure assignments through either the w
 
 ### Exit Criteria
 
-An instructor signs in with a `@uvu.edu` account. A non-UVU login is rejected. The instructor creates an assignment through the wizard or by importing valid raw `config.json`, confirms the `Concepts Covered` selections, downloads the resulting `config.json`, uploads a Canvas ZIP for an explicitly assigned section, and the system parses the archive into a transient official run without storing student code persistently.
+An instructor signs in with a `@uvu.edu` account. A non-UVU login is rejected. The instructor creates an assignment through the comprehensive wizard or by importing valid `config.json`, confirms the `Concepts Covered` selections, downloads the resulting `config.json`, uploads a Canvas ZIP for an explicitly assigned section, and the system parses the archive into a transient official run without storing student code persistently.
 
 ---
 
@@ -155,6 +159,7 @@ Before live student data is sent through this pipeline, Azure OpenAI privacy rea
   - upload and run a model solution against the test suite
 - [ ] model solution validation runs through Judge0, not on the host
 - [ ] Azure OpenAI integration for rubric-context explanation and feedback generation
+- [ ] Student sandbox UI shows an auto-populated LLM feedback textbox beside test-case results after each run
 - [ ] Azure token usage logged to `run_summaries` or equivalent non-sensitive metadata storage
 - [ ] Azure OpenAI zero-retention/privacy posture confirmed before live student grading
 - [ ] UVU/Microsoft FERPA coverage assumption confirmed before live student grading
@@ -175,6 +180,7 @@ Before live student data is sent through this pipeline, Azure OpenAI privacy rea
 - [ ] Automated Canvas feedback attachment/distribution
 - [ ] LLM-assisted rubric extraction from PDF or plain text
 - [ ] AI-assisted test generation
+- [ ] Inline in-editor LLM annotation markers for Monaco code review surfaces
 - [ ] Persistent student history, saved projected runs, or downloadable student feedback files
 - [ ] Student plagiarism detection UX
 
@@ -321,7 +327,7 @@ A teammate unfamiliar with the codebase can complete the M1 workflow without ass
 | Test framework            | pytest                 | Official and sandbox test execution                              |
 | Output normalization      | python_submitty_utils  | Whitespace/encoding normalization                                |
 | HTML output               | Server-side templating | Official student feedback file generation                        |
-| Config authoring          | Wizard + JSON editor   | Round-trip assignment config setup                               |
+| Config authoring          | Wizard + `config.json` import/export | Backend-canonical assignment config setup with wizard-first authoring |
 | PDF/text rubric ingestion | Deferred               | M2, not M1                                                       |
 
 ### Infrastructure Notes
@@ -349,33 +355,37 @@ Optional dev/staging hardware may be used for local and integration-style valida
 | FR-01.2 | Admin can assign roles: admin, instructor, ia                                                                            | S1     |
 | FR-01.3 | Admin can maintain staff access by course or section                                                                     | S1     |
 | FR-01.4 | Student can authenticate through Microsoft OAuth with a `@uvu.edu` account without creating a persistent student profile | S1     |
+| FR-01.5 | System stores minimal student-course authorization mapping for sandbox access using normalized Microsoft email matched to instructor-uploaded Canvas roster entries and `course_id` only | S1     |
 
-### FR-02 - Instructor / IA
+### FR-02 - Staff Assignment and Config Workflows
 
 | ID       | Requirement                                                                                                                         | Sprint |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| FR-02.1  | Instructor or IA can create assignments with name, course linkage, due date, and Canvas reference metadata                          | S1     |
-| FR-02.2  | Instructor or IA can use a basic wizard to generate valid `config.json`                                                             | S1     |
-| FR-02.3  | Instructor or IA can paste or import a validated raw `config.json`                                                                  | S1     |
-| FR-02.4  | Instructor or IA can edit stored config through a rendered form and download the current `config.json`                              | S1     |
-| FR-02.5  | Instructor or IA can set or override a `Concepts Covered` checklist per assignment                                                  | S1     |
+| FR-02.1  | Authorized assignment-config staff can create assignments with name, course linkage, due date, and Canvas reference metadata        | S1     |
+| FR-02.2  | Authorized assignment-config staff can use a comprehensive wizard to generate valid `config.json`                                   | S1     |
+| FR-02.3  | Authorized assignment-config staff can import a validated `config.json`                                                             | S1     |
+| FR-02.4  | Authorized assignment-config staff can edit all instructor-relevant stored config fields through a rendered form and download the current `config.json` | S1     |
+| FR-02.5  | Authorized assignment-config staff can set or override a `Concepts Covered` checklist per assignment                                | S1     |
 | FR-02.6  | Instructor or IA can upload a bulk Canvas ZIP for official grading                                                                  | S1     |
+| FR-02.11 | Instructor can upload a Canvas roster CSV (required columns: Student_Name, Canvas_ID, UVU_ID, Section) to seed student-course sandbox authorization; roster can be updated at any time to add latecomers or remove students | S1     |
 | FR-02.7  | Instructor or IA can manage `TestCase` grading records, storage-backed pytest artifacts, and run a model solution through Judge0    | S2     |
 | FR-02.8  | Instructor or IA can monitor official-run status and inspect in-session results                                                     | S3     |
 | FR-02.9  | Instructor or IA can optionally run plagiarism detection for an authorized official run and review the returned MOSS URL and output | S3     |
 | FR-02.10 | Instructor or IA can download a CSV and a master ZIP of per-student HTML feedback                                                   | S3     |
+| FR-02.12 | Whether IA is included in assignment-config authoring staff remains deferred and must be finalized before implementation ownership is locked | S1     |
 
 ### FR-03 - Student Sandbox
 
 | ID      | Requirement                                                                                 | Sprint |
 | ------- | ------------------------------------------------------------------------------------------- | ------ |
 | FR-03.1 | Student can sign in through Microsoft OAuth using a `@uvu.edu` account                      | S1     |
-| FR-03.2 | Student can select a course and assignment for sandbox use                                  | S3     |
+| FR-03.2 | Student can see only authorized configured courses for sandbox use (restricted to Canvas-listed roster mappings); backend queries authorization fresh on every request; when no authorization exists, student sees: "You have not been added to a class. If you are enrolled in a class, contact your instructor." | S3     |
 | FR-03.3 | Student can upload code for projected grading                                               | S3     |
-| FR-03.4 | Student can view projected score, warnings, and feedback on screen                          | S3     |
+| FR-03.4 | Student can view projected score, warnings, test results, and on-screen feedback in the sandbox UI | S3     |
 | FR-03.5 | Student projected results are destroyed when processing completes or the session exits      | S3     |
 | FR-03.6 | Student cannot access staff workflow pages or official export artifacts                     | S3     |
 | FR-03.7 | Student sandbox uploads are rate-limited to `5 uploads per hour` per authenticated identity | S3     |
+| FR-03.8 | Student sandbox auto-displays an LLM feedback textbox next to test results after each run; feedback is explanation-only and does not modify scoring | S3     |
 
 ### FR-04 - Ephemeral Official Processing
 
@@ -400,7 +410,7 @@ Optional dev/staging hardware may be used for local and integration-style valida
 
 | ID      | Requirement                                                                                                               | Sprint |
 | ------- | ------------------------------------------------------------------------------------------------------------------------- | ------ |
-| FR-05.1 | System accepts student sandbox uploads without creating persistent student records or submission history                  | S3     |
+| FR-05.1 | System accepts student sandbox uploads without creating persistent student profiles or submission history (beyond minimal Canvas-seeded authorization mapping) | S3     |
 | FR-05.2 | System runs the same AST, execution, and feedback pipeline for sandbox grading with sandbox-appropriate output formatting | S3     |
 | FR-05.3 | System presents sandbox feedback on screen only and does not produce downloadable artifacts                               | S3     |
 | FR-05.4 | System destroys student sandbox files and detailed feedback artifacts after completion or session exit                    | S3     |
@@ -517,10 +527,10 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 | ID    | Story                                                            | Pts | Priority |
 | ----- | ---------------------------------------------------------------- | --- | -------- |
 | E3-01 | Assignment creation form with course linkage and Canvas metadata | 2   | Must     |
-| E3-02 | Basic wizard for core assignment/rubric/config fields            | 3   | Must     |
+| E3-02 | Comprehensive wizard for instructor-relevant assignment/rubric/config fields | 3   | Must     |
 | E3-03 | Wizard generates valid `config.json`                             | 2   | Must     |
-| E3-04 | Validated raw `config.json` paste/import UI                      | 3   | Must     |
-| E3-05 | Stored config editor/view renders editable fields from JSON      | 3   | Must     |
+| E3-04 | Validated `config.json` import UI                                | 3   | Must     |
+| E3-05 | Stored config form/view renders all instructor-relevant editable fields from the canonical config | 3   | Must     |
 | E3-06 | Current `config.json` is downloadable                            | 1   | Must     |
 | E3-07 | `Concepts Covered` checklist seeded from course defaults         | 3   | Must     |
 

@@ -6,15 +6,16 @@
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Backlog tool              | GitHub Projects (Issues + Milestones)                                                                                     | Repo-local, free, and simple                                                                         |
 | Data retention            | Zero-retention for student submissions and detailed grading artifacts                                                     | Reduces FERPA risk and M1 complexity                                                                 |
-| Database scope            | Store staff, courses, sections, assignments, configs, concepts, tests, artifact metadata, and sanitized run metadata only | Keeps persistent data small and non-sensitive                                                        |
+| Database scope            | Store staff/course metadata, minimal student-course authorization mapping, assignments/configs/tests/artifact metadata, and sanitized run metadata only | Keeps persistent data small and non-sensitive while enabling course-level sandbox authorization      |
 | Execution engine          | Judge0 CE on separate execution infrastructure                                                                            | Supports the long-term roadmap while keeping privileged execution outside the core Railway app stack |
 | AI inference              | Azure OpenAI API                                                                                                          | Matches the approved university privacy posture                                                      |
 | Plagiarism detection      | Stanford MOSS via `mosspy`                                                                                                | Optional staff-only review aid using ephemeral files                                                 |
 | Auth (M1)                 | NextAuth + Microsoft OAuth                                                                                                | Fastest practical trusted UVU identity path                                                          |
 | UVU restriction           | Reject non-`@uvu.edu` logins                                                                                              | Keeps M1 access bounded to UVU users                                                                 |
-| Student access            | Session-only sandbox access with no persistent student profile                                                            | Preserves sandbox use without retention                                                              |
+| Student access            | Session-only sandbox access with no persistent student profile; access to course listings comes from minimal enrollment authorization mapping | Preserves sandbox use without profile retention while still gating course visibility                  |
+| Student course authorization source | Instructor-uploaded initial Canvas roster per course section                                                       | Limits sandbox course visibility to Canvas-listed students only                                       |
 | Assignment content        | Canvas-canonical                                                                                                          | Canvas remains the source of truth for course content and grades                                     |
-| Rubric/config setup       | Wizard plus raw `config.json` import/export                                                                               | Supports guided setup and direct JSON editing                                                        |
+| Rubric/config setup       | Comprehensive instructor-facing wizard plus `config.json` import/export                                                    | Keeps the backend model canonical while making UI authoring the primary M1 workflow                  |
 | Concept policy            | Progressive whitelist via `Concepts Covered`                                                                              | Aligns AST checks and LLM context to course progression                                              |
 | Official output           | CSV + master ZIP of per-student HTML feedback                                                                             | Lightweight and Canvas-compatible                                                                    |
 | Sandbox output            | On-screen only                                                                                                            | Preserves zero-retention and avoids downloadable artifacts                                           |
@@ -26,6 +27,7 @@
 | MOSS report URL retention | Persist in `RunSummary` as safe staff-facing metadata                                                                     | Preserves the returned review link without retaining student code                                    |
 | Instructor visibility     | View assigned courses, edit own sections only                                                                             | Supports cross-section visibility without cross-section editing                                      |
 | IA visibility             | Assigned sections only                                                                                                    | Keeps IA access scoped to validation work                                                            |
+| Student sandbox attempt history | Session-only, ephemeral; no persistent backend storage of attempts or history | Maintains zero-retention FERPA compliance; students see only in-session feedback on screen only      |
 | Hosting target            | Railway-first for app services, split-host for execution                                                                  | Keeps the app stack simple while isolating privileged code execution outside Railway                 |
 
 ## Locked M1 Assumptions
@@ -34,12 +36,14 @@
   - M1 actors are `admin`, `instructor`, `IA`, and `student`
   - staff accounts, roles, and access grants are stored persistently
   - student access is session-based and zero-retention
+  - student sandbox authorization uses a minimal persistent mapping seeded from instructor-uploaded Canvas roster data and keyed by normalized Microsoft email plus Canvas-listed student identifier and `course_id`; this is not a full student profile
 
 - `Assignments`
   - assignments are course-linked with section-aware edit and run permissions
   - app-owned grading data includes config JSON, concept defaults and overrides, pytest-linked tests, model solution content, and student-visible test descriptions
-  - staff may create or edit grading setup through either a basic wizard or direct `config.json`
-  - current `config.json` must remain viewable, editable, and downloadable
+  - grading setup is authored primarily through a comprehensive instructor-facing wizard that generates the canonical app-owned `config.json`
+  - current `config.json` must remain importable, exportable, and downloadable
+  - raw JSON editing is not required as a primary M1 workflow
 
 - `Artifacts`
   - config JSON and structured assignment metadata live in Postgres
@@ -60,6 +64,7 @@
 
 - `Student sandbox processing`
   - student selects an assignment, uploads code, and receives projected score and feedback on screen
+  - student-visible course listings are derived from minimal authorization mapping and may be empty when no authorized course mappings exist
   - sandbox uploads are strictly limited to `5 uploads per hour` per authenticated student identity
   - sandbox uploads are processed only in ephemeral working storage
   - sandbox execution uses the same Judge0 + Kata path with the same post-result deletion requirement
@@ -68,7 +73,8 @@
 
 - `Frontend tooling`
   - Monaco Editor is the canonical locally hosted code editor and review surface for M1
-  - Monaco supports staff code review, sandbox editing or upload assistance, and future inline annotation workflows
+  - Monaco supports staff code review and sandbox editing or upload assistance in M1
+  - M1 LLM feedback appears as a sandbox textbox adjacent to test results and is explanation-only; inline editor annotations are deferred to post-M1
 
 - `Concepts Covered`
   - M1 uses a progressive whitelist, not a blacklist
@@ -81,6 +87,7 @@
   - instructors can view grading setup across assigned courses
   - instructors may edit grading setup and launch official runs only in sections explicitly assigned to them
   - IAs can view and validate grading only in assigned sections and may launch official runs only where that section grant allows it
+  - whether IAs also receive rubric/config authoring permission remains deferred and should be finalized separately from the M1 config-model decision
 
 - `Output`
   - official grading produces a grade CSV and a master ZIP containing per-student HTML feedback files

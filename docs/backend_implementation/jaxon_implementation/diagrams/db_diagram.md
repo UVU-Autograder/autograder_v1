@@ -46,6 +46,15 @@ classDiagram
         +Boolean sandbox_enabled
     }
 
+    class CourseEnrollment {
+        +UUID id
+        +UUID course_id
+        +String canvas_student_id
+        +String email
+        +String source
+        +Boolean is_active
+    }
+
     class AssignmentConfig {
         +UUID id
         +UUID assignment_id
@@ -109,6 +118,7 @@ classDiagram
     Course "1" --> "many" StaffAccess : scopes_visibility
     Section "0..1" --> "many" StaffAccess : scopes_edit_and_run_authority
     Course "1" *-- "many" Assignment : owns
+    Course "1" *-- "many" CourseEnrollment : sandbox_authorization_roster
     Course "1" *-- "many" ConceptSet : provides_defaults
     Assignment "1" *-- "1" AssignmentConfig : stores
     Assignment "1" *-- "0..1" AssignmentConceptOverride : overrides

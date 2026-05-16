@@ -14,6 +14,7 @@
 ## 2. Core Features
 
 - Shadow SSO using Microsoft OAuth restricted to `@uvu.edu`.
+- Student sandbox course visibility authorized through a minimal student-course mapping derived from normalized Microsoft email matched against instructor-uploaded Canvas roster entries.
 - Progressive `Concepts Covered` enforcement using AST validation plus LLM prompt context.
 - Zero-retention grading for both official staff runs and student sandbox runs.
 - Optional staff-facing plagiarism analysis through Stanford MOSS using ephemeral official batch files only.
@@ -41,21 +42,24 @@
 ### Student sandbox projected grading
 
 1. Student signs in with a `@uvu.edu` account.
-2. Student selects a configured course and assignment.
-3. Student uploads code for projected grading.
-4. The backend applies sandbox rate limiting before any grading work starts.
-5. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and Azure explanation pipeline.
-6. Projected score, warnings, and feedback appear on screen only.
-7. Judge0 submission, result, and Kata-backed execution artifacts are deleted or invalidated after retrieval.
-8. Temporary student files and detailed sandbox artifacts are destroyed on completion or session exit.
+2. Backend resolves student-authorized courses from a minimal authorization mapping keyed by normalized Microsoft email.
+3. Student selects a configured authorized course and assignment, or sees an empty dashboard when none are authorized.
+4. Student uploads code for projected grading.
+5. The backend applies sandbox rate limiting before any grading work starts.
+6. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and Azure explanation pipeline.
+7. Projected score, warnings, and feedback appear on screen only.
+8. Judge0 submission, result, and Kata-backed execution artifacts are deleted or invalidated after retrieval.
+9. Temporary student files and detailed sandbox artifacts are destroyed on completion or session exit.
 
 ### Assignment and grading setup
 
 1. Instructor creates an assignment linked to a course.
-2. Staff configure grading data through a wizard or direct `config.json`.
-3. Concepts defaults and assignment-specific overrides are maintained per course and assignment.
-4. pytest-linked tests, model solution content, and student-visible test descriptions are maintained as assignment-owned grading assets.
-5. Model solution validation runs through the same Judge0 + Kata execution path used for student code.
+2. Authorized staff configure grading data primarily through a comprehensive instructor-facing wizard that generates the canonical app-owned `config.json`, with `config.json` import/export support available as needed.
+3. Assignment metadata (for example name, due date, and points context) is entered manually in M1; Canvas assignment-metadata import is not required.
+4. Concepts defaults and assignment-specific overrides are maintained per course and assignment.
+5. Instructor uploads an initial Canvas roster for student sandbox authorization mapping (Canvas-listed students only).
+6. pytest-linked tests, model solution content, and student-visible test descriptions are maintained as assignment-owned grading assets.
+7. Model solution validation runs through the same Judge0 + Kata execution path used for student code.
 
 ## 5. Data Model
 
@@ -67,6 +71,7 @@
 - `sections`
 - `staff_access`
 - `assignments`
+- `course_enrollments`
 - `assignment_configs`
 - `concept_sets`
 - `assignment_concept_overrides`
@@ -77,8 +82,9 @@
 ### Persistent model notes
 
 - `staff_access` stores user, role, course, optional section, and permission semantics.
+- `course_enrollments` stores minimal student-course authorization mapping for sandbox visibility and access checks, keyed by normalized Microsoft email without storing a full student profile.
 - `assignments` are course-linked, while section-level edit authority is enforced through staff access rules.
-- `assignment_configs` store structured grading configuration including the canonical app-owned `config.json`.
+- `assignment_configs` store structured grading configuration including the canonical app-owned `config.json`, with the frontend wizard treated as the primary M1 authoring surface.
 - `concept_sets` represent course-level defaults; `assignment_concept_overrides` represent assignment-specific overrides.
 - `assignment_artifacts` store metadata and storage references for pytest files, model solutions, and support files.
 - `test_cases` represent grading metadata, criterion linkage, point values, student-visible descriptions, and the reference needed to locate pytest content through artifact-backed storage.
@@ -93,7 +99,7 @@
   - `model_solution`
   - `support_file`
 - M1 expectations by artifact class:
-  - `config_json`: editable, validated, persisted as structured config plus exportable JSON representation
+  - `config_json`: validated, persisted as structured config, and available for import/export and download
   - `pytest_file`: editable, validated through test execution, stored as metadata plus storage-backed file body
   - `model_solution`: editable, executable through Judge0, stored as metadata plus storage-backed file body
   - `support_file`: assignment-owned file content available to grading and test execution as needed
@@ -104,6 +110,31 @@
   - point value
   - student-visible description
   - reference to the pytest artifact used for execution
+
+### Student authorization mapping contract
+
+- `CourseEnrollment` is a minimal authorization record for sandbox course visibility, not a student profile.
+- Minimum M1 fields:
+  - `course_id`
+  - `canvas_student_id` (from instructor-uploaded Canvas roster)
+  - normalized `email` (from Microsoft OAuth identity and Canvas roster import)
+  - `source` metadata (`canvas_roster_import`, `manual_adjustment`, or equivalent)
+  - `is_active`
+- M1 matching behavior:
+  - match authenticated Microsoft email to active `course_enrollments.email` values for course visibility
+  - deny course visibility when no active course-enrollment mapping exists for the authenticated student identity
+  - only students present in the Canvas-seeded roster mapping may see that course in sandbox
+  - no grades, submission history, profile attributes, or student feedback bodies are stored in this mapping
+
+### Canvas roster upload and import
+
+- Instructors upload a CSV file with the following required columns: `Student_Name`, `Canvas_ID`, `UVU_ID`, and `Section`
+- The roster CSV is mandatory before any student can see a course in sandbox; instructors must upload an initial roster before enabling the course for student access
+- Roster files are parsed, validated for required columns and data integrity, then imported into `course_enrollments` with `source` set to `canvas_roster_import`
+- Canvas roster import normalizes student emails (e.g., from Canvas email field or constructed from UVU_ID + `@uvu.edu`) and stores them in `course_enrollments.email`
+- Instructors can upload a new roster file at any time to add latecomers, remove withdrawals, or adjust section assignments mid-semester; the new upload replaces the previous mapping for that course
+- Backend authorization checks query `course_enrollments` fresh on every request (not cached persistently) to immediately reflect roster updates
+- When a student attempts to access a course and has no matching `course_enrollments` entry, the system displays: "You have not been added to a class. If you are enrolled in a class, contact your instructor."
 
 ### Run summary contract
 
@@ -148,23 +179,26 @@ These remain outside persistent storage and are represented conceptually in `imp
 ## Frontend Tooling Notes
 
 - Monaco Editor is a canonical M1 dependency and should be locally hosted with the app rather than fetched from a third-party CDN.
-- Monaco supports sandbox code editing and upload assistance, staff-side code inspection, and future inline annotations without changing the zero-retention model.
+- Monaco supports sandbox code editing and upload assistance plus staff-side code inspection in M1.
+- In M1, LLM feedback is surfaced as a student-sandbox textbox adjacent to test results and auto-shown after each run; it is explanation-only and does not alter grading outcomes.
+- Inline in-editor annotation markers are deferred to post-M1 without changing the zero-retention model.
 - Monaco does not change the persistent data model; it is a frontend/editor dependency and a review surface.
 
 ## 6. Permissions Matrix
 
-| Actor      | View course assignments              | Edit grading setup                                      | Launch official runs                                                 | View official run results                  | Trigger MOSS                                          | Access sandbox assignment listings                                     |
-| ---------- | ------------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------- |
-| Admin      | Yes                                  | Yes                                                     | Yes                                                                  | Yes                                        | Yes                                                   | Optional administrative access only                                    |
-| Instructor | Yes, across assigned courses         | Yes, only in explicitly assigned sections               | Yes, only in explicitly assigned sections                            | Yes, for assigned courses and sections     | Yes, for official runs they are allowed to manage     | Not a normal student path                                              |
-| IA         | No course-wide visibility by default | No grading-setup edits unless explicitly elevated later | Yes, only in explicitly assigned sections when granted run authority | Yes, only for explicitly assigned sections | No by default in M1 unless explicitly delegated later | Not a normal student path                                              |
-| Student    | No staff assignment access           | No                                                      | No                                                                   | No                                         | No                                                    | Yes, for configured sandbox-enabled assignments visible to the student |
+| Actor      | View course assignments              | Edit grading setup                                                 | Launch official runs                                                 | View official run results                  | Trigger MOSS                                          | Access sandbox assignment listings                                     |
+| ---------- | ------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| Admin      | Yes                                  | Yes                                                                | Yes                                                                  | Yes                                        | Yes                                                   | Optional administrative access only                                    |
+| Instructor | Yes, across assigned courses         | Yes, only in explicitly assigned sections                          | Yes, only in explicitly assigned sections                            | Yes, for assigned courses and sections     | Yes, for official runs they are allowed to manage     | Not a normal student path                                              |
+| IA         | No course-wide visibility by default | Deferred for M1 rubric/config authoring; do not treat as finalized | Yes, only in explicitly assigned sections when granted run authority | Yes, only for explicitly assigned sections | No by default in M1 unless explicitly delegated later | Not a normal student path                                              |
+| Student    | No staff assignment access           | No                                                                 | No                                                                   | No                                         | No                                                    | Yes, for configured sandbox-enabled assignments visible to the student |
 
 Notes:
 
 - `staff_access` stores course scope, optional section scope, and role semantics.
 - Instructors can see what other teachers are doing in assigned courses but may not modify grading setup outside their own assigned sections.
-- IAs are section-limited validators in M1.
+- IAs are section-limited validators in M1 for the parts of the workflow already locked.
+- Whether IAs also receive rubric/config authoring permission remains deferred and should be decided separately from the canonical config-authoring model.
 - Official batch execution is section-scoped even though assignments are course-owned.
 
 ## 7. Canvas ZIP Format and Filename Mapping
