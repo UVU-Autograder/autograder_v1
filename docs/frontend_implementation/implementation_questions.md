@@ -142,7 +142,8 @@ This file captures unresolved differences between:
 
    **Jaxon**: Not sure if we should do this for M1 or not.
     **Keomony** Okay. I will go over M1 scope again to see what should be included and what not. So far, this is what my code checking panel looks like:
-    <img src="/home/kmary/km/uvu_autograder/uvu_autograder_github/autograder_v1/docs/frontend_implementation/code_checker_wireframe.png" alt= "Code Checking Panel Wireframe from Figma" width="500" >
+   ![Code Checking Panel Wireframe from Figma](code_checker_wireframe.png)
+    <img src="/home/kmary/km/uvu_autograder/uvu_autograder_github/autograder_v1/docs/frontend_implementation/code_checker_wireframe.png" alt= "Local img: Code Checking Panel Wireframe from Figma" width="500" >
 
 
 ## Clarification Notes for Frontend Team
