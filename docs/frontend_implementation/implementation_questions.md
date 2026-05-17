@@ -9,7 +9,8 @@ This file captures unresolved differences between:
 
 ## Open Questions
 
-1.  **Auth flow: form login or Microsoft OAuth only?**  
+1.  **Auth flow: form login or Microsoft OAuth only?**  ✅ **RESOLVED**
+
      The UI/UX PDF shows `username/password` login boxes, while backend docs lock M1 to `NextAuth + Microsoft OAuth` with `@uvu.edu` restriction.
 
     **Jaxon**: The current idea is to use Microsoft OAuth until IT authorizes official UVU login.
