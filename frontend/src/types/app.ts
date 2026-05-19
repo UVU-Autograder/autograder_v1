@@ -2,8 +2,12 @@
 Shared frontend contract placeholder.
 Expected future types include:
 - `AppRole`
-- course, section, and assignment summaries
+- `CourseSummary`
+- `SectionSummary`
+- `AssignmentSummary`
+- `RosterImportSummary`
+- `StaffAccessScope`
 - assignment config view models
-- official run summary/detail view models
-- sandbox submission/result view models
+- `OfficialRunStatus`
+- `SandboxResult`
 */

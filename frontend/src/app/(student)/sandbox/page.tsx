@@ -1,4 +1,5 @@
 /*
-Sandbox assignment-selection placeholder.
-Students should choose an assignment context here before entering the editor-centric grading workspace.
+Authorized-course placeholder.
+This route should list only the courses available to the authenticated student through roster-backed authorization.
+Students pick a course here before choosing an assignment.
 */

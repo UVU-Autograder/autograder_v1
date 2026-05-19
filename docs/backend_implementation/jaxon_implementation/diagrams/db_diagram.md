@@ -1,129 +1,87 @@
-Persistent M1 data model only. This diagram represents metadata stored in PostgreSQL and excludes student submissions, tracebacks, AI hint bodies, and other zero-retention pipeline artifacts.
+Persistent M1 data model only. This diagram represents the product concepts stored in PostgreSQL and excludes student submissions, tracebacks, AI hint bodies, and other zero-retention pipeline artifacts.
 
 ```mermaid
 classDiagram
     direction TB
 
     class User {
-        +UUID id
-        +String email
-        +Boolean is_active
+        email
+        is_active
     }
 
     class Role {
-        +UUID id
-        +String name
+        name
     }
 
     class Course {
-        +UUID id
-        +String code
-        +String name
-        +String term
+        code
+        name
+        term
     }
 
     class Section {
-        +UUID id
-        +UUID course_id
-        +String crn
-        +String name
+        crn
+        name
     }
 
     class StaffAccess {
-        +UUID id
-        +UUID user_id
-        +UUID role_id
-        +UUID course_id
-        +UUID section_id
+        role_scope
+        section_scope
     }
 
     class Assignment {
-        +UUID id
-        +UUID course_id
-        +String title
-        +String canvas_id
-        +DateTime due_date
-        +Boolean sandbox_enabled
+        title
+        canvas_ref
+        sandbox_enabled
     }
 
     class CourseEnrollment {
-        +UUID id
-        +UUID course_id
-        +String canvas_student_id
-        +String email
-        +String source
-        +Boolean is_active
+        email
+        source
+        is_active
     }
 
     class AssignmentConfig {
-        +UUID id
-        +UUID assignment_id
-        +JSON raw_config_json
-        +DateTime updated_at
+        config_json
     }
 
     class ConceptSet {
-        +UUID id
-        +UUID course_id
-        +String name
-        +List allowed_concepts
+        allowed_concepts
     }
 
     class AssignmentConceptOverride {
-        +UUID id
-        +UUID assignment_id
-        +List allowed_concepts
-        +List restricted_concepts
+        allowed_concepts
     }
 
     class AssignmentArtifact {
-        +UUID id
-        +UUID assignment_id
-        +String artifact_type
-        +String storage_ref
-        +String display_name
+        artifact_type
+        storage_ref
     }
 
     class TestCase {
-        +UUID id
-        +UUID assignment_id
-        +String criterion_label
-        +String student_visible_description
-        +Int point_value
-        +String pytest_artifact_ref
+        config_test_key
     }
 
     class RunSummary {
-        +UUID id
-        +UUID assignment_id
-        +UUID actor_user_id
-        +String workflow_type
-        +String status
-        +DateTime started_at
-        +DateTime completed_at
-        +Int total_submissions
-        +Int success_count
-        +Int warning_count
-        +Int failure_count
-        +Int timeout_count
-        +JSON token_usage_metadata
-        +String failure_summary
-        +String moss_report_url
+        workflow_type
+        status
+        total_submissions
+        failure_summary
+        token_usage_metadata
     }
 
-    %% Relationships
     Role "1" --> "many" StaffAccess : assigned_in
     User "1" --> "many" StaffAccess : granted
     Course "1" *-- "many" Section : contains
-    Course "1" --> "many" StaffAccess : scopes_visibility
-    Section "0..1" --> "many" StaffAccess : scopes_edit_and_run_authority
+    Course "1" --> "many" StaffAccess : scopes_staff_access
+    Section "0..1" --> "many" StaffAccess : narrows_run_or_roster_scope
     Course "1" *-- "many" Assignment : owns
-    Course "1" *-- "many" CourseEnrollment : sandbox_authorization_roster
+    Course "1" *-- "many" CourseEnrollment : authorizes_students
     Course "1" *-- "many" ConceptSet : provides_defaults
-    Assignment "1" *-- "1" AssignmentConfig : stores
-    Assignment "1" *-- "0..1" AssignmentConceptOverride : overrides
-    Assignment "1" *-- "many" AssignmentArtifact : stores
-    Assignment "1" *-- "many" TestCase : grades_with
-    Assignment "1" *-- "many" RunSummary : tracks_section_scoped_runs
+    Assignment "1" *-- "1" AssignmentConfig : stores_canonical_config
+    Assignment "1" *-- "0..1" AssignmentConceptOverride : overrides_defaults
+    Assignment "1" *-- "many" AssignmentArtifact : stores_assets
+    Assignment "1" *-- "many" TestCase : exposes_derived_records
+    Assignment "1" *-- "many" RunSummary : tracks_workflows
     User "1" --> "many" RunSummary : initiates
 ```

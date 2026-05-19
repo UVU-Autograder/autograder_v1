@@ -1,1 +1,1 @@
-# Auth policy placeholder for admin account management, instructor course visibility with section-limited edit and official-run authority, IA section-limited validation and delegated official-run authority, and student sandbox-only access.
+# Auth policy placeholder for admin account and staff-access management, instructor course visibility with section-limited official-run authority, IA section-limited validation and official-run authority without assignment-config editing, and student sandbox-only access.

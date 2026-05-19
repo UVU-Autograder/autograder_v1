@@ -1,1 +1,1 @@
-# Artifacts model placeholder for persistent assignment artifact metadata and storage references for `config_json`, `pytest_file`, `model_solution`, and `support_file`, excluding direct student submission retention.
+# Artifacts model placeholder for persistent assignment-owned artifact metadata and storage references for `config_json`, `pytest_file`, `model_solution`, and `support_file`, excluding direct student submission retention.

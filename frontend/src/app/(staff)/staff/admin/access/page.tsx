@@ -1,4 +1,4 @@
 /*
 Admin access-management placeholder.
-This route should eventually support role and scope management for admins across courses and sections.
+This route should support role assignment plus staff-access grants across courses and sections.
 */

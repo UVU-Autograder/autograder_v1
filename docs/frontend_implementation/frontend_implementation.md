@@ -1,23 +1,52 @@
-# Frontend Implementation (Locked Common Ground)
+# Frontend Implementation
 
-This file records what both the UI/UX PDF and Jaxon backend docs clearly align on for M1 direction.
+Resolved product and implementation decisions live in `docs/backend_implementation/jaxon_implementation/decisions.md`.
 
-## Shared, Locked-Down Decisions
+Open discussion items live in `docs/implementation_questions.md`.
 
-1. **Role-aware UX exists** for at least admin/instructor/TA(IA)/student paths, with different views and capabilities per role.
-2. **Course → section → assignment structure** is core to navigation and workflow organization.
-3. **Staff run an official grading flow from Canvas ZIP uploads** (including bulk processing and run monitoring).
-4. **Students have a sandbox flow** where they choose assignment context, submit code, and receive projected feedback in the app UI.
-5. **A code workspace/review surface is required** (split-pane/editor-centric experience for code + test/feedback context).
-6. **Monaco Editor is the canonical editor direction** (backend docs explicitly lock this; UI/UX direction is editor-first and compatible).
-7. **Plagiarism checking is optional and staff-facing** (UI calls this out; backend docs lock optional MOSS usage for official workflows).
-8. **Staff-facing export workflow is required** (grade-oriented export artifacts, with downloadable run output for official grading).
-9. **Operational status visibility is required** (queue/run progress, submission state, and monitoring views).
-10. **Feedback must include test-oriented signals** (pass/fail and error context, not just a single score).
+This file captures the frontend contract, route structure, and UI-surface responsibilities only.
 
-## Non-Negotiable Backend Constraints Frontend Must Respect
+## Canonical Frontend Route Contract
 
-1. **Auth boundary:** M1 backend locks to Microsoft OAuth with `@uvu.edu` restriction.
-2. **Retention boundary:** zero-retention of student code and detailed artifacts after processing/session lifecycle.
-3. **Sandbox output boundary:** on-screen only; no persistent student history as an M1 product feature.
-4. **Official export boundary:** grade CSV + per-student HTML feedback ZIP are canonical M1 outputs.
+- `/sandbox`: authorized student course list
+- `/sandbox/[courseId]`: assignment list for one authorized course
+- `/sandbox/[courseId]/assignments/[assignmentId]`: sandbox workspace
+- `/staff/courses`: staff-visible course list
+- `/staff/courses/[courseId]`: course detail with assignments plus course-level roster entry point
+- `/staff/courses/[courseId]/roster`: Canvas roster upload and student authorization management
+- `/staff/courses/[courseId]/assignments/[assignmentId]/setup`: wizard-first assignment setup hub
+- `/staff/courses/[courseId]/assignments/[assignmentId]/config`: advanced `config.json` surface
+- `/staff/courses/[courseId]/assignments/[assignmentId]/concepts`: course defaults plus assignment overrides
+- `/staff/courses/[courseId]/assignments/[assignmentId]/artifacts`: assignment-owned grading assets
+- `/staff/runs` and `/staff/runs/[runId]`: official-run monitoring and export workflow surfaces
+
+## Frontend Information Architecture
+
+- Student navigation is a distinct sandbox flow:
+  - course selection
+  - assignment selection within that course
+  - sandbox workspace for one course-scoped assignment
+- Staff navigation is organized around:
+  - course list and course detail
+  - course-level roster management
+  - assignment setup surfaces
+  - official-run monitoring
+  - admin access management
+- Section context should appear only where it is operationally needed, such as official-run authority, run metadata, roster handling, and access management.
+
+## UI-Surface Responsibilities
+
+- The setup wizard is the primary assignment-authoring experience.
+- The `config` route is an advanced surface for import/export and direct config handling, not the default setup path.
+- The sandbox workspace should combine Monaco, grounded feedback, explicit zero-retention messaging, visible remaining uploads, and a clear limit-reached state for backend `429` responses.
+- The `/staff/runs/[runId]` surface is a preview-only review workflow in M1: staff can inspect per-student feedback and plagiarism state, but cannot edit grades or feedback in the app.
+- The `/staff/runs/[runId]` surface should expose separate download actions for the Canvas-grade CSV and the feedback ZIP.
+- If MOSS is run, its result should be visible only during the active official-run review/export session and should warn that it will not remain available later.
+- Course-level roster management should stay separate from assignment setup and from generic admin-only user management.
+
+## Frontend Constraints
+
+- Use role-aware route groups and keep public, student, and staff areas visually and structurally distinct.
+- Do not assume persistent student submissions, sandbox history, or raw student-code download flows in the UI.
+- Do not add manual grading surfaces, grade-override controls, or feedback-editing controls to the M1 staff review UI.
+- Keep route, shell, and type design compatible with `CourseSummary`, `SectionSummary`, `AssignmentSummary`, `RosterImportSummary`, `OfficialRunStatus`, `SandboxResult`, and `StaffAccessScope`.

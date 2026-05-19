@@ -1,2 +1,1 @@
-# Courses schema placeholder for course listings, section listings, and staff-visible course and section responses.
-
+# Courses schema placeholder for `CourseSummary`, `SectionSummary`, `AssignmentSummary`, `RosterImportSummary`, and staff-visible course responses.

@@ -1,2 +1,1 @@
-# Concepts service placeholder for progressive whitelist management and assignment override resolution.
-
+# Concepts service placeholder for course-default concept management and assignment-level override resolution within the progressive whitelist model.

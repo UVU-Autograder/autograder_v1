@@ -1,1 +1,1 @@
-# Course and section model placeholder for persistent course metadata, section metadata, and the distinction between course-level visibility and section-scoped edit/run authority.
+# Course domain model placeholder for persistent course metadata, section metadata, course-enrollment authorization records, and the distinction between course-shared setup and section-scoped run or roster authority.

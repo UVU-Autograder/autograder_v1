@@ -1,6 +1,6 @@
 # UVU Autograder v1 - Canonical Backlog and Sprint Plan
 
-> Supporting architecture and product decisions live in `JL_AGv1_decisions.md` and `JL_AGv1_technical_specs.md`. This file is the canonical backlog and sprint execution document.
+> Supporting architecture and product decisions live in `decisions.md` and `technical_specs.md`. This file is the canonical backlog and sprint execution document.
 
 > Target: Testable M1 for zero-retention grading and sandbox workflows for `@uvu.edu` users
 > Team: 5 developers, half time (~35-65 hrs/week total)
@@ -14,8 +14,8 @@
 
 Implementation decisions, permission semantics, storage contracts, and technical architecture are maintained in:
 
-- `JL_AGv1_decisions.md`
-- `JL_AGv1_technical_specs.md`
+- `decisions.md`
+- `technical_specs.md`
 
 This backlog focuses on sprint planning, deliverables, and acceptance criteria.
 
@@ -80,7 +80,7 @@ Every developer can run the stack locally, and the persistent model matches the 
 - [ ] Backend/frontend shared interface contracts reviewed before Sprint 1 kickoff
 - [ ] Frontend wireframes and component hierarchy reviewed before Sprint 1 kickoff
 - [ ] README gets the full stack running locally
-- [ ] Seed script creates 1 course, 1 assignment, 1 generated `config.json`, 1 concepts default set, and 1 model solution
+- [ ] Seed script creates 1 course, 1 assignment, 1 generated canonical `config.json`, 1 concepts default set, and 1 model solution
 
 ### Exit Criteria
 
@@ -103,7 +103,7 @@ UVU users can authenticate, staff can configure assignments through a comprehens
 - [ ] Minimal staff role management for admin, instructor, and IA
 - [ ] Student sign-in path exists for sandbox access without creating persistent student records
 - [ ] Minimal student-course authorization mapping exists for sandbox access control (Microsoft identity -> authorized course list) without creating full student profiles
-- [ ] Instructor can upload an initial Canvas roster per course/section to seed student-course authorization mapping
+- [ ] Instructor can upload an initial Canvas roster from a course-level staff surface to seed student-course authorization mapping
 - [ ] Student sandbox dashboard shows authorized configured courses only; users with no authorization mapping see an empty sandbox course list
 - [ ] Assignment creation form stores name, course linkage, due date, and Canvas reference metadata
 - [ ] Comprehensive config wizard captures all instructor-relevant assignment/rubric/config fields
@@ -111,16 +111,16 @@ UVU users can authenticate, staff can configure assignments through a comprehens
 - [ ] `config.json` import UI with validation and error display
 - [ ] Stored config editor/view renders all instructor-relevant editable fields from the current `config.json`
 - [ ] Staff can download the current `config.json`
-- [ ] IA rubric/config authoring permission remains explicitly deferred rather than implicitly locked by Sprint 1 config work
+- [ ] IA role remains strict-by-default and does not receive assignment-config authoring in M1
 - [ ] `Concepts Covered` checklist UI seeded from course timeline defaults
-- [ ] Instructor override support for assignment-specific concepts selections
+- [ ] Instructor override support for assignment-specific allowed-concepts selections
 - [ ] Canvas ZIP upload endpoint with size and type validation
 - [ ] Non-Canvas or otherwise unrecognized ZIPs rejected before queueing
 - [ ] ZIP path traversal protection before extraction
 - [ ] ZIP extraction implemented in RAM or an ephemeral temp directory only
 - [ ] Canvas filename parser maps files to Canvas-provided identifiers
 - [ ] Unmatched filename and malformed archive reporting in the staff UI
-- [ ] Transient official-run creation with assignment link, uploader, timestamps, and file counts only
+- [ ] Transient official-run creation with assignment link, uploader, aggregate status metadata, and file counts only
 
 ### Exit Criteria
 
@@ -154,8 +154,8 @@ Before live student data is sent through this pipeline, Azure OpenAI privacy rea
 - [ ] `python_submitty_utils` output normalization integrated
 - [ ] Minimal test and artifact management for M1:
   - upload/edit pytest file bodies through storage-backed artifact references
-  - link each `TestCase` to one primary rubric criterion
-  - store a student-visible description per `TestCase`
+  - derive `TestCase` projections from canonical `config.json` for querying/UI as needed
+  - keep human-authored grading fields in canonical config rather than duplicating them in `TestCase`
   - upload and run a model solution against the test suite
 - [ ] model solution validation runs through Judge0, not on the host
 - [ ] Azure OpenAI integration for rubric-context explanation and feedback generation
@@ -183,10 +183,12 @@ Before live student data is sent through this pipeline, Azure OpenAI privacy rea
 - [ ] Inline in-editor LLM annotation markers for Monaco code review surfaces
 - [ ] Persistent student history, saved projected runs, or downloadable student feedback files
 - [ ] Student plagiarism detection UX
+- [ ] Manual or non-code grading workflows
+- [ ] In-app grade overrides or feedback editing for official-run review
 
 ### Exit Criteria
 
-An instructor uploads an official batch covering: 1 future-concept warning, 1 hard-block case, 1 timeout, 1 correct solution, and 1 broken solution. Hard-block files do not execute. Warning cases still execute and surface warnings. The system produces structured results, generates HTML feedback files, returns the export package, and destroys temporary student artifacts after the request concludes. Separately, a student signs in, uploads code for an assignment, receives a projected score and feedback on screen, and loses access to those artifacts once the session ends.
+An instructor uploads an official batch covering: 1 future-concept warning, 1 hard-block case, 1 timeout, 1 correct solution, and 1 broken solution. Hard-block files do not execute. Warning cases still execute and surface warnings. The system produces structured results, makes the staff CSV and feedback ZIP available through separate downloads, and destroys temporary student artifacts after the request concludes. Separately, a student signs in, uploads code for an assignment, receives a projected score and feedback on screen, and loses access to those artifacts once the session ends.
 
 ---
 
@@ -194,49 +196,52 @@ An instructor uploads an official batch covering: 1 future-concept warning, 1 ha
 
 ### Goal
 
-Students can use the ephemeral sandbox, and staff can monitor official runs, inspect in-session results, and download the final CSV plus HTML feedback ZIP.
+Students can use the ephemeral sandbox, and staff can monitor official runs, inspect in-session results, and download the official CSV and feedback ZIP artifacts.
 
 ### Deliverables
 
 #### Student sandbox
 
-- [ ] Student course and assignment selection UI
+- [ ] Student course list and per-course assignment selection UI
 - [ ] Student upload flow for supported assignment file formats
 - [ ] Sandbox rate limiter enforces `5 uploads per hour` per authenticated student identity
 - [ ] Student projected score view
 - [ ] Student projected feedback view with warnings and test summaries
+- [ ] Sandbox workspace shows remaining uploads in the current hour before and after each run
+- [ ] Sandbox limit-reached state explains the `5 uploads per hour` cap and handles backend `429` responses clearly
 - [ ] Student messaging makes zero-retention behavior explicit
 - [ ] Student session cleanup clears projected results on exit/completion
 
 #### Instructor batch run UX
 
-- [ ] Official run list view shows assignment, uploader, started time, completed time, and aggregate status
+- [ ] Official run list view shows assignment, uploader, aggregate status, and section-aware context
 - [ ] In-session official run detail view shows:
   - current processing counts
   - per-student pass/fail state
   - warning and hard-block summaries
   - unmatched filename failures
-- [ ] Result preview supports per-student HTML feedback inspection before download
+- [ ] Result preview supports per-student feedback inspection before download
+- [ ] Official review stays preview-only in M1 with no in-app grade override or feedback editing
 - [ ] Staff can filter official run results by success, warning, hard-block, timeout, or parse failure
-- [ ] Staff can view plagiarism-check status and similarity-report availability for the current official run
-- [ ] MOSS report URL is surfaced prominently with an instructor save warning
+- [ ] Staff can view plagiarism-check status and active-session similarity-report availability for the current official run
+- [ ] MOSS output is visible only during the active official-run review session and is not persisted afterward
 - [ ] Clear warning that detailed official results are ephemeral and will be destroyed after download/request completion
 
 #### Export packaging
 
 - [ ] CSV export for Canvas-compatible grades
-- [ ] HTML feedback renderer for individual student files
-- [ ] Master ZIP builder bundles all student HTML files into one archive
-- [ ] Download response includes CSV plus feedback ZIP in one instructor workflow
-- [ ] Optional MOSS result link or summary is attached to the official-run workflow when plagiarism detection is run
-- [ ] Export naming convention uses assignment identifier + run timestamp
+- [ ] Feedback renderer produces per-student staff-facing feedback artifacts
+- [ ] Feedback packaging produces a per-run ZIP of per-student HTML feedback artifacts
+- [ ] Staff can download the Canvas-grade CSV and feedback ZIP through separate actions with stable naming and actionable errors
+- [ ] Optional MOSS result is viewable only inside the active official-run workflow when plagiarism detection is run
+- [ ] Export naming convention uses assignment identifier + generated export identifier
 - [ ] Export fails safely with actionable errors if packaging is incomplete
 - [ ] Export flow fails fast with actionable errors for malformed or unrecognized ZIP submissions
-- [ ] Docs state that grade import back into Canvas is assumed, while bulk feedback upload remains future research
+- [ ] Docs state that grade import back into Canvas is assumed, while automated feedback upload remains out of scope for M1
 
 ### Exit Criteria
 
-A student signs in, selects an assignment, uploads code, sees a projected score and feedback on screen, and then loses access to those artifacts after session exit. An instructor runs an official batch, watches progress in the UI, previews at least one student result, downloads the grade CSV and master HTML feedback ZIP, and sees the run complete without leaving retained student files on the server.
+A student signs in, selects a course, selects an assignment, uploads code, sees a projected score and feedback on screen together with remaining sandbox quota, and then loses access to those artifacts after session exit. An instructor runs an official batch, watches progress in the UI, previews at least one student result, downloads the staff CSV and feedback ZIP through separate actions, and sees the run complete without leaving retained student files on the server.
 
 ---
 
@@ -256,7 +261,7 @@ Validate the full M1 workflow under realistic conditions and verify the zero-ret
 - [ ] Validate access control:
   - admin, instructor, and IA routes respect role checks
   - instructors can view assigned courses but edit only explicitly assigned sections
-  - IAs can view only explicitly assigned sections for grading validation
+  - IAs can view only explicitly assigned sections for grading validation and cannot edit assignment configuration
   - student users can access sandbox features but not staff workflow pages
 - [ ] Validate security:
   - network access from Judge0 student execution is blocked
@@ -266,11 +271,11 @@ Validate the full M1 workflow under realistic conditions and verify the zero-ret
 - [ ] Validate timeout handling with `while True: pass`
 - [ ] Validate export totals against rubric config and pytest results
 - [ ] Validate optional MOSS submission uses only ephemeral files and does not retain local copies after completion
-- [ ] Validate returned MOSS URL is surfaced with an explicit save warning before navigation
+- [ ] Validate active-session MOSS results are surfaced during official review without creating a persistent post-run link
 - [ ] Validate cleanup:
   - extracted official files are deleted after request completion
   - sandbox upload artifacts are deleted after session exit/completion
-  - temporary HTML feedback files are deleted after packaging
+  - temporary feedback artifacts are deleted after packaging
   - no student code remains in persistent storage
 - [ ] Smoke test on Railway-target deployment
 - [ ] Deployment configuration reviewed
@@ -297,49 +302,49 @@ A teammate unfamiliar with the codebase can complete the M1 workflow without ass
 
 ### Full Stack
 
-| Layer                | Technology                 | Version                     | Role                                               |
-| -------------------- | -------------------------- | --------------------------- | -------------------------------------------------- |
-| Frontend framework   | Next.js                    | 14.x (App Router)           | Staff and student UI                               |
-| UI language          | TypeScript                 | 5.x                         | Type safety across frontend                        |
-| Code editor          | Monaco Editor              | current                     | Locally hosted code editing, preview, and review   |
-| Auth                 | NextAuth.js                | 5.x (Auth.js)               | Microsoft OAuth in M1                              |
-| Backend framework    | FastAPI                    | 0.110.x                     | API, business logic, prompt engine                 |
-| Backend language     | Python                     | 3.11+                       | Grading pipeline, AST checks, export packaging     |
-| Task queue           | Celery                     | 5.3.x                       | Async official and sandbox grading jobs            |
-| Message broker       | Redis                      | 7.x                         | Celery broker + transient job state                |
-| Database             | PostgreSQL                 | 16.x                        | Non-sensitive metadata only                        |
-| ORM                  | SQLAlchemy                 | 2.x                         | DB access from FastAPI                             |
-| Migrations           | Alembic                    | 1.13.x                      | Schema versioning                                  |
-| Containerization     | Docker + Compose           | 25.x                        | Dev environment + app/integration services         |
-| AI inference         | Azure OpenAI API           | current approved deployment | Feedback generation                                |
-| Plagiarism detection | mosspy                     | current                     | Optional Stanford MOSS submission for staff review |
-| Grade export         | Standard CSV + ZIP tooling | current                     | CSV + HTML feedback packaging                      |
-| Code highlighting    | Monaco Editor + Prism.js   | current / 1.29.x            | Interactive editor/review plus lightweight preview |
+| Layer                | Technology                | Version                     | Role                                               |
+| -------------------- | ------------------------- | --------------------------- | -------------------------------------------------- |
+| Frontend framework   | Next.js                   | 14.x (App Router)           | Staff and student UI                               |
+| UI language          | TypeScript                | 5.x                         | Type safety across frontend                        |
+| Code editor          | Monaco Editor             | current                     | Locally hosted code editing, preview, and review   |
+| Auth                 | NextAuth.js               | 5.x (Auth.js)               | Microsoft OAuth in M1                              |
+| Backend framework    | FastAPI                   | 0.110.x                     | API, business logic, prompt engine                 |
+| Backend language     | Python                    | 3.11+                       | Grading pipeline, AST checks, export packaging     |
+| Task queue           | Celery                    | 5.3.x                       | Async official and sandbox grading jobs            |
+| Message broker       | Redis                     | 7.x                         | Celery broker + transient job state                |
+| Database             | PostgreSQL                | 16.x                        | Non-sensitive metadata only                        |
+| ORM                  | SQLAlchemy                | 2.x                         | DB access from FastAPI                             |
+| Migrations           | Alembic                   | 1.13.x                      | Schema versioning                                  |
+| Containerization     | Docker + Compose          | 25.x                        | Dev environment + app/integration services         |
+| AI inference         | Azure OpenAI API          | current approved deployment | Feedback generation                                |
+| Plagiarism detection | mosspy                    | current                     | Optional Stanford MOSS submission for staff review |
+| Grade export         | Standard export packaging | current                     | Staff-facing export packaging                      |
+| Code highlighting    | Monaco Editor + Prism.js  | current / 1.29.x            | Interactive editor/review plus lightweight preview |
 
 ### Grading Pipeline
 
-| Component                 | Technology             | Role                                                             |
-| ------------------------- | ---------------------- | ---------------------------------------------------------------- |
-| Static analysis           | Python `ast`           | Enforce `Concepts Covered` before execution                      |
-| VM isolation              | Kata Containers        | Canonical VM-based isolation layer for Judge0 execution          |
-| Execution engine          | Judge0 CE              | Sandboxed student code execution with structured status metadata |
-| HTTP client               | httpx                  | FastAPI -> Judge0 async REST calls                               |
-| Test framework            | pytest                 | Official and sandbox test execution                              |
-| Output normalization      | python_submitty_utils  | Whitespace/encoding normalization                                |
-| HTML output               | Server-side templating | Official student feedback file generation                        |
+| Component                 | Technology                           | Role                                                                  |
+| ------------------------- | ------------------------------------ | --------------------------------------------------------------------- |
+| Static analysis           | Python `ast`                         | Enforce `Concepts Covered` before execution                           |
+| VM isolation              | Kata Containers                      | Canonical VM-based isolation layer for Judge0 execution               |
+| Execution engine          | Judge0 CE                            | Sandboxed student code execution with structured status metadata      |
+| HTTP client               | httpx                                | FastAPI -> Judge0 async REST calls                                    |
+| Test framework            | pytest                               | Official and sandbox test execution                                   |
+| Output normalization      | python_submitty_utils                | Whitespace/encoding normalization                                     |
+| HTML output               | Server-side templating               | Official student feedback file generation                             |
 | Config authoring          | Wizard + `config.json` import/export | Backend-canonical assignment config setup with wizard-first authoring |
-| PDF/text rubric ingestion | Deferred               | M2, not M1                                                       |
+| PDF/text rubric ingestion | Deferred                             | M2, not M1                                                            |
 
 ### Infrastructure Notes
 
-| Component        | Location                          | Note                                                                     |
-| ---------------- | --------------------------------- | ------------------------------------------------------------------------ |
-| PostgreSQL       | Railway PostgreSQL                | Metadata only, no student submissions                                    |
-| Redis            | Railway Redis                     | Celery broker + transient status                                         |
+| Component        | Location                          | Note                                                                                        |
+| ---------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
+| PostgreSQL       | Railway PostgreSQL                | Metadata only, no student submissions                                                       |
+| Redis            | Railway Redis                     | Celery broker + transient status                                                            |
 | Judge0 + Kata    | Separate execution infrastructure | Judge0 execution service with canonical Kata VM isolation and explicit post-result deletion |
-| Azure OpenAI     | University-approved Azure tenant  | LLM inference path for M1                                                |
-| Next.js          | Railway service                   | Production frontend host                                                 |
-| FastAPI + Celery | Railway services                  | Production API and workers                                               |
+| Azure OpenAI     | University-approved Azure tenant  | LLM inference path for M1                                                                   |
+| Next.js          | Railway service                   | Production frontend host                                                                    |
+| FastAPI + Celery | Railway services                  | Production API and workers                                                                  |
 
 Optional dev/staging hardware may be used for local and integration-style validation, but this does not change Railway as the canonical M1 production target.
 
@@ -349,43 +354,43 @@ Optional dev/staging hardware may be used for local and integration-style valida
 
 ### FR-01 - Admin / Identity
 
-| ID      | Requirement                                                                                                              | Sprint |
-| ------- | ------------------------------------------------------------------------------------------------------------------------ | ------ |
-| FR-01.1 | Admin can create, edit, and deactivate staff accounts                                                                    | S1     |
-| FR-01.2 | Admin can assign roles: admin, instructor, ia                                                                            | S1     |
-| FR-01.3 | Admin can maintain staff access by course or section                                                                     | S1     |
-| FR-01.4 | Student can authenticate through Microsoft OAuth with a `@uvu.edu` account without creating a persistent student profile | S1     |
+| ID      | Requirement                                                                                                                                                                              | Sprint |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| FR-01.1 | Admin can create, edit, and deactivate staff accounts                                                                                                                                    | S1     |
+| FR-01.2 | Admin can assign roles: admin, instructor, ia                                                                                                                                            | S1     |
+| FR-01.3 | Admin can maintain staff access by course or section                                                                                                                                     | S1     |
+| FR-01.4 | Student can authenticate through Microsoft OAuth with a `@uvu.edu` account without creating a persistent student profile                                                                 | S1     |
 | FR-01.5 | System stores minimal student-course authorization mapping for sandbox access using normalized Microsoft email matched to instructor-uploaded Canvas roster entries and `course_id` only | S1     |
 
 ### FR-02 - Staff Assignment and Config Workflows
 
-| ID       | Requirement                                                                                                                         | Sprint |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| FR-02.1  | Authorized assignment-config staff can create assignments with name, course linkage, due date, and Canvas reference metadata        | S1     |
-| FR-02.2  | Authorized assignment-config staff can use a comprehensive wizard to generate valid `config.json`                                   | S1     |
-| FR-02.3  | Authorized assignment-config staff can import a validated `config.json`                                                             | S1     |
-| FR-02.4  | Authorized assignment-config staff can edit all instructor-relevant stored config fields through a rendered form and download the current `config.json` | S1     |
-| FR-02.5  | Authorized assignment-config staff can set or override a `Concepts Covered` checklist per assignment                                | S1     |
-| FR-02.6  | Instructor or IA can upload a bulk Canvas ZIP for official grading                                                                  | S1     |
+| ID       | Requirement                                                                                                                                                                                                                 | Sprint |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| FR-02.1  | Authorized assignment-config staff can create assignments with name, course linkage, due date, and Canvas reference metadata                                                                                                | S1     |
+| FR-02.2  | Authorized assignment-config staff can use a comprehensive wizard to generate valid `config.json`                                                                                                                           | S1     |
+| FR-02.3  | Authorized assignment-config staff can import a validated `config.json`                                                                                                                                                     | S1     |
+| FR-02.4  | Authorized assignment-config staff can edit all instructor-relevant stored config fields through a rendered form and download the current `config.json`                                                                     | S1     |
+| FR-02.5  | Authorized assignment-config staff can set or override a `Concepts Covered` checklist per assignment                                                                                                                        | S1     |
+| FR-02.6  | Instructor or IA can upload a bulk Canvas ZIP for official grading                                                                                                                                                          | S1     |
 | FR-02.11 | Instructor can upload a Canvas roster CSV (required columns: Student_Name, Canvas_ID, UVU_ID, Section) to seed student-course sandbox authorization; roster can be updated at any time to add latecomers or remove students | S1     |
-| FR-02.7  | Instructor or IA can manage `TestCase` grading records, storage-backed pytest artifacts, and run a model solution through Judge0    | S2     |
-| FR-02.8  | Instructor or IA can monitor official-run status and inspect in-session results                                                     | S3     |
-| FR-02.9  | Instructor or IA can optionally run plagiarism detection for an authorized official run and review the returned MOSS URL and output | S3     |
-| FR-02.10 | Instructor or IA can download a CSV and a master ZIP of per-student HTML feedback                                                   | S3     |
-| FR-02.12 | Whether IA is included in assignment-config authoring staff remains deferred and must be finalized before implementation ownership is locked | S1     |
+| FR-02.7  | Instructors can manage canonical grading config, storage-backed pytest artifacts, derived `TestCase` projections as needed, and run a model solution through Judge0; IAs remain read-only for assignment configuration | S2     |
+| FR-02.8  | Instructor or IA can monitor official-run status and inspect in-session results                                                                                                                                             | S3     |
+| FR-02.9  | Instructor or IA can optionally run plagiarism detection for an authorized official run and review the result during the active official-run session only                                                                    | S3     |
+| FR-02.10 | Instructor or IA can download a Canvas-grade CSV and a per-run feedback ZIP as separate official-run outputs                                                                                                                | S3     |
 
 ### FR-03 - Student Sandbox
 
-| ID      | Requirement                                                                                 | Sprint |
-| ------- | ------------------------------------------------------------------------------------------- | ------ |
-| FR-03.1 | Student can sign in through Microsoft OAuth using a `@uvu.edu` account                      | S1     |
+| ID      | Requirement                                                                                                                                                                                                                                                                                                        | Sprint |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| FR-03.1 | Student can sign in through Microsoft OAuth using a `@uvu.edu` account                                                                                                                                                                                                                                             | S1     |
 | FR-03.2 | Student can see only authorized configured courses for sandbox use (restricted to Canvas-listed roster mappings); backend queries authorization fresh on every request; when no authorization exists, student sees: "You have not been added to a class. If you are enrolled in a class, contact your instructor." | S3     |
-| FR-03.3 | Student can upload code for projected grading                                               | S3     |
-| FR-03.4 | Student can view projected score, warnings, test results, and on-screen feedback in the sandbox UI | S3     |
-| FR-03.5 | Student projected results are destroyed when processing completes or the session exits      | S3     |
-| FR-03.6 | Student cannot access staff workflow pages or official export artifacts                     | S3     |
-| FR-03.7 | Student sandbox uploads are rate-limited to `5 uploads per hour` per authenticated identity | S3     |
-| FR-03.8 | Student sandbox auto-displays an LLM feedback textbox next to test results after each run; feedback is explanation-only and does not modify scoring | S3     |
+| FR-03.3 | Student can upload code for projected grading                                                                                                                                                                                                                                                                      | S3     |
+| FR-03.4 | Student can view projected score, warnings, test results, and on-screen feedback in the sandbox UI                                                                                                                                                                                                                 | S3     |
+| FR-03.5 | Student projected results are destroyed when processing completes or the session exits                                                                                                                                                                                                                             | S3     |
+| FR-03.6 | Student cannot access staff workflow pages or official export artifacts                                                                                                                                                                                                                                            | S3     |
+| FR-03.7 | Student sandbox uploads are rate-limited to `5 uploads per hour` per authenticated identity                                                                                                                                                                                                                        | S3     |
+| FR-03.8 | Student sandbox auto-displays an LLM feedback textbox next to test results after each run; feedback is explanation-only and does not modify scoring                                                                                                                                                                | S3     |
+| FR-03.9 | Student sandbox workspace shows remaining uploads in the current hour and a clear limit-reached message when the rate limit is hit                                                                                                                                                                    | S3     |
 
 ### FR-04 - Ephemeral Official Processing
 
@@ -398,23 +403,23 @@ Optional dev/staging hardware may be used for local and integration-style valida
 | FR-04.5  | System runs AST concept checks before execution                                                                                                  | S2     |
 | FR-04.6  | System executes pytest via Judge0 with resource limits and structured execution statuses                                                         | S2     |
 | FR-04.7  | System sends code, test results, and allowed-concepts context to Azure OpenAI                                                                    | S2     |
-| FR-04.8  | System generates HTML feedback files per student using Canvas identifiers                                                                        | S2     |
+| FR-04.8  | System generates per-student staff-facing feedback artifacts using Canvas identifiers                                                            | S2     |
 | FR-04.9  | System can submit the current ephemeral official run to Stanford MOSS via `mosspy` for staff review                                              | S3     |
 | FR-04.10 | System destroys student files and detailed official-run artifacts after the request concludes                                                    | S2     |
 | FR-04.11 | Official grading jobs run asynchronously via Celery                                                                                              | S2     |
 | FR-04.12 | System rejects malformed or non-Canvas ZIPs before queueing official grading work                                                                | S1     |
-| FR-04.13 | System logs Azure token usage and optional safe MOSS URL metadata for official runs                                                              | S2     |
+| FR-04.13 | System logs Azure token usage as sanitized run metadata for official runs without persisting MOSS report references                              | S2     |
 | FR-04.14 | System deletes or invalidates Judge0 submission/result artifacts after result retrieval so student code is not retained in the execution service | S2     |
 
 ### FR-05 - Ephemeral Student Sandbox Processing
 
-| ID      | Requirement                                                                                                               | Sprint |
-| ------- | ------------------------------------------------------------------------------------------------------------------------- | ------ |
+| ID      | Requirement                                                                                                                                                    | Sprint |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | FR-05.1 | System accepts student sandbox uploads without creating persistent student profiles or submission history (beyond minimal Canvas-seeded authorization mapping) | S3     |
-| FR-05.2 | System runs the same AST, execution, and feedback pipeline for sandbox grading with sandbox-appropriate output formatting | S3     |
-| FR-05.3 | System presents sandbox feedback on screen only and does not produce downloadable artifacts                               | S3     |
-| FR-05.4 | System destroys student sandbox files and detailed feedback artifacts after completion or session exit                    | S3     |
-| FR-05.5 | System logs Azure token usage as non-sensitive metadata for sandbox runs                                                  | S2     |
+| FR-05.2 | System runs the same AST, execution, and feedback pipeline for sandbox grading with sandbox-appropriate output formatting                                      | S3     |
+| FR-05.3 | System presents sandbox feedback on screen only and does not produce downloadable artifacts                                                                    | S3     |
+| FR-05.4 | System destroys student sandbox files and detailed feedback artifacts after completion or session exit                                                         | S3     |
+| FR-05.5 | System logs Azure token usage as non-sensitive metadata for sandbox runs                                                                                       | S2     |
 
 ---
 
@@ -434,27 +439,27 @@ Optional dev/staging hardware may be used for local and integration-style valida
 
 ### Security
 
-| ID     | Requirement                                                                                                           |
-| ------ | --------------------------------------------------------------------------------------------------------------------- |
-| NFR-S1 | Judge0 executes student code with network access disabled                                                             |
-| NFR-S2 | Judge0 memory and timeout limits are enforced                                                                         |
-| NFR-S3 | Kata Containers is the canonical VM-based isolation layer for Judge0 execution                                        |
-| NFR-S4 | ZIP extraction validates all paths before any file is written                                                         |
-| NFR-S5 | All app endpoints require a valid session token except auth entrypoints and health checks                             |
-| NFR-S6 | OAuth callback rejects non-`@uvu.edu` accounts                                                                        |
-| NFR-S7 | Detailed student artifacts are stored only in ephemeral working space during official and sandbox runs                |
-| NFR-S8 | Cleanup routines remove extracted student files, Judge0 artifacts, and generated feedback artifacts immediately after completion |
-| NFR-S9 | MOSS integration uses only ephemeral official-run files and does not create additional persistent student code copies |
-| NFR-S10 | Sandbox rate limiting is enforced by authenticated Shadow SSO identity rather than IP-only heuristics                |
+| ID      | Requirement                                                                                                                      |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| NFR-S1  | Judge0 executes student code with network access disabled                                                                        |
+| NFR-S2  | Judge0 memory and timeout limits are enforced                                                                                    |
+| NFR-S3  | Kata Containers is the canonical VM-based isolation layer for Judge0 execution                                                   |
+| NFR-S4  | ZIP extraction validates all paths before any file is written                                                                    |
+| NFR-S5  | All app endpoints require a valid session token except auth entrypoints and health checks                                        |
+| NFR-S6  | OAuth callback rejects non-`@uvu.edu` accounts                                                                                   |
+| NFR-S7  | Detailed student artifacts are stored only in ephemeral working space during official and sandbox runs                           |
+| NFR-S8  | Cleanup routines remove extracted student files, Judge0 artifacts, and generated feedback artifacts immediately after completion |
+| NFR-S9  | MOSS integration uses only ephemeral official-run files and does not create additional persistent student code copies            |
+| NFR-S10 | Sandbox rate limiting is enforced by authenticated Shadow SSO identity rather than IP-only heuristics                            |
 
 ### Reliability
 
-| ID     | Requirement                                                                                  |
-| ------ | -------------------------------------------------------------------------------------------- |
-| NFR-R1 | Grading job failure does not affect other queued jobs                                        |
-| NFR-R2 | Failed jobs retry up to 3 times before permanent failure                                     |
-| NFR-R3 | Timeout or packaging failure returns actionable errors to users                              |
-| NFR-R4 | Persistent metadata remains recoverable without retaining student submissions                |
+| ID     | Requirement                                                                                         |
+| ------ | --------------------------------------------------------------------------------------------------- |
+| NFR-R1 | Grading job failure does not affect other queued jobs                                               |
+| NFR-R2 | Failed jobs retry up to 3 times before permanent failure                                            |
+| NFR-R3 | Timeout or packaging failure returns actionable errors to users                                     |
+| NFR-R4 | Persistent metadata remains recoverable without retaining student submissions                       |
 | NFR-R5 | Celery concurrency does not exceed documented Judge0 + Kata execution-capacity limits in production |
 
 ### Compliance
@@ -477,13 +482,13 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 
 ### Epic 1 - Environment and Infrastructure (Sprint 0)
 
-| ID    | Story                                                                                                                                                  | Pts | Priority |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | -------- |
-| E0-01 | ER and class diagrams reviewed as canonical architecture references | 2   | Must     |
-| E0-02 | FastAPI router skeleton and prompt-boundary plan reviewed | 2   | Must     |
+| ID    | Story                                                                 | Pts | Priority |
+| ----- | --------------------------------------------------------------------- | --- | -------- |
+| E0-01 | ER and class diagrams reviewed as canonical architecture references   | 2   | Must     |
+| E0-02 | FastAPI router skeleton and prompt-boundary plan reviewed             | 2   | Must     |
 | E0-03 | Staff and sandbox wireframes reviewed with shared interface contracts | 3   | Must     |
-| E0-04 | Route structure and component hierarchy reviewed before Sprint 1 | 2   | Must     |
-| E0-05 | Implementation action items captured for Sprint 0 signoff | 1   | Must     |
+| E0-04 | Route structure and component hierarchy reviewed before Sprint 1      | 2   | Must     |
+| E0-05 | Implementation action items captured for Sprint 0 signoff             | 1   | Must     |
 
 **Epic 0 total: 10 points**
 
@@ -500,7 +505,7 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 | E1-05 | Celery + Redis wiring                                                                                                                                  | 1   | Must     |
 | E1-06 | Judge0 execution service reachable with documented auth, Kata isolation, and deletion strategy                                                         | 3   | Must     |
 | E1-07 | Railway deployment topology documented for production services                                                                                         | 1   | Must     |
-| E1-08 | Monaco locally hosted in the frontend scaffold for canonical M1 editor and review workflows                                                           | 2   | Must     |
+| E1-08 | Monaco locally hosted in the frontend scaffold for canonical M1 editor and review workflows                                                            | 2   | Must     |
 | E1-09 | `.env.example`, README, CI checks                                                                                                                      | 2   | Must     |
 
 **Epic 1 total: 17 points**
@@ -524,15 +529,15 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 
 ### Epic 3 - Assignment and Config Setup (Sprint 1)
 
-| ID    | Story                                                            | Pts | Priority |
-| ----- | ---------------------------------------------------------------- | --- | -------- |
-| E3-01 | Assignment creation form with course linkage and Canvas metadata | 2   | Must     |
-| E3-02 | Comprehensive wizard for instructor-relevant assignment/rubric/config fields | 3   | Must     |
-| E3-03 | Wizard generates valid `config.json`                             | 2   | Must     |
-| E3-04 | Validated `config.json` import UI                                | 3   | Must     |
+| ID    | Story                                                                                             | Pts | Priority |
+| ----- | ------------------------------------------------------------------------------------------------- | --- | -------- |
+| E3-01 | Assignment creation form with course linkage and Canvas metadata                                  | 2   | Must     |
+| E3-02 | Comprehensive wizard for instructor-relevant assignment/rubric/config fields                      | 3   | Must     |
+| E3-03 | Wizard generates valid `config.json`                                                              | 2   | Must     |
+| E3-04 | Validated `config.json` import UI                                                                 | 3   | Must     |
 | E3-05 | Stored config form/view renders all instructor-relevant editable fields from the canonical config | 3   | Must     |
-| E3-06 | Current `config.json` is downloadable                            | 1   | Must     |
-| E3-07 | `Concepts Covered` checklist seeded from course defaults         | 3   | Must     |
+| E3-06 | Current `config.json` is downloadable                                                             | 1   | Must     |
+| E3-07 | `Concepts Covered` checklist seeded from course defaults                                          | 3   | Must     |
 
 **Epic 3 total: 17 points**
 
@@ -556,21 +561,21 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 
 ### Epic 5 - Grading Pipeline and AI Enrichment (Sprint 2)
 
-| ID    | Story                                                                                                    | Pts | Priority |
-| ----- | -------------------------------------------------------------------------------------------------------- | --- | -------- |
-| E5-01 | AST checker for `Concepts Covered` whitelist enforcement                                                 | 4   | Must     |
-| E5-02 | Warning vs hard-block concept/security handling                                                          | 2   | Must     |
+| ID    | Story                                                                                                                           | Pts | Priority |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------- | --- | -------- |
+| E5-01 | AST checker for `Concepts Covered` whitelist enforcement                                                                        | 4   | Must     |
+| E5-02 | Warning vs hard-block concept/security handling                                                                                 | 2   | Must     |
 | E5-03 | Judge0 integration with Kata-backed isolation, resource limits, language mapping, structured statuses, and post-result deletion | 5   | Must     |
-| E5-04 | pytest execution + output parsing + normalization                                                        | 4   | Must     |
-| E5-05 | Minimal pytest artifact management per assignment                                                        | 3   | Must     |
-| E5-06 | Link tests to rubric criteria and student-visible descriptions                                           | 2   | Must     |
-| E5-07 | Run model solution against assignment tests through Judge0                                               | 1   | Must     |
-| E5-08 | Azure OpenAI integration with concept-context prompting and hallucination guard                          | 4   | Must     |
-| E5-09 | Celery grading chain for official and sandbox runs                                                       | 3   | Must     |
-| E5-10 | Timeout, retry, and cleanup guarantees                                                                   | 2   | Must     |
-| E5-11 | Azure token usage logging in `run_summaries` or equivalent metadata storage                              | 2   | Must     |
-| E5-12 | Celery worker concurrency aligned to Judge0 + Kata execution-capacity limits                             | 1   | Must     |
-| E5-13 | Optional Stanford MOSS integration via `mosspy` using ephemeral official-run files only                  | 3   | Should   |
+| E5-04 | pytest execution + output parsing + normalization                                                                               | 4   | Must     |
+| E5-05 | Minimal pytest artifact management per assignment                                                                               | 3   | Must     |
+| E5-06 | Keep test-to-rubric and student-visible metadata in canonical `config.json`, with derived `TestCase` projections when needed    | 2   | Must     |
+| E5-07 | Run model solution against assignment tests through Judge0                                                                      | 1   | Must     |
+| E5-08 | Azure OpenAI integration with concept-context prompting and hallucination guard                                                 | 4   | Must     |
+| E5-09 | Celery grading chain for official and sandbox runs                                                                              | 3   | Must     |
+| E5-10 | Timeout, retry, and cleanup guarantees                                                                                          | 2   | Must     |
+| E5-11 | Azure token usage logging in `run_summaries` or equivalent metadata storage                                                     | 2   | Must     |
+| E5-12 | Celery worker concurrency aligned to Judge0 + Kata execution-capacity limits                                                    | 1   | Must     |
+| E5-13 | Optional Stanford MOSS integration via `mosspy` using ephemeral official-run files only                                         | 3   | Should   |
 
 **Epic 5 total: 36 points**
 
@@ -584,7 +589,7 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 | E6-02 | Student upload flow for projected grading                                     | 3   | Must     |
 | E6-03 | Sandbox rate limiter enforcing `5 uploads per hour` per authenticated student | 2   | Must     |
 | E6-04 | On-screen projected score and feedback view                                   | 3   | Must     |
-| E6-05 | Student-facing warnings and zero-retention messaging                          | 2   | Must     |
+| E6-05 | Student-facing warnings, quota messaging, and zero-retention messaging        | 2   | Must     |
 | E6-06 | Session-exit and completion cleanup for sandbox results                       | 2   | Must     |
 | E6-07 | Student route isolation from staff pages and export flows                     | 2   | Must     |
 
@@ -596,12 +601,12 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 
 | ID    | Story                                                                                     | Pts | Priority |
 | ----- | ----------------------------------------------------------------------------------------- | --- | -------- |
-| E7-01 | Official run list with aggregate status and timestamps                                    | 2   | Must     |
+| E7-01 | Official run list with aggregate status and section-aware context                         | 2   | Must     |
 | E7-02 | In-session official-run detail view with counts, warnings, and failures                   | 2   | Must     |
 | E7-03 | `GET /runs/{id}/status` live polling at `2s` cadence for per-run status                   | 1   | Must     |
 | E7-04 | Per-student HTML preview before export                                                    | 2   | Must     |
 | E7-05 | Filtering for success, warning, hard-block, timeout, parse failure, and plagiarism status | 1   | Should   |
-| E7-06 | Surface MOSS report URL prominently with instructor save warning                          | 1   | Must     |
+| E7-06 | Surface active-session MOSS availability without persisting a post-run link              | 1   | Must     |
 
 **Epic 7 total: 9 points**
 
@@ -612,11 +617,11 @@ Priority: **Must** = M1 required · **Should** = M1 if capacity · **Won't** = p
 | ID    | Story                                                                                         | Pts | Priority |
 | ----- | --------------------------------------------------------------------------------------------- | --- | -------- |
 | E8-01 | CSV export for Canvas-compatible grades                                                       | 2   | Must     |
-| E8-02 | Individual student HTML feedback renderer                                                     | 2   | Must     |
-| E8-03 | Master ZIP builder for HTML feedback package                                                  | 2   | Must     |
-| E8-04 | Instructor download workflow with stable naming and actionable errors                         | 1   | Must     |
+| E8-02 | Per-student staff-facing feedback renderer                                                    | 2   | Must     |
+| E8-03 | Feedback ZIP packaging builder for per-student HTML official-run artifacts                    | 2   | Must     |
+| E8-04 | Separate CSV and feedback-ZIP download workflow with stable naming and actionable errors      | 1   | Must     |
 | E8-05 | Graceful failure for malformed or unrecognized ZIP submissions                                | 2   | Must     |
-| E8-06 | Documentation note: Canvas bulk grade import assumed, feedback upload remains future research | 1   | Must     |
+| E8-06 | Documentation note: Canvas grade import assumed; automated feedback upload is out of scope for M1 | 1   | Must     |
 
 **Epic 8 total: 10 points**
 
@@ -684,6 +689,8 @@ These are explicitly out of scope for M1. Do not pull them in under deadline pre
 - official university SSO integration beyond Microsoft OAuth + `@uvu.edu` domain restriction
 - Canvas LTI or grade passback API integration
 - automated bulk feedback upload/distribution into Canvas
+- manual or non-code grading workflows
+- in-app grade override or feedback-editing workflows for official review
 - persistent submission history or resubmission timelines
 - downloadable student sandbox artifacts
 - LLM-assisted PDF/text rubric conversion

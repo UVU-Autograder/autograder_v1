@@ -1,1 +1,1 @@
-# Run-summary model placeholder for official and sandbox workflow metadata only, including statuses, timestamps, counts, failure categories, sanitized Azure token usage, and optional safe `moss_report_url` metadata without student code or detailed feedback bodies.
+# Run-summary model placeholder for official and sandbox aggregate workflow metadata only, including status, counts, failure categories, sanitized Azure token usage, and optional safe `moss_report_url` metadata without student code, detailed feedback bodies, or canonical lifecycle timestamps.
