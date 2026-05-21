@@ -1,49 +1,100 @@
-# UVU Autograder v1 - Overall Implementation Questions
+# UVU Autograder v1 - Implementation Questions
 
-This file is the shared discussion log for unresolved implementation questions that span frontend and backend work.
+This file tracks only active, unresolved implementation questions that cut across multiple parts of the system.
 
-Resolved decisions belong in `docs/backend_implementation/jaxon_implementation/decisions.md`.
+Resolved decisions should be moved out of this file and into:
 
-## Workflow and Product Questions
+- `docs/backend_implementation/jaxon_implementation/decisions.md` for product or policy decisions
+- `docs/backend_implementation/jaxon_implementation/technical_specs.md` for behavior or contract details
+- `docs/backend_implementation/jaxon_implementation/backlog.md` for proof, validation, or acceptance work
 
-## 1. Staff downloadability of raw submissions
+Do not keep resolved discussion history here.
+Do not add routine implementation chores here unless they still require a real team decision.
 
-Should staff be able to download raw student submission files from the system, or should the product only expose derived exports and feedback artifacts?
+## Current Open Questions
 
-**Jaxon:** We shouldn't need to download code submissions, unless you can think of a reason.
+### 1. Judge0 cleanup proof standard
 
-**Keomony:** I don't think we need this right now, but I keep getting confused about what data will be stored and what will not. I want Dominic and Vebjørn to weigh in first.
+What exact evidence or test procedure counts as sufficient proof that Judge0 submission/result artifacts and Kata execution state are truly destroyed after retrieval?
 
-**Easton** No need for raw submission files in my opinion. JSON payload should be accurate enough with monaco IDE implementation that a staff facing tarball zip file for original submission of raw code is unnecessary and takes up additional hardware bandwidth.
+Why this is still open:
 
-Current tension: this affects retention language, UI affordances, and whether official-run exports are purely derived artifacts or also a route back to raw student code.
+- we have decided that cleanup must happen immediately after verification and retrieval
+- we have decided that Judge0 cleanup includes `DELETE /submissions/{token}` immediately after result retrieval and that raw Judge0 records are not mirrored into app-owned persistent storage
+- we have not yet defined the exact proof standard that counts as "verified" for implementation signoff or go-live readiness
 
-## Infrastructure and Technical Questions
+Resolution destination:
+`backlog.md` for the proof/acceptance procedure, and `technical_specs.md` if the cleanup verification behavior becomes part of the documented runtime contract
 
-## 2. Canonical Judge0 deployment narrative
+### 2. Dell workstation concurrency policy
 
-Where should Judge0 run in the canonical M1 deployment story?
+What is the approved safe concurrency and worker-cap policy for the Dell workstation under peak load?
 
-Current drift:
+Provisional recommendation based on the current Dell workstation specs:
 
-- Some docs describe a Railway-first app stack with separate execution infrastructure.
-- Earlier planning artifacts used a different hosting narrative around execution.
+- treat RAM, host OS overhead, Docker overhead, and Kata VM overhead as the limiting factors rather than raw CPU core count
+- ignore the GPU for M1 concurrency planning; it does not materially change the Judge0 + Kata execution budget
+- start with a conservative execution cap of `2` concurrent Judge0 + Kata grading jobs on this machine
+- treat `3` as the first benchmark target and `4` as the highest candidate cap worth testing before go-live
+- do not approve anything above `4` concurrent Judge0 + Kata jobs on this `32GB` workstation unless sustained benchmarking shows comfortable memory headroom and stable cleanup behavior
+- keep queueing and backpressure enabled for all work beyond the approved execution cap
+- document the final policy separately for:
+  - execution-slot cap for Judge0 + Kata jobs
+  - Celery worker concurrency for grading tasks
+  - queue/backpressure thresholds when memory pressure rises
 
-**Jaxon:** No opinion. Need to do more research.
-**Easton** Railway is impossible to run as an app stack with kata containerization since our Judge0 Kata Docker hardware containerization is incompatible with handshaking a virtual/server based connection. On-prem hardware with the Dell machine running Next.js, FastAPI, Celery, PostgreSQL, Redis, and Judge0 is recommended based on current implementation.
+Why this recommendation makes sense:
 
-Current tension: we have chosen Judge0 and Kata as the execution direction, but the exact M1 deployment narrative should not be treated as finalized until the team closes this question.
+- the machine has strong CPU headroom, but only `32GB` RAM for Windows, Docker, Judge0, Kata, Postgres, Redis, FastAPI, Next.js, and Celery combined
+- Judge0's configured per-run memory limit does not capture the full Kata/container/runtime overhead on the host
+- Easton's concern about memory bottlenecks during peak semester load is consistent with this hardware profile
+- a low initial cap reduces the risk of thrashing or degraded cleanup behavior while the real benchmark data is gathered
 
-## 3. Judge0 artifact-deletion contract
+Why this is still open:
 
-What is the exact canonical zero-retention requirement for Judge0-side artifacts after result handling?
+- the docs say execution capacity is memory-bound
+- the current hardware profile supports a conservative provisional recommendation of `2` concurrent jobs, with `3-4` as the benchmark range to validate
+- the exact worker caps, queueing policy, and backpressure thresholds are still not documented as an approved operating rule
 
-Current drift:
+Resolution destination:
+`decisions.md` for the operating-policy decision, and `backlog.md` for the required benchmarking and validation work
 
-- Some docs say Judge0 submission/result artifacts must be deleted or invalidated immediately after retrieval.
-- Other docs treat cleanup more generally without locking the exact service-side contract.
+### 3. Azure and UVU compliance confirmation checklist
 
-**Jaxon:** No strong opinion. Need to do more research.
-**Easton** I believe it is better to decommission the records at time of retrieval from Postgres rather than leaving them in the server as a liability. Running DELETE /submissions{token} on the Judge0 API once it has been read. Kata and docker already take care of M1 deletion.
+What exact Azure/UVU compliance confirmations are required before live student code can be sent to Azure OpenAI?
 
-Current tension: zero-retention is settled, but the exact wording and verification standard for Judge0-side cleanup still need to be finalized.
+Why this is still open:
+
+- the docs require privacy/ZDR and FERPA-related confirmation before live use
+- the exact confirmation checklist, evidence, and approver expectations are not yet written down in one place
+
+Resolution destination:
+`decisions.md` for the approval requirements, and `backlog.md` for the confirmation tasks that must be completed before go-live
+
+### 4. Real Canvas format validation target
+
+What real Canvas export/import formats must we validate against before we can treat ZIP parsing and grade CSV re-import as dependable M1 workflows?
+
+Why this is still open:
+
+- the docs describe expected ZIP parsing rules and CSV export shape
+- we still have not defined the exact real-world Canvas samples or format variants that must be tested before we treat those workflows as dependable
+
+Resolution destination:
+`technical_specs.md` for any finalized format/behavior rules, and `backlog.md` for the concrete validation matrix and acceptance tests
+
+### 5. IA-triggered MOSS authority
+
+Is IA-triggered MOSS completely out of scope for M1, or is there a defined delegated exception path that should be documented now?
+
+Why this is still open:
+
+- the docs clearly make IAs read-only for assignment configuration
+- MOSS authority is still described in a way that suggests a possible later delegated exception, but that exception path is not yet defined
+
+Resolution destination:
+`decisions.md` for the permission decision, and `technical_specs.md` if the final rule needs to be reflected in the permissions matrix or workflow contract
+
+## Removal Rule
+
+Remove a question from this file as soon as the team resolves it and the final wording has been moved into the appropriate backend doc.

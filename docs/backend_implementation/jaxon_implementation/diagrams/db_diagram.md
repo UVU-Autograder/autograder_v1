@@ -17,6 +17,7 @@ classDiagram
         code
         name
         term
+        default_concepts
     }
 
     class Section {
@@ -35,22 +36,12 @@ classDiagram
         sandbox_enabled
     }
 
-    class CourseEnrollment {
-        email
-        source
-        is_active
-    }
-
     class AssignmentConfig {
         config_json
     }
 
-    class ConceptSet {
-        allowed_concepts
-    }
-
-    class AssignmentConceptOverride {
-        allowed_concepts
+    class AssignmentConcept {
+        added_concepts
     }
 
     class AssignmentArtifact {
@@ -74,14 +65,12 @@ classDiagram
     User "1" --> "many" StaffAccess : granted
     Course "1" *-- "many" Section : contains
     Course "1" --> "many" StaffAccess : scopes_staff_access
-    Section "0..1" --> "many" StaffAccess : narrows_run_or_roster_scope
+    Section "0..1" --> "many" StaffAccess : narrows_run_scope
     Course "1" *-- "many" Assignment : owns
-    Course "1" *-- "many" CourseEnrollment : authorizes_students
-    Course "1" *-- "many" ConceptSet : provides_defaults
-    Assignment "1" *-- "1" AssignmentConfig : stores_canonical_config
-    Assignment "1" *-- "0..1" AssignmentConceptOverride : overrides_defaults
+    Assignment "1" *-- "1" AssignmentConfig : stores_app_owned_config
+    Assignment "1" *-- "0..1" AssignmentConcept : stores_concept_additions
     Assignment "1" *-- "many" AssignmentArtifact : stores_assets
     Assignment "1" *-- "many" TestCase : exposes_derived_records
     Assignment "1" *-- "many" RunSummary : tracks_workflows
-    User "1" --> "many" RunSummary : initiates
+    User "0..1" --> "many" RunSummary : initiates_staff_runs
 ```
