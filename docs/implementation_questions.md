@@ -44,6 +44,6 @@ Current drift:
 - Other docs treat cleanup more generally without locking the exact service-side contract.
 
 **Jaxon:** No strong opinion. Need to do more research.
-**Easton** I believe it is better to decommission the records at Time of retrieval from Postgres rather than leaving them in the server as a liability. Running DELETE /submissions{token} on the Judge0 API once it has been read. Kata and docker already take care of M1 deletion.
+**Easton** I believe it is better to decommission the records at time of retrieval from Postgres rather than leaving them in the server as a liability. Running DELETE /submissions{token} on the Judge0 API once it has been read. Kata and docker already take care of M1 deletion.
 
 Current tension: zero-retention is settled, but the exact wording and verification standard for Judge0-side cleanup still need to be finalized.
