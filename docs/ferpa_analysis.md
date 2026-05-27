@@ -16,6 +16,7 @@ The biggest FERPA improvement already made is the removal of student-specific sa
 
 - [UVU FERPA](https://www.uvu.edu/registration/ferpa/index.html)
 - [May a social security number or other student identification number be listed as directory information?](https://studentprivacy.ed.gov/faq/may-social-security-number-or-other-student-identification-number-be-listed-directory)
+- [§99.37 What conditions apply to disclosing directory information?](https://studentprivacy.ed.gov/ferpa?exp=8#0.1_se34.1.99_131)
 
 That change does not clear the whole system. The official grading workflow still processes education-record-linked data, and FERPA compliance still turns on institutional authorization, direct control, approved systems, and approved disclosures rather than on "we store less data" alone. See:
 
@@ -23,6 +24,25 @@ That change does not clear the whole system. The official grading workflow still
 - [FERPA for Faculty and Staff](https://www.uvu.edu/registration/faculty_resources/ferpa.html)
 - [Who is a “school official” under FERPA?](https://studentprivacy.ed.gov/faq/who-school-official-under-ferpa)
 - [FERPA regulations](https://studentprivacy.ed.gov/ferpa?exp=8)
+
+### §99.31 Under what conditions is prior consent not required to disclose information?
+FERPA permits disclosure to contractors who are “under the direct control of the agency or institution with respect to the use and maintenance of education records” [34 C.F.R. § 99.31(a)(1)(i)(B)(2)](https://studentprivacy.ed.gov/ferpa?exp=8#0.1_se34.1.99_131). So, if the school develops and operates the autograding software itself, then FERPA generally considers the school to have “direct control” over the system and the education records used in it. A student’s class schedule is usually considered an “education record” under Family Educational Rights and Privacy Act (FERPA). The school can often use that information internally without getting separate student consent if the use is connected to legitimate educational operations.
+
+For example, the school may use class schedules to:
+- enroll students into the correct autograder course,
+- connect assignments to the correct section,
+- identify instructors/TAs,
+- manage submissions and grades.
+
+This is usually allowed because it supports a “legitimate educational interest.”
+
+However, the school still must:
+
+- limit access to authorized people,
+- protect the records,
+- use the data only for educational/administrative purposes,
+- maintain security/privacy controls.
+
 
 ## What Changed Already
 
