@@ -13,7 +13,7 @@ Open questions live in `docs/implementation_questions.md`.
 | Database scope | Store staff/course metadata, assignments/configs, lightweight artifact metadata, derived test projections when needed, and sanitized run metadata only | Keeps persistent data small and non-sensitive |
 | Execution stack | Judge0 CE with Kata Containers isolation | Captures the current execution engine and isolation model used in the M1 plan |
 | AI inference | Azure OpenAI API | Matches the approved university privacy posture |
-| Plagiarism detection | Optional Stanford MOSS via `mosspy` | Staff-only review aid using ephemeral files |
+| Plagiarism detection | Out of scope for M1 | Avoids sending live student code to an external plagiarism service before institutional approval; future work should prefer a local or otherwise approved tool |
 | Auth (M1) | Staff uses NextAuth + Microsoft OAuth; student sandbox access requires no student authentication | Keeps staff workflows tied to trusted UVU identity while avoiding student-specific sandbox identity handling |
 | UVU restriction | Reject non-`@uvu.edu` staff logins | Keeps staff/admin access bounded to UVU users |
 | Student access model | Session-only sandbox access to globally visible sandbox-enabled assignments | Avoids student-specific schedule or roster lookups in the sandbox flow |
@@ -29,12 +29,11 @@ Open questions live in `docs/implementation_questions.md`.
 | Official raw submission downloads | Out of scope for M1 | Derived artifacts plus in-app Monaco/JSON review are sufficient |
 | Official export shape | Two separate staff downloads: Canvas-grade CSV and per-student HTML feedback ZIP | Keeps M1 exports explicit without introducing a combined package or Canvas feedback distribution |
 | Canvas feedback distribution | Out of scope for M1 | Avoids Canvas bulk feedback upload complexity in the first milestone |
-| Official review workflow | Preview-only before export | Staff can inspect results and plagiarism state without introducing in-app grade or feedback edits |
+| Official review workflow | Preview-only before export | Staff can inspect grading results without introducing in-app grade or feedback edits |
 | Manual or non-code grading | Out of scope for M1 | Avoids adding persistent review state, grade overrides, and hybrid manual workflows to the zero-retention model |
 | Artifact storage | Hybrid | Config and metadata in Postgres; file bodies behind a storage abstraction |
 | Frontend editor | Monaco Editor, locally hosted | Planned editor and review surface for M1 |
 | Workspace lifecycle | Explicit shared integration | Cleanup is core zero-retention behavior, not a hidden detail |
-| MOSS handling | Active-session-only review aid, not persistent `RunSummary` metadata | Avoids dead links and keeps the run model minimal |
 | Permission baseline | M1 actors are `admin`, `instructor`, `IA`, and `student`, with section-scoped staff access | Defines the current role model around course-shared setup and section-scoped run authority |
 | IA assignment-config authority | Read-only in M1 | Keeps role-based authorization simple while letting IAs run and review official workflows in assigned sections |
 | Student history | No persistent sandbox attempt history | Maintains zero-retention FERPA alignment |
@@ -73,14 +72,12 @@ Open questions live in `docs/implementation_questions.md`.
   - official batch execution is authorized only within explicitly assigned section scope
   - malformed or non-Canvas ZIPs are rejected before queueing
   - extraction occurs only in an ephemeral temp directory or equivalent volatile workspace
-  - optional MOSS submission uses only files from the current ephemeral batch workspace
-  - MOSS output is a staff-facing review aid for the active official-run session and not an automatic penalty
   - official-run review is preview-only in M1 and does not support in-app grade overrides or feedback edits
   - official-run downloads are exposed as two separate staff actions: Canvas-grade CSV and per-student HTML feedback ZIP
   - the system does not expose a raw student-submission download path in M1
   - Judge0 submission/result records are deleted from Judge0 immediately after retrieval rather than being mirrored into app-owned persistent storage
   - student files, intermediate files, and detailed grading output are destroyed after the official workflow completes
-  - the system may keep sanitized run metadata such as counts, coarse failure categories, and Azure token usage, but never student code, filenames, identifiers, detailed failure text, detailed feedback files, or persisted MOSS references
+  - the system may keep sanitized run metadata such as counts, coarse failure categories, and Azure token usage, but never student code, filenames, identifiers, detailed failure text, detailed feedback files, or persisted plagiarism-report references
 
 - `Student sandbox processing`
   - any sandbox user can open the sandbox and browse globally visible sandbox-enabled courses and assignments

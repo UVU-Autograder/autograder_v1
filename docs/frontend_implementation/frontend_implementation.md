@@ -41,9 +41,8 @@ This file captures the frontend contract, route structure, and UI-surface respon
 - Assignment-level concepts editing owns additive assignment concepts only and must preview the merged effective list derived from current course defaults plus assignment additions.
 - The sandbox entry surface should immediately show globally visible sandbox-enabled courses and assignments without student authentication.
 - The sandbox workspace should combine Monaco, grounded feedback, explicit zero-retention messaging, visible remaining uploads, and a clear limit-reached state for backend `429` responses.
-- The `/staff/runs/[runId]` surface is a preview-only review workflow in M1: staff can inspect per-student feedback and plagiarism state, but cannot edit grades or feedback in the app.
+- The `/staff/runs/[runId]` surface is a preview-only review workflow in M1: staff can inspect per-student feedback, but cannot edit grades or feedback in the app.
 - The `/staff/runs/[runId]` surface should expose separate download actions for the Canvas-grade CSV and the feedback ZIP.
-- If MOSS is run, its result should be visible only during the active official-run review/export session and should warn that it will not remain available later.
 
 ## Frontend Constraints
 

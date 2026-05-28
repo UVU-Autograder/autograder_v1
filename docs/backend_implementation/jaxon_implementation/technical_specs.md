@@ -3,13 +3,17 @@
 ## 1. System Architecture
 
 - Frontend: Next.js in the current local/on-prem M1 stack on the Dell workstation for staff and student interfaces.
+- UI language: TypeScript for frontend type safety.
 - Code editor and review surface: Monaco Editor, locally hosted with the frontend app for current M1 code-editing and review workflows.
 - Backend: FastAPI in the current local/on-prem M1 stack for routing, orchestration, and API contracts.
+- Backend language: Python `3.11+`.
 - Execution engine: Judge0 CE for sandboxed code execution with strict resource limits and network-disabled student runs.
 - Runtime isolation: Kata Containers is the planned VM-based isolation layer for Judge0 executions.
 - Database: PostgreSQL in the current local/on-prem M1 stack for non-sensitive metadata only.
+- ORM and migrations: SQLAlchemy plus Alembic.
 - Queue and broker: Celery with Redis for official and sandbox grading jobs.
 - AI inference: Azure OpenAI API for pedagogical explanations grounded in pytest and AST results.
+- HTTP client: `httpx` for FastAPI-to-Judge0 async REST calls.
 
 ## 2. Core Features
 
@@ -17,9 +21,9 @@
 - Student sandbox access through globally visible sandbox-enabled assignments without student-specific authentication.
 - Progressive `Concepts Covered` enforcement using AST validation plus LLM prompt context.
 - Zero-retention grading for both official staff runs and student sandbox runs.
-- Optional staff-facing plagiarism analysis through Stanford MOSS using ephemeral official batch files only.
 - Staff review uses derived artifacts plus structured in-app review data; M1 does not provide a raw student-submission download workflow.
 - Hallucination guardrails that treat pytest and tracebacks as ground truth and limit the LLM to explanation rather than re-grading.
+- Plagiarism detection remains out of M1 unless UVU approves a local or otherwise institutionally controlled workflow that does not require persistent student-code storage.
 
 ## 3. Open-Source Patterns Reused
 
@@ -36,9 +40,8 @@
 3. Valid archives are extracted into a shared ephemeral workspace.
 4. Student submissions are graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and Azure OpenAI explanation generation.
 5. Results are packaged into staff-facing export artifacts.
-6. Optional MOSS analysis may run using the same ephemeral official workspace.
-7. Judge0 result metadata is retrieved and verified, then the app calls `DELETE /submissions/{token}` and Judge0 submission/result artifacts and Kata execution state are destroyed immediately.
-8. Export is returned, then temporary student files and detailed feedback artifacts are destroyed; no raw student-submission download is produced.
+6. Judge0 result metadata is retrieved and verified, then the app calls `DELETE /submissions/{token}` and Judge0 submission/result artifacts and Kata execution state are destroyed immediately.
+7. Export is returned, then temporary student files and detailed feedback artifacts are destroyed; no raw student-submission download is produced.
 
 ### Student sandbox projected grading
 
@@ -147,7 +150,7 @@
   - code snippets copied from logs or outputs
   - detailed AI feedback bodies
   - downloadable sandbox artifacts
-  - persisted MOSS URLs or other persistent MOSS report references
+  - persisted plagiarism-report URLs or other persistent external report references
 
 ### Logging and operational-metadata contract
 
@@ -198,19 +201,21 @@ These remain outside persistent storage and are represented conceptually in `doc
 
 ## 6. Permissions Matrix
 
-| Actor      | View course assignments              | Edit grading setup                                                 | Launch official runs                                                 | View official run results                  | Trigger MOSS                                          | Access sandbox assignment listings                                     |
-| ---------- | ------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------- |
-| Admin      | Yes                                  | Yes                                                                | Yes                                                                  | Yes                                        | Yes                                                   | Optional administrative access only                                    |
-| Instructor | Yes, across assigned courses         | Yes, only in explicitly assigned sections                          | Yes, only in explicitly assigned sections                            | Yes, for assigned courses and sections     | Yes, for official runs they are allowed to manage     | Not a normal student path                                              |
-| IA         | No course-wide visibility by default | No; IAs are read-only for assignment configuration in M1           | Yes, only in explicitly assigned sections when granted run authority | Yes, only for explicitly assigned sections | No by default in M1 unless explicitly delegated later | Not a normal student path                                              |
-| Student    | No staff assignment access           | No                                                                 | No                                                                   | No                                         | No                                                    | Yes, for globally visible sandbox-enabled assignments |
+| Actor      | View course assignments              | Edit grading setup                                       | Launch official runs                                                 | View official run results                  | Access sandbox assignment listings                    |
+| ---------- | ------------------------------------ | -------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
+| Admin      | Yes                                  | Yes                                                      | Yes                                                                  | Yes                                        | Optional administrative access only                   |
+| Instructor | Yes, across assigned courses         | Yes, only in explicitly assigned sections                | Yes, only in explicitly assigned sections                            | Yes, for assigned courses and sections     | Not a normal student path                             |
+| IA         | No course-wide visibility by default | No; IAs are read-only for assignment configuration in M1 | Yes, only in explicitly assigned sections when granted run authority | Yes, only for explicitly assigned sections | Not a normal student path                             |
+| Student    | No staff assignment access           | No                                                       | No                                                                   | No                                         | Yes, for globally visible sandbox-enabled assignments |
 
 Notes:
 
 - `staff_access` stores course scope, optional section scope, and role semantics.
+- Admin workflows must support creating, editing, deactivating, and assigning staff accounts, roles, and course or section access grants.
 - Instructors can see what other teachers are doing in assigned courses but may not modify grading setup outside their own assigned sections.
 - IAs are section-limited validators in M1, with read-only access to assignment configuration in assigned sections.
 - Official batch execution is section-scoped even though assignments are course-owned.
+- All app endpoints require a valid session token except auth entrypoints and health checks.
 
 ## 7. Canvas ZIP Format and Filename Mapping
 
@@ -246,7 +251,6 @@ Notes:
   - Judge0 cleanup includes `DELETE /submissions/{token}` immediately after the result is read
   - temporary feedback artifacts exist only long enough to package and return the export
   - cleanup runs after export completion rather than preserving packaged student artifacts on disk
-  - MOSS-prepared files are deleted in the same official-run cleanup cycle
   - cleanup verification is part of expected operational behavior, not optional best effort
   - persistent run reporting is limited to aggregate, non-identifying metadata
 
@@ -298,7 +302,6 @@ Notes:
   - Kata-capable runtime configuration for the Dell workstation deployment
   - PostgreSQL connection settings
   - Redis and Celery broker URL
-  - MOSS user id
   - sandbox rate-limit settings
   - cleanup-related settings if made configurable
 
@@ -312,3 +315,15 @@ Notes:
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
 - Azure privacy readiness: ZDR/privacy posture must be confirmed before live student data use
 - Azure logging: token usage only, stored as sanitized aggregate metadata
+
+### Service targets and reliability guardrails
+
+- ZIP upload acceptance target: under `2s` for files up to `50MB`.
+- Official batch target: `200` submissions complete within `40 min` on the Dell workstation.
+- Status polling response target: under `200ms`.
+- Export packaging overhead target: under `2 min` for `200` submissions after grading completes.
+- Student sandbox projected grading should feel interactive for normal assignment files.
+- Azure token usage must be measurable per run and assignment in non-sensitive metadata.
+- Grading job failure must not affect other queued jobs.
+- Timeout or packaging failure must return actionable errors to users.
+- Persistent metadata must remain recoverable without retaining student submissions.

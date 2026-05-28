@@ -6,7 +6,8 @@ Resolved decisions should be moved out of this file and into:
 
 - `docs/backend_implementation/jaxon_implementation/decisions.md` for product or policy decisions
 - `docs/backend_implementation/jaxon_implementation/technical_specs.md` for behavior or contract details
-- `docs/backend_implementation/jaxon_implementation/backlog.md` for proof, validation, or acceptance work
+- `docs/planning/sprint_plan.md` for proof, validation, acceptance standards, or delivery controls
+- `docs/planning/product_backlog.md` for story or backlog work
 
 Do not keep resolved discussion history here.
 Do not add routine implementation chores here unless they still require a real team decision.
@@ -24,7 +25,7 @@ Why this is still open:
 - we have not yet defined the exact proof standard that counts as "verified" for implementation signoff or go-live readiness
 
 Resolution destination:
-`backlog.md` for the proof/acceptance procedure, and `technical_specs.md` if the cleanup verification behavior becomes part of the documented runtime contract
+`docs/planning/sprint_plan.md` for the proof/acceptance procedure, and `technical_specs.md` if the cleanup verification behavior becomes part of the documented runtime contract
 
 ### 2. Dell workstation concurrency policy
 
@@ -57,7 +58,7 @@ Why this is still open:
 - the exact worker caps, queueing policy, and backpressure thresholds are still not documented as an approved operating rule
 
 Resolution destination:
-`decisions.md` for the operating-policy decision, and `backlog.md` for the required benchmarking and validation work
+`decisions.md` for the operating-policy decision, and `docs/planning/sprint_plan.md` for the required benchmarking and validation work
 
 ### 3. Azure and UVU compliance confirmation checklist
 
@@ -69,7 +70,7 @@ Why this is still open:
 - the exact confirmation checklist, evidence, and approver expectations are not yet written down in one place
 
 Resolution destination:
-`decisions.md` for the approval requirements, and `backlog.md` for the confirmation tasks that must be completed before go-live
+`decisions.md` for the approval requirements, and `docs/planning/sprint_plan.md` for the confirmation tasks that must be completed before go-live
 
 ### 4. Real Canvas format validation target
 
@@ -81,19 +82,7 @@ Why this is still open:
 - we still have not defined the exact real-world Canvas samples or format variants that must be tested before we treat those workflows as dependable
 
 Resolution destination:
-`technical_specs.md` for any finalized format/behavior rules, and `backlog.md` for the concrete validation matrix and acceptance tests
-
-### 5. IA-triggered MOSS authority
-
-Is IA-triggered MOSS completely out of scope for M1, or is there a defined delegated exception path that should be documented now?
-
-Why this is still open:
-
-- the docs clearly make IAs read-only for assignment configuration
-- MOSS authority is still described in a way that suggests a possible later delegated exception, but that exception path is not yet defined
-
-Resolution destination:
-`decisions.md` for the permission decision, and `technical_specs.md` if the final rule needs to be reflected in the permissions matrix or workflow contract
+`technical_specs.md` for any finalized format/behavior rules, and `docs/planning/sprint_plan.md` for the concrete validation matrix and acceptance tests
 
 ## Removal Rule
 
