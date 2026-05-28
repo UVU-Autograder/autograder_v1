@@ -44,6 +44,17 @@ However, the school still must:
 - maintain security/privacy controls.
 
 
+### FERPA Compliance Software
+FERPA compliance software: represents specialized technology platforms helping schools automate, monitor, and demonstrate compliance with privacy and security requirements.
+
+Core FERPA requirements software must support include but not limited to: 
+- Access Control and Role-Based Permissions: Software should restrict users to only the student data necessary for their job role, such as teacher or administrator. Access permissions should automatically update or expire when a user’s role or employment status changes.
+- Record Access Logging and Audit Trails: Systems must keep detailed logs of who accessed student records, when they accessed them, and what actions they performed. Secure audit trails help schools meet FERPA requirements and investigate unauthorized access.
+- Data Minimization and Retention Controls: Schools should keep student records only as long as necessary and securely delete outdated data according to retention policies. Limiting unnecessary stored records reduces privacy and security risks.  
+
+ FERPA does not mandate specific software, but it requires schools to implement reasonable security measures protecting education records.  Data must be protected under FERPA? All personally identifiable information in education records requires protection. This includes academic records (grades, transcripts), disciplinary records, health records maintained by schools, financial information, contact information, student identification numbers, biometric data, and indirect identifiers that could identify students when combined with other information.
+
+
 ## What Changed Already
 
 - Sandbox assignments are now globally visible instead of being tied to student-specific access.
@@ -108,6 +119,7 @@ Official UVU and FERPA sources used in this analysis:
 - [U.S. Department of Education: Who is a “school official” under FERPA?](https://studentprivacy.ed.gov/faq/who-school-official-under-ferpa)
 - [U.S. Department of Education: FERPA regulations](https://studentprivacy.ed.gov/ferpa?exp=8)
 - [U.S. Department of Education: May a student identification number be listed as directory information?](https://studentprivacy.ed.gov/faq/may-social-security-number-or-other-student-identification-number-be-listed-directory)
+- [FERPA compliance software](https://secureprivacy.ai/blog/ferpa-compliance-software) 
 
 User-provided mitigation ideas incorporated here as candidate technical directions that still require UVU review and implementation validation:
 
