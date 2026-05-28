@@ -4,10 +4,10 @@ This file tracks only active, unresolved implementation questions that cut acros
 
 Resolved decisions should be moved out of this file and into:
 
-- `docs/backend_implementation/jaxon_implementation/decisions.md` for product or policy decisions
-- `docs/backend_implementation/jaxon_implementation/technical_specs.md` for behavior or contract details
-- `docs/planning/sprint_plan.md` for proof, validation, acceptance standards, or delivery controls
-- `docs/planning/product_backlog.md` for story or backlog work
+- `docs/backend_implementation/decisions.md` for product or policy decisions
+- `docs/technical_specs.md` for behavior or contract details
+- `docs/planning/delivery_controls.md` for Definition of Done, hard scope boundaries, and delivery controls
+- `docs/planning/backlog.md` for story, backlog, or delivery-checklist work
 
 Do not keep resolved discussion history here.
 Do not add routine implementation chores here unless they still require a real team decision.
@@ -25,7 +25,7 @@ Why this is still open:
 - we have not yet defined the exact proof standard that counts as "verified" for implementation signoff or go-live readiness
 
 Resolution destination:
-`docs/planning/sprint_plan.md` for the proof/acceptance procedure, and `technical_specs.md` if the cleanup verification behavior becomes part of the documented runtime contract
+`docs/planning/backlog.md` for the proof-standard task, `docs/planning/delivery_controls.md` if the Definition of Done changes, and `technical_specs.md` if cleanup verification becomes part of the documented runtime contract
 
 ### 2. Dell workstation concurrency policy
 
@@ -36,7 +36,7 @@ Provisional recommendation based on the current Dell workstation specs:
 - treat RAM, host OS overhead, Docker overhead, and Kata VM overhead as the limiting factors rather than raw CPU core count
 - ignore the GPU for M1 concurrency planning; it does not materially change the Judge0 + Kata execution budget
 - start with a conservative execution cap of `2` concurrent Judge0 + Kata grading jobs on this machine
-- treat `3` as the first benchmark target and `4` as the highest candidate cap worth testing before go-live
+- treat `3` as the first benchmark target and `4` as the highest cap worth testing before go-live
 - do not approve anything above `4` concurrent Judge0 + Kata jobs on this `32GB` workstation unless sustained benchmarking shows comfortable memory headroom and stable cleanup behavior
 - keep queueing and backpressure enabled for all work beyond the approved execution cap
 - document the final policy separately for:
@@ -58,7 +58,7 @@ Why this is still open:
 - the exact worker caps, queueing policy, and backpressure thresholds are still not documented as an approved operating rule
 
 Resolution destination:
-`decisions.md` for the operating-policy decision, and `docs/planning/sprint_plan.md` for the required benchmarking and validation work
+`decisions.md` for the operating-policy decision, and `docs/planning/backlog.md` for the required benchmarking and validation work
 
 ### 3. Azure and UVU compliance confirmation checklist
 
@@ -70,7 +70,7 @@ Why this is still open:
 - the exact confirmation checklist, evidence, and approver expectations are not yet written down in one place
 
 Resolution destination:
-`decisions.md` for the approval requirements, and `docs/planning/sprint_plan.md` for the confirmation tasks that must be completed before go-live
+`decisions.md` for the approval requirements, and `docs/planning/backlog.md` for the confirmation tasks that must be completed before go-live
 
 ### 4. Real Canvas format validation target
 
@@ -82,7 +82,7 @@ Why this is still open:
 - we still have not defined the exact real-world Canvas samples or format variants that must be tested before we treat those workflows as dependable
 
 Resolution destination:
-`technical_specs.md` for any finalized format/behavior rules, and `docs/planning/sprint_plan.md` for the concrete validation matrix and acceptance tests
+`technical_specs.md` for any finalized format/behavior rules, and `docs/planning/backlog.md` for the concrete validation matrix and acceptance tests
 
 ## Removal Rule
 

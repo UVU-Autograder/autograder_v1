@@ -141,6 +141,7 @@
   - success, warning, failure, and timeout counts
   - sanitized token usage
   - coarse failure category summary only
+- Admin-only monitoring surfaces may summarize sanitized token usage, sandbox upload-limit state, and worker/capacity status from run summaries and operational metrics.
 - `RunSummary` must not store:
   - student code
   - filenames or submission-path fragments
@@ -178,7 +179,7 @@
 - generated sandbox feedback artifacts
 - temporary official feedback artifacts before packaging
 
-These remain outside persistent storage and are represented conceptually in `docs/backend_implementation/jaxon_implementation/diagrams/ephemeral_pipeline_diagram.md`.
+These remain outside persistent storage and are represented conceptually in `docs/backend_implementation/diagrams/ephemeral_pipeline_diagram.md`.
 
 ## Execution Engine Notes
 
@@ -212,6 +213,8 @@ Notes:
 
 - `staff_access` stores course scope, optional section scope, and role semantics.
 - Admin workflows must support creating, editing, deactivating, and assigning staff accounts, roles, and course or section access grants.
+- Admin workflows must support creating, editing, and deactivating courses and sections.
+- Admin-only monitoring may surface token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
 - Instructors can see what other teachers are doing in assigned courses but may not modify grading setup outside their own assigned sections.
 - IAs are section-limited validators in M1, with read-only access to assignment configuration in assigned sections.
 - Official batch execution is section-scoped even though assignments are course-owned.

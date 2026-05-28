@@ -5,8 +5,8 @@ This document is an internal engineering analysis of the current FERPA posture o
 It complements:
 
 - [implementation_questions.md](/abs/c:/Users/Jaxon/coding/autograder_v1/docs/implementation_questions.md)
-- [decisions.md](/abs/c:/Users/Jaxon/coding/autograder_v1/docs/backend_implementation/jaxon_implementation/decisions.md)
-- [technical_specs.md](/abs/c:/Users/Jaxon/coding/autograder_v1/docs/backend_implementation/jaxon_implementation/technical_specs.md)
+- [decisions.md](/abs/c:/Users/Jaxon/coding/autograder_v1/docs/backend_implementation/decisions.md)
+- [technical_specs.md](/abs/c:/Users/Jaxon/coding/autograder_v1/docs/technical_specs.md)
 
 ## Current Posture
 
@@ -25,34 +25,11 @@ That change does not clear the whole system. The official grading workflow still
 - [Who is a “school official” under FERPA?](https://studentprivacy.ed.gov/faq/who-school-official-under-ferpa)
 - [FERPA regulations](https://studentprivacy.ed.gov/ferpa?exp=8)
 
-### §99.31 Under what conditions is prior consent not required to disclose information?
-FERPA permits disclosure to contractors who are “under the direct control of the agency or institution with respect to the use and maintenance of education records” [34 C.F.R. § 99.31(a)(1)(i)(B)(2)](https://studentprivacy.ed.gov/ferpa?exp=8#0.1_se34.1.99_131). So, if the school develops and operates the autograding software itself, then FERPA generally considers the school to have “direct control” over the system and the education records used in it. A student’s class schedule is usually considered an “education record” under Family Educational Rights and Privacy Act (FERPA). The school can often use that information internally without getting separate student consent if the use is connected to legitimate educational operations.
+### Institutional Control Requirements
 
-For example, the school may use class schedules to:
-- enroll students into the correct autograder course,
-- connect assignments to the correct section,
-- identify instructors/TAs,
-- manage submissions and grades.
+FERPA can permit school-official or contractor access when the institution keeps direct control over the use and maintenance of education records. For this project, that means the official grading workflow needs more than a good zero-retention design: it needs UVU approval, role-bounded access, approved infrastructure, and approved handling for any external service such as Azure OpenAI.
 
-This is usually allowed because it supports a “legitimate educational interest.”
-
-However, the school still must:
-
-- limit access to authorized people,
-- protect the records,
-- use the data only for educational/administrative purposes,
-- maintain security/privacy controls.
-
-
-### FERPA Compliance Software
-FERPA compliance software: represents specialized technology platforms helping schools automate, monitor, and demonstrate compliance with privacy and security requirements.
-
-Core FERPA requirements software must support include but not limited to: 
-- Access Control and Role-Based Permissions: Software should restrict users to only the student data necessary for their job role, such as teacher or administrator. Access permissions should automatically update or expire when a user’s role or employment status changes.
-- Record Access Logging and Audit Trails: Systems must keep detailed logs of who accessed student records, when they accessed them, and what actions they performed. Secure audit trails help schools meet FERPA requirements and investigate unauthorized access.
-- Data Minimization and Retention Controls: Schools should keep student records only as long as necessary and securely delete outdated data according to retention policies. Limiting unnecessary stored records reduces privacy and security risks.  
-
- FERPA does not mandate specific software, but it requires schools to implement reasonable security measures protecting education records.  Data must be protected under FERPA? All personally identifiable information in education records requires protection. This includes academic records (grades, transcripts), disciplinary records, health records maintained by schools, financial information, contact information, student identification numbers, biometric data, and indirect identifiers that could identify students when combined with other information.
+The current M1 design supports that direction by keeping the sandbox public and non-student-specific, limiting persistent data to metadata, and making cleanup part of the grading contract. Those controls reduce risk but do not by themselves authorize live official grading with education-record-linked data.
 
 
 ## What Changed Already
@@ -73,7 +50,7 @@ Those changes reduce the chance that the student-facing sandbox itself becomes a
 | Official grading ingest, processing, and exports are still live education-record workflows               | Canvas ZIPs, submission-linked identifiers, Canvas-ready grade CSVs, and per-student feedback ZIPs can all contain or produce education-record data; instructor upload or convenience does not by itself make the workflow institutionally authorized | No                                                                                          | Treat live official grading as institutionally gated and require formal UVU approval for ingest, processing, export generation, and handling before production use                                                                            | Restrict the app to synthetic, pseudonymized, or instructor-de-identified data until approval exists; disable live student export generation and keep real-course use in preview-only mode                                         |
 | Azure OpenAI with live student submissions                                                               | Sending student code, traceback context, or grading context to Azure is a third-party disclosure unless UVU has approved that exact use under its governance model                                         | No                                                                                          | Pursue UVU approval for Azure OpenAI use through UVU's secure enterprise Microsoft/Azure tenant rather than an independent developer tenant, and require confirmation before live use                                                        | Use a local open-weight model on the Dell workstation if Azure approval is denied; or disable AI feedback for live student data                                                                                                   |
 | Approved hardware does not equal approved workflow                                                       | FERPA compliance turns on institutional control and authorized use, not just device ownership or on-prem location; UVU faculty guidance also says student records should be stored on approved UVU systems | Partly. The current docs assume Dell-workstation permission, but not full workflow approval | Formalize the tool's status through UVU's Software Approval Process, routed through the myUVU portal and reviewed through the Academic Technology Steering Committee (ATSC) and related UVU governance bodies before live student-record use | Keep the app limited to non-live, non-student-record workflows until institutional approval is obtained                                                                                                                           |
-| Manual ZIP and CSV handling increases unmanaged disclosure risk                                          | Manual instructor export/import workflows create more opportunities for local copies, ad hoc sharing, and handling outside approved controls                                                               | No                                                                                          | Prefer a governed Canvas integration path over manual ingest/export where feasible                                                                                                                                                           | Evaluate Canvas LTI 1.3 plus anonymous-grading support so the app can process anonymous assignment-specific identifiers instead of raw student identifiers; treat this as a candidate architecture, not a current approved design |
+| Manual ZIP and CSV handling increases unmanaged disclosure risk                                          | Manual instructor export/import workflows create more opportunities for local copies, ad hoc sharing, and handling outside approved controls                                                               | No                                                                                          | Prefer a governed Canvas integration path over manual ingest/export where feasible                                                                                                                                                           | Evaluate Canvas LTI 1.3 plus anonymous-grading support so the app can process anonymous assignment-specific identifiers instead of raw student identifiers; treat this as a possible architecture, not a current approved design |
 
 ## Preferred Path
 
@@ -118,7 +95,7 @@ Official UVU and FERPA sources used in this analysis:
 - [U.S. Department of Education: May a student identification number be listed as directory information?](https://studentprivacy.ed.gov/faq/may-social-security-number-or-other-student-identification-number-be-listed-directory)
 - [FERPA compliance software](https://secureprivacy.ai/blog/ferpa-compliance-software) 
 
-User-provided mitigation ideas incorporated here as candidate technical directions that still require UVU review and implementation validation:
+User-provided mitigation ideas incorporated here as possible technical directions that still require UVU review and implementation validation:
 
 - Canvas LTI 1.3 plus anonymous-grading support instead of manual ZIP/CSV handling
 - local open-weight LLM fallback on the Dell workstation

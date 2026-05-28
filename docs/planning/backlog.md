@@ -1,49 +1,240 @@
-# UVU Autograder v1 - Backlog Index
+# UVU Autograder v1 - M1 Delivery Checklist
 
-> Target: Testable M1 for zero-retention grading with staff `@uvu.edu` authentication and globally visible student sandbox access
-> Team: 5 developers, half time (~35-65 hrs/week total)
-> Window: 8-9 weeks
-> Backlog tracked in: GitHub Projects (Issues + Milestones)
-> Last updated: May 4, 2026
+> Product Goal: deliver a testable M1 for zero-retention grading with staff `@uvu.edu` authentication and globally visible student sandbox access.
+> Team: 3 frontend developers and 2 backend developers, part time.
 
-This file is the planning front door for the current Jaxon implementation track. Canonical product decisions, runtime behavior, and frontend surface contracts live in the linked source-of-truth docs rather than being duplicated here.
+This file is the primary M1 delivery checklist. It combines overall deliverables with the specific implementation work the team needs to complete. Delivery cadence, Definition of Done, and hard scope boundaries live in [delivery_controls.md](delivery_controls.md).
 
 ## Source Of Truth
 
-- [decisions.md](../backend_implementation/jaxon_implementation/decisions.md) - product, policy, and M1 assumption decisions
-- [technical_specs.md](../backend_implementation/jaxon_implementation/technical_specs.md) - backend/system behavior, data contracts, runtime limits, and deployment shape
+- [decisions.md](../backend_implementation/decisions.md) - product, policy, and M1 assumption decisions
+- [technical_specs.md](../technical_specs.md) - backend/system behavior, data contracts, runtime limits, and deployment shape
 - [frontend_implementation.md](../frontend_implementation/frontend_implementation.md) - routes, UI surfaces, and frontend constraints
-- [sprint_plan.md](sprint_plan.md) - sprint goals, deliverables, deferrals, activities, and exit criteria
-- [product_backlog.md](product_backlog.md) - epics, stories, priorities, and point totals
-- [sprint_plan.md](sprint_plan.md#action-items) - action items, Definition of Done, and M1 scope boundaries
+- [delivery_controls.md](delivery_controls.md) - review cadence, Definition of Done, and M1 scope boundaries
 
-Supporting note: `docs/backend_implementation/easton_implementation/ClassFlow_diagram.md` remains an older working artifact. The current diagram set for implementation lives in `docs/backend_implementation/jaxon_implementation/diagrams/`.
+## Overall Deliverables
 
-## Backlog Summary
+| Done | Deliverable                                                             | Completion Evidence                                                                                                                                          |
+| ---- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [ ]  | Shared architecture and frontend/backend contracts are confirmed        | Team can explain the backend/frontend boundary, shared routes, API responsibilities, and current diagram set.                                                |
+| [ ]  | Local stack and metadata-only persistence foundation is working         | Developers can run the local stack; Postgres stores only approved metadata tables; Redis/Celery/Judge0 integration path and Compose harness are documented.  |
+| [ ]  | Judge0/Kata cleanup proof is established                                | The team has evidence that Judge0 submission/result artifacts and Kata execution state are destroyed after result retrieval.                                 |
+| [ ]  | Staff `@uvu.edu` authentication and role boundaries are implemented     | Staff sign-in rejects non-UVU accounts; admin, instructor, and IA access rules are enforced.                                                                 |
+| [ ]  | Admin course, section, staff, and monitoring workflows are usable       | Admins can manage courses, sections, access grants, and admin-only operational monitoring for token usage, upload limits, and worker/capacity status.        |
+| [ ]  | Assignment setup and `config.json` round trip are usable                | Staff can create or open an assignment, edit setup through the wizard, import valid config, and download the current config.                                 |
+| [ ]  | Assignment artifact management is usable                               | Staff can manage pytest files, model solutions, and support files through lightweight `assignment_artifacts` storage references.                              |
+| [ ]  | Ephemeral Canvas ZIP ingest is implemented                              | Staff can upload a Canvas ZIP; malformed archives, path traversal, and unmatched filenames surface actionable errors without persistent student submissions. |
+| [ ]  | Grading chain works with AST checks, Judge0/Kata execution, and cleanup | Official and sandbox grading can run through AST checks, Judge0/Kata execution, structured results, and post-result cleanup.                                 |
+| [ ]  | Safe Judge0/Kata worker caps are documented                             | Dell-workstation benchmarking defines approved grading worker caps before grading-pipeline implementation begins.                                            |
+| [ ]  | Azure feedback is available only after privacy confirmation             | Azure/UVU readiness is confirmed before live student code use; feedback explains test results without re-grading.                                            |
+| [ ]  | Public sandbox workflow is usable                                       | A sandbox user can select an enabled course and assignment, upload code, see quota state, and receive on-screen projected feedback.                          |
+| [ ]  | Official review and export workflow is usable                           | Staff can monitor an official run and download separate Canvas-grade CSV and per-student feedback ZIP outputs.                                               |
+| [ ]  | Compliance hardening and realistic end-to-end validation are complete   | Access control, cleanup, Azure readiness, performance targets, and real Canvas format assumptions are validated with realistic data.                         |
 
-| Epic      | Name                               | M1 Points      | Sprint |
-| --------- | ---------------------------------- | -------------- | ------ |
-| E0        | Architecture and Design            | 10             | S0     |
-| E1        | Environment and Infrastructure     | 17             | S0     |
-| E2        | Auth and Identity                  | 12             | S1     |
-| E3        | Assignment and Config Setup        | 17             | S1     |
-| E4        | Ephemeral Submission Ingestion     | 13             | S1     |
-| E5        | Grading Pipeline and AI Enrichment | 33             | S2     |
-| E6        | Student Sandbox                    | 16             | S3     |
-| E7        | Instructor Batch Run UX            | 8              | S3     |
-| E8        | Export Packaging                   | 10             | S3     |
-| **Total** |                                    | **136 points** |        |
+## Operating Guidelines
 
-## Capacity Reality Check
+- Work through the checklist in priority order when dependencies allow.
+- Keep assigned work small enough for a student developer to complete in a focused day when possible.
+- Review progress weekly against this checklist and the Definition of Done in [delivery_controls.md](delivery_controls.md).
+- Adjust assignments based on actual student availability, exams, jobs, vacations, and skill bottlenecks.
+- Prefer completing fewer end-to-end deliverables over starting many disconnected tasks.
+- Reduce scope before weakening zero-retention, FERPA, authentication, or cleanup safeguards.
 
-```text
-Conservative (35 hrs/week, 8 weeks, 3 hrs/point): ~93 points
-Optimistic   (65 hrs/week, 8 weeks, 3 hrs/point): ~173 points
-With Sprint 4 buffer absorbed:                     ~185-195 points realistic
-```
+## Detailed M1 Checklist
 
-With the student sandbox restored to M1 and the operational hardening stories added, the backlog remains above the conservative delivery line but inside the realistic range for a 5-developer team. If priorities tighten:
+### Architecture And Shared Contracts
 
-- protect Epics 1-5 as the core shared platform and grading path
-- protect the Must stories in Epic 6 before adding staff UX polish
-- cut staff filtering polish before cutting zero-retention guarantees or config round-trip behavior
+- [ ] Review ER diagram as the current persistent-data reference.
+- [ ] Review class and pipeline diagrams as current workflow references.
+- [ ] Confirm FastAPI router skeleton and request/response boundaries.
+- [ ] Confirm prompt integration boundaries.
+- [ ] Review staff and sandbox wireframes.
+- [ ] Review frontend route structure and component hierarchy.
+- [ ] Review shared API and UI contracts before dependent feature work proceeds.
+- [ ] Capture implementation action items that block shared-contract signoff.
+- [ ] Keep `docs/backend_implementation/easton_implementation/ClassFlow_diagram.md` separate from the current implementation diagrams.
+
+### Environment And Metadata Foundation
+
+- [ ] Agree on repo structure with `/frontend` for Next.js and `/backend` for FastAPI.
+- [ ] Bootstrap the Next.js app using the App Router.
+- [ ] Bootstrap the FastAPI app with routers, schemas, services, and prompt integration boundaries.
+- [ ] Add PostgreSQL schema and Alembic initial migration for metadata-only tables.
+- [ ] Include metadata tables for users, roles, courses, sections, staff access, assignments, assignment configs, assignment concepts, assignment artifacts, test cases, and run summaries.
+- [ ] Run Redis locally.
+- [ ] Wire Celery to Redis.
+- [ ] Make the Judge0 execution service reachable from the backend integration path.
+- [ ] Document Judge0 service auth and config wiring for FastAPI and Celery.
+- [ ] Validate Kata runtime requirements for the planned Judge0 isolation layer.
+- [ ] Document Dell-workstation deployment shape for Next.js, FastAPI, Postgres, Redis, Celery, Judge0, and Kata integration.
+- [ ] Support local development and integration-style testing through Docker Compose for Postgres, Redis, Celery, FastAPI, Next.js, and the chosen Judge0 test topology.
+- [ ] Validate that `docker-compose.testing.yml` remains documented as an integration harness even where local machines cannot fully reproduce the planned Kata isolation setup.
+- [ ] Document and validate Judge0 submission/result deletion, including `DELETE /submissions/{token}` immediately after result retrieval.
+- [ ] Benchmark safe Judge0 + Kata concurrency on the Dell workstation and document worker caps before grading-pipeline implementation begins.
+- [ ] Host Monaco Editor locally in the frontend scaffold for planned editor and review workflows.
+- [ ] Document required environment variables in `.env.example`, including Azure OpenAI settings.
+- [ ] Update README so a developer can bring up the local stack.
+- [ ] Add a seed path for one course, course-level `Concepts Covered`, one assignment, assignment concept additions, one app-owned `config.json`, and one model solution.
+
+### Staff Auth And Access Control
+
+- [ ] Configure staff Microsoft OAuth through NextAuth.
+- [ ] Reject staff login callbacks that do not end in `@uvu.edu`.
+- [ ] Add role-based route protection in Next.js.
+- [ ] Add role-based API protection in FastAPI.
+- [ ] Support minimal staff role management for admin, instructor, and IA.
+- [ ] Add admin course management for creating, editing, and deactivating courses.
+- [ ] Add admin section management for creating, editing, and deactivating sections.
+- [ ] Add admin staff/user management for assigning instructors and IAs to course or section scopes.
+- [ ] Add admin-only monitoring for Azure token usage, sandbox upload-limit state, and worker/capacity status.
+- [ ] Keep IA access strict by default and exclude assignment-config authoring in M1.
+- [ ] Ensure instructors can view assigned courses and edit only explicitly assigned sections.
+- [ ] Ensure IAs can view only explicitly assigned sections for grading validation.
+- [ ] Ensure public sandbox users cannot access staff workflow pages or export flows.
+
+### Assignment Setup And `config.json`
+
+- [ ] Add assignment creation with course linkage, due date, and Canvas reference metadata.
+- [ ] Build a comprehensive setup wizard for instructor-relevant assignment, rubric, and config fields.
+- [ ] Generate valid app-owned `config.json` from the wizard.
+- [ ] Add validated `config.json` import with clear error display.
+- [ ] Render all instructor-relevant editable fields from the stored app-owned config.
+- [ ] Allow staff to download the current `config.json`.
+- [ ] Add `/staff/courses/[courseId]/assignments/[assignmentId]/artifacts` for assignment-owned grading assets.
+- [ ] Manage pytest file artifacts through lightweight `assignment_artifacts` metadata plus storage-backed file bodies.
+- [ ] Manage model solution artifacts through lightweight `assignment_artifacts` metadata plus storage-backed file bodies.
+- [ ] Manage support-file artifacts through lightweight `assignment_artifacts` metadata plus storage-backed file bodies.
+- [ ] Validate artifact metadata before file bodies are used for model-solution validation or grading.
+- [ ] Add course-level `Concepts Covered` defaults editor.
+- [ ] Add assignment-level `Concepts Covered` additions editor.
+- [ ] Show a merged effective `Concepts Covered` preview.
+- [ ] Let instructors edit assignment-specific concept additions directly.
+- [ ] Keep human-authored grading fields in the app-owned config instead of duplicating them in `TestCase`.
+- [ ] Derive `TestCase` projections from the app-owned config where query or UI behavior needs them.
+
+### Ephemeral Canvas ZIP Ingest
+
+- [ ] Add Canvas ZIP upload endpoint with size validation.
+- [ ] Add upload type validation.
+- [ ] Reject malformed, non-Canvas, or unrecognized ZIPs before queueing.
+- [ ] Block ZIP path traversal before extraction.
+- [ ] Extract ZIP contents only in RAM or an ephemeral temp directory.
+- [ ] Parse Canvas filenames using Canvas-provided identifiers.
+- [ ] Report unmatched filenames in the staff UI.
+- [ ] Report malformed archive failures in the staff UI.
+- [ ] Create transient official-run metadata with assignment link, uploader, aggregate status, and file counts only.
+- [ ] Avoid persistent storage of raw student submissions, filenames, tracebacks, or detailed failure text.
+
+### AST, Judge0, And Kata Grading Pipeline
+
+- [ ] Implement AST checker for merged `Concepts Covered` whitelist enforcement.
+- [ ] Detect future-concept usage before execution and record warnings per result.
+- [ ] Support hard-block behavior for configured security-sensitive AST findings.
+- [ ] Integrate Judge0 through `httpx`.
+- [ ] Validate Judge0 auth/config wiring.
+- [ ] Configure Judge0 resource limits for the M1 target: `10s` timeout, `256MB` memory limit, and network-disabled student execution.
+- [ ] Implement language-to-Judge0 mapping for the current M1 supported language.
+- [ ] Run pytest execution through Judge0.
+- [ ] Parse pytest output into structured test results.
+- [ ] Normalize output with `python_submitty_utils`.
+- [ ] Integrate Judge0 structured status handling into grading outcomes.
+- [ ] Capture compile/runtime metadata only for non-persistent grading feedback and status shaping.
+- [ ] Upload or edit pytest file bodies through storage-backed assignment artifact references.
+- [ ] Run model solutions against assignment tests through Judge0, not on the host.
+- [ ] Build Celery grading chain for official runs.
+- [ ] Build Celery grading chain for sandbox runs.
+- [ ] Align Celery worker concurrency to documented Judge0 + Kata execution capacity.
+- [ ] Add Redis-backed transient run status with `queue`, `run`, `complete`, and `failure` states.
+- [ ] Add `GET /runs/{id}/status`.
+- [ ] Poll run status from staff and sandbox views every `2s` while the run is queued or running.
+- [ ] Finalize worker-cap and backpressure policy from Dell-workstation benchmark results.
+- [ ] Retry failed jobs up to 3 times with backoff.
+- [ ] Free workers immediately on timeout and record `failed:timeout`.
+- [ ] Verify Judge0 submission/result deletion after each official and sandbox execution.
+- [ ] Verify Kata-backed execution artifact deletion after each official and sandbox execution.
+- [ ] Destroy extracted student files, generated code artifacts, and temporary feedback files at the end of each official or sandbox run.
+
+### Azure Feedback And Privacy Confirmation
+
+- [ ] Confirm Azure OpenAI zero-retention/privacy posture before live student grading.
+- [ ] Confirm UVU/Microsoft FERPA coverage assumptions before live student grading.
+- [ ] Write the Azure/UVU compliance confirmation checklist and approval evidence expectations before go-live.
+- [ ] Use UVU-approved Azure OpenAI configuration before sending live student code.
+- [ ] Inject allowed-concepts context into the Azure OpenAI prompt.
+- [ ] Generate rubric-context explanations and feedback without re-grading correctness.
+- [ ] Enforce hallucination guard: tests remain ground truth and the LLM explains rather than re-evaluates.
+- [ ] Show auto-populated LLM feedback beside test-case results after each sandbox run.
+- [ ] Log Azure token usage in `run_summaries` or equivalent non-sensitive metadata storage.
+- [ ] Rotate and purge sensitive debug traces within `24h` if temporary debug traces are enabled.
+
+### Public Student Sandbox
+
+- [ ] Provide public sandbox entry without student authentication.
+- [ ] Show globally visible sandbox-enabled courses only.
+- [ ] Show globally visible sandbox-enabled assignments only.
+- [ ] Add student course list and per-course assignment selection UI.
+- [ ] Add student upload flow for supported assignment file formats.
+- [ ] Enforce `5 uploads per hour` per sandbox session.
+- [ ] Show remaining uploads in the current hour before and after each run.
+- [ ] Handle backend `429` responses with clear limit-reached messaging.
+- [ ] Show projected score on screen.
+- [ ] Show projected feedback with warnings and test summaries on screen.
+- [ ] Show assignment rubric information in the sandbox workspace.
+- [ ] Show assignment constraints in the sandbox workspace.
+- [ ] Show terminal/output information where grading results include it.
+- [ ] Show test-result details with passed/failed counts.
+- [ ] Make zero-retention behavior explicit in student-facing messaging.
+- [ ] Clear projected results on sandbox session exit or completion.
+
+### Official Run Review And Export Packaging
+
+- [ ] Add official run list view with assignment, uploader, aggregate status, and section-aware context.
+- [ ] Add official run detail view with current processing counts.
+- [ ] Show per-student pass/fail state during in-session official review.
+- [ ] Show warning and hard-block summaries during in-session official review.
+- [ ] Show unmatched filename failures during in-session official review.
+- [ ] Support per-student feedback preview before export.
+- [ ] Keep official review preview-only in M1 with no in-app grade override.
+- [ ] Keep official review preview-only in M1 with no feedback editing.
+- [ ] Use derived artifacts and structured app data only; do not add raw student-submission download workflows.
+- [ ] Add optional filtering by success, warning, hard-block, timeout, and parse failure if capacity allows.
+- [ ] Warn staff that detailed official results are ephemeral and will be destroyed after download or request completion.
+- [ ] Produce Canvas-compatible grade CSV export.
+- [ ] Render per-student staff-facing HTML feedback artifacts.
+- [ ] Package per-student HTML feedback artifacts into a per-run ZIP.
+- [ ] Provide separate Canvas-grade CSV and feedback-ZIP download actions.
+- [ ] Use stable export naming based on assignment identifier plus generated export identifier.
+- [ ] Fail safely with actionable errors if packaging is incomplete.
+- [ ] Fail fast with actionable errors for malformed or unrecognized ZIP submissions.
+- [ ] Document that Canvas grade import is assumed and automated feedback upload is out of scope for M1.
+
+### End-To-End Validation And Compliance Hardening
+
+- [ ] Test an official run with a realistic class-size dataset of 30-50 submissions.
+- [ ] Test the student sandbox flow end to end from assignment selection through cleanup.
+- [ ] Define the Judge0/Kata cleanup proof standard required for implementation signoff.
+- [ ] Define real Canvas ZIP and grade-CSV validation samples before treating ingest/export as dependable.
+- [ ] Validate ZIP upload acceptance under `2s` for files up to `50MB`.
+- [ ] Validate `200` official submissions complete within `40 min` on the Dell workstation.
+- [ ] Validate status polling responses under `200ms`.
+- [ ] Validate export packaging overhead under `2 min` for `200` submissions after grading completes.
+- [ ] Validate `@uvu.edu` staff login succeeds.
+- [ ] Validate non-UVU staff login is rejected.
+- [ ] Validate public sandbox visibility shows only sandbox-enabled assignments.
+- [ ] Validate public sandbox does not require student login or UVU ID entry.
+- [ ] Validate admin, instructor, and IA routes respect role checks.
+- [ ] Validate sandbox users cannot reach staff workflow pages.
+- [ ] Validate network access from Judge0 student execution is blocked.
+- [ ] Validate Kata-backed VM isolation is active in the planned execution environment.
+- [ ] Validate malicious ZIP path traversal is rejected.
+- [ ] Validate configured hard-block findings stop execution.
+- [ ] Validate timeout handling with `while True: pass`.
+- [ ] Validate export totals against rubric config and pytest results.
+- [ ] Validate extracted official files are deleted after request completion.
+- [ ] Validate sandbox upload artifacts are deleted after session exit or completion.
+- [ ] Validate temporary feedback artifacts are deleted after packaging.
+- [ ] Validate no student code remains in persistent storage.
+- [ ] Smoke test on the Dell-workstation deployment.
+- [ ] Review deployment configuration.
+- [ ] Update README with deployment and operating notes.
+- [ ] Record a demo walkthrough.

@@ -35,6 +35,7 @@ Open questions live in `docs/implementation_questions.md`.
 | Frontend editor | Monaco Editor, locally hosted | Planned editor and review surface for M1 |
 | Workspace lifecycle | Explicit shared integration | Cleanup is core zero-retention behavior, not a hidden detail |
 | Permission baseline | M1 actors are `admin`, `instructor`, `IA`, and `student`, with section-scoped staff access | Defines the current role model around course-shared setup and section-scoped run authority |
+| Admin management scope | Admins manage courses, sections, staff accounts, roles, access grants, and admin-only monitoring in M1 | Matches the prototype scope while keeping operational monitoring away from instructor and IA surfaces |
 | IA assignment-config authority | Read-only in M1 | Keeps role-based authorization simple while letting IAs run and review official workflows in assigned sections |
 | Student history | No persistent sandbox attempt history | Maintains zero-retention FERPA alignment |
 | Run summary shape | Minimal aggregate metadata only | Avoids freezing lifecycle timestamps into the current product model |
@@ -48,6 +49,8 @@ Open questions live in `docs/implementation_questions.md`.
 - `Actors`
   - M1 actors are `admin`, `instructor`, `IA`, and `student`
   - staff accounts, roles, and access grants are stored persistently
+  - admins can create, edit, and deactivate courses and sections
+  - admin-only monitoring covers token usage, upload-limit state, and worker/capacity status
   - student access is session-based and zero-retention
   - staff actors authenticate through Microsoft OAuth restricted to `@uvu.edu`
   - student sandbox access does not require a student-specific identity record or roster-derived authorization mapping
