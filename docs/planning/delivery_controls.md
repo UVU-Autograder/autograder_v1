@@ -2,14 +2,6 @@
 
 This file defines static delivery controls for completing the M1 checklist. Product decisions live in [decisions.md](../backend_implementation/decisions.md), runtime contracts live in [technical_specs.md](../technical_specs.md), frontend contracts live in [frontend_implementation.md](../frontend_implementation/frontend_implementation.md), and M1 deliverables live in [backlog.md](backlog.md).
 
-## Review Cadence
-
-- Review [backlog.md](backlog.md) weekly against actual student availability.
-- Keep assigned work small enough for a student developer to complete in a focused day when possible.
-- Reassign work when exams, jobs, vacations, illness, or specialist bottlenecks reduce capacity.
-- Prefer completing fewer end-to-end deliverables over starting many disconnected tasks.
-- Reduce scope before weakening zero-retention, FERPA, authentication, authorization, or cleanup safeguards.
-
 ## Definition of Done
 
 A checklist item is complete when:
@@ -19,10 +11,34 @@ A checklist item is complete when:
 - [ ] no TypeScript or Python type errors on CI
 - [ ] Ruff and ESLint pass
 - [ ] at least one unit or integration test covers the happy path
-- [ ] edge cases handled: bad input, malformed ZIP, unmatched filename, non-UVU login, timeout, cleanup failure, sandbox exit cleanup
+- [ ] risk-based tests cover high-risk paths for the feature: unit, integration, cleanup, FERPA/privacy, or stress coverage as appropriate
+- [ ] edge cases handled: bad input, malformed ZIP, unsafe ZIP path, missing required bundle file, ambiguous entrypoint, unmatched filename, non-UVU login, timeout, cleanup failure, sandbox exit cleanup
 - [ ] no hardcoded secrets or environment-specific values
 - [ ] docs updated if setup or behavior changed
 - [ ] zero-retention cleanup is verified for any item that touches student code or student-facing grading artifacts
+- [ ] cleanup-touching work includes automated cleanup test evidence and Dell-workstation spot-check evidence
+- [ ] multi-file official and sandbox behavior is covered when the item touches ZIP/project bundle intake, validation, preview, or grading
+
+## Risk-Based Testing Matrix
+
+Use this matrix to decide the minimum test shape for M1 work:
+
+| Area | Required coverage |
+| --- | --- |
+| Upload and parsing | Unit tests for ZIP safety, malformed archives, assignment-config bundle validation, and identifier mapping |
+| Grading execution | Integration tests for AST checks, Judge0/Kata execution, timeout handling, and cleanup |
+| Student sandbox | End-to-end test for public assignment selection, ZIP/project bundle upload, quota state, results, preview, and cleanup |
+| Official runs | End-to-end test for Canvas ZIP ingest, multi-file submission bundles, run status, preview, exports, and cleanup |
+| Compliance-sensitive paths | Regression checks that persistent storage and logs do not contain student code, identifiers, filenames, tracebacks, or detailed feedback |
+| Stress and capacity | Dell-workstation validation for current M1 service targets and documented worker caps |
+
+## Launch-Blocking Signoff Gates
+
+- Cleanup proof must show Judge0 deletion, non-retrievability after deletion, ephemeral workspace removal, and Kata execution-state cleanup.
+- Capacity-sensitive work must respect the approved M1 cap of `2` concurrent Judge0/Kata execution slots unless benchmark evidence approves a higher cap.
+- Live-code Azure feedback must remain disabled until written UVU approval and Azure resource/privacy confirmation are complete.
+- M1 validation must use only fake/synthetic data or completely anonymized data with no retained re-identification map.
+- Canvas ZIP ingest and grade CSV export are dependable M1 workflows only after the synthetic fixture and completely anonymized sample validation matrix passes.
 
 ## Hard Scope Boundaries - M1
 
@@ -39,6 +55,9 @@ These are explicitly out of scope for M1. Do not pull them in under deadline pre
 - AI-assisted test generation
 - inline in-editor LLM annotation markers for Monaco code review surfaces
 - student plagiarism detection
+- any M1 plagiarism checker implementation or external plagiarism-report workflow
+- loose multi-file drag-and-drop upload outside the ZIP/project bundle contract
+- in-browser code editing or IDE behavior beyond read-only Monaco preview
 - PDF feedback generation
 - multi-language support beyond Python
 - analytics or class-wide reporting

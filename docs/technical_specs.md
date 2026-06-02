@@ -4,7 +4,7 @@
 
 - Frontend: Next.js in the current local/on-prem M1 stack on the Dell workstation for staff and student interfaces.
 - UI language: TypeScript for frontend type safety.
-- Code editor and review surface: Monaco Editor, locally hosted with the frontend app for current M1 code-editing and review workflows.
+- Code editor and review surface: Monaco Editor, locally hosted with the frontend app for current M1 read-only preview and review workflows.
 - Backend: FastAPI in the current local/on-prem M1 stack for routing, orchestration, and API contracts.
 - Backend language: Python `3.11+`.
 - Execution engine: Judge0 CE for sandboxed code execution with strict resource limits and network-disabled student runs.
@@ -22,8 +22,10 @@
 - Progressive `Concepts Covered` enforcement using AST validation plus LLM prompt context.
 - Zero-retention grading for both official staff runs and student sandbox runs.
 - Staff review uses derived artifacts plus structured in-app review data; M1 does not provide a raw student-submission download workflow.
+- Multi-file support uses ZIP/project bundle uploads for both official staff runs and student sandbox runs.
 - Hallucination guardrails that treat pytest and tracebacks as ground truth and limit the LLM to explanation rather than re-grading.
-- Plagiarism detection remains out of M1 unless UVU approves a local or otherwise institutionally controlled workflow that does not require persistent student-code storage.
+- Plagiarism detection is out of M1.
+- M1 validation uses only fake/synthetic data or completely anonymized data with no retained re-identification map.
 
 ## 3. Open-Source Patterns Reused
 
@@ -38,7 +40,7 @@
 1. Staff uploads a Canvas ZIP for one assignment.
 2. The backend validates the archive and rejects malformed or non-Canvas ZIPs before queueing.
 3. Valid archives are extracted into a shared ephemeral workspace.
-4. Student submissions are graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and Azure OpenAI explanation generation.
+4. Student submission bundles are validated against assignment-config requirements, then graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and Azure OpenAI explanation generation when approved for the data being processed.
 5. Results are packaged into staff-facing export artifacts.
 6. Judge0 result metadata is retrieved and verified, then the app calls `DELETE /submissions/{token}` and Judge0 submission/result artifacts and Kata execution state are destroyed immediately.
 7. Export is returned, then temporary student files and detailed feedback artifacts are destroyed; no raw student-submission download is produced.
@@ -48,13 +50,14 @@
 1. Student opens the sandbox entry flow.
 2. Backend returns globally visible courses and assignments where sandbox access is enabled.
 3. Student selects a visible course and assignment.
-4. Student uploads code for projected grading.
+4. Student uploads a ZIP/project bundle for projected grading.
 5. The backend applies sandbox rate limiting before any grading work starts.
-6. The frontend shows remaining uploads in the current window and a clear limit-reached state if the backend returns a rate-limit response.
-7. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and Azure explanation pipeline.
-8. Projected score, warnings, and feedback appear on screen only.
-9. Execution artifacts are destroyed immediately after result retrieval and verification according to the zero-retention contract, including `DELETE /submissions/{token}` against Judge0 for the retrieved execution record.
-10. Temporary student files and detailed sandbox artifacts are destroyed on completion or session exit.
+6. The backend validates ZIP safety and assignment-config bundle requirements before grading.
+7. The frontend shows remaining uploads, a sanitized file tree, read-only Monaco preview, and a clear limit-reached state if the backend returns a rate-limit response.
+8. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and Azure explanation pipeline when approved for the data being processed.
+9. Projected score, warnings, and feedback appear on screen only.
+10. Execution artifacts are destroyed immediately after result retrieval and verification according to the zero-retention contract, including `DELETE /submissions/{token}` against Judge0 for the retrieved execution record.
+11. Temporary student files and detailed sandbox artifacts are destroyed on completion or session exit.
 
 ### Assignment and grading setup
 
@@ -62,7 +65,7 @@
 2. Authorized staff configure grading data primarily through a comprehensive instructor-facing wizard that generates the app-owned `config.json`, with `config.json` import/export support available as needed.
 3. Assignment metadata (for example name, due date, and points context) is entered manually in M1; Canvas assignment-metadata import is not required.
 4. `Concepts Covered` defaults are maintained at the course level, and each assignment stores additive concept entries only.
-5. pytest-linked tests, model solution content, and test metadata derived from the app-owned config are maintained as assignment-owned grading assets.
+5. pytest-linked tests, model solution content, ZIP/project bundle requirements, and test metadata derived from the app-owned config are maintained as assignment-owned grading assets.
 6. Model solution validation runs through the same Judge0 + Kata execution path used for student code.
 
 ## 5. Data Model
@@ -87,6 +90,7 @@
 - `courses` store the teacher-authored default `Concepts Covered` baseline used across assignments in that course.
 - `assignments` are course-linked, while section-level edit authority is enforced through staff access rules.
 - `assignment_configs` store the app-owned `config.json`, which is the primary editable grading configuration in M1; the frontend wizard is the primary authoring surface for that config.
+- `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
 - `assignment_concepts` store assignment-specific additive concept entries only; the runtime-effective allow-list is derived by merging course defaults with assignment additions when AST checks or UI surfaces need it.
 - `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
 - `test_cases` are optional derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
@@ -123,6 +127,7 @@
   - `support_file`: assignment-owned file content available to grading and test execution as needed
 - `AssignmentArtifact` metadata should stay lightweight in M1: assignment linkage, artifact type, storage reference, and optional filename are sufficient unless later implementation work proves otherwise.
 - `TestCase` is a derived record, not the editable grading definition and not the raw file body.
+- M1 does not provide a separate simple test-case editor; test authoring flows through the wizard/config and pytest artifacts.
 - `AssignmentConfig` / app-owned `config.json` wins if it ever disagrees with a derived `TestCase`; derived records must be regenerated or reconciled rather than edited independently.
 - `TestCase` should minimally capture:
   - assignment linkage
@@ -181,22 +186,49 @@
 
 These remain outside persistent storage and are represented conceptually in `docs/backend_implementation/diagrams/ephemeral_pipeline_diagram.md`.
 
+### ZIP/project bundle contract
+
+- M1 supports ZIP/project bundle uploads for official staff runs and student sandbox runs.
+- Loose multi-file drag-and-drop is out of scope for M1.
+- The app-owned assignment config defines required files, entrypoint, and layout expectations for the bundle.
+- Upload validation must reject:
+  - malformed ZIP files
+  - path traversal attempts before any file is written
+  - unsupported archive structures
+  - missing required files
+  - ambiguous or duplicate entrypoint matches
+  - files that cannot be mapped to the expected assignment layout
+- Official Canvas ZIP ingestion may contain one multi-file submission bundle per student.
+- Student sandbox ZIP upload represents one projected-grading bundle for the selected assignment.
+- File tree and file preview surfaces must use sanitized names only and must not write filenames into persistent run metadata.
+
 ## Execution Engine Notes
 
 - Judge0 is the planned execution engine for M1 and later phases.
 - Kata Containers is the planned VM-based isolation layer for Judge0 and should be treated as part of the core execution design rather than optional hardening.
 - The app uses Judge0's structured execution metadata, including status, execution time, memory usage, exit code, exit signal, and compile output when applicable.
-- Judge0 improves long-term support for richer execution diagnostics and future compiled or multi-file coursework without expanding current M1 scope.
+- Judge0 supports the current M1 ZIP/project bundle direction and future compiled coursework without changing the product's zero-retention contract.
 - The current M1 deployment plan uses local/on-prem Docker on the Dell workstation rather than Railway or another hosted provider.
 - Railway-style hosted deployment is not viable for the current implementation because the Judge0 + Kata execution path depends on the local Docker and hardware/containerization model on the Dell workstation.
 - Judge0's default persistence behavior must not become part of the product model; cleanup must satisfy the zero-retention contract for execution artifacts immediately after result verification and retrieval.
 - The required Judge0 cleanup call is `DELETE /submissions/{token}` immediately after retrieval of the execution result.
+- Cleanup verification must confirm:
+  - `DELETE /submissions/{token}` was issued after result retrieval
+  - the deleted Judge0 submission/result is no longer retrievable
+  - ephemeral local workspace files are removed
+  - Kata execution state is destroyed or no longer reachable
+- Cleanup proof for M1 signoff requires automated integration evidence plus documented Dell-workstation operational spot checks.
 - Capacity planning for Judge0 and Celery is memory-bound on the Dell workstation and must prefer queueing/backpressure over aggressive parallelism.
+- M1 default execution-slot cap is `2` concurrent Judge0/Kata grading jobs.
+- Celery grading concurrency must not exceed the approved execution-slot cap.
+- `3` and `4` concurrent execution slots are benchmark targets; no cap above `4` is approved without new sustained benchmark evidence.
 
 ## Frontend Tooling Notes
 
 - Monaco Editor is a planned M1 dependency and should be locally hosted with the app rather than fetched from a third-party CDN.
-- Monaco supports sandbox code editing and upload assistance plus staff-side code inspection in M1.
+- Monaco is a read-only preview and review surface in M1.
+- Students and staff edit files outside the app, then upload or re-upload ZIP/project bundles.
+- Sandbox and staff review surfaces may show a sanitized file tree and read-only Monaco preview only while the underlying uploaded files remain in ephemeral storage.
 - In M1, LLM feedback is surfaced as a student-sandbox textbox adjacent to test results and auto-shown after each run; it is explanation-only and does not alter grading outcomes.
 - Monaco does not change the persistent data model; it is a frontend/editor dependency and a review surface backed by structured app data rather than raw submission downloads.
 
@@ -234,19 +266,26 @@ Notes:
   - unmatched files are collected and surfaced as actionable ingest errors
   - multiple files for a single student are allowed when they belong to the same extracted submission bundle
   - duplicate or ambiguous identifier matches must fail clearly rather than guessing
+  - submission bundles must also pass the assignment-config ZIP/project bundle requirements before grading
   - resubmission semantics are not persisted as submission history; the uploaded ZIP is treated as the official batch snapshot for that run only
 - Extraction occurs only inside the shared ephemeral workspace lifecycle used by official runs.
 - No student submission should ever be extracted into a shared persistent workspace across runs.
+- M1 Canvas validation uses synthetic Canvas ZIP/CSV fixtures and any available completely anonymized Canvas-shaped samples.
+- M1 does not use live, pseudonymous, or re-identifiable Canvas data for validation.
+- Synthetic Canvas fixtures must cover malformed ZIPs, path traversal, ambiguous filenames, unmatched files, multi-file submission bundles, and Canvas-grade CSV shape.
 
 ## 8. Celery Grading Pipeline
 
 ### Official run
 
-`upload validation -> ephemeral extraction -> per-student AST/concept check -> per-student Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> Azure explanation -> feedback rendering -> export packaging -> cleanup`
+`upload validation -> ephemeral extraction -> bundle validation -> per-student AST/concept check -> per-student Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> Azure explanation when approved -> feedback rendering -> export packaging -> cleanup`
 
 - Per-student parallelization begins only after the official archive has passed validation and been extracted.
+- Per-student bundle validation uses the app-owned assignment config before AST or execution starts.
 - AST/concept checks must evaluate the merged effective concept list derived from current course defaults plus assignment additions.
 - Celery concurrency must respect the Dell workstation's documented memory-tested Judge0 + Kata execution capacity.
+- M1 default Celery grading concurrency must not exceed `2` concurrent Judge0/Kata execution slots.
+- Work beyond the approved execution-slot cap remains queued or backpressured rather than starting additional execution jobs.
 - Failed jobs retry up to `3` times with backoff.
 - Timeout handling must surface an actionable failed state and ensure execution artifacts are not retained after result handling.
 - Official cleanup semantics:
@@ -259,9 +298,11 @@ Notes:
 
 ### Sandbox run
 
-`rate limit -> upload intake -> ephemeral workspace creation -> AST/concept check -> Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> Azure explanation -> on-screen response shaping -> cleanup`
+`rate limit -> ZIP/project bundle intake -> ephemeral workspace creation -> bundle validation -> AST/concept check -> Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> Azure explanation when approved -> on-screen response shaping -> cleanup`
 
 - The sandbox limiter is student-only and must run before grading work begins.
+- Sandbox upload intake accepts ZIP/project bundles only.
+- Bundle validation uses the app-owned assignment config before AST or execution starts.
 - AST/concept checks must evaluate the merged effective concept list derived from current course defaults plus assignment additions.
 - Judge0 cleanup includes `DELETE /submissions/{token}` immediately after the result is read.
 - Sandbox output never becomes a downloadable artifact.
@@ -283,7 +324,7 @@ Notes:
 - M1 official runs expose two separate staff download actions: one Canvas-grade CSV and one ZIP of per-student HTML feedback artifacts.
 - Official review is preview-only in M1; the app does not support in-session grade overrides or feedback editing before export.
 - M1 does not expose a raw student-submission tarball, raw-code ZIP, or equivalent download path.
-- Structured review data may be shown in Monaco-backed or JSON-backed app surfaces without changing the zero-retention contract.
+- Structured review data and read-only Monaco previews may be shown only while ephemeral data exists, without changing the zero-retention contract.
 - Automated Canvas feedback upload or distribution is out of scope for M1.
 - Export artifacts must not imply persistent storage of student code on the server.
 
@@ -291,6 +332,7 @@ Notes:
 
 - On-screen only.
 - Includes projected score, warnings, and AI-backed explanation.
+- May include sanitized file tree and read-only Monaco preview while the sandbox bundle remains in ephemeral storage.
 - Is not downloadable and is not stored persistently.
 
 ## 10. Deployment and Environment
@@ -317,6 +359,8 @@ Notes:
 - Worker concurrency and queue limits must stay within the Dell workstation's documented memory-safe execution envelope.
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
 - Azure privacy readiness: ZDR/privacy posture must be confirmed before live student data use
+- Azure approval readiness: written UVU approval plus Azure resource/privacy confirmation must be complete before live student-code AI feedback
+- Azure is disabled for live, pseudonymous, or real student-derived code unless the UVU/Azure approval checklist is complete
 - Azure logging: token usage only, stored as sanitized aggregate metadata
 
 ### Service targets and reliability guardrails
