@@ -1,6 +1,6 @@
 # UVU Autograder v1 - Delivery Controls
 
-This file defines static delivery controls for completing the M1 checklist. Product decisions live in [decisions.md](../backend_implementation/decisions.md), runtime contracts live in [technical_specs.md](../technical_specs.md), frontend contracts live in [frontend_implementation.md](../frontend_implementation/frontend_implementation.md), and M1 deliverables live in [backlog.md](backlog.md).
+This file defines static acceptance gates for completing the M1 checklist. Product decisions live in [decisions.md](../backend_implementation/decisions.md), runtime contracts live in [technical_specs.md](../technical_specs.md), frontend contracts live in [frontend_implementation.md](../frontend_implementation/frontend_implementation.md), and M1 deliverables live in [backlog.md](backlog.md).
 
 ## Definition of Done
 
@@ -34,8 +34,11 @@ Use this matrix to decide the minimum test shape for M1 work:
 
 ## Launch-Blocking Signoff Gates
 
-- Cleanup proof must show Judge0 deletion, non-retrievability after deletion, ephemeral workspace removal, and Kata execution-state cleanup.
-- Capacity-sensitive work must respect the approved M1 cap of `2` concurrent Judge0/Kata execution slots unless benchmark evidence approves a higher cap.
+- Cleanup proof must show Judge0 deletion, non-retrievability after deletion, ephemeral workspace removal, and Kata execution-state cleanup through automated tests plus a sanitized Dell-workstation spot-check log.
+- Cleanup spot-check notes should be brief and dated: reviewer, app commit, synthetic workload, Judge0 deletion/non-retrievability result, workspace cleanup result, Kata runtime evidence, resource observations, and outcome. Do not include student code, filenames, identifiers, raw tracebacks, detailed outputs, raw Judge0 payloads, secrets, or auth tokens.
+- Judge0 deletion must be enabled and verifiable before live official or live student-derived workflows are allowed.
+- Capacity-sensitive work must respect the approved M1 cap of `2` concurrent Judge0/Kata execution slots unless stability-first benchmark evidence approves a higher cap.
+- Benchmark evidence must use mixed synthetic workloads and pass cleanup, no-crash, queue/backpressure, and service-target checks before a cap of `3` or `4` is approved.
 - Live-code Azure feedback must remain disabled until written UVU approval and Azure resource/privacy confirmation are complete.
 - M1 validation must use only fake/synthetic data or completely anonymized data with no retained re-identification map.
 - Canvas ZIP ingest and grade CSV export are dependable M1 workflows only after the synthetic fixture and completely anonymized sample validation matrix passes.

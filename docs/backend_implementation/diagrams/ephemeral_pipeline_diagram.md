@@ -19,7 +19,7 @@ flowchart TD
 
 ## Diagram Notes
 
-- Persistent inputs such as assignment config, assignment artifacts, derived test metadata, and roster-backed authorization inform the workflow but are not recreated as persistent outputs.
+- Persistent inputs such as assignment config, assignment artifacts, derived test metadata, and staff access checks inform the workflow but are not recreated as persistent outputs.
 - Cleanup is mandatory for both official and sandbox workflows.
 - The diagram is intentionally technology-neutral; concrete execution, AI, queue, and storage choices live in the prose specs.
-- Official-run review behavior is not modeled here because that product decision is still open.
+- Official-run review is preview-only in M1; this diagram focuses on the ephemeral grading and cleanup lifecycle.

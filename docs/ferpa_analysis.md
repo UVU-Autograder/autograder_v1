@@ -4,8 +4,9 @@ This document is an internal engineering analysis of the current FERPA posture o
 
 It complements:
 
-- [decisions.md](/abs/c:/Users/Jaxon/coding/autograder_v1/docs/backend_implementation/decisions.md)
-- [technical_specs.md](/abs/c:/Users/Jaxon/coding/autograder_v1/docs/technical_specs.md)
+- [decisions.md](backend_implementation/decisions.md)
+- [technical_specs.md](technical_specs.md)
+- [ferpa_questions.md](ferpa_questions.md), which now tracks only unresolved questions
 
 ## Current Posture
 
@@ -29,6 +30,15 @@ That change does not clear the whole system. The official grading workflow still
 FERPA can permit school-official or contractor access when the institution keeps direct control over the use and maintenance of education records. For this project, that means the official grading workflow needs more than a good zero-retention design: it needs UVU approval, role-bounded access, approved infrastructure, and approved handling for any external service such as Azure OpenAI.
 
 The current M1 design supports that direction by keeping the sandbox public and non-student-specific, limiting persistent data to metadata, and making cleanup part of the grading contract. Those controls reduce risk but do not by themselves authorize live official grading with education-record-linked data.
+
+Answered project questions incorporated into this analysis:
+
+- Moving from testing mode to real-course grading requires a request through the myUVU Software Approval Process for ATSC and related institutional review.
+- If the autograder cannot map assignment-specific identifiers back to student-identifiable information, that reduces the direct-identification risk; however, exports that can be mapped back through Canvas still need an approved mapping and handling process.
+- External vendor APIs require UVU-approved contracting controls, including HECVAT review and an active Data Protection Agreement where applicable.
+- UVU-approved Azure AI/OpenAI use must be confirmed for the specific resource and workflow before live student-derived code is sent; approval cannot be inferred from an independent developer tenant.
+- Moving from local hosting to cloud deployment requires an active DPA that places the vendor under UVU's direct control and restricts student-data use or disclosure.
+- A fully local model on university-managed infrastructure can reduce third-party disclosure, but it still requires formal review of institutional approval, access control, data isolation, and operating procedures before live FERPA-covered use.
 
 ## What Changed Already
 

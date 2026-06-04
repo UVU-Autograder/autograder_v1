@@ -112,6 +112,31 @@
 - Assignment `config.json` stores assignment-owned concept additions only and does not duplicate course-owned defaults.
 - Importing the same assignment config into a different course may produce a different effective concept list because course defaults are course-owned in M1.
 
+### `config.json` v1 contract
+
+- M1 uses a strict app-owned `config.json` v1 contract for assignment import, export, wizard generation, bundle validation, test projection, and execution planning.
+- `config.json` v1 is Python-focused and pytest-focused. It does not model multi-language execution, compiled-language build pipelines, manual grading, plagiarism workflows, or Canvas grade passback.
+- The exported/imported config must include `schema_version: 1`. Missing versions, unknown major versions, or configs that cannot be validated against the v1 schema must be rejected with actionable import errors.
+- The v1 schema should be expressed as JSON Schema 2020-12 for portable import/export validation. Backend and frontend validators may use implementation-native tools, but they must enforce the same schema and error paths.
+- Config entries that need durable identity across import/export use stable human-readable keys, not database IDs. Stable keys are required for tests and artifact references.
+- Display labels may change without changing stable keys. Renaming a stable key is treated as replacing that config object and should trigger regeneration or reconciliation of derived records.
+- Minimum top-level v1 sections:
+  - `schema_version`
+  - `assignment`
+  - `bundle`
+  - `concepts`
+  - `artifacts`
+  - `tests`
+  - `grading`
+- `assignment` stores assignment-owned display metadata needed by the config surface, such as title or points context. Canvas remains the course/grade source of truth.
+- `bundle` stores ZIP/project bundle requirements, including required files, entrypoint rules, and supported layout expectations.
+- `concepts` stores assignment-owned concept additions only. Course defaults are not duplicated in exported assignment config.
+- `artifacts` maps stable artifact keys to required artifact type and optional display filename metadata. File bodies are stored through the assignment artifact storage layer, not embedded in config JSON.
+- `tests` stores stable test keys, display names, point values, visibility settings, pytest artifact references, and any safe test metadata needed for UI and execution planning.
+- `grading` stores total-point expectations and aggregation rules needed to validate that test points and exported grades are internally consistent.
+- `TestCase` rows, UI previews, and execution plans are derived from the app-owned config. If derived rows disagree with the config, the config wins and derived rows must be regenerated or reconciled.
+- Config validation must catch at least: duplicate stable keys, missing artifact references, invalid point totals, missing bundle entrypoint rules, unsupported artifact types, and fields outside the supported v1 contract where strict validation applies.
+
 ### TestCase and artifact contract
 
 - `AssignmentArtifact` is the storage-backed file reference layer for assignment-owned grading assets.
@@ -126,6 +151,13 @@
   - `model_solution`: editable, executable through Judge0, stored as metadata plus storage-backed file body
   - `support_file`: assignment-owned file content available to grading and test execution as needed
 - `AssignmentArtifact` metadata should stay lightweight in M1: assignment linkage, artifact type, storage reference, and optional filename are sufficient unless later implementation work proves otherwise.
+- M1 artifact file bodies use the local on-prem filesystem behind a storage interface.
+- Artifact storage keys are generated opaque identifiers and must not be based on instructor-provided filenames or paths.
+- Optional instructor-provided filenames are display metadata only. They may be shown in staff UI after sanitization, but they must not become storage paths or long-lived student-run metadata.
+- Artifact file bodies must be stored outside any web-served directory and retrieved only through authorized backend code.
+- Artifact writes must enforce allowlisted artifact types, size limits, checksum capture, generated paths, and least-privilege filesystem permissions.
+- Assignment-owned artifacts may persist as grading assets. Student submissions, execution workspaces, generated feedback bodies, and Judge0/Kata execution artifacts remain ephemeral and are not assignment artifacts.
+- Artifact delete behavior must remove the local file body and metadata reference, or mark the metadata unusable if deletion fails and surface an actionable admin/staff error.
 - `TestCase` is a derived record, not the editable grading definition and not the raw file body.
 - M1 does not provide a separate simple test-case editor; test authoring flows through the wizard/config and pytest artifacts.
 - `AssignmentConfig` / app-owned `config.json` wins if it ever disagrees with a derived `TestCase`; derived records must be regenerated or reconciled rather than edited independently.
@@ -212,16 +244,22 @@ These remain outside persistent storage and are represented conceptually in `doc
 - Railway-style hosted deployment is not viable for the current implementation because the Judge0 + Kata execution path depends on the local Docker and hardware/containerization model on the Dell workstation.
 - Judge0's default persistence behavior must not become part of the product model; cleanup must satisfy the zero-retention contract for execution artifacts immediately after result verification and retrieval.
 - The required Judge0 cleanup call is `DELETE /submissions/{token}` immediately after retrieval of the execution result.
+- Judge0 deletion must be enabled and authorized in the deployed Judge0 instance. If deletion is disabled, forbidden, or cannot be verified, cleanup proof fails and live official or live student-derived workflows remain launch-blocked.
 - Cleanup verification must confirm:
   - `DELETE /submissions/{token}` was issued after result retrieval
   - the deleted Judge0 submission/result is no longer retrievable
   - ephemeral local workspace files are removed
   - Kata execution state is destroyed or no longer reachable
-- Cleanup proof for M1 signoff requires automated integration evidence plus documented Dell-workstation operational spot checks.
+- Cleanup proof for M1 signoff requires automated integration evidence plus documented Dell-workstation operational spot checks summarized in `docs/planning/delivery_controls.md`.
+- Automated cleanup tests must cover success, test failure, compile/import error, timeout, Judge0 cleanup failure, and workspace cleanup after exceptions.
+- Dell spot-check evidence must be dated and must include sanitized command output or summaries for Judge0 deletion/non-retrievability, workspace removal, and Kata runtime evidence. It must not include student code, filenames, identifiers, raw tracebacks, or detailed feedback.
 - Capacity planning for Judge0 and Celery is memory-bound on the Dell workstation and must prefer queueing/backpressure over aggressive parallelism.
 - M1 default execution-slot cap is `2` concurrent Judge0/Kata grading jobs.
 - Celery grading concurrency must not exceed the approved execution-slot cap.
 - `3` and `4` concurrent execution slots are benchmark targets; no cap above `4` is approved without new sustained benchmark evidence.
+- Benchmark evidence must use mixed synthetic workloads covering passing submissions, test failures, compile/import errors, timeouts, and malformed bundles.
+- A benchmarked cap is approved only when cleanup proof passes, no worker/container crashes occur, queue/backpressure behaves correctly, and current service targets remain satisfied.
+- Benchmark evidence must include app-level duration and failure counters, Celery queue behavior, Judge0 status behavior, and Docker/Kata resource observations. Docker stats output may be summarized, but memory and process/thread pressure must be checked.
 
 ## Frontend Tooling Notes
 
@@ -314,6 +352,25 @@ Notes:
 - Delivery contract endpoint: `GET /runs/{id}/status`.
 - Backend status reads are backed by Redis transient run-state storage.
 - `GET /runs/{id}/status` must surface `queue`, `run`, `complete`, or `failure` state.
+- The status response must include sanitized counters: `total`, `queued`, `running`, `completed`, `failed`, and `warnings`.
+- The status response may include a sanitized human-readable message and coarse failure summary, but must not include student code, filenames, student identifiers, raw traceback text, detailed compiler/runtime output, detailed feedback bodies, or raw Judge0 payloads.
+- Coarse failure categories for M1:
+  - `validation_error`
+  - `unsafe_zip`
+  - `missing_required_file`
+  - `ambiguous_entrypoint`
+  - `concept_warning`
+  - `concept_blocked`
+  - `compile_error`
+  - `test_failure`
+  - `timeout`
+  - `judge0_error`
+  - `cleanup_failure`
+  - `packaging_failure`
+  - `ai_disabled`
+  - `ai_error`
+  - `internal_error`
+- `cleanup_failure` is launch-blocking for live workflows and must be visible to staff/admin status surfaces without exposing sensitive detail.
 - Staff and student clients poll this endpoint every `2s` while state is `queue` or `run`, then stop polling after `complete` or `failure`.
 
 ## 9. Output Formats

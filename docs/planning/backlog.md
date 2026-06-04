@@ -3,7 +3,7 @@
 > Product Goal: deliver a testable M1 for zero-retention grading with staff `@uvu.edu` authentication and globally visible student sandbox access.
 > Team: 3 frontend developers and 2 backend developers, part time.
 
-This file is the primary M1 delivery checklist. It combines overall deliverables with the specific implementation work the team needs to complete. Delivery cadence, Definition of Done, and hard scope boundaries live in [delivery_controls.md](delivery_controls.md).
+This file is the primary M1 delivery checklist. It tracks implementation work only; detailed product decisions, runtime contracts, frontend contracts, and acceptance gates stay in the source-of-truth docs below.
 
 ## Source Of Truth
 
@@ -11,6 +11,8 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 - [technical_specs.md](../technical_specs.md) - backend/system behavior, data contracts, runtime limits, and deployment shape
 - [frontend_implementation.md](../frontend_implementation/frontend_implementation.md) - routes, UI surfaces, and frontend constraints
 - [delivery_controls.md](delivery_controls.md) - review cadence, Definition of Done, and M1 scope boundaries
+
+When a checklist item repeats a policy or runtime rule, treat the linked canonical document as authoritative and update that document first.
 
 ## Overall Deliverables
 
@@ -21,8 +23,8 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 | [ ]  | Judge0/Kata cleanup proof is established                                | The team has evidence that Judge0 submission/result artifacts and Kata execution state are destroyed after result retrieval.                                 |
 | [ ]  | Staff `@uvu.edu` authentication and role boundaries are implemented     | Staff sign-in rejects non-UVU accounts; admin, instructor, and IA access rules are enforced.                                                                 |
 | [ ]  | Admin course, section, staff, and monitoring workflows are usable       | Admins can manage courses, sections, access grants, and admin-only operational monitoring for token usage, upload limits, and worker/capacity status.        |
-| [ ]  | Assignment setup and `config.json` round trip are usable                | Staff can create or open an assignment, edit setup through the wizard, define ZIP/project bundle requirements, import valid config, and download the current config. |
-| [ ]  | Assignment artifact management is usable                               | Staff can manage pytest files, model solutions, and support files through lightweight `assignment_artifacts` storage references.                              |
+| [ ]  | Assignment setup and `config.json` v1 round trip are usable             | Staff can create or open an assignment, edit setup through the wizard, define ZIP/project bundle requirements, import/export strict v1 config, and download the current config. |
+| [ ]  | Assignment artifact management is usable                               | Staff can manage pytest files, model solutions, and support files through local filesystem-backed `assignment_artifacts` storage references.                  |
 | [ ]  | Ephemeral Canvas ZIP ingest is implemented                              | Staff can upload a Canvas ZIP containing single-file or multi-file student bundles; malformed archives, path traversal, and unmatched filenames surface actionable errors without persistent student submissions. |
 | [ ]  | Grading chain works with AST checks, Judge0/Kata execution, and cleanup | Official and sandbox grading can run through AST checks, Judge0/Kata execution, structured results, and post-result cleanup.                                 |
 | [ ]  | Safe Judge0/Kata worker caps are documented                             | Dell-workstation benchmarking defines approved grading worker caps before grading-pipeline implementation begins.                                            |
@@ -52,7 +54,6 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 - [ ] Review frontend route structure and component hierarchy.
 - [ ] Review shared API and UI contracts before dependent feature work proceeds.
 - [ ] Capture implementation action items that block shared-contract signoff.
-- [ ] Keep `docs/backend_implementation/easton_implementation/ClassFlow_diagram.md` separate from the current implementation diagrams.
 
 ### Environment And Metadata Foundation
 
@@ -69,13 +70,12 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 - [ ] Document Dell-workstation deployment shape for Next.js, FastAPI, Postgres, Redis, Celery, Judge0, and Kata integration.
 - [ ] Support local development and integration-style testing through Docker Compose for Postgres, Redis, Celery, FastAPI, Next.js, and the chosen Judge0 test topology.
 - [ ] Validate that `docker-compose.testing.yml` remains documented as an integration harness even where local machines cannot fully reproduce the planned Kata isolation setup.
-- [ ] Document and validate Judge0 submission/result deletion, including `DELETE /submissions/{token}` immediately after result retrieval.
-- [ ] Implement automated cleanup proof tests that confirm Judge0 deletion, non-retrievability after deletion, ephemeral workspace removal, and Kata execution-state cleanup.
+- [ ] Document and validate Judge0/Kata cleanup according to the canonical zero-retention contract, including deletion failure as launch-blocking for live workflows.
+- [ ] Implement automated cleanup proof tests for execution-service and workspace artifacts across success, failure, timeout, and exception paths.
 - [ ] Collect documented Dell-workstation cleanup spot-check evidence for Judge0, Kata, and local workspace cleanup.
-- [ ] Benchmark safe Judge0 + Kata concurrency on the Dell workstation and document worker caps before grading-pipeline implementation begins.
-- [ ] Configure the M1 default execution-slot cap to `2` concurrent Judge0/Kata grading jobs.
-- [ ] Benchmark `3` and `4` concurrent Judge0/Kata execution slots on the Dell workstation before approving any higher cap.
-- [ ] Document queue and backpressure thresholds for work beyond the approved execution-slot cap.
+- [ ] Benchmark safe Judge0 + Kata concurrency on the Dell workstation with mixed synthetic workloads and document worker caps before grading-pipeline implementation begins.
+- [ ] Configure the M1 execution-slot cap and benchmark any increase according to the canonical capacity policy.
+- [ ] Document queue and backpressure thresholds for work beyond the approved cap.
 - [ ] Host Monaco Editor locally in the frontend scaffold for planned editor and review workflows.
 - [ ] Document required environment variables in `.env.example`, including Azure OpenAI settings.
 - [ ] Update README so a developer can bring up the local stack.
@@ -101,16 +101,17 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 
 - [ ] Add assignment creation with course linkage, due date, and Canvas reference metadata.
 - [ ] Build a comprehensive setup wizard for instructor-relevant assignment, rubric, and config fields.
-- [ ] Generate valid app-owned `config.json` from the wizard.
+- [ ] Generate valid app-owned `config.json` v1 from the wizard.
+- [ ] Validate `config.json` v1 with strict schema-version handling and stable human-readable keys for tests and artifact references.
 - [ ] Add assignment-config fields for ZIP/project bundle requirements, including required files, entrypoint, and layout expectations.
 - [ ] Validate required files, entrypoint, and layout expectations before model-solution validation or grading.
-- [ ] Add validated `config.json` import with clear error display.
+- [ ] Add validated `config.json` v1 import with clear error display for schema, version, duplicate-key, missing-artifact, and point-total failures.
 - [ ] Render all instructor-relevant editable fields from the stored app-owned config.
 - [ ] Allow staff to download the current `config.json`.
 - [ ] Add `/staff/courses/[courseId]/assignments/[assignmentId]/artifacts` for assignment-owned grading assets.
-- [ ] Manage pytest file artifacts through lightweight `assignment_artifacts` metadata plus storage-backed file bodies.
-- [ ] Manage model solution artifacts through lightweight `assignment_artifacts` metadata plus storage-backed file bodies.
-- [ ] Manage support-file artifacts through lightweight `assignment_artifacts` metadata plus storage-backed file bodies.
+- [ ] Manage pytest file artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
+- [ ] Manage model solution artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
+- [ ] Manage support-file artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
 - [ ] Validate artifact metadata before file bodies are used for model-solution validation or grading.
 - [ ] Add course-level `Concepts Covered` defaults editor.
 - [ ] Add assignment-level `Concepts Covered` additions editor.
@@ -156,7 +157,7 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 - [ ] Build Celery grading chain for official runs.
 - [ ] Build Celery grading chain for sandbox runs.
 - [ ] Align Celery worker concurrency to documented Judge0 + Kata execution capacity.
-- [ ] Add Redis-backed transient run status with `queue`, `run`, `complete`, and `failure` states.
+- [ ] Add Redis-backed transient run status with `queue`, `run`, `complete`, `failure`, sanitized counters, and coarse failure categories.
 - [ ] Add `GET /runs/{id}/status`.
 - [ ] Poll run status from staff and sandbox views every `2s` while the run is queued or running.
 - [ ] Finalize worker-cap and backpressure policy from Dell-workstation benchmark results.
@@ -168,10 +169,8 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 
 ### Azure Feedback And Privacy Confirmation
 
-- [ ] Confirm Azure OpenAI zero-retention/privacy posture before live student grading.
-- [ ] Confirm UVU/Microsoft FERPA coverage assumptions before live student grading.
+- [ ] Confirm Azure OpenAI privacy posture, UVU approval, and launch-blocking evidence before live student-code AI feedback is enabled.
 - [ ] Write the Azure/UVU compliance confirmation checklist and approval evidence expectations before go-live.
-- [ ] Track written UVU approval and Azure resource/privacy confirmation as launch-blocking evidence before live student-code AI feedback is enabled.
 - [ ] Use UVU-approved Azure OpenAI configuration before sending live student code.
 - [ ] Disable Azure feedback for live, pseudonymous, or real student-derived code unless the UVU/Azure approval checklist is complete.
 - [ ] Inject allowed-concepts context into the Azure OpenAI prompt.
@@ -211,7 +210,6 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 - [ ] Show unmatched filename failures during in-session official review.
 - [ ] Support per-student feedback preview before export.
 - [ ] Show ephemeral read-only Monaco previews for official submissions while temporary files remain available.
-- [ ] Keep official review preview-only in M1 with no in-app grade override.
 - [ ] Keep official review preview-only in M1 with no feedback editing.
 - [ ] Use derived artifacts and structured app data only; do not add raw student-submission download workflows.
 - [ ] Add optional filtering by success, warning, hard-block, timeout, and parse failure if capacity allows.
@@ -232,6 +230,9 @@ This file is the primary M1 delivery checklist. It combines overall deliverables
 - [ ] Test the student sandbox flow end to end from assignment selection through ZIP/project bundle upload, preview, results, and cleanup.
 - [ ] Write the risk-based M1 test matrix covering unit, integration, cleanup, FERPA/privacy, and stress scenarios.
 - [ ] Apply the documented Judge0/Kata cleanup proof standard for implementation signoff.
+- [ ] Validate `config.json` v1 import/export rejects missing or unsupported schema versions.
+- [ ] Validate artifact storage uses generated opaque keys, preserves filenames only as sanitized display metadata, and stores file bodies outside web-served paths.
+- [ ] Validate run status responses expose only sanitized counters and coarse failure categories.
 - [ ] Validate synthetic Canvas ZIP/CSV fixtures and any completely anonymized Canvas-shaped samples before treating ingest/export as dependable.
 - [ ] Build or collect only fake/synthetic or completely anonymized Canvas-shaped samples for M1 validation.
 - [ ] Build synthetic Canvas fixtures for malformed ZIPs, path traversal, ambiguous filenames, unmatched files, multi-file submission bundles, and grade CSV shape.

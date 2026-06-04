@@ -2,8 +2,6 @@
 
 This file is a prototype reference artifact, not the canonical frontend specification. Canonical M1 behavior lives in `docs/frontend_implementation/frontend_implementation.md`, `docs/planning/backlog.md`, `docs/technical_specs.md`, and `docs/backend_implementation/decisions.md`.
 
-Prototype terminology note: this file may use `TA`; canonical implementation docs use `IA`. Treat prototype `TA` references as IA/TA prototype terminology unless the canonical docs say otherwise.
-
 Canonical M1 auth note: staff, admin, instructor, and IA surfaces use staff authentication. The student sandbox is public and does not require student authentication, even if older prototype notes imply a shared login flow.
 
 ## Student:
@@ -27,7 +25,7 @@ Note:
 
 - Manage courses
 - Monitoring (token limit, system limits, upload limit)
-- User management tools (assign instructor, TA)
+- User management tools (assign instructor, IA)
 - Create courses
 - Create sections
 - Deactivate courses
@@ -42,10 +40,10 @@ Link to figma prototype: https://www.figma.com/proto/GLPFmoiaQEM5eJjru86PFu/uvu_
 
 Note:
 
-- **Sandbox for instructor/TA:** prototype-only draft. Canonical M1 staff behavior is documented in `frontend_implementation.md` and `backlog.md`.
+- **Sandbox for instructor/IA:** prototype-only draft. Canonical M1 staff behavior is documented in `frontend_implementation.md` and `backlog.md`.
   Link to figma: https://www.figma.com/proto/GLPFmoiaQEM5eJjru86PFu/uvu_autograder?node-id=548-1891&t=xJAsxGnj1YOSTySS-1&scaling=min-zoom&content-scaling=fixed&page-id=60%3A122&starting-point-node-id=548%3A1891
 
-## TA / IA Prototype Notes:
+## IA Prototype Notes:
 
 - View assigned courses and sections (grid and list view)
 - View only (rubric, constraints, deadline) of each assignment
