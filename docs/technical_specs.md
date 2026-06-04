@@ -21,7 +21,6 @@
 - Student sandbox access through globally visible sandbox-enabled assignments without student-specific authentication.
 - Progressive `Concepts Covered` enforcement using AST validation plus LLM prompt context.
 - Zero-retention grading for both official staff runs and student sandbox runs.
-- Staff review uses derived artifacts plus structured in-app review data; M1 does not provide a raw student-submission download workflow.
 - Multi-file support uses ZIP/project bundle uploads for both official staff runs and student sandbox runs.
 - Hallucination guardrails that treat pytest and tracebacks as ground truth and limit the LLM to explanation rather than re-grading.
 - Plagiarism detection is out of M1.
@@ -42,8 +41,7 @@
 3. Valid archives are extracted into a shared ephemeral workspace.
 4. Student submission bundles are validated against assignment-config requirements, then graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and Azure OpenAI explanation generation when approved for the data being processed.
 5. Results are packaged into staff-facing export artifacts.
-6. Judge0 result metadata is retrieved and verified, then the app calls `DELETE /submissions/{token}` and Judge0 submission/result artifacts and Kata execution state are destroyed immediately.
-7. Export is returned, then temporary student files and detailed feedback artifacts are destroyed; no raw student-submission download is produced.
+6. Export is returned.
 
 ### Student sandbox projected grading
 
@@ -53,11 +51,9 @@
 4. Student uploads a ZIP/project bundle for projected grading.
 5. The backend applies sandbox rate limiting before any grading work starts.
 6. The backend validates ZIP safety and assignment-config bundle requirements before grading.
-7. The frontend shows remaining uploads, a sanitized file tree, read-only Monaco preview, and a clear limit-reached state if the backend returns a rate-limit response.
+7. The frontend shows upload quota, preview, and rate-limit state.
 8. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and Azure explanation pipeline when approved for the data being processed.
 9. Projected score, warnings, and feedback appear on screen only.
-10. Execution artifacts are destroyed immediately after result retrieval and verification according to the zero-retention contract, including `DELETE /submissions/{token}` against Judge0 for the retrieved execution record.
-11. Temporary student files and detailed sandbox artifacts are destroyed on completion or session exit.
 
 ### Assignment and grading setup
 
@@ -178,7 +174,7 @@
   - success, warning, failure, and timeout counts
   - sanitized token usage
   - coarse failure category summary only
-- Admin-only monitoring surfaces may summarize sanitized token usage, sandbox upload-limit state, and worker/capacity status from run summaries and operational metrics.
+- Admin-only monitoring may summarize sanitized token usage, sandbox upload-limit state, global queued count, running count, approved execution-slot cap, high-load/full-queue state, official versus sandbox queue counts, worker/capacity status, and AI degradation state from run summaries and operational metrics.
 - `RunSummary` must not store:
   - student code
   - filenames or submission-path fragments
@@ -225,7 +221,7 @@ These remain outside persistent storage and are represented conceptually in `doc
 - The app-owned assignment config defines required files, entrypoint, and layout expectations for the bundle.
 - Upload validation must reject:
   - malformed ZIP files
-  - path traversal attempts before any file is written
+  - unsafe archive paths before extraction
   - unsupported archive structures
   - missing required files
   - ambiguous or duplicate entrypoint matches
@@ -239,7 +235,6 @@ These remain outside persistent storage and are represented conceptually in `doc
 - Judge0 is the planned execution engine for M1 and later phases.
 - Kata Containers is the planned VM-based isolation layer for Judge0 and should be treated as part of the core execution design rather than optional hardening.
 - The app uses Judge0's structured execution metadata, including status, execution time, memory usage, exit code, exit signal, and compile output when applicable.
-- Judge0 supports the current M1 ZIP/project bundle direction and future compiled coursework without changing the product's zero-retention contract.
 - The current M1 deployment plan uses local/on-prem Docker on the Dell workstation rather than Railway or another hosted provider.
 - Railway-style hosted deployment is not viable for the current implementation because the Judge0 + Kata execution path depends on the local Docker and hardware/containerization model on the Dell workstation.
 - Judge0's default persistence behavior must not become part of the product model; cleanup must satisfy the zero-retention contract for execution artifacts immediately after result verification and retrieval.
@@ -254,22 +249,15 @@ These remain outside persistent storage and are represented conceptually in `doc
 - Automated cleanup tests must cover success, test failure, compile/import error, timeout, Judge0 cleanup failure, and workspace cleanup after exceptions.
 - Dell spot-check evidence must be dated and must include sanitized command output or summaries for Judge0 deletion/non-retrievability, workspace removal, and Kata runtime evidence. It must not include student code, filenames, identifiers, raw tracebacks, or detailed feedback.
 - Capacity planning for Judge0 and Celery is memory-bound on the Dell workstation and must prefer queueing/backpressure over aggressive parallelism.
-- M1 default execution-slot cap is `2` concurrent Judge0/Kata grading jobs.
-- Celery grading concurrency must not exceed the approved execution-slot cap.
-- `3` and `4` concurrent execution slots are benchmark targets; no cap above `4` is approved without new sustained benchmark evidence.
+- M1 default execution-slot cap is `2` concurrent Judge0/Kata grading jobs; `3` and `4` are benchmark targets, and no cap above `4` is approved by M1 RAM estimates alone.
 - Benchmark evidence must use mixed synthetic workloads covering passing submissions, test failures, compile/import errors, timeouts, and malformed bundles.
 - A benchmarked cap is approved only when cleanup proof passes, no worker/container crashes occur, queue/backpressure behaves correctly, and current service targets remain satisfied.
 - Benchmark evidence must include app-level duration and failure counters, Celery queue behavior, Judge0 status behavior, and Docker/Kata resource observations. Docker stats output may be summarized, but memory and process/thread pressure must be checked.
-- The 32 GB RAM audit supports cautious `2` to `4` Python Judge0/Kata execution slots only when the LLM stays resident in GPU VRAM. RAM headroom alone does not approve higher execution concurrency.
-- Benchmark gates must still cover Kata overhead, Judge0/isolate behavior, pytest memory spikes, CPU saturation, NVMe/temp-file churn, AI/KV-cache pressure, cleanup reliability, and timeout-heavy workloads.
-- M1 does not approve `8` concurrent Judge0/Kata execution slots from spreadsheet RAM estimates alone.
 
 ## Frontend Tooling Notes
 
 - Monaco Editor is a planned M1 dependency and should be locally hosted with the app rather than fetched from a third-party CDN.
 - Monaco is a read-only preview and review surface in M1.
-- Students and staff edit files outside the app, then upload or re-upload ZIP/project bundles.
-- Sandbox and staff review surfaces may show a sanitized file tree and read-only Monaco preview only while the underlying uploaded files remain in ephemeral storage.
 - In M1, LLM feedback is surfaced as a student-sandbox textbox adjacent to test results and auto-shown after each run; it is explanation-only and does not alter grading outcomes.
 - Monaco does not change the persistent data model; it is a frontend/editor dependency and a review surface backed by structured app data rather than raw submission downloads.
 
@@ -287,8 +275,7 @@ Notes:
 - `staff_access` stores course scope, optional section scope, and role semantics.
 - Admin workflows must support creating, editing, deactivating, and assigning staff accounts, roles, and course or section access grants.
 - Admin workflows must support creating, editing, and deactivating courses and sections.
-- Admin-only monitoring may surface token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
-- Admin-only monitoring should surface global queued count, running count, approved execution-slot cap, high-load/full-queue state, official versus sandbox queue counts, and AI degradation state.
+- Admin-only monitoring is admin-only.
 - Instructors can see what other teachers are doing in assigned courses but may not modify grading setup outside their own assigned sections.
 - IAs are section-limited validators in M1, with read-only access to assignment configuration in assigned sections.
 - Official batch execution is section-scoped even though assignments are course-owned.
@@ -318,26 +305,19 @@ Notes:
 
 ## 8. Celery Grading Pipeline
 
+- Both official and sandbox grading evaluate the merged effective concept list derived from current course defaults plus assignment additions before execution.
+
 ### Official run
 
 `upload validation -> ephemeral extraction -> bundle validation -> per-student AST/concept check -> per-student Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> Azure explanation when approved -> feedback rendering -> export packaging -> cleanup`
 
 - Per-student parallelization begins only after the official archive has passed validation and been extracted.
 - Per-student bundle validation uses the app-owned assignment config before AST or execution starts.
-- AST/concept checks must evaluate the merged effective concept list derived from current course defaults plus assignment additions.
 - Official batches may contain more submissions than available queue capacity. After validation, official runs are chunked internally into per-submission execution jobs and only feed more work into the global execution queue as capacity opens.
-- Celery concurrency must respect the Dell workstation's documented memory-tested Judge0 + Kata execution capacity.
-- M1 default Celery grading concurrency must not exceed `2` concurrent Judge0/Kata execution slots.
 - Work beyond the approved execution-slot cap remains queued or backpressured rather than starting additional execution jobs.
 - Failed jobs retry up to `3` times with backoff.
 - Timeout handling must surface an actionable failed state and ensure execution artifacts are not retained after result handling.
-- Official cleanup semantics:
-  - execution artifacts are cleaned up immediately after result verification and retrieval according to the zero-retention contract
-  - Judge0 cleanup includes `DELETE /submissions/{token}` immediately after the result is read
-  - temporary feedback artifacts exist only long enough to package and return the export
-  - cleanup runs after export completion rather than preserving packaged student artifacts on disk
-  - cleanup verification is part of expected operational behavior, not optional best effort
-  - persistent run reporting is limited to aggregate, non-identifying metadata
+- Temporary official feedback artifacts exist only long enough to package and return the export.
 
 ### Sandbox run
 
@@ -346,14 +326,10 @@ Notes:
 - The sandbox limiter is student-only and must run before grading work begins.
 - Sandbox upload intake accepts ZIP/project bundles only.
 - Bundle validation uses the app-owned assignment config before AST or execution starts.
-- AST/concept checks must evaluate the merged effective concept list derived from current course defaults plus assignment additions.
 - Accepted sandbox uploads return immediately with a non-identifying run token and status URL.
 - Sandbox users may leave and return in the same browser session for up to `1h` while the run is queued, running, or recently completed.
 - Sandbox users may cancel queued jobs before execution starts; cancellation frees queue capacity and triggers cleanup of any temporary intake artifacts.
-- Judge0 cleanup includes `DELETE /submissions/{token}` immediately after the result is read.
-- Sandbox output never becomes a downloadable artifact.
-- Sandbox cleanup runs on completion, timeout, failure, or session exit.
-- Persistent sandbox reporting is limited to aggregate, non-identifying metadata.
+- Sandbox cleanup runs on completion, timeout, failure, cancellation, or session exit.
 
 ### Queue admission and scheduling contract
 
@@ -365,13 +341,12 @@ Notes:
 - At `50` queued execution jobs, new intake is rejected before file persistence with a sanitized full-queue error, retry guidance, and `Retry-After` where the protocol allows it.
 - The app uses separate logical official and sandbox queues that feed the same bounded execution slots.
 - When both official and sandbox queues have waiting jobs, execution starts use simple round-robin fairness between workflow types.
-- Queue capacity policy must never raise the active Judge0/Kata execution slot cap. Capacity increases come only from benchmark-approved execution slots or additional execution nodes in future work.
+- Queue capacity policy must never raise the active Judge0/Kata execution slot cap.
 - Under high queue or resource load, AI feedback may be delayed, skipped, or marked unavailable; grounded test results should return first. AI degradation must not block cleanup or execution-slot release.
 
 ### Run status delivery contract
 
-- Delivery contract endpoint: `GET /runs/{id}/status`.
-- Backend status reads are backed by Redis transient run-state storage.
+- `GET /runs/{id}/status` reads from Redis transient run-state storage.
 - `GET /runs/{id}/status` must surface `queue`, `run`, `complete`, or `failure` state.
 - The status response must include sanitized counters: `total`, `queued`, `running`, `completed`, `failed`, and `warnings`.
 - When state is `queue`, the status response should include queue position and a rough ETA band: `under_1_min`, `1_to_3_min`, `3_to_5_min`, or `over_5_min`.
@@ -403,7 +378,7 @@ Notes:
 
 - M1 requires a downloadable staff export workflow for official runs.
 - M1 official runs expose two separate staff download actions: one Canvas-grade CSV and one ZIP of per-student HTML feedback artifacts.
-- Official review is preview-only in M1; the app does not support in-session grade overrides or feedback editing before export.
+- Official review is preview-only in M1.
 - M1 does not expose a raw student-submission tarball, raw-code ZIP, or equivalent download path.
 - Structured review data and read-only Monaco previews may be shown only while ephemeral data exists, without changing the zero-retention contract.
 - Automated Canvas feedback upload or distribution is out of scope for M1.
@@ -412,7 +387,7 @@ Notes:
 ### Sandbox response
 
 - On-screen only.
-- Includes projected score, warnings, and AI-backed explanation.
+- Includes projected score, warnings, and AI-backed explanation when AI feedback is available.
 - May include sanitized file tree and read-only Monaco preview while the sandbox bundle remains in ephemeral storage.
 - Is not downloadable and is not stored persistently.
 
@@ -437,7 +412,6 @@ Notes:
 - Judge0 memory limit target: `256MB`
 - Judge0 student execution network access: disabled
 - Kata-backed VM isolation is required for the current planned production execution model.
-- Worker concurrency and queue limits must stay within the Dell workstation's documented memory-safe execution envelope.
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
 - Azure privacy readiness: ZDR/privacy posture must be confirmed before live student data use
 - Azure approval readiness: written UVU approval plus Azure resource/privacy confirmation must be complete before live student-code AI feedback

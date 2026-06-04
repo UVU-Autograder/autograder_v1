@@ -1,8 +1,6 @@
 # Roles:
 
-This file is a prototype reference artifact, not the canonical frontend specification. Canonical M1 behavior lives in `docs/frontend_implementation/frontend_implementation.md`, `docs/planning/backlog.md`, `docs/technical_specs.md`, and `docs/backend_implementation/decisions.md`.
-
-Canonical M1 auth note: staff, admin, instructor, and IA surfaces use staff authentication. The student sandbox is public and does not require student authentication, even if older prototype notes imply a shared login flow.
+This file is a prototype reference artifact, not the canonical frontend specification. Older auth or role notes here are non-canonical.
 
 ## Student:
 
@@ -18,8 +16,7 @@ Note: `Code Viewer` and `Test Result` panel can be scrolled vertically in the pr
 
 Note:
 
-- **Sandbox for student:** Compliant with the backend suggestion to use Monaco, I have implemented it as a read-only code viewer. I chose this approach because I believe we don't need a fully functional in-browser IDE that executes code and dynamically integrates with isolated rubrics since it will require significant infrastructure.For now, the sandbox for student provides panels for code viewer, terminal output, feedback and test result. Students cannot edit code here so they need to make changes locally and re-upload their files as needed.
-  Each assignment loads its corresponding rubric configuration from the backend. When a student selects an assignment, the UI updates immediately to display the relevant requirements, and the autograder backend determines and executes the correct test suite against the submitted file.
+- **Sandbox for student:** prototype read-only code viewer with terminal output, feedback, and test-result panels.
 
 ## Admin/Instructor:
 
@@ -31,16 +28,16 @@ Note:
 - Deactivate courses
 - Deactivate sections
 - Create assignments
-- Rubric and constraint editing through the canonical wizard/config model
+- Rubric and constraint editing
 - Set a deadline for assignments
-- Test-case editing through the canonical wizard/config/artifact model
+- Test-case editing
 - Download assignment config
 
 Link to figma prototype: https://www.figma.com/proto/GLPFmoiaQEM5eJjru86PFu/uvu_autograder?node-id=480-890&t=tkdZgWKk1N7cqLx9-1&scaling=min-zoom&content-scaling=fixed&page-id=377%3A1357
 
 Note:
 
-- **Sandbox for instructor/IA:** prototype-only draft. Canonical M1 staff behavior is documented in `frontend_implementation.md` and `backlog.md`.
+- **Sandbox for instructor/IA:** prototype-only draft.
   Link to figma: https://www.figma.com/proto/GLPFmoiaQEM5eJjru86PFu/uvu_autograder?node-id=548-1891&t=xJAsxGnj1YOSTySS-1&scaling=min-zoom&content-scaling=fixed&page-id=60%3A122&starting-point-node-id=548%3A1891
 
 ## IA Prototype Notes:

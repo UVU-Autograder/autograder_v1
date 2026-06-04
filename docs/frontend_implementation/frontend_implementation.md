@@ -1,10 +1,6 @@
 # Frontend Implementation
 
-Resolved product and implementation decisions live in `docs/backend_implementation/decisions.md`.
-
-This file captures the frontend contract, route structure, and UI-surface responsibilities only.
-
-Figma prototype notes in [figma_prototype.md](figma_prototype.md) are reference material, not the source of truth. Where prototype notes conflict with this file, this file, `docs/technical_specs.md`, `docs/backend_implementation/decisions.md`, and `docs/planning/backlog.md` are canonical.
+This file captures the frontend contract, route structure, and UI-surface responsibilities only. [figma_prototype.md](figma_prototype.md) is reference material.
 
 ## Frontend Route Contract
 
@@ -45,7 +41,7 @@ Figma prototype notes in [figma_prototype.md](figma_prototype.md) are reference 
 - The `config` route is an advanced surface for import/export and direct config handling, not the default setup path.
 - Course-level concepts editing owns the baseline `Concepts Covered` list for all assignments in that course.
 - Assignment-level concepts editing owns additive assignment concepts only and must preview the merged effective list derived from current course defaults plus assignment additions.
-- The sandbox entry surface should immediately show globally visible sandbox-enabled courses and assignments without student authentication.
+- The sandbox entry surface should immediately show globally visible sandbox-enabled courses and assignments.
 - The sandbox workspace is upload-first in M1: students upload one ZIP/project bundle for the selected assignment, then see a sanitized file tree, read-only Monaco preview, rubric details, assignment constraints, terminal/output information where available, test results with passed/failed counts, projected score, grounded feedback, explicit zero-retention messaging, visible remaining uploads, and a clear limit-reached state for backend `429` responses.
 - The sandbox workspace does not support loose multi-file drag-and-drop or in-browser code editing in M1.
 - The assignment artifacts surface owns pytest files, model solution files, and support files through the backend `assignment_artifacts` storage-reference model.
