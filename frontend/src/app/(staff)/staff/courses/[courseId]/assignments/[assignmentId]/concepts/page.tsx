@@ -1,4 +1,4 @@
 /*
 Concepts-covered placeholder.
-This route should represent course defaults plus assignment overrides for the progressive concept whitelist.
+This route should edit additive assignment concepts and preview the merged effective list from course defaults plus assignment additions.
 */

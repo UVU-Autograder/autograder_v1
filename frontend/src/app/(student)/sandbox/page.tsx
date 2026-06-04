@@ -1,5 +1,5 @@
 /*
-Authorized-course placeholder.
-This route should list only the courses available to the authenticated student through roster-backed authorization.
-Students pick a course here before choosing an assignment.
+Public sandbox course-list placeholder.
+This route should list globally visible courses that have sandbox-enabled assignments.
+Students do not authenticate or rely on student-specific authorization in M1.
 */

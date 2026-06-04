@@ -1,2 +1,1 @@
-# Concepts model placeholder for course-level concept defaults and assignment-level concept overrides.
-
+# Concepts model placeholder for course-level concept defaults and additive assignment-level concept entries.

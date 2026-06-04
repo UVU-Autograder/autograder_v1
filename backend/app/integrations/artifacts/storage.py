@@ -1,1 +1,1 @@
-# Storage-agnostic artifact access placeholder for hybrid artifact retrieval using Postgres metadata plus local-file or object-storage-backed content access.
+# Storage-backed assignment artifact access placeholder using generated opaque storage keys plus lightweight Postgres metadata.

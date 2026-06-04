@@ -1,1 +1,1 @@
-# Stanford MOSS integration placeholder for optional staff-facing plagiarism submission using ephemeral official-run files only and returning a safe `moss_report_url` for run metadata.
+# Future plagiarism-integration placeholder. Plagiarism detection is out of scope for M1 and must not appear in active M1 run metadata.

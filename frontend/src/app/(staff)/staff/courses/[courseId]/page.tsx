@@ -1,4 +1,4 @@
 /*
 Course detail placeholder.
-This page should list assignments, link to the course-level roster surface, and keep section context visible only where run or access workflows require it.
+This page should list assignments, link to course-level Concepts Covered defaults, and keep section context visible only where run or access workflows require it.
 */

@@ -1,1 +1,1 @@
-# Official runs router placeholder for `POST /runs/official`, section-scoped official batch authorization, `GET /runs/{id}/status`, and staff-facing access to safe aggregate run metadata such as the optional MOSS report URL.
+# Runs router placeholder for `POST /runs/official`, section-scoped official batch authorization, `GET /runs/{id}/status`, and staff-facing access to safe aggregate run metadata.

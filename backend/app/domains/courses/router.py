@@ -1,2 +1,1 @@
-# Course router placeholder for `GET /courses`, `GET /courses/{courseId}`, and `POST /courses/{courseId}/roster-import`.
-# This domain owns course lookup, section context, roster-backed student authorization, and course-level roster workflows.
+# Course router placeholder for staff-visible course lookup, admin course/section management support, course-default concepts access, and public sandbox-visible course listing through sandbox-enabled assignments.

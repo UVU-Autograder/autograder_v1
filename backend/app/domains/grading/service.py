@@ -1,1 +1,1 @@
-# Grading service placeholder for AST check, artifact-backed pytest/Judge0 execution inside Kata-backed isolation, Azure explanation generation, HTML response shaping, safe MOSS URL handoff, Judge0 artifact deletion, and zero-retention cleanup orchestration.
+# Grading service placeholder for AST check, artifact-backed pytest/Judge0 execution inside Kata-backed isolation, Azure explanation generation when approved, HTML response shaping for official exports, Judge0 artifact deletion, and zero-retention cleanup orchestration.
