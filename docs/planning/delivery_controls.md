@@ -23,14 +23,14 @@ A checklist item is complete when:
 
 Use this matrix to decide the minimum test shape for M1 work:
 
-| Area | Required coverage |
-| --- | --- |
-| Upload and parsing | Unit tests for ZIP safety, malformed archives, assignment-config bundle validation, and identifier mapping |
-| Grading execution | Integration tests for AST checks, Judge0/Kata execution, timeout handling, and cleanup |
-| Student sandbox | End-to-end test for public assignment selection, ZIP/project bundle upload, quota state, results, preview, and cleanup |
-| Official runs | End-to-end test for Canvas ZIP ingest, multi-file submission bundles, run status, preview, exports, and cleanup |
+| Area                       | Required coverage                                                                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Upload and parsing         | Unit tests for ZIP safety, malformed archives, assignment-config bundle validation, and identifier mapping                               |
+| Grading execution          | Integration tests for AST checks, Judge0/Kata execution, timeout handling, and cleanup                                                   |
+| Student sandbox            | End-to-end test for public assignment selection, ZIP/project bundle upload, quota state, results, preview, and cleanup                   |
+| Official runs              | End-to-end test for Canvas ZIP ingest, multi-file submission bundles, run status, preview, exports, and cleanup                          |
 | Compliance-sensitive paths | Regression checks that persistent storage and logs do not contain student code, identifiers, filenames, tracebacks, or detailed feedback |
-| Stress and capacity | Dell-workstation validation for current M1 service targets and documented worker caps |
+| Stress and capacity        | Dell-workstation validation for service targets, worker caps, queue admission at `40`/`50`, official-run chunking, and AI degradation     |
 
 ## Launch-Blocking Signoff Gates
 
@@ -39,6 +39,8 @@ Use this matrix to decide the minimum test shape for M1 work:
 - Judge0 deletion must be enabled and verifiable before live official or live student-derived workflows are allowed.
 - Capacity-sensitive work must respect the approved M1 cap of `2` concurrent Judge0/Kata execution slots unless stability-first benchmark evidence approves a higher cap.
 - Benchmark evidence must use mixed synthetic workloads and pass cleanup, no-crash, queue/backpressure, and service-target checks before a cap of `3` or `4` is approved.
+- The global waiting execution queue must reject new intake at `50` queued jobs, warn at `40`, and preserve the approved execution-slot cap.
+- M1 does not approve `8` concurrent Judge0/Kata execution slots from RAM estimates alone; benchmark evidence must cover CPU, Kata, pytest, AI/KV-cache, temp-file, timeout, and cleanup behavior.
 - Live-code Azure feedback must remain disabled until written UVU approval and Azure resource/privacy confirmation are complete.
 - M1 validation must use only fake/synthetic data or completely anonymized data with no retained re-identification map.
 - Canvas ZIP ingest and grade CSV export are dependable M1 workflows only after the synthetic fixture and completely anonymized sample validation matrix passes.
@@ -64,3 +66,4 @@ These are explicitly out of scope for M1. Do not pull them in under deadline pre
 - PDF feedback generation
 - multi-language support beyond Python
 - analytics or class-wide reporting
+- responsive design for mobile devices

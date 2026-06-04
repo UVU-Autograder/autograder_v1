@@ -28,6 +28,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 | [ ]  | Ephemeral Canvas ZIP ingest is implemented                              | Staff can upload a Canvas ZIP containing single-file or multi-file student bundles; malformed archives, path traversal, and unmatched filenames surface actionable errors without persistent student submissions. |
 | [ ]  | Grading chain works with AST checks, Judge0/Kata execution, and cleanup | Official and sandbox grading can run through AST checks, Judge0/Kata execution, structured results, and post-result cleanup.                                 |
 | [ ]  | Safe Judge0/Kata worker caps are documented                             | Dell-workstation benchmarking defines approved grading worker caps before grading-pipeline implementation begins.                                            |
+| [ ]  | Queue admission and wait UX are usable                                  | The system accepts work asynchronously, warns at high load, rejects full queues cleanly, and shows queue position/ETA without exceeding execution caps.       |
 | [ ]  | Azure feedback is available only after privacy confirmation             | Written UVU approval and Azure resource/privacy confirmation are complete before live student-code AI feedback is enabled.                                  |
 | [ ]  | Public sandbox workflow is usable                                       | A sandbox user can select an enabled course and assignment, upload a ZIP/project bundle, see a sanitized file tree, quota state, read-only preview, and on-screen projected feedback. |
 | [ ]  | Official review and export workflow is usable                           | Staff can monitor an official run, inspect derived/ephemeral read-only previews while available, and download separate Canvas-grade CSV and per-student feedback ZIP outputs. |
@@ -75,7 +76,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Collect documented Dell-workstation cleanup spot-check evidence for Judge0, Kata, and local workspace cleanup.
 - [ ] Benchmark safe Judge0 + Kata concurrency on the Dell workstation with mixed synthetic workloads and document worker caps before grading-pipeline implementation begins.
 - [ ] Configure the M1 execution-slot cap and benchmark any increase according to the canonical capacity policy.
-- [ ] Document queue and backpressure thresholds for work beyond the approved cap.
+- [ ] Document queue and backpressure thresholds for work beyond the approved cap, including `40` queued-job high-load messaging and `50` queued-job rejection.
 - [ ] Host Monaco Editor locally in the frontend scaffold for planned editor and review workflows.
 - [ ] Document required environment variables in `.env.example`, including Azure OpenAI settings.
 - [ ] Update README so a developer can bring up the local stack.
@@ -157,9 +158,16 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Build Celery grading chain for official runs.
 - [ ] Build Celery grading chain for sandbox runs.
 - [ ] Align Celery worker concurrency to documented Judge0 + Kata execution capacity.
+- [ ] Add global queue admission control for a maximum of `50` waiting per-submission execution jobs.
+- [ ] Add high-load response behavior at `40` queued execution jobs.
+- [ ] Add full-queue rejection with retry guidance before file persistence at `50` queued execution jobs.
+- [ ] Add separate logical official and sandbox queues with round-robin scheduling into the bounded execution slots.
+- [ ] Chunk official runs internally so large Canvas batches feed per-submission execution jobs as queue capacity opens.
 - [ ] Add Redis-backed transient run status with `queue`, `run`, `complete`, `failure`, sanitized counters, and coarse failure categories.
 - [ ] Add `GET /runs/{id}/status`.
 - [ ] Poll run status from staff and sandbox views every `2s` while the run is queued or running.
+- [ ] Return queue position and rough ETA band from run status while a job is queued.
+- [ ] Allow queued sandbox jobs to be cancelled before execution starts.
 - [ ] Finalize worker-cap and backpressure policy from Dell-workstation benchmark results.
 - [ ] Retry failed jobs up to 3 times with backoff.
 - [ ] Free workers immediately on timeout and record `failed:timeout`.
@@ -176,6 +184,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Inject allowed-concepts context into the Azure OpenAI prompt.
 - [ ] Generate rubric-context explanations and feedback without re-grading correctness.
 - [ ] Enforce hallucination guard: tests remain ground truth and the LLM explains rather than re-evaluates.
+- [ ] Degrade AI feedback under high queue or resource load by returning grounded test results first and delaying, skipping, or marking AI feedback unavailable.
 - [ ] Show auto-populated LLM feedback beside test-case results after each sandbox run.
 - [ ] Log Azure token usage in `run_summaries` or equivalent non-sensitive metadata storage.
 - [ ] Rotate and purge sensitive debug traces within `24h` if temporary debug traces are enabled.
@@ -198,6 +207,9 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Show assignment constraints in the sandbox workspace.
 - [ ] Show terminal/output information where grading results include it.
 - [ ] Show test-result details with passed/failed counts.
+- [ ] Show queued/running status, queue position, and rough ETA band after accepted sandbox uploads.
+- [ ] Support same-session sandbox result return with a non-identifying run token for up to `1h`.
+- [ ] Support cancellation of sandbox jobs before execution starts.
 - [ ] Make zero-retention behavior explicit in student-facing messaging.
 - [ ] Clear projected results on sandbox session exit or completion.
 
@@ -240,6 +252,12 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Validate ZIP upload acceptance under `2s` for files up to `50MB`.
 - [ ] Validate `200` official submissions complete within `40 min` on the Dell workstation.
 - [ ] Validate status polling responses under `200ms`.
+- [ ] Validate queue admission at `39`, `40`, `49`, and `50` queued execution jobs.
+- [ ] Validate full-queue rejection includes retry guidance and does not persist uploaded files.
+- [ ] Validate official batches larger than available queue capacity are chunked safely.
+- [ ] Validate round-robin fairness when official and sandbox queues both have waiting jobs.
+- [ ] Validate queued sandbox cancellation frees queue capacity and cleans temporary artifacts.
+- [ ] Validate queue status includes position and rough ETA band without sensitive fields.
 - [ ] Validate export packaging overhead under `2 min` for `200` submissions after grading completes.
 - [ ] Validate `@uvu.edu` staff login succeeds.
 - [ ] Validate non-UVU staff login is rejected.

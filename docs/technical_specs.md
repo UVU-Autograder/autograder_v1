@@ -260,6 +260,9 @@ These remain outside persistent storage and are represented conceptually in `doc
 - Benchmark evidence must use mixed synthetic workloads covering passing submissions, test failures, compile/import errors, timeouts, and malformed bundles.
 - A benchmarked cap is approved only when cleanup proof passes, no worker/container crashes occur, queue/backpressure behaves correctly, and current service targets remain satisfied.
 - Benchmark evidence must include app-level duration and failure counters, Celery queue behavior, Judge0 status behavior, and Docker/Kata resource observations. Docker stats output may be summarized, but memory and process/thread pressure must be checked.
+- The 32 GB RAM audit supports cautious `2` to `4` Python Judge0/Kata execution slots only when the LLM stays resident in GPU VRAM. RAM headroom alone does not approve higher execution concurrency.
+- Benchmark gates must still cover Kata overhead, Judge0/isolate behavior, pytest memory spikes, CPU saturation, NVMe/temp-file churn, AI/KV-cache pressure, cleanup reliability, and timeout-heavy workloads.
+- M1 does not approve `8` concurrent Judge0/Kata execution slots from spreadsheet RAM estimates alone.
 
 ## Frontend Tooling Notes
 
@@ -285,6 +288,7 @@ Notes:
 - Admin workflows must support creating, editing, deactivating, and assigning staff accounts, roles, and course or section access grants.
 - Admin workflows must support creating, editing, and deactivating courses and sections.
 - Admin-only monitoring may surface token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
+- Admin-only monitoring should surface global queued count, running count, approved execution-slot cap, high-load/full-queue state, official versus sandbox queue counts, and AI degradation state.
 - Instructors can see what other teachers are doing in assigned courses but may not modify grading setup outside their own assigned sections.
 - IAs are section-limited validators in M1, with read-only access to assignment configuration in assigned sections.
 - Official batch execution is section-scoped even though assignments are course-owned.
@@ -321,6 +325,7 @@ Notes:
 - Per-student parallelization begins only after the official archive has passed validation and been extracted.
 - Per-student bundle validation uses the app-owned assignment config before AST or execution starts.
 - AST/concept checks must evaluate the merged effective concept list derived from current course defaults plus assignment additions.
+- Official batches may contain more submissions than available queue capacity. After validation, official runs are chunked internally into per-submission execution jobs and only feed more work into the global execution queue as capacity opens.
 - Celery concurrency must respect the Dell workstation's documented memory-tested Judge0 + Kata execution capacity.
 - M1 default Celery grading concurrency must not exceed `2` concurrent Judge0/Kata execution slots.
 - Work beyond the approved execution-slot cap remains queued or backpressured rather than starting additional execution jobs.
@@ -342,10 +347,26 @@ Notes:
 - Sandbox upload intake accepts ZIP/project bundles only.
 - Bundle validation uses the app-owned assignment config before AST or execution starts.
 - AST/concept checks must evaluate the merged effective concept list derived from current course defaults plus assignment additions.
+- Accepted sandbox uploads return immediately with a non-identifying run token and status URL.
+- Sandbox users may leave and return in the same browser session for up to `1h` while the run is queued, running, or recently completed.
+- Sandbox users may cancel queued jobs before execution starts; cancellation frees queue capacity and triggers cleanup of any temporary intake artifacts.
 - Judge0 cleanup includes `DELETE /submissions/{token}` immediately after the result is read.
 - Sandbox output never becomes a downloadable artifact.
 - Sandbox cleanup runs on completion, timeout, failure, or session exit.
 - Persistent sandbox reporting is limited to aggregate, non-identifying metadata.
+
+### Queue admission and scheduling contract
+
+- High-concurrency submission intake is separate from low-concurrency Judge0/Kata execution.
+- The global queued execution-job limit is `50` waiting jobs across official and sandbox workflows.
+- One queued execution job equals one per-submission Judge0/Kata execution.
+- Running jobs do not count toward the `50` queued-job limit; they are governed by the approved execution-slot cap.
+- At `40` queued execution jobs, staff and sandbox status surfaces should show high-load messaging.
+- At `50` queued execution jobs, new intake is rejected before file persistence with a sanitized full-queue error, retry guidance, and `Retry-After` where the protocol allows it.
+- The app uses separate logical official and sandbox queues that feed the same bounded execution slots.
+- When both official and sandbox queues have waiting jobs, execution starts use simple round-robin fairness between workflow types.
+- Queue capacity policy must never raise the active Judge0/Kata execution slot cap. Capacity increases come only from benchmark-approved execution slots or additional execution nodes in future work.
+- Under high queue or resource load, AI feedback may be delayed, skipped, or marked unavailable; grounded test results should return first. AI degradation must not block cleanup or execution-slot release.
 
 ### Run status delivery contract
 
@@ -353,6 +374,7 @@ Notes:
 - Backend status reads are backed by Redis transient run-state storage.
 - `GET /runs/{id}/status` must surface `queue`, `run`, `complete`, or `failure` state.
 - The status response must include sanitized counters: `total`, `queued`, `running`, `completed`, `failed`, and `warnings`.
+- When state is `queue`, the status response should include queue position and a rough ETA band: `under_1_min`, `1_to_3_min`, `3_to_5_min`, or `over_5_min`.
 - The status response may include a sanitized human-readable message and coarse failure summary, but must not include student code, filenames, student identifiers, raw traceback text, detailed compiler/runtime output, detailed feedback bodies, or raw Judge0 payloads.
 - Coarse failure categories for M1:
   - `validation_error`
@@ -367,6 +389,8 @@ Notes:
   - `judge0_error`
   - `cleanup_failure`
   - `packaging_failure`
+  - `queue_full`
+  - `cancelled`
   - `ai_disabled`
   - `ai_error`
   - `internal_error`
