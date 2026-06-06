@@ -27,7 +27,8 @@ export function NavMain({
     isActive?: boolean
     items?: {
       title: string
-      url: string
+      url?: string
+      onClick?: () => void
     }[]
   }[]
 }) {
@@ -55,9 +56,17 @@ export function NavMain({
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
+                        {subItem.url ? (
+                          <a href={subItem.url}>
+                            <span>{subItem.title}</span>
+                          </a>
+                        ) : subItem.onClick ? (
+                          <a onClick={subItem.onClick} style={{ cursor: "pointer" }}>
+                            <span>{subItem.title}</span>
+                          </a>
+                        ) : (
                           <span>{subItem.title}</span>
-                        </a>
+                        )}
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}

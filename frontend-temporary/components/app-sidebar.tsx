@@ -32,7 +32,8 @@ type AppSidebarData = {
     isActive?: boolean
     items?: Array<{
       title: string
-      url: string
+      url?: string
+      onClick?: () => void
     }>
   }>
   projects?: Array<{

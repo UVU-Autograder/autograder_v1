@@ -1,4 +1,4 @@
-export const assignmentsCodeExample = {
+export const mainCodeExample = {
     code: `
     def bubble_sort(arr):
         n = len(arr)
