@@ -1,13 +1,12 @@
 import { Editor } from "@monaco-editor/react";
 
 export default function MonacoEditor({
-  height, width, defaultLanguage, defaultValue, className, onChange
+  height, width, defaultLanguage, defaultValue, onChange
 }: {
   height: string;
   width: string;
   defaultLanguage: string;
   defaultValue: string;
-  className?: string;
   onChange?: (value: string | undefined) => void;
 }) {
   return (
@@ -17,7 +16,6 @@ export default function MonacoEditor({
       defaultLanguage={defaultLanguage}
       defaultValue={defaultValue}
       onChange={onChange}
-      options={{ minimap: { enabled: false } }}  // optional, more IDE-like
     />
   );
 }

@@ -39,6 +39,7 @@ export function AssignmentsSidebar() {
             {
                 title: "Files",
                 url: "#",
+                isActive: true,
                 icon: (
                 <BookOpenIcon
                 />

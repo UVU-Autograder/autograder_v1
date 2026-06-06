@@ -61,9 +61,14 @@ export function NavMain({
                             <span>{subItem.title}</span>
                           </a>
                         ) : subItem.onClick ? (
-                          <a onClick={subItem.onClick} style={{ cursor: "pointer" }}>
+                          <button
+                            type="button"
+                            onClick={subItem.onClick}
+                            className="w-full cursor-pointer"
+                          >
                             <span>{subItem.title}</span>
-                          </a>
+                          </button>
+                     
                         ) : (
                           <span>{subItem.title}</span>
                         )}
