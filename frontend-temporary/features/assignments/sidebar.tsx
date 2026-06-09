@@ -28,7 +28,7 @@ export function AssignmentsSidebar() {
                 items: [
                 {
                     title: "Test Case 1",
-                    url: "#",
+                    onClick: () => openFileByName("test_case_1.txt"),
                 },
                 {
                     title: "Test Case 2",
@@ -52,6 +52,14 @@ export function AssignmentsSidebar() {
                 {
                     title: "test_main.py",
                     onClick: () => openFileByName("test_main.py"),
+                },
+                {
+                    title: "test_main1.py",
+                    onClick: () => openFileByName("test_main1.py"),
+                },
+                {
+                    title: "test_main2.py",
+                    onClick: () => openFileByName("test_main2.py"),
                 }
                 ],
             },

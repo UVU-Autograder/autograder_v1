@@ -1,67 +1,166 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useRef, useState, ReactNode } from 'react';
 import { getFile } from './api';
-
-type OpenFile = {
-  filename: string;
-  content: string;
-  language: string;
-};
+import {
+  computeCloseTab,
+  computeMoveTab,
+  computeSplitTab,
+  createPaneId,
+  DragTabData,
+  EditorLayoutState,
+  OpenFile,
+} from './editor-layout';
 
 type AssignmentFileContextType = {
-  openFiles: OpenFile[];
-  activeFile: string | null;
+  files: Record<string, OpenFile>;
+  panes: EditorLayoutState['panes'];
+  layout: EditorLayoutState['layout'];
+  activePaneId: string;
+  dragTab: DragTabData | null;
   openFileByName: (filename: string) => Promise<void>;
-  setActiveFile: (filename: string) => void;
-  closeFile: (filename: string) => void;
+  setActiveTab: (paneId: string, filename: string) => void;
+  setActivePane: (paneId: string) => void;
+  closeTab: (paneId: string, filename: string) => void;
+  startTabDrag: (data: DragTabData) => void;
+  endTabDrag: () => void;
+  splitTabToPane: (
+    filename: string,
+    sourcePaneId: string,
+    targetPaneId: string,
+    direction: 'row' | 'column'
+  ) => void;
+  moveTabToPane: (filename: string, sourcePaneId: string, targetPaneId: string) => void;
 };
 
 const AssignmentFileContext = createContext<AssignmentFileContextType | null>(null);
 
+const INITIAL_PANE_ID = createPaneId();
+
 export function AssignmentFileProvider({ children }: { children: ReactNode }) {
-  const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
-  const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [files, setFiles] = useState<Record<string, OpenFile>>({});
+  const [editorLayout, setEditorLayout] = useState<EditorLayoutState>({
+    panes: {
+      [INITIAL_PANE_ID]: { id: INITIAL_PANE_ID, tabs: [], activeTab: null },
+    },
+    layout: { type: 'pane', paneId: INITIAL_PANE_ID },
+    activePaneId: INITIAL_PANE_ID,
+  });
+  const [dragTab, setDragTab] = useState<DragTabData | null>(null);
+  const dragActionInProgressRef = useRef(false);
 
   const openFileByName = async (filename: string) => {
-    let alreadyOpen = false;
-    setOpenFiles((prev) => {
-      alreadyOpen = prev.some((file) => file.filename === filename);
-      if (alreadyOpen) {
-        setActiveFile(filename);
-      }
-      return prev;
+    let file = files[filename];
+
+    if (!file) {
+      const response = await getFile(filename);
+      const content = await response.text();
+      const language = filename.endsWith('.py') ? 'python' : 'plaintext';
+      file = { filename, content, language };
+      setFiles((prev) => ({ ...prev, [filename]: file! }));
+    }
+
+    setEditorLayout((prev) => {
+      const pane = prev.panes[prev.activePaneId];
+      if (!pane) return prev;
+
+      const alreadyOpen = pane.tabs.includes(filename);
+      return {
+        ...prev,
+        panes: {
+          ...prev.panes,
+          [prev.activePaneId]: {
+            ...pane,
+            tabs: alreadyOpen ? pane.tabs : [...pane.tabs, filename],
+            activeTab: filename,
+          },
+        },
+      };
     });
-    if (alreadyOpen) return;
-
-    const response = await getFile(filename);
-    const content = await response.text();
-    const language = filename.endsWith('.py') ? 'python' : 'plaintext';
-    const file = { filename, content, language };
-
-    setOpenFiles((prev) => [...prev, file]);
-    setActiveFile(filename);
   };
 
-  const closeFile = (filename: string) => {
-    setOpenFiles((prev) => {
-      const closingIndex = prev.findIndex((file) => file.filename === filename);
-      if (closingIndex === -1) return prev;
+  const setActiveTab = (paneId: string, filename: string) => {
+    setEditorLayout((prev) => {
+      const pane = prev.panes[paneId];
+      if (!pane || !pane.tabs.includes(filename)) return prev;
+      return {
+        ...prev,
+        activePaneId: paneId,
+        panes: { ...prev.panes, [paneId]: { ...pane, activeTab: filename } },
+      };
+    });
+  };
 
-      const nextFiles = prev.filter((file) => file.filename !== filename);
+  const setActivePane = (paneId: string) => {
+    setEditorLayout((prev) => ({ ...prev, activePaneId: paneId }));
+  };
 
-      setActiveFile((currentActive) => {
-        if (currentActive !== filename) return currentActive;
-        if (nextFiles.length === 0) return null;
-        return nextFiles[Math.min(closingIndex, nextFiles.length - 1)].filename;
+  const closeTab = (paneId: string, filename: string) => {
+    setEditorLayout((prev) => computeCloseTab(prev, paneId, filename) ?? prev);
+  };
+
+  const startTabDrag = (data: DragTabData) => {
+    setDragTab(data);
+  };
+
+  const endTabDrag = () => {
+    setDragTab(null);
+  };
+
+  const runDragAction = (apply: (prev: EditorLayoutState) => EditorLayoutState | null) => {
+    if (dragActionInProgressRef.current) return;
+    dragActionInProgressRef.current = true;
+
+    try {
+      setEditorLayout((prev) => apply(prev) ?? prev);
+      setDragTab(null);
+    } finally {
+      queueMicrotask(() => {
+        dragActionInProgressRef.current = false;
       });
-
-      return nextFiles;
-    });
+    }
   };
+
+  const splitTabToPane = (
+    filename: string,
+    sourcePaneId: string,
+    targetPaneId: string,
+    direction: 'row' | 'column'
+  ) => {
+    const newPaneId = createPaneId();
+    runDragAction((prev) =>
+      computeSplitTab(prev, filename, sourcePaneId, targetPaneId, direction, newPaneId)
+    );
+  };
+
+  const moveTabToPane = (
+    filename: string,
+    sourcePaneId: string,
+    targetPaneId: string
+  ) => {
+    runDragAction((prev) => computeMoveTab(prev, filename, sourcePaneId, targetPaneId));
+  };
+
+  const { panes, layout, activePaneId } = editorLayout;
 
   return (
-    <AssignmentFileContext.Provider value={{ openFiles, activeFile, openFileByName, setActiveFile, closeFile }}>
+    <AssignmentFileContext.Provider
+      value={{
+        files,
+        panes,
+        layout,
+        activePaneId,
+        dragTab,
+        openFileByName,
+        setActiveTab,
+        setActivePane,
+        closeTab,
+        startTabDrag,
+        endTabDrag,
+        splitTabToPane,
+        moveTabToPane,
+      }}
+    >
       {children}
     </AssignmentFileContext.Provider>
   );
