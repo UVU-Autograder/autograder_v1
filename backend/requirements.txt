@@ -1,1 +1,5 @@
-# Backend dependency placeholder including FastAPI, SQLAlchemy/Alembic, Celery, Redis, httpx, Azure OpenAI client dependencies, Judge0 integration needs, and any non-stdlib AST support only if required for artifact-backed pytest execution and official-run orchestration.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+python-multipart>=0.0.9,<1
+pytest>=8,<9
+httpx>=0.27,<1

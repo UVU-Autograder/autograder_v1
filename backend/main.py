@@ -1,1 +1,3 @@
-# Entry point placeholder for the backend application.
+from app.main import app
+
+__all__ = ["app"]
