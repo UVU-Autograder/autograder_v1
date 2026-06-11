@@ -58,10 +58,10 @@
 ### Assignment and grading setup
 
 1. Instructor creates an assignment linked to a course.
-2. Authorized staff configure grading data primarily through a comprehensive instructor-facing wizard that generates the app-owned `config.json`, with `config.json` import/export support available as needed.
+2. Authorized staff configure grading data through a comprehensive instructor-facing wizard that writes the app-owned `assignment_configs.config_json`; raw `config.json` import, export, and direct editing are out of scope for M1.
 3. Assignment metadata (for example name, due date, and points context) is entered manually in M1; Canvas assignment-metadata import is not required.
 4. `Concepts Covered` defaults are maintained at the course level, and each assignment stores additive concept entries only.
-5. pytest-linked tests, model solution content, ZIP/project bundle requirements, and test metadata derived from the app-owned config are maintained as assignment-owned grading assets.
+5. One assignment-owned pytest file, model solution content, support files, ZIP/project bundle requirements, and test metadata derived from the app-owned config are maintained as assignment-owned grading assets.
 6. Model solution validation runs through the same Judge0 + Kata execution path used for student code.
 
 ## 5. Data Model
@@ -85,10 +85,10 @@
 - `staff_access` stores user, role, course, optional section, and permission semantics.
 - `courses` store the teacher-authored default `Concepts Covered` baseline used across assignments in that course.
 - `assignments` are course-linked, while section-level edit authority is enforced through staff access rules.
-- `assignment_configs` store the app-owned `config.json`, which is the primary editable grading configuration in M1; the frontend wizard is the primary authoring surface for that config.
+- `assignment_configs` store the app-owned `config_json`, which is the canonical internal grading configuration in M1; the frontend wizard is the only M1 authoring surface for that config.
 - `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
 - `assignment_concepts` store assignment-specific additive concept entries only; the runtime-effective allow-list is derived by merging course defaults with assignment additions when AST checks or UI surfaces need it.
-- `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
+- `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as the single M1 pytest file, model solutions, and support files.
 - `test_cases` are optional derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
 - `run_summaries` store workflow type, actor, aggregate counts, failure categories, and sanitized Azure token usage only.
 - Judge0 submission tokens and raw Judge0 result payloads are transient execution-service data and must not be persisted as app-owned Postgres records.
@@ -105,16 +105,16 @@
   - duplicate concepts are removed automatically
 - AST enforcement and any UI display of allowed concepts must use the same merged effective list.
 - Existing assignments always reflect the current course defaults at runtime; M1 does not snapshot course defaults into assignment config.
-- Assignment `config.json` stores assignment-owned concept additions only and does not duplicate course-owned defaults.
-- Importing the same assignment config into a different course may produce a different effective concept list because course defaults are course-owned in M1.
+- Assignment `config_json` stores assignment-owned concept additions only and does not duplicate course-owned defaults.
+- Reusing the same assignment config shape in a different course may produce a different effective concept list because course defaults are course-owned in M1.
 
-### `config.json` v1 contract
+### Assignment `config_json` v1 contract
 
-- M1 uses a strict app-owned `config.json` v1 contract for assignment import, export, wizard generation, bundle validation, test projection, and execution planning.
-- `config.json` v1 is Python-focused and pytest-focused. It does not model multi-language execution, compiled-language build pipelines, manual grading, plagiarism workflows, or Canvas grade passback.
-- The exported/imported config must include `schema_version: 1`. Missing versions, unknown major versions, or configs that cannot be validated against the v1 schema must be rejected with actionable import errors.
-- The v1 schema should be expressed as JSON Schema 2020-12 for portable import/export validation. Backend and frontend validators may use implementation-native tools, but they must enforce the same schema and error paths.
-- Config entries that need durable identity across import/export use stable human-readable keys, not database IDs. Stable keys are required for tests and artifact references.
+- M1 uses a strict app-owned `assignment_configs.config_json` v1 contract for wizard generation, bundle validation, test projection, model-solution validation, and execution planning.
+- `config_json` v1 is Python-focused and pytest-focused. It does not model multi-language execution, compiled-language build pipelines, manual grading, plagiarism workflows, Canvas grade passback, hidden tests, raw config import/export, or direct raw config editing.
+- The stored config must include `schema_version: 1`. Missing versions, unknown major versions, or configs that cannot be validated against the v1 schema must be rejected with actionable setup errors.
+- The v1 schema should be expressed as JSON Schema 2020-12 for portable validation. Backend and frontend validators may use implementation-native tools, but they must enforce the same schema and error paths.
+- Config entries that need durable identity use stable human-readable keys, not database IDs. Stable keys are required for tests and artifact references.
 - Display labels may change without changing stable keys. Renaming a stable key is treated as replacing that config object and should trigger regeneration or reconciliation of derived records.
 - Minimum top-level v1 sections:
   - `schema_version`
@@ -123,30 +123,34 @@
   - `concepts`
   - `artifacts`
   - `tests`
-  - `grading`
+- Optional top-level v1 sections:
+  - `completion_requirements`
 - `assignment` stores assignment-owned display metadata needed by the config surface, such as title or points context. Canvas remains the course/grade source of truth.
 - `bundle` stores ZIP/project bundle requirements, including required files, entrypoint rules, and supported layout expectations.
-- `concepts` stores assignment-owned concept additions only. Course defaults are not duplicated in exported assignment config.
+- `concepts` stores assignment-owned concept additions only. Course defaults are not duplicated in assignment config.
 - `artifacts` maps stable artifact keys to required artifact type and optional display filename metadata. File bodies are stored through the assignment artifact storage layer, not embedded in config JSON.
-- `tests` stores stable test keys, display names, point values, visibility settings, pytest artifact references, and any safe test metadata needed for UI and execution planning.
-- `grading` stores total-point expectations and aggregation rules needed to validate that test points and exported grades are internally consistent.
+- `tests` stores stable test keys, display names, point values, explicit `extra_credit` booleans, and any safe test metadata needed for UI and execution planning.
+- M1 uses one `pytest_file` artifact per assignment. Each `tests[].key` must be a stable slug, and the pytest marker is derived as `ag_<key>` rather than stored separately.
+- One scoring entry may map to multiple pytest functions when those functions share the same `ag_<key>` marker.
+- Default scoring is implicit: a scoring item contributes its `points` only when all pytest functions with its derived marker pass. Non-extra-credit items define the base total; passed extra-credit items add points above that base total.
+- `completion_requirements`, when present, stores "complete at least X of these Y objectives" rules over existing `tests[].key` values. Each requirement should minimally include a stable key, display label, referenced test keys, and `minimum_passed`.
+- Completion requirements report whether an objective threshold is met; they do not replace scoring-item points in M1.
+- Hidden tests are out of scope for M1; all M1 scoring entries are visible in staff and sandbox result surfaces.
 - `TestCase` rows, UI previews, and execution plans are derived from the app-owned config. If derived rows disagree with the config, the config wins and derived rows must be regenerated or reconciled.
-- Config validation must catch at least: duplicate stable keys, missing artifact references, invalid point totals, missing bundle entrypoint rules, unsupported artifact types, and fields outside the supported v1 contract where strict validation applies.
+- Strict preflight validation must catch at least: duplicate stable keys, missing `ag_<key>` markers in the pytest file, missing assignment pytest artifact, invalid point values, missing or invalid `extra_credit` booleans, invalid `completion_requirements` references or thresholds, missing bundle entrypoint rules, unsupported artifact types, and fields outside the supported v1 contract where strict validation applies. This preflight must pass before model-solution validation or grading starts.
 
 ### TestCase and artifact contract
 
 - `AssignmentArtifact` is the storage-backed file reference layer for assignment-owned grading assets.
 - Minimum M1 artifact classes:
-  - `config_json`
   - `pytest_file`
   - `model_solution`
   - `support_file`
 - M1 expectations by artifact class:
-  - `config_json`: validated, persisted as the primary config, and available for import/export and download
-  - `pytest_file`: editable, validated through test execution, stored as metadata plus storage-backed file body
+  - `pytest_file`: exactly one per assignment in M1; editable, validated through strict marker preflight and test execution, stored as metadata plus storage-backed file body
   - `model_solution`: editable, executable through Judge0, stored as metadata plus storage-backed file body
   - `support_file`: assignment-owned file content available to grading and test execution as needed
-- `AssignmentArtifact` metadata should stay lightweight in M1: assignment linkage, artifact type, storage reference, and optional filename are sufficient unless later implementation work proves otherwise.
+- `AssignmentArtifact` metadata should stay lightweight in M1: assignment linkage, stable artifact key, artifact type, storage reference, and optional filename are sufficient unless later implementation work proves otherwise.
 - M1 artifact file bodies use the local on-prem filesystem behind a storage interface.
 - Artifact storage keys are generated opaque identifiers and must not be based on instructor-provided filenames or paths.
 - Optional instructor-provided filenames are display metadata only. They may be shown in staff UI after sanitization, but they must not become storage paths or long-lived student-run metadata.
@@ -156,11 +160,13 @@
 - Artifact delete behavior must remove the local file body and metadata reference, or mark the metadata unusable if deletion fails and surface an actionable admin/staff error.
 - `TestCase` is a derived record, not the editable grading definition and not the raw file body.
 - M1 does not provide a separate simple test-case editor; test authoring flows through the wizard/config and pytest artifacts.
-- `AssignmentConfig` / app-owned `config.json` wins if it ever disagrees with a derived `TestCase`; derived records must be regenerated or reconciled rather than edited independently.
+- `AssignmentConfig` / app-owned `config_json` wins if it ever disagrees with a derived `TestCase`; derived records must be regenerated or reconciled rather than edited independently.
 - `TestCase` should minimally capture:
   - assignment linkage
   - stable config test identifier such as `config_test_key`
   - reference to the pytest artifact used for execution
+  - pytest marker such as `ag_handles_empty_input`
+  - point value copied from the canonical config for UI/query convenience
   - optional display order for UI/query needs
 
 ### Run summary contract

@@ -45,8 +45,19 @@ class SandboxConstraint(BaseModel):
 
 
 class SandboxRubricItem(BaseModel):
+    key: str | None = None
     label: str
     points: int = Field(ge=0)
+    extra_credit: bool = False
+    pytest_marker: str | None = None
+    item_type: Literal["pytest", "manual"] = "pytest"
+    rubric_group_key: str | None = None
+
+
+class SandboxRubricGroup(BaseModel):
+    key: str
+    label: str
+    item_keys: list[str]
 
 
 class SandboxAssignmentDetail(SandboxAssignmentSummary):
@@ -55,6 +66,8 @@ class SandboxAssignmentDetail(SandboxAssignmentSummary):
     max_upload_bytes: int = Field(ge=1)
     constraints: list[SandboxConstraint]
     rubric: list[SandboxRubricItem]
+    rubric_groups: list[SandboxRubricGroup] = Field(default_factory=list)
+    completion_requirements: list[dict] = Field(default_factory=list)
 
 
 class FilePreviewMetadata(BaseModel):

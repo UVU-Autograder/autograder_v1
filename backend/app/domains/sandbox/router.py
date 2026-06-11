@@ -1,5 +1,11 @@
 from fastapi import APIRouter, File, Header, HTTPException, Response, UploadFile
 
+from app.core.dependencies import DbSession
+from app.domains.sandbox.catalog import (
+    get_sandbox_assignment,
+    list_sandbox_assignments,
+    list_sandbox_courses,
+)
 from app.domains.sandbox.schemas import (
     SandboxAssignmentDetail,
     SandboxAssignmentListResponse,
@@ -14,8 +20,8 @@ router = APIRouter(prefix="/sandbox", tags=["sandbox"])
 
 
 @router.get("/courses", response_model=SandboxCourseListResponse)
-def list_courses() -> SandboxCourseListResponse:
-    return sandbox_service.list_courses()
+def list_courses(db: DbSession) -> SandboxCourseListResponse:
+    return list_sandbox_courses(db)
 
 
 @router.get(
@@ -23,10 +29,15 @@ def list_courses() -> SandboxCourseListResponse:
     response_model=SandboxAssignmentListResponse,
 )
 def list_assignments(
+    db: DbSession,
     course_id: str,
     x_sandbox_session: str | None = Header(default=None),
 ) -> SandboxAssignmentListResponse:
-    assignments = sandbox_service.list_assignments(course_id, x_sandbox_session)
+    assignments = list_sandbox_assignments(
+        db,
+        course_id,
+        sandbox_service.quota_for_session(x_sandbox_session),
+    )
     if assignments is None:
         raise HTTPException(status_code=404, detail="Course not found.")
     return assignments
@@ -37,11 +48,17 @@ def list_assignments(
     response_model=SandboxAssignmentDetail,
 )
 def get_assignment(
+    db: DbSession,
     course_id: str,
     assignment_id: str,
     x_sandbox_session: str | None = Header(default=None),
 ) -> SandboxAssignmentDetail:
-    assignment = sandbox_service.get_assignment(course_id, assignment_id, x_sandbox_session)
+    assignment = get_sandbox_assignment(
+        db,
+        course_id,
+        assignment_id,
+        sandbox_service.quota_for_session(x_sandbox_session),
+    )
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
     return assignment
@@ -53,6 +70,7 @@ def get_assignment(
     status_code=202,
 )
 async def create_run(
+    db: DbSession,
     response: Response,
     course_id: str,
     assignment_id: str,
@@ -60,10 +78,20 @@ async def create_run(
     x_sandbox_session: str | None = Header(default=None),
 ) -> SandboxRunCreateResponse:
     await bundle.close()
+    assignment = get_sandbox_assignment(
+        db,
+        course_id,
+        assignment_id,
+        sandbox_service.quota_for_session(x_sandbox_session),
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
     run, session, error_status = sandbox_service.create_run(
         course_id=course_id,
         assignment_id=assignment_id,
         session_id=x_sandbox_session,
+        assignment_exists=True,
+        max_score=assignment.max_score,
     )
     response.headers["X-Sandbox-Session"] = session
     if error_status == 429:
@@ -73,8 +101,6 @@ async def create_run(
             status_code=503,
             detail="Sandbox queue is full. Please retry after capacity clears.",
         )
-    if run is None:
-        raise HTTPException(status_code=404, detail="Assignment not found.")
     return run
 
 

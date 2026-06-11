@@ -115,7 +115,7 @@ services:
       judge0:
         condition: service_healthy
     environment:
-      POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
+      DATABASE_URL: postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       JUDGE0_URL: http://judge0:2358
@@ -153,7 +153,7 @@ services:
       judge0:
         condition: service_healthy
     environment:
-      POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
+      DATABASE_URL: postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       JUDGE0_URL: http://judge0:2358

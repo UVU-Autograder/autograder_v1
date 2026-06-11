@@ -45,12 +45,15 @@ classDiagram
     }
 
     class AssignmentArtifact {
+        artifact_key
         artifact_type
         storage_ref
     }
 
     class TestCase {
         config_test_key
+        pytest_marker
+        points
     }
 
     class RunSummary {
@@ -69,8 +72,8 @@ classDiagram
     Course "1" *-- "many" Assignment : owns
     Assignment "1" *-- "1" AssignmentConfig : stores_app_owned_config
     Assignment "1" *-- "0..1" AssignmentConcept : stores_concept_additions
-    Assignment "1" *-- "many" AssignmentArtifact : stores_assets
-    Assignment "1" *-- "many" TestCase : exposes_derived_records
+    Assignment "1" *-- "many" AssignmentArtifact : stores_file_body_refs
+    Assignment "1" *-- "many" TestCase : exposes_derived_projection
     Assignment "1" *-- "many" RunSummary : tracks_workflows
     User "0..1" --> "many" RunSummary : initiates_staff_runs
 ```

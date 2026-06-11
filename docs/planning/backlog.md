@@ -8,6 +8,7 @@ This file is the primary M1 delivery checklist. It tracks implementation work on
 ## Source Of Truth
 
 - [decisions.md](../backend_implementation/decisions.md) - product, policy, and M1 assumption decisions
+- [storage_and_test_plan.md](../backend_implementation/storage_and_test_plan.md) - canonical assignment config, artifact storage, and pytest scoring architecture
 - [technical_specs.md](../technical_specs.md) - backend/system behavior, data contracts, runtime limits, and deployment shape
 - [frontend_implementation.md](../frontend_implementation/frontend_implementation.md) - routes, UI surfaces, and frontend constraints
 - [delivery_controls.md](delivery_controls.md) - review cadence, Definition of Done, and M1 scope boundaries
@@ -23,8 +24,8 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 | [ ]  | Judge0/Kata cleanup proof is established                                | The team has evidence that Judge0 submission/result artifacts and Kata execution state are destroyed after result retrieval.                                 |
 | [ ]  | Staff `@uvu.edu` authentication and role boundaries are implemented     | Staff sign-in rejects non-UVU accounts; admin, instructor, and IA access rules are enforced.                                                                 |
 | [ ]  | Admin course, section, staff, and monitoring workflows are usable       | Admins can manage courses, sections, access grants, and admin-only operational monitoring for token usage, upload limits, and worker/capacity status.        |
-| [ ]  | Assignment setup and `config.json` v1 round trip are usable             | Staff can create or open an assignment, edit setup through the wizard, define ZIP/project bundle requirements, import/export strict v1 config, and download the current config. |
-| [ ]  | Assignment artifact management is usable                               | Staff can manage pytest files, model solutions, and support files through local filesystem-backed `assignment_artifacts` storage references.                  |
+| [ ]  | Assignment setup and canonical `config_json` are usable                 | Staff can create or open an assignment, edit setup through the wizard, define ZIP/project bundle requirements, define visible scoring items, and persist validated internal config. |
+| [ ]  | Assignment artifact management is usable                               | Staff can manage the single assignment pytest file, model solutions, and support files through local filesystem-backed `assignment_artifacts` storage references. |
 | [ ]  | Ephemeral Canvas ZIP ingest is implemented                              | Staff can upload a Canvas ZIP containing single-file or multi-file student bundles; malformed archives, path traversal, and unmatched filenames surface actionable errors without persistent student submissions. |
 | [ ]  | Grading chain works with AST checks, Judge0/Kata execution, and cleanup | Official and sandbox grading can run through AST checks, Judge0/Kata execution, structured results, and post-result cleanup.                                 |
 | [ ]  | Safe Judge0/Kata worker caps are documented                             | Dell-workstation benchmarking defines approved grading worker caps before grading-pipeline implementation begins.                                            |
@@ -80,7 +81,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Host Monaco Editor locally in the frontend scaffold for planned editor and review workflows.
 - [ ] Document required environment variables in `.env.example`, including Azure OpenAI settings.
 - [ ] Update README so a developer can bring up the local stack.
-- [ ] Add a seed path for one course, course-level `Concepts Covered`, one assignment, assignment concept additions, one app-owned `config.json`, and one model solution.
+- [ ] Add a seed path for one course, course-level `Concepts Covered`, one assignment, assignment concept additions, one app-owned `config_json`, one assignment pytest file, and one model solution.
 
 ### Staff Auth And Access Control
 
@@ -98,28 +99,30 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Ensure IAs can view only explicitly assigned sections for grading validation.
 - [ ] Ensure public sandbox users cannot access staff workflow pages or export flows.
 
-### Assignment Setup And `config.json`
+### Assignment Setup And `config_json`
 
 - [ ] Add assignment creation with course linkage, due date, and Canvas reference metadata.
 - [ ] Build a comprehensive setup wizard for instructor-relevant assignment, rubric, and config fields.
-- [ ] Generate valid app-owned `config.json` v1 from the wizard.
-- [ ] Validate `config.json` v1 with strict schema-version handling and stable human-readable keys for tests and artifact references.
+- [ ] Generate valid app-owned `config_json` v1 from the wizard.
+- [ ] Validate `config_json` v1 with strict schema-version handling and stable human-readable keys for tests and artifact references.
 - [ ] Add assignment-config fields for ZIP/project bundle requirements, including required files, entrypoint, and layout expectations.
 - [ ] Validate required files, entrypoint, and layout expectations before model-solution validation or grading.
-- [ ] Add validated `config.json` v1 import with clear error display for schema, version, duplicate-key, missing-artifact, and point-total failures.
 - [ ] Render all instructor-relevant editable fields from the stored app-owned config.
-- [ ] Allow staff to download the current `config.json`.
 - [ ] Add `/staff/courses/[courseId]/assignments/[assignmentId]/artifacts` for assignment-owned grading assets.
-- [ ] Manage pytest file artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
+- [ ] Manage exactly one M1 pytest file artifact per assignment through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
 - [ ] Manage model solution artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
 - [ ] Manage support-file artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
 - [ ] Validate artifact metadata before file bodies are used for model-solution validation or grading.
+- [ ] Require each visible scoring item key to match a pytest marker named `ag_<key>` in the assignment pytest file.
+- [ ] Allow one scoring item to map to multiple pytest functions that share the same `ag_<key>` marker.
+- [ ] Run strict preflight validation for duplicate keys, missing derived `ag_<key>` markers, missing assignment pytest artifact, invalid point values, missing or invalid `extra_credit` booleans, and invalid completion requirements before model-solution validation or grading.
 - [ ] Add course-level `Concepts Covered` defaults editor.
 - [ ] Add assignment-level `Concepts Covered` additions editor.
 - [ ] Show a merged effective `Concepts Covered` preview.
 - [ ] Let instructors edit assignment-specific concept additions directly.
 - [ ] Keep human-authored grading fields in the app-owned config instead of duplicating them in `TestCase`.
-- [ ] Derive `TestCase` projections from the app-owned config where query or UI behavior needs them.
+- [ ] Regenerate derived `TestCase` projections from the app-owned config after setup changes where query or UI behavior needs them.
+- [ ] Ensure derived `TestCase` projections never become editable grading truth and are reconciled when they disagree with config.
 - [ ] Defer any separate simple test-case editor; keep test authoring in the wizard/config and pytest artifact surfaces for M1.
 
 ### Ephemeral Canvas ZIP Ingest
@@ -242,7 +245,9 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Test the student sandbox flow end to end from assignment selection through ZIP/project bundle upload, preview, results, and cleanup.
 - [ ] Write the risk-based M1 test matrix covering unit, integration, cleanup, FERPA/privacy, and stress scenarios.
 - [ ] Apply the documented Judge0/Kata cleanup proof standard for implementation signoff.
-- [ ] Validate `config.json` v1 import/export rejects missing or unsupported schema versions.
+- [ ] Validate stored `config_json` v1 rejects missing or unsupported schema versions through wizard/setup saves.
+- [ ] Validate strict preflight rejects missing derived `ag_<key>` pytest markers, duplicate config keys, missing assignment pytest artifact, invalid point values, missing or invalid `extra_credit` booleans, and invalid completion-requirement references or thresholds.
+- [ ] Validate derived `TestCase` projections are regenerated from canonical config and reconciled when stale rows disagree.
 - [ ] Validate artifact storage uses generated opaque keys, preserves filenames only as sanitized display metadata, and stores file bodies outside web-served paths.
 - [ ] Validate run status responses expose only sanitized counters and coarse failure categories.
 - [ ] Validate synthetic Canvas ZIP/CSV fixtures and any completely anonymized Canvas-shaped samples before treating ingest/export as dependable.

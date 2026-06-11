@@ -28,7 +28,7 @@ def client():
 def create_run(client: TestClient, session: str | None = None):
     headers = {"X-Sandbox-Session": session} if session else {}
     return client.post(
-        "/sandbox/courses/cs1400/assignments/loops-lab/runs",
+        "/sandbox/courses/cs1400/assignments/simple-python-functions/runs",
         files={
             "bundle": (
                 "student_secret.py.zip",
@@ -54,14 +54,18 @@ def test_lists_visible_courses_and_assignments(client):
 
 
 def test_assignment_detail_returns_contract_metadata(client):
-    response = client.get("/sandbox/courses/cs1400/assignments/loops-lab")
+    response = client.get("/sandbox/courses/cs1400/assignments/simple-python-functions")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["id"] == "loops-lab"
+    assert body["id"] == "simple-python-functions"
     assert body["accepted_bundle_types"] == ["application/zip", ".zip"]
     assert body["max_upload_bytes"] == 50 * 1024 * 1024
     assert body["rubric"]
+    assert body["rubric"][0]["key"] == "add_numbers"
+    assert body["rubric"][0]["pytest_marker"] == "ag_add_numbers"
+    assert "config_json" not in body
+    assert "storage_ref" not in str(body)
 
 
 def test_run_creation_returns_session_quota_urls_and_queue_state(client):
