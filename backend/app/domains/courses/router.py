@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import DbSession, require_stubbed_staff
+from app.core.dependencies import DbSession, require_staff
 from app.domains.courses.schemas import StaffAssignmentListResponse, StaffCourseListResponse
 from app.domains.courses.service import list_staff_assignments, list_staff_courses
 
 router = APIRouter(
     prefix="/staff/courses",
     tags=["staff-courses"],
-    dependencies=[Depends(require_stubbed_staff)],
+    dependencies=[Depends(require_staff)],
 )
 
 

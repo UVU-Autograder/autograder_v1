@@ -9,12 +9,6 @@ from app.domains.auth.models import User
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-def require_stubbed_staff() -> dict[str, str]:
-    """Temporary staff dependency until Microsoft OAuth is wired."""
-
-    return {"email": "dev.staff@uvu.edu", "role": "admin"}
-
-
 def get_current_user(db: DbSession) -> User:
     """Retrieve current authenticated user.
 
