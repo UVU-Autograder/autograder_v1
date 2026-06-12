@@ -48,6 +48,7 @@ class SandboxRunRecord:
     )
     queue_position: int = 1
     warnings: int = 1
+    max_score: int = 100
 
 
 class SandboxService:
@@ -145,6 +146,9 @@ class SandboxService:
     def list_courses(self) -> SandboxCourseListResponse:
         return SandboxCourseListResponse(courses=self._courses)
 
+    def quota_for_session(self, session_id: str | None) -> UploadQuota:
+        return self._quota_for(session_id)
+
     def list_assignments(
         self, course_id: str, session_id: str | None
     ) -> SandboxAssignmentListResponse | None:
@@ -171,9 +175,13 @@ class SandboxService:
         course_id: str,
         assignment_id: str,
         session_id: str | None,
+        assignment_exists: bool | None = None,
+        max_score: int = 100,
     ) -> tuple[SandboxRunCreateResponse | None, str, int | None]:
         assignment = self._find_assignment(course_id, assignment_id)
-        if assignment is None:
+        if assignment_exists is None:
+            assignment_exists = assignment is not None
+        if not assignment_exists:
             return None, session_id or self._new_session(), None
 
         session = session_id or self._new_session()
@@ -193,6 +201,7 @@ class SandboxService:
             course_id=course_id,
             assignment_id=assignment_id,
             queue_position=self._queued_count() + 1,
+            max_score=max_score,
         )
         self._runs[run_id] = record
 
@@ -386,8 +395,7 @@ class SandboxService:
         return sum(1 for item in self._runs.values() if item.state == "queue")
 
     def _assignment_max_score(self, record: SandboxRunRecord) -> int:
-        assignment = self._find_assignment(record.course_id, record.assignment_id)
-        return assignment.max_score if assignment is not None else 100
+        return record.max_score
 
     def _file_preview(self) -> FilePreviewMetadata:
         return FilePreviewMetadata(

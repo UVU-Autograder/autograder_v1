@@ -15,7 +15,6 @@ This file captures the frontend contract, route structure, and UI-surface respon
 - `/staff/courses/[courseId]`: course detail with assignments
 - `/staff/courses/[courseId]/concepts`: course defaults editor for `Concepts Covered`
 - `/staff/courses/[courseId]/assignments/[assignmentId]/setup`: wizard-first assignment setup hub
-- `/staff/courses/[courseId]/assignments/[assignmentId]/config`: advanced `config.json` surface
 - `/staff/courses/[courseId]/assignments/[assignmentId]/concepts`: assignment concept additions editor plus merged effective-list preview
 - `/staff/courses/[courseId]/assignments/[assignmentId]/artifacts`: assignment-owned grading assets
 - `/staff/runs` and `/staff/runs/[runId]`: official-run monitoring and export workflow surfaces
@@ -37,14 +36,15 @@ This file captures the frontend contract, route structure, and UI-surface respon
 
 ## UI-Surface Responsibilities
 
-- The setup wizard is the primary assignment-authoring experience.
-- The `config` route is an advanced surface for import/export and direct config handling, not the default setup path.
+- The setup wizard is the only M1 assignment grading setup surface; raw `config.json` import, export, and direct editing are out of scope.
+- The wizard writes the backend-owned `assignment_configs.config_json`, but the frontend should treat that document as an internal API/storage detail rather than a user-facing editor.
 - Course-level concepts editing owns the baseline `Concepts Covered` list for all assignments in that course.
 - Assignment-level concepts editing owns additive assignment concepts only and must preview the merged effective list derived from current course defaults plus assignment additions.
 - The sandbox entry surface should immediately show globally visible sandbox-enabled courses and assignments.
 - The sandbox workspace is upload-first in M1: students upload one ZIP/project bundle for the selected assignment, then see a sanitized file tree, read-only Monaco preview, rubric details, assignment constraints, terminal/output information where available, test results with passed/failed counts, projected score, grounded feedback, explicit zero-retention messaging, visible remaining uploads, and a clear limit-reached state for backend `429` responses.
 - The sandbox workspace does not support loose multi-file drag-and-drop or in-browser code editing in M1.
-- The assignment artifacts surface owns pytest files, model solution files, and support files through the backend `assignment_artifacts` storage-reference model.
+- The assignment artifacts surface owns the single M1 pytest file, model solution files, and support files through the backend `assignment_artifacts` storage-reference model.
+- UI-visible "test cases" are scoring items from the assignment setup/config, not separate physical test files.
 - Admin monitoring is admin-only in M1 and should summarize Azure token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
 - The `/staff/runs/[runId]` surface is a preview-only review workflow in M1: staff can inspect derived results, per-student feedback, and ephemeral read-only Monaco previews while available, but cannot edit grades or feedback in the app.
 - The `/staff/runs/[runId]` surface should expose separate download actions for the Canvas-grade CSV and the feedback ZIP.

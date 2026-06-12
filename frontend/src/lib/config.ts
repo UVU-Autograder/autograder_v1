@@ -1,4 +1,2 @@
-/*
-Frontend configuration placeholder.
-Future implementation should centralize runtime settings for backend base URL, auth values, and editor defaults.
-*/
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";

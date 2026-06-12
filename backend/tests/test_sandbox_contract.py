@@ -28,7 +28,7 @@ def client():
 def create_run(client: TestClient, session: str | None = None):
     headers = {"X-Sandbox-Session": session} if session else {}
     return client.post(
-        "/sandbox/courses/cs1400/assignments/loops-lab/runs",
+        "/sandbox/courses/cs1400/assignments/simple-python-functions/runs",
         files={
             "bundle": (
                 "student_secret.py.zip",
@@ -43,25 +43,52 @@ def create_run(client: TestClient, session: str | None = None):
 def test_lists_visible_courses_and_assignments(client):
     courses = client.get("/sandbox/courses")
     assert courses.status_code == 200
-    assert courses.json()["courses"][0]["sandbox_enabled_assignments"] >= 1
+    course_list = courses.json()["courses"]
+    assert len(course_list) == 2
+    assert {c["id"] for c in course_list} == {"cs1400", "cs1410"}
 
-    assignments = client.get("/sandbox/courses/cs1400/assignments")
-    assert assignments.status_code == 200
-    body = assignments.json()
-    assert body["course_id"] == "cs1400"
-    assert body["assignments"][0]["sandbox_enabled"] is True
-    assert body["assignments"][0]["upload_quota"]["limit"] == 5
+    assignments_1400 = client.get("/sandbox/courses/cs1400/assignments")
+    assert assignments_1400.status_code == 200
+    body_1400 = assignments_1400.json()
+    assert body_1400["course_id"] == "cs1400"
+    assert body_1400["assignments"][0]["sandbox_enabled"] is True
+
+    assignments_1410 = client.get("/sandbox/courses/cs1410/assignments")
+    assert assignments_1410.status_code == 200
+    body_1410 = assignments_1410.json()
+    assert body_1410["course_id"] == "cs1410"
+    assert body_1410["assignments"][0]["id"] == "lab-1-image-processing"
+    assert body_1410["assignments"][0]["sandbox_enabled"] is True
 
 
 def test_assignment_detail_returns_contract_metadata(client):
-    response = client.get("/sandbox/courses/cs1400/assignments/loops-lab")
+    response = client.get("/sandbox/courses/cs1400/assignments/simple-python-functions")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["id"] == "loops-lab"
+    assert body["id"] == "simple-python-functions"
     assert body["accepted_bundle_types"] == ["application/zip", ".zip"]
     assert body["max_upload_bytes"] == 50 * 1024 * 1024
     assert body["rubric"]
+    assert body["rubric"][0]["key"] == "add_numbers"
+    assert body["rubric"][0]["pytest_marker"] == "ag_add_numbers"
+    assert "config_json" not in body
+    assert "storage_ref" not in str(body)
+
+    response_1410 = client.get("/sandbox/courses/cs1410/assignments/lab-1-image-processing")
+    assert response_1410.status_code == 200
+    body_1410 = response_1410.json()
+    assert body_1410["id"] == "lab-1-image-processing"
+    assert body_1410["rubric_groups"]
+    assert len(body_1410["rubric_groups"]) == 2
+    assert body_1410["rubric_groups"][0]["key"] == "part1"
+    assert len(body_1410["rubric"]) == 4
+    assert body_1410["rubric"][0]["key"] == "part1_files"
+    assert body_1410["rubric"][0]["pytest_marker"] == "ag_part1_files"
+    assert body_1410["rubric"][0]["item_type"] == "pytest"
+    assert "config_json" not in body_1410
+    assert "model_solution" not in str(body_1410)
+    assert "storage_ref" not in str(body_1410)
 
 
 def test_run_creation_returns_session_quota_urls_and_queue_state(client):

@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "assignment": {
+    "title": "Lab 1: Image Processing",
+    "points_context": "Two-part CS 1410 warm-up covering image filtering and compositing"
+  },
+  "bundle": {
+    "required_files": [
+      "bears2.py",
+      "bears3.py",
+      "bears2.jpg",
+      "bears3.jpg"
+    ],
+    "entrypoint": {
+      "path": "bears2.py",
+      "required": true,
+      "allow_duplicate_matches": false
+    },
+    "file_requirements": [
+      {
+        "key": "bears2_py",
+        "label": "Part 1 code",
+        "requirement_type": "exact",
+        "paths": [
+          "bears2.py"
+        ]
+      },
+      {
+        "key": "bears3_py",
+        "label": "Part 2 code",
+        "requirement_type": "exact",
+        "paths": [
+          "bears3.py"
+        ]
+      },
+      {
+        "key": "bears2_jpg",
+        "label": "Part 1 output image",
+        "requirement_type": "exact",
+        "paths": [
+          "bears2.jpg"
+        ]
+      },
+      {
+        "key": "bears3_jpg",
+        "label": "Part 2 output image",
+        "requirement_type": "exact",
+        "paths": [
+          "bears3.jpg"
+        ]
+      }
+    ],
+    "max_files": 4,
+    "root_normalization": "auto_flatten_single_root"
+  },
+  "concepts": {
+    "additions": [
+      "image-processing",
+      "file-io",
+      "loops"
+    ]
+  },
+  "execution": {
+    "dependencies": [
+      "pillow"
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution_bears2": {
+      "type": "model_solution",
+      "display_filename": "bears2.py"
+    },
+    "model_solution_bears3": {
+      "type": "model_solution",
+      "display_filename": "bears3.py"
+    }
+  },
+  "output_artifacts": [
+    {
+      "key": "bears2_output",
+      "path": "bears2.jpg",
+      "required": true,
+      "artifact_type": "generated_file"
+    },
+    {
+      "key": "bears3_output",
+      "path": "bears3.jpg",
+      "required": true,
+      "artifact_type": "generated_file"
+    }
+  ],
+  "rubric_groups": [
+    {
+      "key": "part1",
+      "label": "Part 1: Apply a Photo Filter",
+      "item_keys": [
+        "part1_files",
+        "part1_output"
+      ]
+    },
+    {
+      "key": "part2",
+      "label": "Part 2: Image Compositing",
+      "item_keys": [
+        "part2_files",
+        "part2_output"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "key": "part1_files",
+      "label": "Part 1 required files are present",
+      "points": 25,
+      "extra_credit": false,
+      "rubric_group_key": "part1"
+    },
+    {
+      "key": "part1_output",
+      "label": "Part 1 output image opens and contains non-trivial pixels",
+      "points": 25,
+      "extra_credit": false,
+      "rubric_group_key": "part1"
+    },
+    {
+      "key": "part2_files",
+      "label": "Part 2 required files are present",
+      "points": 25,
+      "extra_credit": false,
+      "rubric_group_key": "part2"
+    },
+    {
+      "key": "part2_output",
+      "label": "Part 2 output image opens and contains non-trivial pixels",
+      "points": 25,
+      "extra_credit": false,
+      "rubric_group_key": "part2"
+    }
+  ],
+  "manual_rubric_items": [],
+  "completion_requirements": [],
+  "support_artifacts": [],
+  "stdin_scenarios": []
+}
