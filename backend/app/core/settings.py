@@ -25,6 +25,9 @@ class Settings(BaseSettings):
         validation_alias="SANDBOX_UPLOAD_WINDOW_SECONDS",
     )
     max_upload_bytes: int = Field(default=50 * 1024 * 1024, ge=1, validation_alias="MAX_UPLOAD_BYTES")
+    default_max_files: int = Field(default=100, ge=1, validation_alias="DEFAULT_MAX_FILES")
+    default_max_zip_size: int = Field(default=50 * 1024 * 1024, ge=1, validation_alias="DEFAULT_MAX_ZIP_SIZE")
+    test_execution_timeout_seconds: int = Field(default=30, ge=1, validation_alias="TEST_EXECUTION_TIMEOUT_SECONDS")
 
     @property
     def is_sqlite(self) -> bool:

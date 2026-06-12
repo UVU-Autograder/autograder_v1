@@ -96,13 +96,15 @@ def test_staff_endpoints_allow_other_roles(client):
         
         from sqlalchemy import select
         instructor_role = db.scalar(select(Role).where(Role.name == "instructor"))
-        from app.domains.courses.models import Course
+        from app.domains.courses.models import Course, Section
         course = db.scalar(select(Course).where(Course.code == "cs1400"))
+        section = db.scalar(select(Section).where(Section.course_id == course.id))
         
         access = StaffAccess(
             user=instructor,
             role=instructor_role,
             course=course,
+            section=section,
             is_active=True
         )
         db.add(access)

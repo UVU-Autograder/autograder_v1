@@ -17,7 +17,6 @@ class StaffAssignmentSummary(BaseModel):
     course_id: str
     title: str
     language: str
-    due_label: str | None
     sandbox_enabled: bool
     base_points: int = Field(ge=0)
     extra_credit_points: int = Field(ge=0)

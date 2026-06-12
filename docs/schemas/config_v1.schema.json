@@ -30,32 +30,6 @@
       "title": "ArtifactConfig",
       "type": "object"
     },
-    "AssignmentDisplayConfig": {
-      "properties": {
-        "title": {
-          "minLength": 1,
-          "title": "Title",
-          "type": "string"
-        },
-        "points_context": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Points Context"
-        }
-      },
-      "required": [
-        "title"
-      ],
-      "title": "AssignmentDisplayConfig",
-      "type": "object"
-    },
     "BundleConfig": {
       "properties": {
         "required_files": {
@@ -67,7 +41,9 @@
           "type": "array"
         },
         "entrypoint": {
-          "$ref": "#/$defs/BundleEntrypoint"
+          "minLength": 1,
+          "title": "Entrypoint",
+          "type": "string"
         },
         "file_requirements": {
           "items": {
@@ -75,28 +51,6 @@
           },
           "title": "File Requirements",
           "type": "array"
-        },
-        "max_files": {
-          "anyOf": [
-            {
-              "minimum": 1,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Max Files"
-        },
-        "root_normalization": {
-          "default": "auto_flatten_single_root",
-          "enum": [
-            "none",
-            "auto_flatten_single_root"
-          ],
-          "title": "Root Normalization",
-          "type": "string"
         }
       },
       "required": [
@@ -104,30 +58,6 @@
         "entrypoint"
       ],
       "title": "BundleConfig",
-      "type": "object"
-    },
-    "BundleEntrypoint": {
-      "properties": {
-        "path": {
-          "minLength": 1,
-          "title": "Path",
-          "type": "string"
-        },
-        "required": {
-          "default": true,
-          "title": "Required",
-          "type": "boolean"
-        },
-        "allow_duplicate_matches": {
-          "default": false,
-          "title": "Allow Duplicate Matches",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "path"
-      ],
-      "title": "BundleEntrypoint",
       "type": "object"
     },
     "CompletionRequirementConfig": {
@@ -439,9 +369,6 @@
       "title": "Schema Version",
       "type": "integer"
     },
-    "assignment": {
-      "$ref": "#/$defs/AssignmentDisplayConfig"
-    },
     "bundle": {
       "$ref": "#/$defs/BundleConfig"
     },
@@ -512,7 +439,6 @@
   },
   "required": [
     "schema_version",
-    "assignment",
     "bundle",
     "artifacts",
     "tests"

@@ -1,18 +1,10 @@
 {
   "schema_version": 1,
-  "assignment": {
-    "title": "Simple Python Functions",
-    "points_context": "Three visible scoring items for basic function behavior"
-  },
   "bundle": {
     "required_files": [
       "student_functions.py"
     ],
-    "entrypoint": {
-      "path": "student_functions.py",
-      "required": true,
-      "allow_duplicate_matches": false
-    }
+    "entrypoint": "student_functions.py"
   },
   "concepts": {
     "additions": [

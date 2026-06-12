@@ -29,7 +29,6 @@ class SandboxAssignmentSummary(BaseModel):
     title: str
     sandbox_enabled: bool
     language: str
-    due_label: str | None = None
     max_score: int = Field(ge=0)
     upload_quota: UploadQuota
 

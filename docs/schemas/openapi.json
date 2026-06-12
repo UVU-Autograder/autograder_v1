@@ -727,9 +727,6 @@
             "const": 1,
             "title": "Schema Version"
           },
-          "assignment": {
-            "$ref": "#/components/schemas/AssignmentDisplayConfig"
-          },
           "bundle": {
             "$ref": "#/components/schemas/BundleConfig"
           },
@@ -801,37 +798,11 @@
         "type": "object",
         "required": [
           "schema_version",
-          "assignment",
           "bundle",
           "artifacts",
           "tests"
         ],
         "title": "AssignmentConfigV1"
-      },
-      "AssignmentDisplayConfig": {
-        "properties": {
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Title"
-          },
-          "points_context": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Points Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "title"
-        ],
-        "title": "AssignmentDisplayConfig"
       },
       "Body_create_run_sandbox_courses__course_id__assignments__assignment_id__runs_post": {
         "properties": {
@@ -858,7 +829,9 @@
             "title": "Required Files"
           },
           "entrypoint": {
-            "$ref": "#/components/schemas/BundleEntrypoint"
+            "type": "string",
+            "minLength": 1,
+            "title": "Entrypoint"
           },
           "file_requirements": {
             "items": {
@@ -866,27 +839,6 @@
             },
             "type": "array",
             "title": "File Requirements"
-          },
-          "max_files": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Files"
-          },
-          "root_normalization": {
-            "type": "string",
-            "enum": [
-              "none",
-              "auto_flatten_single_root"
-            ],
-            "title": "Root Normalization",
-            "default": "auto_flatten_single_root"
           }
         },
         "type": "object",
@@ -895,30 +847,6 @@
           "entrypoint"
         ],
         "title": "BundleConfig"
-      },
-      "BundleEntrypoint": {
-        "properties": {
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Path"
-          },
-          "required": {
-            "type": "boolean",
-            "title": "Required",
-            "default": true
-          },
-          "allow_duplicate_matches": {
-            "type": "boolean",
-            "title": "Allow Duplicate Matches",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "path"
-        ],
-        "title": "BundleEntrypoint"
       },
       "CompletionRequirement": {
         "properties": {
@@ -1400,17 +1328,6 @@
             "type": "string",
             "title": "Language"
           },
-          "due_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Label"
-          },
           "max_score": {
             "type": "integer",
             "minimum": 0.0,
@@ -1524,17 +1441,6 @@
           "language": {
             "type": "string",
             "title": "Language"
-          },
-          "due_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Label"
           },
           "max_score": {
             "type": "integer",
@@ -1964,17 +1870,6 @@
             "type": "string",
             "title": "Language"
           },
-          "due_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Label"
-          },
           "sandbox_enabled": {
             "type": "boolean",
             "title": "Sandbox Enabled"
@@ -2040,7 +1935,6 @@
           "assignment_id",
           "title",
           "language",
-          "due_label",
           "sandbox_enabled",
           "base_points",
           "extra_credit_points",
@@ -2066,17 +1960,6 @@
               }
             ],
             "title": "Title"
-          },
-          "due_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Label"
           },
           "sandbox_enabled": {
             "anyOf": [
@@ -2117,17 +2000,6 @@
             "type": "string",
             "title": "Language"
           },
-          "due_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Label"
-          },
           "sandbox_enabled": {
             "type": "boolean",
             "title": "Sandbox Enabled"
@@ -2149,7 +2021,6 @@
           "course_id",
           "title",
           "language",
-          "due_label",
           "sandbox_enabled",
           "base_points",
           "extra_credit_points"

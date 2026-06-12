@@ -12,12 +12,6 @@ def pytest_marker_for_key(key: str) -> str:
     return f"ag_{key}"
 
 
-class BundleEntrypoint(BaseModel):
-    path: str = Field(min_length=1)
-    required: bool = True
-    allow_duplicate_matches: bool = False
-
-
 class FileRequirementConfig(BaseModel):
     key: str = Field(pattern=TEST_KEY_RE.pattern)
     label: str | None = None
@@ -35,10 +29,8 @@ class FileRequirementConfig(BaseModel):
 
 class BundleConfig(BaseModel):
     required_files: list[str] = Field(min_length=1)
-    entrypoint: BundleEntrypoint
+    entrypoint: str = Field(min_length=1)
     file_requirements: list[FileRequirementConfig] = Field(default_factory=list)
-    max_files: int | None = Field(default=None, ge=1)
-    root_normalization: Literal["none", "auto_flatten_single_root"] = "auto_flatten_single_root"
 
     @model_validator(mode="after")
     def entrypoint_must_be_required_file(self) -> "BundleConfig":
@@ -46,8 +38,8 @@ class BundleConfig(BaseModel):
         for requirement in self.file_requirements:
             if requirement.requirement_type in {"exact", "optional", "one_of"}:
                 known_paths.update(requirement.paths)
-        if self.entrypoint.path not in known_paths:
-            raise ValueError("bundle.entrypoint.path must appear in bundle.required_files")
+        if self.entrypoint not in known_paths:
+            raise ValueError("bundle.entrypoint must appear in bundle.required_files")
         requirement_keys = [requirement.key for requirement in self.file_requirements]
         duplicate_keys = sorted({key for key in requirement_keys if requirement_keys.count(key) > 1})
         if duplicate_keys:
@@ -124,14 +116,8 @@ class CompletionRequirementConfig(BaseModel):
     minimum_passed: int = Field(ge=1)
 
 
-class AssignmentDisplayConfig(BaseModel):
-    title: str = Field(min_length=1)
-    points_context: str | None = None
-
-
 class AssignmentConfigV1(BaseModel):
     schema_version: Literal[1]
-    assignment: AssignmentDisplayConfig
     bundle: BundleConfig
     concepts: ConceptsConfig = Field(default_factory=ConceptsConfig)
     artifacts: dict[str, ArtifactConfig] = Field(min_length=1)
@@ -283,7 +269,6 @@ class StaffAssignmentSetup(BaseModel):
     assignment_id: str
     title: str
     language: str
-    due_label: str | None
     sandbox_enabled: bool
     base_points: int
     extra_credit_points: int
@@ -298,6 +283,5 @@ class StaffAssignmentSetup(BaseModel):
 
 class StaffAssignmentSetupUpdate(BaseModel):
     title: str | None = None
-    due_label: str | None = None
     sandbox_enabled: bool | None = None
     config_json: AssignmentConfigV1

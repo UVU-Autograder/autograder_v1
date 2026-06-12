@@ -8,10 +8,14 @@ class ExtractionError(Exception):
     """Raised when ZIP validation or extraction fails."""
     pass
 
-def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int = 50 * 1024 * 1024) -> None:
+def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | None = None) -> None:
     """Safely extracts a ZIP file to extract_dir.
     Rejects directory traversal (paths escaping extract_dir) and total size exceeding max_total_size.
     """
+    from app.core.settings import get_settings
+    if max_total_size is None:
+        max_total_size = get_settings().default_max_zip_size
+
     extract_dir = Path(extract_dir).resolve()
     extract_dir.mkdir(parents=True, exist_ok=True)
     
@@ -57,17 +61,17 @@ def normalize_root_directory(extract_dir: Path) -> None:
 
 def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) -> None:
     """Validates the structure of the extracted student submission against configuration constraints."""
+    from app.core.settings import get_settings
+    settings = get_settings()
     extract_dir = Path(extract_dir).resolve()
     
-    # 1. Normalize root if configured
-    if config.bundle.root_normalization == "auto_flatten_single_root":
-        normalize_root_directory(extract_dir)
+    # 1. Normalize root automatically
+    normalize_root_directory(extract_dir)
     
-    # 2. Enforce max_files count
-    if config.bundle.max_files is not None:
-        all_files = [f for f in extract_dir.rglob("*") if f.is_file()]
-        if len(all_files) > config.bundle.max_files:
-            raise ValueError(f"Submission exceeds maximum allowed files limit: {config.bundle.max_files}")
+    # 2. Enforce max_files count (global safety limit)
+    all_files = [f for f in extract_dir.rglob("*") if f.is_file()]
+    if len(all_files) > settings.default_max_files:
+        raise ValueError(f"Submission exceeds maximum allowed files limit: {settings.default_max_files}")
             
     # 3. Identify and enforce strictly required files
     non_mandatory_paths = set()
@@ -116,7 +120,6 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
                 raise ValueError(f"No files matching pattern '{pattern}' were found.")
 
     # 5. Check entrypoint
-    entrypoint_path = extract_dir / config.bundle.entrypoint.path
-    if config.bundle.entrypoint.required:
-        if not entrypoint_path.exists() or not entrypoint_path.is_file():
-            raise ValueError(f"Entrypoint file '{config.bundle.entrypoint.path}' not found in submission.")
+    entrypoint_path = extract_dir / config.bundle.entrypoint
+    if not entrypoint_path.exists() or not entrypoint_path.is_file():
+        raise ValueError(f"Entrypoint file '{config.bundle.entrypoint}' not found in submission.")

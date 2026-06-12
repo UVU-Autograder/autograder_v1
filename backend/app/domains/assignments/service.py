@@ -6,6 +6,7 @@ from app.domains.assignments.models import (
     Assignment,
     AssignmentConcept,
     AssignmentConfig,
+    AssignmentConfigHistory,
     ScoringItem as ScoringItemProjection,
 )
 from app.domains.assignments.schemas import (
@@ -69,9 +70,19 @@ def upsert_assignment_config(
 ) -> AssignmentConfigV1:
     config = validate_config_json(config_json)
     if assignment.config is None:
-        assignment.config = AssignmentConfig(config_json=config.model_dump(mode="json"))
+        assignment.config = AssignmentConfig(
+            config_json=config.model_dump(mode="json"),
+            version=1,
+        )
     else:
+        history_entry = AssignmentConfigHistory(
+            assignment_id=assignment.id,
+            config_json=assignment.config.config_json,
+            version=assignment.config.version,
+        )
+        db.add(history_entry)
         assignment.config.config_json = config.model_dump(mode="json")
+        assignment.config.version += 1
 
     if assignment.concept_additions is None:
         assignment.concept_additions = AssignmentConcept(
@@ -130,8 +141,6 @@ def update_staff_setup(
 
     if payload.title is not None:
         assignment.title = payload.title
-    if payload.due_label is not None:
-        assignment.due_label = payload.due_label
     if payload.sandbox_enabled is not None:
         assignment.sandbox_enabled = payload.sandbox_enabled
 
@@ -166,12 +175,11 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
         assignment_id=assignment.slug,
         title=assignment.title,
         language=assignment.language,
-        due_label=assignment.due_label,
         sandbox_enabled=assignment.sandbox_enabled,
         base_points=config.base_points,
         extra_credit_points=config.extra_credit_points,
         required_files=config.bundle.required_files,
-        entrypoint_path=config.bundle.entrypoint.path,
+        entrypoint_path=config.bundle.entrypoint,
         concept_additions=config.concepts.additions,
         scoring_items=build_scoring_items(assignment.scoring_items),
         rubric_groups=[

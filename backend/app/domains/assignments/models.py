@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint, func
+from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -16,7 +17,6 @@ class Assignment(Base):
     title: Mapped[str] = mapped_column(String(255))
     language: Mapped[str] = mapped_column(String(40), default="python")
     canvas_ref: Mapped[str | None] = mapped_column(String(255))
-    due_label: Mapped[str | None] = mapped_column(String(120))
     sandbox_enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -53,6 +53,7 @@ class AssignmentConfig(Base):
         unique=True,
     )
     config_json: Mapped[dict] = mapped_column(JSON)
+    version: Mapped[int] = mapped_column(Integer, default=1)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -60,6 +61,16 @@ class AssignmentConfig(Base):
     )
 
     assignment: Mapped[Assignment] = relationship(back_populates="config")
+
+
+class AssignmentConfigHistory(Base):
+    __tablename__ = "assignment_config_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    assignment_id: Mapped[int] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
+    config_json: Mapped[dict] = mapped_column(JSON)
+    version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class AssignmentConcept(Base):
@@ -70,7 +81,7 @@ class AssignmentConcept(Base):
         ForeignKey("assignments.id", ondelete="CASCADE"),
         unique=True,
     )
-    added_concepts: Mapped[list[str]] = mapped_column(JSON, default=list)
+    added_concepts: Mapped[list[str]] = mapped_column(MutableList.as_mutable(JSON), default=list)
 
     assignment: Mapped[Assignment] = relationship(back_populates="concept_additions")
 

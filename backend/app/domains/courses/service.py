@@ -53,7 +53,6 @@ def list_staff_assignments(db: Session, course_code: str) -> StaffAssignmentList
                 course_id=course.code,
                 title=assignment.title,
                 language=assignment.language,
-                due_label=assignment.due_label,
                 sandbox_enabled=assignment.sandbox_enabled,
                 base_points=config.base_points,
                 extra_credit_points=config.extra_credit_points,

@@ -3,6 +3,7 @@ import sys
 import pytest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
@@ -112,18 +113,10 @@ def test_normalize_root_directory_no_change_file_only(tmp_path: Path):
 def base_config_dict():
     return {
         "schema_version": 1,
-        "assignment": {
-            "title": "Test Assignment",
-        },
         "bundle": {
             "required_files": ["main.py", "utils.py"],
-            "entrypoint": {
-                "path": "main.py",
-                "required": True
-            },
-            "file_requirements": [],
-            "max_files": 5,
-            "root_normalization": "auto_flatten_single_root"
+            "entrypoint": "main.py",
+            "file_requirements": []
         },
         "artifacts": {
             "pytest_file": {
@@ -171,8 +164,10 @@ def test_validate_submission_bundle_max_files_exceeded(tmp_path: Path, base_conf
         (extract_dir / f"extra_{i}.py").write_text("extra")
 
     config = AssignmentConfigV1.model_validate(base_config_dict)
-    with pytest.raises(ValueError, match="Submission exceeds maximum allowed files limit"):
-        validate_submission_bundle(extract_dir, config)
+    from app.core.settings import get_settings
+    with patch.object(get_settings(), "default_max_files", 5):
+        with pytest.raises(ValueError, match="Submission exceeds maximum allowed files limit"):
+            validate_submission_bundle(extract_dir, config)
 
 
 def test_validate_submission_bundle_root_flattening(tmp_path: Path, base_config_dict):

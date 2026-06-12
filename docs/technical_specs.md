@@ -100,14 +100,15 @@ classDiagram
 
     class Course {
         code
-        name
+        title
         term
         default_concepts
+        instructor_id
+        ia_id
     }
 
     class Section {
         crn
-        name
     }
 
     class StaffAccess {
@@ -123,6 +124,12 @@ classDiagram
 
     class AssignmentConfig {
         config_json
+        version
+    }
+
+    class AssignmentConfigHistory {
+        config_json
+        version
     }
 
     class AssignmentConcept {
@@ -157,9 +164,12 @@ classDiagram
     User "1" --> "many" StaffAccess : granted
     Course "1" *-- "many" Section : contains
     Course "1" --> "many" StaffAccess : scopes_staff_access
-    Section "0..1" --> "many" StaffAccess : narrows_run_scope
+    Section "1" --> "many" StaffAccess : narrows_run_scope
+    User "0..1" --> "many" Course : instructs
+    User "0..1" --> "many" Course : assists_as_ia
     Course "1" *-- "many" Assignment : owns
     Assignment "1" *-- "1" AssignmentConfig : stores_app_owned_config
+    Assignment "1" *-- "many" AssignmentConfigHistory : archives_old_configs
     Assignment "1" *-- "0..1" AssignmentConcept : stores_concept_additions
     Assignment "1" *-- "many" AssignmentArtifact : stores_file_body_refs
     Assignment "1" *-- "many" ScoringItem : exposes_derived_projection

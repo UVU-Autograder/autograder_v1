@@ -53,11 +53,12 @@ def seed_development_data(db: Session) -> None:
             title="CS 1400: Programming Foundations",
             term="Spring 2026",
             default_concepts=["variables", "conditionals"],
+            instructor=staff_user,
         )
         db.add(course_cs1400)
         db.flush()
 
-        section = Section(course=course_cs1400, crn="12345", name="Section 001")
+        section = Section(course=course_cs1400, crn="12345")
         db.add(section)
 
         db.add(
@@ -65,7 +66,7 @@ def seed_development_data(db: Session) -> None:
                 user=staff_user,
                 role=roles["admin"],
                 course=course_cs1400,
-                section=None,
+                section=section,
             )
         )
 
@@ -75,7 +76,6 @@ def seed_development_data(db: Session) -> None:
             title="Simple Python Functions",
             language="python",
             canvas_ref="canvas:synthetic:simple-python-functions",
-            due_label="Practice",
             sandbox_enabled=True,
             is_active=True,
         )
@@ -105,11 +105,12 @@ def seed_development_data(db: Session) -> None:
             title="CS 1410: Object-Oriented Programming",
             term="Spring 2026",
             default_concepts=["image-processing", "file-io", "loops"],
+            instructor=staff_user,
         )
         db.add(course_cs1410)
         db.flush()
 
-        section = Section(course=course_cs1410, crn="67890", name="Section 001")
+        section = Section(course=course_cs1410, crn="67890")
         db.add(section)
 
         db.add(
@@ -117,7 +118,7 @@ def seed_development_data(db: Session) -> None:
                 user=staff_user,
                 role=roles["admin"],
                 course=course_cs1410,
-                section=None,
+                section=section,
             )
         )
 
@@ -127,7 +128,6 @@ def seed_development_data(db: Session) -> None:
             title="Lab 1: Image Processing",
             language="python",
             canvas_ref="canvas:synthetic:lab-1-image-processing",
-            due_label="Required",
             sandbox_enabled=True,
             is_active=True,
         )

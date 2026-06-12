@@ -93,13 +93,12 @@ def get_sandbox_assignment(
     settings = get_settings()
     return SandboxAssignmentDetail(
         **_summary_for(assignment, quota).model_dump(),
-        description=config.assignment.points_context or assignment.title,
+        description=assignment.title,
         accepted_bundle_types=["application/zip", ".zip"],
         max_upload_bytes=settings.max_upload_bytes,
         constraints=[
-            SandboxConstraint(label="Entrypoint", value=config.bundle.entrypoint.path),
+            SandboxConstraint(label="Entrypoint", value=config.bundle.entrypoint),
             SandboxConstraint(label="Required files", value=", ".join(config.bundle.required_files)),
-            SandboxConstraint(label="Root normalization", value=config.bundle.root_normalization),
         ],
         rubric=[
             SandboxRubricItem(
@@ -133,7 +132,6 @@ def _summary_for(assignment: Assignment, quota: UploadQuota) -> SandboxAssignmen
         title=assignment.title,
         sandbox_enabled=assignment.sandbox_enabled,
         language=assignment.language,
-        due_label=assignment.due_label,
         max_score=config.base_points,
         upload_quota=quota,
     )
