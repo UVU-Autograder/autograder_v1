@@ -1,5 +1,10 @@
 # UVU Autograder v1 - Technical Specifications
 
+> [!NOTE]
+> **Schema References**:
+> - Assignment configuration schema is defined in [config_v1.schema.json](file:///c:/Users/Jaxon/coding/autograder_v1/docs/schemas/config_v1.schema.json).
+> - API specification is defined in [openapi.json](file:///c:/Users/Jaxon/coding/autograder_v1/docs/schemas/openapi.json).
+
 ## 1. System Architecture
 
 - Frontend: Next.js in the current local/on-prem M1 stack on the Dell workstation for staff and student interfaces.
@@ -77,8 +82,90 @@
 - `assignment_configs`
 - `assignment_concepts`
 - `assignment_artifacts`
-- `test_cases`
+- `scoring_items`
 - `run_summaries`
+
+```mermaid
+classDiagram
+    direction TB
+
+    class User {
+        email
+        is_active
+    }
+
+    class Role {
+        name
+    }
+
+    class Course {
+        code
+        name
+        term
+        default_concepts
+    }
+
+    class Section {
+        crn
+        name
+    }
+
+    class StaffAccess {
+        role_scope
+        section_scope
+    }
+
+    class Assignment {
+        title
+        canvas_ref
+        sandbox_enabled
+    }
+
+    class AssignmentConfig {
+        config_json
+    }
+
+    class AssignmentConcept {
+        added_concepts
+    }
+
+    class AssignmentArtifact {
+        artifact_key
+        artifact_type
+        storage_ref
+    }
+
+    class ScoringItem {
+        config_item_key
+        points
+        extra_credit
+        item_type
+        pytest_marker
+        rubric_group_key
+        display_order
+    }
+
+    class RunSummary {
+        workflow_type
+        status
+        total_submissions
+        failure_summary
+        token_usage_metadata
+    }
+
+    Role "1" --> "many" StaffAccess : assigned_in
+    User "1" --> "many" StaffAccess : granted
+    Course "1" *-- "many" Section : contains
+    Course "1" --> "many" StaffAccess : scopes_staff_access
+    Section "0..1" --> "many" StaffAccess : narrows_run_scope
+    Course "1" *-- "many" Assignment : owns
+    Assignment "1" *-- "1" AssignmentConfig : stores_app_owned_config
+    Assignment "1" *-- "0..1" AssignmentConcept : stores_concept_additions
+    Assignment "1" *-- "many" AssignmentArtifact : stores_file_body_refs
+    Assignment "1" *-- "many" ScoringItem : exposes_derived_projection
+    Assignment "1" *-- "many" RunSummary : tracks_workflows
+    User "0..1" --> "many" RunSummary : initiates_staff_runs
+```
 
 ### Persistent model notes
 
@@ -88,8 +175,9 @@
 - `assignment_configs` store the app-owned `config_json`, which is the canonical internal grading configuration in M1; the frontend wizard is the only M1 authoring surface for that config.
 - `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
 - `assignment_concepts` store assignment-specific additive concept entries only; the runtime-effective allow-list is derived by merging course defaults with assignment additions when AST checks or UI surfaces need it.
-- `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as the single M1 pytest file, model solutions, and support files.
+- `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
 - `test_cases` are optional derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
+- `scoring_items` are derived projections of both automated test keys and manual rubric items, used for grading display and configuration checking.
 - `run_summaries` store workflow type, actor, aggregate counts, failure categories, and sanitized Azure token usage only.
 - Judge0 submission tokens and raw Judge0 result payloads are transient execution-service data and must not be persisted as app-owned Postgres records.
 - Persistent operational metadata must remain aggregate-only and non-identifying; filenames, student identifiers, raw tracebacks, detailed failure text, and code snippets must not be stored in long-lived metadata tables or logs.
@@ -108,10 +196,21 @@
 - Assignment `config_json` stores assignment-owned concept additions only and does not duplicate course-owned defaults.
 - Reusing the same assignment config shape in a different course may produce a different effective concept list because course defaults are course-owned in M1.
 
+- **AST Node Mapping**: To support automated concept whitelisting, the backend AST parser maps human-readable concepts to Python AST nodes as follows:
+
+| Concept | Python AST Nodes / Constructs Checked | Description |
+| :--- | :--- | :--- |
+| `loops` | `ast.For`, `ast.While`, `ast.AsyncFor` | Enforces or verifies structure contains loops. |
+| `conditionals` | `ast.If`, `ast.Compare`, `ast.IfExp` | Verifies presence of logical branching/conditional checks. |
+| `functions` | `ast.FunctionDef`, `ast.AsyncFunctionDef`, `ast.Call` | Enforces function definitions and function calls. |
+| `variables` | `ast.Assign`, `ast.AnnAssign`, `ast.Name` | Tracks variable definitions, annotations, and assignments. |
+| `file-io` | `ast.withitem`, `open` function call, `ast.Call` on IO | Detects file open or write constructs. |
+| `image-processing` | `PIL` imports, `Image` function/method calls | Verifies Pillow module/methods are used. |
+
 ### Assignment `config_json` v1 contract
 
 - M1 uses a strict app-owned `assignment_configs.config_json` v1 contract for wizard generation, bundle validation, test projection, model-solution validation, and execution planning.
-- `config_json` v1 is Python-focused and pytest-focused. It does not model multi-language execution, compiled-language build pipelines, manual grading, plagiarism workflows, Canvas grade passback, hidden tests, raw config import/export, or direct raw config editing.
+- `config_json` v1 is Python-focused and pytest-focused. It models multiple pytest files, file requirements, dependencies, support artifacts, output artifacts, rubric groups, manual rubric items, and stdin scenarios.
 - The stored config must include `schema_version: 1`. Missing versions, unknown major versions, or configs that cannot be validated against the v1 schema must be rejected with actionable setup errors.
 - The v1 schema should be expressed as JSON Schema 2020-12 for portable validation. Backend and frontend validators may use implementation-native tools, but they must enforce the same schema and error paths.
 - Config entries that need durable identity use stable human-readable keys, not database IDs. Stable keys are required for tests and artifact references.
@@ -125,19 +224,25 @@
   - `tests`
 - Optional top-level v1 sections:
   - `completion_requirements`
+  - `execution`
+  - `support_artifacts`
+  - `output_artifacts`
+  - `rubric_groups`
+  - `manual_rubric_items`
+  - `stdin_scenarios`
 - `assignment` stores assignment-owned display metadata needed by the config surface, such as title or points context. Canvas remains the course/grade source of truth.
-- `bundle` stores ZIP/project bundle requirements, including required files, entrypoint rules, and supported layout expectations.
+- `bundle` stores ZIP/project bundle requirements, including required files, entrypoint rules, file requirements (exact, one_of, optional, pattern), max files, and supported layout expectations.
 - `concepts` stores assignment-owned concept additions only. Course defaults are not duplicated in assignment config.
 - `artifacts` maps stable artifact keys to required artifact type and optional display filename metadata. File bodies are stored through the assignment artifact storage layer, not embedded in config JSON.
 - `tests` stores stable test keys, display names, point values, explicit `extra_credit` booleans, and any safe test metadata needed for UI and execution planning.
-- M1 uses one `pytest_file` artifact per assignment. Each `tests[].key` must be a stable slug, and the pytest marker is derived as `ag_<key>` rather than stored separately.
+- M1 supports multiple `pytest_file` artifacts per assignment. Each `tests[].key` must be a stable slug, and the pytest marker is derived as `ag_<key>` rather than stored separately.
 - One scoring entry may map to multiple pytest functions when those functions share the same `ag_<key>` marker.
 - Default scoring is implicit: a scoring item contributes its `points` only when all pytest functions with its derived marker pass. Non-extra-credit items define the base total; passed extra-credit items add points above that base total.
 - `completion_requirements`, when present, stores "complete at least X of these Y objectives" rules over existing `tests[].key` values. Each requirement should minimally include a stable key, display label, referenced test keys, and `minimum_passed`.
 - Completion requirements report whether an objective threshold is met; they do not replace scoring-item points in M1.
 - Hidden tests are out of scope for M1; all M1 scoring entries are visible in staff and sandbox result surfaces.
-- `TestCase` rows, UI previews, and execution plans are derived from the app-owned config. If derived rows disagree with the config, the config wins and derived rows must be regenerated or reconciled.
-- Strict preflight validation must catch at least: duplicate stable keys, missing `ag_<key>` markers in the pytest file, missing assignment pytest artifact, invalid point values, missing or invalid `extra_credit` booleans, invalid `completion_requirements` references or thresholds, missing bundle entrypoint rules, unsupported artifact types, and fields outside the supported v1 contract where strict validation applies. This preflight must pass before model-solution validation or grading starts.
+- `TestCase` and `ScoringItem` rows, UI previews, and execution plans are derived from the app-owned config. If derived rows disagree with the config, the config wins and derived rows must be regenerated or reconciled.
+- Strict preflight validation must catch at least: duplicate stable keys, missing `ag_<key>` markers in the pytest files, missing assignment pytest artifacts, invalid point values, missing or invalid `extra_credit` booleans, invalid `completion_requirements` references or thresholds, missing bundle entrypoint rules, unsupported artifact types, and fields outside the supported v1 contract where strict validation applies. This preflight must pass before model-solution validation or grading starts.
 
 ### TestCase and artifact contract
 
@@ -147,7 +252,7 @@
   - `model_solution`
   - `support_file`
 - M1 expectations by artifact class:
-  - `pytest_file`: exactly one per assignment in M1; editable, validated through strict marker preflight and test execution, stored as metadata plus storage-backed file body
+  - `pytest_file`: one or more per assignment; editable, validated through strict marker preflight and test execution, stored as metadata plus storage-backed file body
   - `model_solution`: editable, executable through Judge0, stored as metadata plus storage-backed file body
   - `support_file`: assignment-owned file content available to grading and test execution as needed
 - `AssignmentArtifact` metadata should stay lightweight in M1: assignment linkage, stable artifact key, artifact type, storage reference, and optional filename are sufficient unless later implementation work proves otherwise.
@@ -218,7 +323,25 @@
 - generated sandbox feedback artifacts
 - temporary official feedback artifacts before packaging
 
-These remain outside persistent storage and are represented conceptually in `docs/backend_implementation/diagrams/ephemeral_pipeline_diagram.md`.
+These remain outside persistent storage and are represented conceptually in the flowchart below.
+
+```mermaid
+flowchart TD
+    A[Intake request] --> B[Validate auth, assignment context, and upload shape]
+    B --> C[Preflight assignment config, artifact refs, pytest markers, and point totals]
+    C --> D[Create ephemeral workspace]
+    D --> E[Copy assignment pytest/support artifacts and prepare submission bundles]
+    E --> F[Run constraint checks]
+    F --> G[Execute tests in isolated runtime]
+    G --> H[Shape grounded grading results]
+    H --> I[Generate explanation text]
+    I --> J{Workflow type}
+    J -->|Official| K[Package staff-facing export artifacts]
+    J -->|Sandbox| L[Return on-screen feedback]
+    K --> M[Cleanup boundary]
+    L --> M
+    M --> N[Destroy workspace, copied assignment artifacts, and transient artifacts]
+```
 
 ### ZIP/project bundle contract
 

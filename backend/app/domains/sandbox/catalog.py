@@ -83,7 +83,6 @@ def get_sandbox_assignment(
         .options(
             selectinload(Assignment.course),
             selectinload(Assignment.config),
-            selectinload(Assignment.test_cases),
             selectinload(Assignment.scoring_items),
         )
     )

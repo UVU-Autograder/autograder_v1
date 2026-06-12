@@ -36,11 +36,6 @@ class Assignment(Base):
         back_populates="assignment",
         cascade="all, delete-orphan",
     )
-    test_cases: Mapped[list["TestCase"]] = relationship(
-        back_populates="assignment",
-        cascade="all, delete-orphan",
-        order_by="TestCase.display_order",
-    )
     scoring_items: Mapped[list["ScoringItem"]] = relationship(
         back_populates="assignment",
         cascade="all, delete-orphan",
@@ -80,20 +75,6 @@ class AssignmentConcept(Base):
     assignment: Mapped[Assignment] = relationship(back_populates="concept_additions")
 
 
-class TestCase(Base):
-    __tablename__ = "test_cases"
-    __table_args__ = (UniqueConstraint("assignment_id", "config_test_key", name="uq_test_cases_assignment_key"),)
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    assignment_id: Mapped[int] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
-    config_test_key: Mapped[str] = mapped_column(String(120))
-    label: Mapped[str] = mapped_column(String(255))
-    points: Mapped[int] = mapped_column(Integer)
-    extra_credit: Mapped[bool] = mapped_column(Boolean, default=False)
-    pytest_marker: Mapped[str] = mapped_column(String(160))
-    display_order: Mapped[int] = mapped_column(Integer, default=0)
-
-    assignment: Mapped[Assignment] = relationship(back_populates="test_cases")
 
 
 class ScoringItem(Base):

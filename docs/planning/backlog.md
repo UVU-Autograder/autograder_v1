@@ -63,7 +63,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Bootstrap the Next.js app using the App Router.
 - [ ] Bootstrap the FastAPI app with routers, schemas, services, and prompt integration boundaries.
 - [ ] Add PostgreSQL schema and Alembic initial migration for metadata-only tables.
-- [ ] Include metadata tables for users, roles, courses, sections, staff access, assignments, assignment configs, assignment concepts, assignment artifacts, test cases, and run summaries.
+- [ ] Include metadata tables for users, roles, courses, sections, staff access, assignments, assignment configs, assignment concepts, assignment artifacts, test cases, scoring_items, and run summaries.
 - [ ] Run Redis locally.
 - [ ] Wire Celery to Redis.
 - [ ] Make the Judge0 execution service reachable from the backend integration path.
@@ -109,19 +109,19 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Validate required files, entrypoint, and layout expectations before model-solution validation or grading.
 - [ ] Render all instructor-relevant editable fields from the stored app-owned config.
 - [ ] Add `/staff/courses/[courseId]/assignments/[assignmentId]/artifacts` for assignment-owned grading assets.
-- [ ] Manage exactly one M1 pytest file artifact per assignment through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
+- [ ] Manage one or more M1 pytest file artifacts per assignment through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
 - [ ] Manage model solution artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
 - [ ] Manage support-file artifacts through lightweight `assignment_artifacts` metadata plus generated local filesystem storage keys.
 - [ ] Validate artifact metadata before file bodies are used for model-solution validation or grading.
-- [ ] Require each visible scoring item key to match a pytest marker named `ag_<key>` in the assignment pytest file.
+- [ ] Require each visible scoring item key to match a pytest marker named `ag_<key>` in the assignment pytest files.
 - [ ] Allow one scoring item to map to multiple pytest functions that share the same `ag_<key>` marker.
-- [ ] Run strict preflight validation for duplicate keys, missing derived `ag_<key>` markers, missing assignment pytest artifact, invalid point values, missing or invalid `extra_credit` booleans, and invalid completion requirements before model-solution validation or grading.
+- [ ] Run strict preflight validation for duplicate keys, missing derived `ag_<key>` markers, missing assignment pytest artifacts, invalid point values, missing or invalid `extra_credit` booleans, and invalid completion requirements before model-solution validation or grading.
 - [ ] Add course-level `Concepts Covered` defaults editor.
 - [ ] Add assignment-level `Concepts Covered` additions editor.
 - [ ] Show a merged effective `Concepts Covered` preview.
 - [ ] Let instructors edit assignment-specific concept additions directly.
 - [ ] Keep human-authored grading fields in the app-owned config instead of duplicating them in `TestCase`.
-- [ ] Regenerate derived `TestCase` projections from the app-owned config after setup changes where query or UI behavior needs them.
+- [ ] Regenerate derived `TestCase` and `ScoringItem` projections from the app-owned config after setup changes where query or UI behavior needs them.
 - [ ] Ensure derived `TestCase` projections never become editable grading truth and are reconciled when they disagree with config.
 - [ ] Defer any separate simple test-case editor; keep test authoring in the wizard/config and pytest artifact surfaces for M1.
 

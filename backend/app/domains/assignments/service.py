@@ -7,7 +7,6 @@ from app.domains.assignments.models import (
     AssignmentConcept,
     AssignmentConfig,
     ScoringItem as ScoringItemProjection,
-    TestCase,
 )
 from app.domains.assignments.schemas import (
     ArtifactMetadata,
@@ -26,20 +25,6 @@ def validate_config_json(config_json: dict) -> AssignmentConfigV1:
     return AssignmentConfigV1.model_validate(config_json)
 
 
-def regenerate_test_cases(db: Session, assignment: Assignment, config: AssignmentConfigV1) -> None:
-    db.execute(delete(TestCase).where(TestCase.assignment_id == assignment.id))
-    db.add_all(
-        TestCase(
-            assignment_id=assignment.id,
-            config_test_key=item.key,
-            label=item.label,
-            points=item.points,
-            extra_credit=item.extra_credit,
-            pytest_marker=pytest_marker_for_key(item.key),
-            display_order=index,
-        )
-        for index, item in enumerate(config.tests)
-    )
 
 
 def regenerate_scoring_items(db: Session, assignment: Assignment, config: AssignmentConfigV1) -> None:
@@ -95,7 +80,6 @@ def upsert_assignment_config(
     else:
         assignment.concept_additions.added_concepts = config.concepts.additions
 
-    regenerate_test_cases(db, assignment, config)
     regenerate_scoring_items(db, assignment, config)
     return config
 
@@ -118,7 +102,6 @@ def get_assignment_for_course(
             selectinload(Assignment.config),
             selectinload(Assignment.concept_additions),
             selectinload(Assignment.artifacts),
-            selectinload(Assignment.test_cases),
             selectinload(Assignment.scoring_items),
         )
     )
