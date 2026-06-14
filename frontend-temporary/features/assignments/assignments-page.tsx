@@ -4,21 +4,27 @@ import { AssignmentsDataType } from "@/fakedata/assignments-reponse";
 import CodeResults from "./code-results";
 import { useAssignmentFile } from "./assingment-file-context";
 import { EditorSplitView } from "./editor-split-view";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable"
+
 
 export default function AssignmentsPage({ data }: { data: AssignmentsDataType }) {
   const { layout } = useAssignmentFile();
   
   return (
     <div className="w-full h-full">
-        <div className="flex flex-row h-screen">
-            <div className="w-3/4 flex flex-col min-h-0">
-                <EditorSplitView layout={layout} />
-            </div>
-
-            <div className="w-1/4 border-l border-gray-200 h-screen overflow-y-auto">
-                <CodeResults data={data} />
-            </div>
-        </div>
+            <ResizablePanelGroup orientation="horizontal" className="h-screen w-full min-h-0">
+              <ResizablePanel defaultSize={75} minSize={50}>
+                    <EditorSplitView layout={layout} />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={25} minSize={0} className="overflow-y-auto">
+                    <CodeResults data={data} />
+              </ResizablePanel>
+            </ResizablePanelGroup>
     </div>
   );
 }
