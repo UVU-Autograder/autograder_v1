@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     )
     judge0_url: str = Field(default="http://localhost:2358", validation_alias="JUDGE0_URL")
     judge0_auth_token: str | None = Field(default=None, validation_alias="JUDGE0_AUTH_TOKEN")
+    judge0_language_id: int = Field(default=71, ge=1, validation_alias="JUDGE0_LANGUAGE_ID")
+    judge0_max_concurrent: int = Field(default=2, ge=1, validation_alias="JUDGE0_MAX_CONCURRENT")
     sandbox_upload_limit: int = Field(default=5, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
     sandbox_upload_window_seconds: int = Field(
         default=3600,

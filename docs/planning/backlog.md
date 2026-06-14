@@ -65,7 +65,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Add PostgreSQL schema and Alembic initial migration for metadata-only tables.
 - [ ] Include metadata tables for users, roles, courses, sections, staff access, assignments, assignment configs, assignment concepts, assignment artifacts, test cases, scoring_items, and run summaries.
 - [ ] Run Redis locally.
-- [ ] Wire Celery to Redis.
+- [x] Wire Celery to Redis.
 - [ ] Make the Judge0 execution service reachable from the backend integration path.
 - [ ] Document Judge0 service auth and config wiring for FastAPI and Celery.
 - [ ] Validate Kata runtime requirements for the planned Judge0 isolation layer.
@@ -77,9 +77,9 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Collect documented Dell-workstation cleanup spot-check evidence for Judge0, Kata, and local workspace cleanup.
 - [ ] Benchmark safe Judge0 + Kata concurrency on the Dell workstation with mixed synthetic workloads and document worker caps before grading-pipeline implementation begins.
 - [ ] Configure the M1 execution-slot cap and benchmark any increase according to the canonical capacity policy.
-- [ ] Document queue and backpressure thresholds for work beyond the approved cap, including `40` queued-job high-load messaging and `50` queued-job rejection.
+- [x] Document queue and backpressure thresholds for work beyond the approved cap, including `40` queued-job high-load messaging and `50` queued-job rejection.
 - [ ] Host Monaco Editor locally in the frontend scaffold for planned editor and review workflows.
-- [ ] Document required environment variables in `.env.example`, including Azure OpenAI settings.
+- [x] Document required environment variables in `.env.example`, including Azure OpenAI settings.
 - [ ] Update README so a developer can bring up the local stack.
 - [ ] Add a seed path for one course, course-level `Concepts Covered`, one assignment, assignment concept additions, one app-owned `config_json`, one assignment pytest file, and one model solution.
 
@@ -143,40 +143,40 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ### AST, Judge0, And Kata Grading Pipeline
 
-- [ ] Implement AST checker for merged `Concepts Covered` whitelist enforcement.
-- [ ] Detect future-concept usage before execution and record warnings per result.
-- [ ] Support hard-block behavior for configured security-sensitive AST findings.
-- [ ] Integrate Judge0 through `httpx`.
+- [x] Implement AST checker for merged `Concepts Covered` whitelist enforcement.
+- [x] Detect future-concept usage before execution and record warnings per result.
+- [x] Support hard-block behavior for configured security-sensitive AST findings.
+- [x] Integrate Judge0 through `httpx`.
 - [ ] Validate Judge0 auth/config wiring.
-- [ ] Configure Judge0 resource limits for the M1 target: `10s` timeout, `256MB` memory limit, and network-disabled student execution.
-- [ ] Implement language-to-Judge0 mapping for the current M1 supported language.
-- [ ] Run pytest execution through Judge0.
-- [ ] Parse pytest output into structured test results.
-- [ ] Normalize output with `python_submitty_utils`.
-- [ ] Integrate Judge0 structured status handling into grading outcomes.
+- [x] Configure Judge0 resource limits for the M1 target: `10s` timeout, `256MB` memory limit, and network-disabled student execution.
+- [x] Implement language-to-Judge0 mapping for the current M1 supported language.
+- [x] Run pytest execution through Judge0.
+- [x] Parse pytest output into structured test results.
+- [x] Normalize output with custom normalizer (replaces `python_submitty_utils` per implementation decision).
+- [x] Integrate Judge0 structured status handling into grading outcomes.
 - [ ] Capture compile/runtime metadata only for non-persistent grading feedback and status shaping.
 - [ ] Upload or edit pytest file bodies through storage-backed assignment artifact references.
 - [ ] Run model solutions against assignment tests through Judge0, not on the host.
-- [ ] Package single-file and ZIP/project bundle submissions into the Judge0 execution workspace without persisting source bodies.
+- [x] Package single-file and ZIP/project bundle submissions into the Judge0 execution workspace without persisting source bodies.
 - [ ] Build Celery grading chain for official runs.
-- [ ] Build Celery grading chain for sandbox runs.
-- [ ] Align Celery worker concurrency to documented Judge0 + Kata execution capacity.
-- [ ] Add global queue admission control for a maximum of `50` waiting per-submission execution jobs.
-- [ ] Add high-load response behavior at `40` queued execution jobs.
-- [ ] Add full-queue rejection with retry guidance before file persistence at `50` queued execution jobs.
-- [ ] Add separate logical official and sandbox queues with round-robin scheduling into the bounded execution slots.
+- [x] Build Celery grading chain for sandbox runs.
+- [x] Align Celery worker concurrency to documented Judge0 + Kata execution capacity.
+- [x] Add global queue admission control for a maximum of `50` waiting per-submission execution jobs.
+- [x] Add high-load response behavior at `40` queued execution jobs.
+- [x] Add full-queue rejection with retry guidance before file persistence at `50` queued execution jobs.
+- [x] Add separate logical official and sandbox queues with round-robin scheduling into the bounded execution slots.
 - [ ] Chunk official runs internally so large Canvas batches feed per-submission execution jobs as queue capacity opens.
-- [ ] Add Redis-backed transient run status with `queue`, `run`, `complete`, `failure`, sanitized counters, and coarse failure categories.
+- [x] Add Redis-backed transient run status with `queue`, `run`, `complete`, `failure`, sanitized counters, and coarse failure categories.
 - [ ] Add `GET /runs/{id}/status`.
 - [ ] Poll run status from staff and sandbox views every `2s` while the run is queued or running.
 - [ ] Return queue position and rough ETA band from run status while a job is queued.
 - [ ] Allow queued sandbox jobs to be cancelled before execution starts.
 - [ ] Finalize worker-cap and backpressure policy from Dell-workstation benchmark results.
-- [ ] Retry failed jobs up to 3 times with backoff.
+- [x] Retry failed jobs up to 3 times with backoff.
 - [ ] Free workers immediately on timeout and record `failed:timeout`.
-- [ ] Verify Judge0 submission/result deletion after each official and sandbox execution.
+- [x] Verify Judge0 submission/result deletion after each official and sandbox execution.
 - [ ] Verify Kata-backed execution artifact deletion after each official and sandbox execution.
-- [ ] Destroy extracted student files, generated code artifacts, and temporary feedback files at the end of each official or sandbox run.
+- [x] Destroy extracted student files, generated code artifacts, and temporary feedback files at the end of each official or sandbox run.
 
 ### Azure Feedback And Privacy Confirmation
 

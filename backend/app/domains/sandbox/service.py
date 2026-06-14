@@ -52,120 +52,20 @@ class SandboxRunRecord:
 
 
 class SandboxService:
-    """Temporary in-memory contract store.
+    """In-memory contract store with optional Celery dispatch.
 
-    Redis, Celery, Judge0, ZIP extraction, and real cleanup are intentionally out
-    of scope here; this service exists to stabilize frontend/backend JSON.
+    When use_celery=True, create_run dispatches a real Celery task and
+    run state is tracked in Redis. When use_celery=False (default for
+    contract tests), the service uses the original in-memory mock behavior.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, use_celery: bool = False) -> None:
+        self._use_celery = use_celery
         self._runs: dict[str, SandboxRunRecord] = {}
         self._session_uploads: dict[str, list[datetime]] = {}
-        self._courses = [
-            SandboxCourse(
-                id="cs1400",
-                title="CS 101: Programming Foundations",
-                term="Spring 2026",
-                sandbox_enabled_assignments=2,
-            ),
-            SandboxCourse(
-                id="cs201",
-                title="CS 201: Data Structures",
-                term="Spring 2026",
-                sandbox_enabled_assignments=1,
-            ),
-        ]
-        self._assignments = {
-            "cs1400": [
-                SandboxAssignmentDetail(
-                    id="loops-lab",
-                    course_id="cs1400",
-                    title="Loops Lab",
-                    sandbox_enabled=True,
-                    language="python",
-                    max_score=100,
-                    upload_quota=self._quota_for("preview"),
-                    description="Practice iteration, input validation, and simple aggregation.",
-                    accepted_bundle_types=["application/zip", ".zip"],
-                    max_upload_bytes=50 * 1024 * 1024,
-                    constraints=[
-                        SandboxConstraint(label="Runtime", value="2 seconds"),
-                        SandboxConstraint(label="Memory", value="512 MB"),
-                    ],
-                    rubric=[
-                        SandboxRubricItem(label="Correctness", points=70),
-                        SandboxRubricItem(label="Style", points=20),
-                        SandboxRubricItem(label="Edge cases", points=10),
-                    ],
-                ),
-                SandboxAssignmentDetail(
-                    id="functions-checkpoint",
-                    course_id="cs1400",
-                    title="Functions Checkpoint",
-                    sandbox_enabled=True,
-                    language="python",
-                    max_score=50,
-                    upload_quota=self._quota_for("preview"),
-                    description="Practice decomposition with small reusable functions.",
-                    accepted_bundle_types=["application/zip", ".zip"],
-                    max_upload_bytes=50 * 1024 * 1024,
-                    constraints=[SandboxConstraint(label="Runtime", value="2 seconds")],
-                    rubric=[
-                        SandboxRubricItem(label="Function behavior", points=35),
-                        SandboxRubricItem(label="Readable structure", points=15),
-                    ],
-                ),
-            ],
-            "cs201": [
-                SandboxAssignmentDetail(
-                    id="linked-list-practice",
-                    course_id="cs201",
-                    title="Linked List Practice",
-                    sandbox_enabled=True,
-                    language="python",
-                    max_score=100,
-                    upload_quota=self._quota_for("preview"),
-                    description="Practice linked-list insert, remove, and traversal behavior.",
-                    accepted_bundle_types=["application/zip", ".zip"],
-                    max_upload_bytes=50 * 1024 * 1024,
-                    constraints=[
-                        SandboxConstraint(label="Runtime", value="3 seconds"),
-                        SandboxConstraint(label="Memory", value="768 MB"),
-                    ],
-                    rubric=[
-                        SandboxRubricItem(label="Core operations", points=75),
-                        SandboxRubricItem(label="Boundary cases", points=25),
-                    ],
-                )
-            ],
-        }
-
-    def list_courses(self) -> SandboxCourseListResponse:
-        return SandboxCourseListResponse(courses=self._courses)
 
     def quota_for_session(self, session_id: str | None) -> UploadQuota:
         return self._quota_for(session_id)
-
-    def list_assignments(
-        self, course_id: str, session_id: str | None
-    ) -> SandboxAssignmentListResponse | None:
-        assignments = self._assignments.get(course_id)
-        if assignments is None:
-            return None
-        return SandboxAssignmentListResponse(
-            course_id=course_id,
-            assignments=[self._summary(item, session_id) for item in assignments],
-        )
-
-    def get_assignment(
-        self, course_id: str, assignment_id: str, session_id: str | None
-    ) -> SandboxAssignmentDetail | None:
-        assignment = self._find_assignment(course_id, assignment_id)
-        if assignment is None:
-            return None
-        return assignment.model_copy(
-            update={"upload_quota": self._quota_for(session_id)}
-        )
 
     def create_run(
         self,
@@ -174,10 +74,11 @@ class SandboxService:
         session_id: str | None,
         assignment_exists: bool | None = None,
         max_score: int = 100,
+        zip_data: bytes | None = None,
+        config_json: dict | None = None,
+        artifact_refs: dict[str, str] | None = None,
+        allowed_concepts: list[str] | None = None,
     ) -> tuple[SandboxRunCreateResponse | None, str, int | None]:
-        assignment = self._find_assignment(course_id, assignment_id)
-        if assignment_exists is None:
-            assignment_exists = assignment is not None
         if not assignment_exists:
             return None, session_id or self._new_session(), None
 
@@ -202,6 +103,21 @@ class SandboxService:
         )
         self._runs[run_id] = record
 
+        # Dispatch Celery task if enabled and ZIP data is provided
+        if self._use_celery and zip_data is not None and config_json is not None:
+            import base64
+            from app.domains.runs.tasks import grade_sandbox_run, set_run_state
+
+            zip_b64 = base64.b64encode(zip_data).decode("ascii")
+            set_run_state(run_id, "queue", {"queue_position": record.queue_position})
+            grade_sandbox_run.delay(
+                run_id=run_id,
+                zip_data_b64=zip_b64,
+                config_json=config_json,
+                artifact_refs=artifact_refs or {},
+                allowed_concepts=allowed_concepts or [],
+            )
+
         status = self._status_for(record)
         return (
             SandboxRunCreateResponse(
@@ -219,6 +135,26 @@ class SandboxService:
 
     def get_status(self, run_id: str) -> RunStatusResponse | None:
         self._expire_old_runs()
+
+        # Try Redis first if Celery mode is active
+        if self._use_celery:
+            from app.domains.runs.tasks import get_run_state
+            redis_state = get_run_state(run_id)
+            if redis_state is not None:
+                state = redis_state.get("state", "queue")
+                record = self._runs.get(run_id)
+                queue_pos = redis_state.get("queue_position")
+                return RunStatusResponse(
+                    run_id=run_id,
+                    state=state,
+                    queue_position=queue_pos if state == "queue" else None,
+                    eta_band="1_to_3_min" if state == "queue" else None,
+                    counters=self._counters(),
+                    backpressure=self._backpressure(),
+                    message=self._message_for(state),
+                )
+
+        # Fall back to in-memory mock
         record = self._runs.get(run_id)
         if record is None:
             return None
@@ -236,6 +172,12 @@ class SandboxService:
         if record.state != "queue":
             return "not_cancelable"
         record.state = "failure"
+
+        # Also update Redis if in Celery mode
+        if self._use_celery:
+            from app.domains.runs.tasks import set_run_state
+            set_run_state(run_id, "failure", {"failure_category": "cancelled"})
+
         return SandboxCancelResponse(
             run_id=run_id,
             state="failure",
@@ -251,6 +193,70 @@ class SandboxService:
         record = self._runs.get(run_id)
         if record is None or record.session_id != session_id:
             return None
+
+        # Try Redis for real results if in Celery mode
+        if self._use_celery:
+            from app.domains.runs.tasks import get_run_result, get_run_state
+            redis_state = get_run_state(run_id)
+            if redis_state is None:
+                return "not_ready"
+            state = redis_state.get("state", "queue")
+            if state not in {"complete", "failure"}:
+                return "not_ready"
+
+            redis_result = get_run_result(run_id)
+            if redis_result is None:
+                return "not_ready"
+
+            if state == "failure":
+                return SandboxRunResultResponse(
+                    run_id=run_id,
+                    state="failure",
+                    projected_score=0,
+                    max_score=record.max_score,
+                    warnings=[
+                        SandboxWarning(
+                            code=redis_result.get("failure_category", "internal_error"),
+                            message=redis_result.get("failure_message", "Run failed."),
+                        )
+                    ],
+                    test_summaries=[],
+                    sanitized_feedback="The sandbox run ended with an error.",
+                    file_preview=self._file_preview(),
+                    retention_notice="Sandbox results are session-only and are not retained as student submissions.",
+                )
+
+            # Build test summaries from real results
+            test_summaries = []
+            for tr in redis_result.get("test_results", []):
+                test_summaries.append(
+                    TestSummary(
+                        label=tr.get("label", tr.get("key", "Unknown")),
+                        status="passed" if tr.get("passed") else "failed",
+                        points_awarded=tr.get("points_awarded", 0),
+                        points_possible=tr.get("points", 0),
+                        message=tr.get("label", ""),
+                    )
+                )
+
+            warnings = [
+                SandboxWarning(code=w.get("code", "warning"), message=w.get("message", ""))
+                for w in redis_result.get("warnings", [])
+            ]
+
+            return SandboxRunResultResponse(
+                run_id=run_id,
+                state="complete",
+                projected_score=redis_result.get("score", 0),
+                max_score=redis_result.get("max_score", record.max_score),
+                warnings=warnings,
+                test_summaries=test_summaries,
+                sanitized_feedback="Review your results above.",
+                file_preview=self._file_preview(),
+                retention_notice="Sandbox results are session-only and are not retained as student submissions.",
+            )
+
+        # In-memory mock behavior for contract tests
         if record.state not in {"complete", "failure"}:
             return "not_ready"
         if record.state == "failure":
@@ -300,27 +306,6 @@ class SandboxService:
             ),
             file_preview=self._file_preview(),
             retention_notice="Sandbox results are session-only and are not retained as student submissions.",
-        )
-
-    def _find_assignment(
-        self, course_id: str, assignment_id: str
-    ) -> SandboxAssignmentDetail | None:
-        for assignment in self._assignments.get(course_id, []):
-            if assignment.id == assignment_id and assignment.sandbox_enabled:
-                return assignment
-        return None
-
-    def _summary(
-        self, assignment: SandboxAssignmentDetail, session_id: str | None
-    ) -> SandboxAssignmentSummary:
-        return SandboxAssignmentSummary(
-            id=assignment.id,
-            course_id=assignment.course_id,
-            title=assignment.title,
-            sandbox_enabled=assignment.sandbox_enabled,
-            language=assignment.language,
-            max_score=assignment.max_score,
-            upload_quota=self._quota_for(session_id),
         )
 
     def _quota_for(self, session_id: str | None) -> UploadQuota:
@@ -410,4 +395,5 @@ class SandboxService:
             del self._runs[run_id]
 
 
-sandbox_service = SandboxService()
+# Default instance - use_celery=False preserves existing contract test behavior
+sandbox_service = SandboxService(use_celery=False)

@@ -35,7 +35,7 @@
 
 - Autolab/Tango inspires the async grading/job orchestration shape, including queue-driven official-run processing and status tracking.
 - Submitty's `config.json` format informs the grading-config direction for tests, point values, and execution settings.
-- `python_submitty_utils` is used for output normalization to reduce false negatives from whitespace and formatting differences.
+- A custom output normalizer (`app/domains/grading/normalizer.py`) handles whitespace, line-ending, and blank-line normalization to reduce false negatives from formatting differences.
 
 ## 4. App Workflows
 
