@@ -9,9 +9,9 @@ const data: AssignmentsDataType = assignmentsResponse;
 export default function Page() {
   return (
     <AssignmentFileProvider>
-        <SidebarProvider>
+        <SidebarProvider className="h-svh min-h-0">
             <AssignmentsSidebar />
-            <SidebarInset>
+            <SidebarInset className="min-h-0 flex-1 overflow-hidden">
                 <AssignmentsPage data={data} />
             </SidebarInset>
         </SidebarProvider>

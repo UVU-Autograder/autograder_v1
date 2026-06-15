@@ -112,7 +112,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
 
   return (
     <div
-      className={`flex min-h-0 min-w-0 flex-1 flex-col ${isActivePane ? 'ring-1 ring-inset ring-primary/30' : ''}`}
+      className={`flex h-full min-h-0 min-w-0 flex-1 flex-col ${isActivePane ? 'ring-1 ring-inset ring-primary/30' : ''}`}
       onMouseDown={() => setActivePane(paneId)}
     >
       {pane.tabs.length > 0 && activeTab ? (
