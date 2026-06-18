@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useRef, useState, ReactNode } from 'react';
-import { getFile } from './api';
 import {
   computeCloseTab,
   computeMoveTab,
@@ -18,7 +17,10 @@ type AssignmentFileContextType = {
   layout: EditorLayoutState['layout'];
   activePaneId: string;
   dragTab: DragTabData | null;
-  openFileByName: (filename: string) => Promise<void>;
+  openFileByName: (
+    filename: string,
+    options?: { content?: string; language?: string }
+  ) => Promise<void>;
   setActiveTab: (paneId: string, filename: string) => void;
   setActivePane: (paneId: string) => void;
   closeTab: (paneId: string, filename: string) => void;
@@ -49,14 +51,18 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
   const [dragTab, setDragTab] = useState<DragTabData | null>(null);
   const dragActionInProgressRef = useRef(false);
 
-  const openFileByName = async (filename: string) => {
+  const openFileByName = async (
+    filename: string,
+    options?: { content?: string; language?: string }
+  ) => {
     let file = files[filename];
 
     if (!file) {
-      const response = await getFile(filename);
-      const content = await response.text();
-      const language = filename.endsWith('.py') ? 'python' : 'plaintext';
-      file = { filename, content, language };
+      file = {
+        filename,
+        content: options?.content ?? '',
+        language: options?.language ?? 'python',
+      };
       setFiles((prev) => ({ ...prev, [filename]: file! }));
     }
 

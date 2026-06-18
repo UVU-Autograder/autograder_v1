@@ -1,30 +1,27 @@
-'use client';
+import { AssignmentsResponse } from "@/features/assignments/types";
+import AssignmentCard from "@/features/assignments/assignment-card";
 
-import { AssignmentsDataType } from "@/fakedata/assignments-reponse";
-import CodeResults from "./code-results";
-import { useAssignmentFile } from "./assingment-file-context";
-import { EditorSplitView } from "./editor-split-view";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
-
-
-export default function AssignmentsPage({ data }: { data: AssignmentsDataType }) {
-  const { layout } = useAssignmentFile();
-  
+export default function AssignmentsPage({ data }: { data: AssignmentsResponse }) {
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col">
-		<ResizablePanelGroup orientation="horizontal" className="min-h-0 w-full flex-1">
-			<ResizablePanel defaultSize={75} minSize={50} className="flex min-h-0">
-					<EditorSplitView layout={layout} />
-			</ResizablePanel>
-			<ResizableHandle withHandle />
-			<ResizablePanel defaultSize={25} minSize={0} className="overflow-y-auto">
-				<CodeResults data={data} />
-			</ResizablePanel>
-        </ResizablePanelGroup>
+    <div className="w-full px-4 pt-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
+        <p className="text-muted-foreground mt-1">{data.course_id}</p>
+      </div>
+
+      {data.assignments.length === 0 ? (
+        <p className="text-muted-foreground">No assignments available yet.</p>
+      ) : (
+        <div className="flex w-full flex-col gap-2">
+          {data.assignments.map((assignment) => (
+            <AssignmentCard
+              key={assignment.id}
+              assignment={assignment}
+              courseId={data.course_id}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

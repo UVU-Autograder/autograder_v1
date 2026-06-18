@@ -1,23 +1,10 @@
-export function getFile(filename: string) {
-    const mockPythonFiles: Record<string, string> = {
-      "main.py": `def main():
-    print("Hello from main.py!")
+import { apiClient } from "@/lib/api-client";
+import { Assignment, AssignmentsResponse } from "@/features/assignments/types";
 
-if __name__ == "__main__":
-    main()
-        `,
-      "test_main.py":`def say_hello():
-    print("Hello, World!")
-      
-if __name__ == "__main__":
-    say_hello()
-              `,
-      "test_case_1.txt": `Expected input:
-    1 2 
-Expected output:
-    3
-      `
-    };
-    const code = mockPythonFiles[filename] ?? `# ${filename}\n...`;
-    return Promise.resolve({ text: () => Promise.resolve(code) });
+export function getAssignments(courseId: string) {
+  return apiClient.get<AssignmentsResponse>(`/sandbox/courses/${courseId}/assignments`);
+}
+
+export function getAssignment(courseId: string, assignmentId: string) {
+  return apiClient.get<Assignment>(`/sandbox/courses/${courseId}/assignments/${assignmentId}`);
 }

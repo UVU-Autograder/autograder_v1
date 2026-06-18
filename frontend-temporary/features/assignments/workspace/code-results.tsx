@@ -1,13 +1,10 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AssignmentsDataType } from "@/fakedata/assignments-reponse";
 
 export default function CodeResults({ data }: { data: AssignmentsDataType }) {
-    const handleCheckCode = () => {
-        document.getElementById("check-code")!.classList.toggle("hidden");
-    }
-    const handleFeedback = () => {
-        document.getElementById("feedback")!.classList.toggle("hidden");
-    }
+    const [showCheckCode, setShowCheckCode] = useState(true);
+    const [showFeedback, setShowFeedback] = useState(true);
     // To handle constraints
     const warnings =  data.response.data.projected_result.constraint_result.warnings;
 
@@ -15,28 +12,12 @@ export default function CodeResults({ data }: { data: AssignmentsDataType }) {
     const percent = Math.round((data.response.data.projected_result.projected_score / data.response.data.projected_result.max_score) * 100);
 
     return (
-        <div>
-            <Button onClick={handleCheckCode} className="w-full mt-2 bg-gradient-to-r from-gray-800 to-gray-500
+        <div className="px-1">
+            <Button onClick={() => setShowCheckCode((prev) => !prev)} className="w-full mt-2 bg-gradient-to-r from-gray-800 to-gray-500
             hover:from-black-800 hover:to-indigo-600 text-white text-lg font-semibold px-6 py-3 rounded-lg">
             Check Code</Button>
-
-            {/* <div id="score" className="display flex flex-1 flex-col">
-                <pre className="text-wrap">
-                    <p className="font-bold text-lg mb-2">Score:</p>
-                    <p>{data.response.data.projected_result.projected_score} / {data.response.data.projected_result.max_score}</p>
-                </pre>
-
-                <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
-                    <div
-                    className="h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg"
-                    style={{ width: `${percent}%` }}
-                    />
-                </div>
-
-            </div> */}
-
   
-            <div id="check-code" className="display flex flex-1 flex-col">
+            <div className={`flex flex-1 flex-col ${showCheckCode ? "" : "hidden"}`}>
                 <pre className="text-wrap">                  
                     <p className="font-bold text-lg mb-2">Score:</p>
                     <p>{data.response.data.projected_result.projected_score} / {data.response.data.projected_result.max_score}</p>
@@ -142,10 +123,11 @@ export default function CodeResults({ data }: { data: AssignmentsDataType }) {
 
             <br />
 
-            <Button onClick={handleFeedback} className="w-full mt-2 bg-gradient-to-r from-purple-400 to-pink-500
+            <Button onClick={() => setShowFeedback((prev) => !prev)} className="w-full mt-2 bg-gradient-to-r from-purple-400 to-pink-500
             hover:from-purple-600 hover:to-pink-600 text-white text-lg font-semibold px-6 py-3 rounded-lg">
-            View AI Feedback</Button>
-            <div id="feedback" className="display flex flex-1 flex-col">
+                View AI Feedback
+            </Button>
+            <div className={`flex flex-1 flex-col ${showFeedback ? "" : "hidden"}`}>
                 <pre className="text-wrap">
                     <p className="font-bold text-lg">Feedback:</p>
                     <p>{data.response.data.projected_result.feedback.summary}</p>

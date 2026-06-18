@@ -29,7 +29,7 @@ export default function CourseCard({ course }: { course: Course }) {
   const colorClass = getColor(course.id);
 
   return (
-    <Link href={`/courses/${course.id}`} className="block">
+    <Link href={`/courses/${course.id}/assignments`} className="block">
       <Card className="overflow-hidden hover:shadow-lg transition-all cursor-pointer">
 
         {/* TOP COLOR BANNER (like CardMedia) */}

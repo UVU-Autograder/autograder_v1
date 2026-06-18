@@ -2,9 +2,18 @@
 
 import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon } from "lucide-react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { Assignment, Constraint } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assingment-file-context";
 
-export function AssignmentsSidebar() {
+function constraintFilename(label: string) {
+    return `${label.toLowerCase().replace(/\s+/g, '_').replace(/[^\w.-]/g, '')}.txt`;
+}
+
+function constraintFileContent(constraint: Constraint) {
+    return `${constraint.label}\n${'='.repeat(constraint.label.length)}\n\n${constraint.value}`;
+}
+
+export function AssignmentSidebar({ assignment }: { assignment: Assignment }) {
     const { openFileByName } = useAssignmentFile();
 
     const data = {
@@ -70,12 +79,14 @@ export function AssignmentsSidebar() {
                 <Settings2Icon
                 />
                 ),
-                items: [
-                {
-                    title: "No Bubble Sort",
-                    url: "#",
-                },
-                ],
+                items: assignment.constraints.map((constraint) => ({
+                    title: constraint.label,
+                    onClick: () =>
+                        openFileByName(constraintFilename(constraint.label), {
+                            content: constraintFileContent(constraint),
+                            language: 'plaintext',
+                        }),
+                })),
             },
         ]
     }
