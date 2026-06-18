@@ -10,6 +10,7 @@ import {
   EditorLayoutState,
   OpenFile,
 } from './editor-layout';
+import { readFilesAsOpenFiles } from './file-utils';
 
 type AssignmentFileContextType = {
   files: Record<string, OpenFile>;
@@ -33,6 +34,7 @@ type AssignmentFileContextType = {
     direction: 'row' | 'column'
   ) => void;
   moveTabToPane: (filename: string, sourcePaneId: string, targetPaneId: string) => void;
+  uploadFiles: (files: FileList | File[]) => Promise<void>;
 };
 
 const AssignmentFileContext = createContext<AssignmentFileContextType | null>(null);
@@ -147,6 +149,45 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
     runDragAction((prev) => computeMoveTab(prev, filename, sourcePaneId, targetPaneId));
   };
 
+  const uploadFiles = async (incoming: FileList | File[]) => {
+    const fileArray = Array.from(incoming);
+    if (fileArray.length === 0) return;
+
+    const openFiles = await readFilesAsOpenFiles(fileArray);
+    const filenames = openFiles.map((file) => file.filename);
+    const lastFilename = filenames[filenames.length - 1];
+
+    setFiles((prev) => {
+      const next = { ...prev };
+      for (const file of openFiles) {
+        next[file.filename] = file;
+      }
+      return next;
+    });
+
+    setEditorLayout((prev) => {
+      const pane = prev.panes[prev.activePaneId];
+      if (!pane) return prev;
+
+      const nextTabs = [...pane.tabs];
+      for (const filename of filenames) {
+        if (!nextTabs.includes(filename)) nextTabs.push(filename);
+      }
+
+      return {
+        ...prev,
+        panes: {
+          ...prev.panes,
+          [prev.activePaneId]: {
+            ...pane,
+            tabs: nextTabs,
+            activeTab: lastFilename,
+          },
+        },
+      };
+    });
+  };
+
   const { panes, layout, activePaneId } = editorLayout;
 
   return (
@@ -165,6 +206,7 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
         endTabDrag,
         splitTabToPane,
         moveTabToPane,
+        uploadFiles,
       }}
     >
       {children}

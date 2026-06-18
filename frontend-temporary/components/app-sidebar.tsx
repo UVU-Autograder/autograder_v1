@@ -35,6 +35,7 @@ type AppSidebarData = {
       url?: string
       onClick?: () => void
     }>
+    actions?: React.ReactNode
   }>
   projects?: Array<{
     name: string

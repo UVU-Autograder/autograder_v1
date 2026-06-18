@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import {
   Collapsible,
   CollapsibleContent,
@@ -30,6 +31,7 @@ export function NavMain({
       url?: string
       onClick?: () => void
     }[]
+    actions?: ReactNode
   }[]
 }) {
   return (
@@ -76,6 +78,9 @@ export function NavMain({
                     </SidebarMenuSubItem>
                   ))}
                 </SidebarMenuSub>
+                {item.actions ? (
+                  <div className="px-2 py-1">{item.actions}</div>
+                ) : null}
               </CollapsibleContent>
             </SidebarMenuItem>
           </Collapsible>

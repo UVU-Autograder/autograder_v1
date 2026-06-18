@@ -4,6 +4,7 @@ import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon } from "lucide
 import { AppSidebar } from "@/components/app-sidebar"
 import { Assignment, Constraint } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assingment-file-context";
+import { FileUploadButton } from "./file-upload-button";
 
 function constraintFilename(label: string) {
     return `${label.toLowerCase().replace(/\s+/g, '_').replace(/[^\w.-]/g, '')}.txt`;
@@ -14,7 +15,8 @@ function constraintFileContent(constraint: Constraint) {
 }
 
 export function AssignmentSidebar({ assignment }: { assignment: Assignment }) {
-    const { openFileByName } = useAssignmentFile();
+    const { files, openFileByName, uploadFiles } = useAssignmentFile();
+    const workspaceFiles = Object.keys(files).sort((a, b) => a.localeCompare(b));
 
     const data = {
         navMain: [
@@ -53,24 +55,16 @@ export function AssignmentSidebar({ assignment }: { assignment: Assignment }) {
                 <BookOpenIcon
                 />
                 ),
-                items: [
-                {
-                    title: "main.py",
-                    onClick: () => openFileByName("main.py"),
-                },
-                {
-                    title: "test_main.py",
-                    onClick: () => openFileByName("test_main.py"),
-                },
-                {
-                    title: "test_main1.py",
-                    onClick: () => openFileByName("test_main1.py"),
-                },
-                {
-                    title: "test_main2.py",
-                    onClick: () => openFileByName("test_main2.py"),
-                }
-                ],
+                items: workspaceFiles.map((filename) => ({
+                    title: filename,
+                    onClick: () => openFileByName(filename),
+                })),
+                actions: (
+                    <FileUploadButton
+                        className="w-full"
+                        onFilesSelected={uploadFiles}
+                    />
+                ),
             },
             {
                 title: "Constraints",

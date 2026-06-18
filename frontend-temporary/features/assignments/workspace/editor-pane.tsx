@@ -59,10 +59,12 @@ export function EditorPane({ paneId }: { paneId: string }) {
     endTabDrag,
     splitTabToPane,
     moveTabToPane,
+    uploadFiles,
   } = useAssignmentFile();
 
   const pane = panes[paneId];
   const [dropZone, setDropZone] = useState<DropZone>(null);
+  const [isFileDropActive, setIsFileDropActive] = useState(false);
 
   if (!pane) return null;
 
@@ -110,10 +112,31 @@ export function EditorPane({ paneId }: { paneId: string }) {
     onDropBottom: handleDropBottom,
   };
 
+  const handleExternalDragOver = (event: React.DragEvent) => {
+    if (dragTab || !event.dataTransfer.types.includes('Files')) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsFileDropActive(true);
+  };
+
+  const handleExternalDragLeave = (event: React.DragEvent) => {
+    if (event.currentTarget === event.target) setIsFileDropActive(false);
+  };
+
+  const handleExternalDrop = (event: React.DragEvent) => {
+    if (dragTab || !event.dataTransfer.files.length) return;
+    event.preventDefault();
+    setIsFileDropActive(false);
+    void uploadFiles(event.dataTransfer.files);
+  };
+
   return (
     <div
-      className={`flex h-full min-h-0 min-w-0 flex-1 flex-col ${isActivePane ? 'ring-1 ring-inset ring-primary/30' : ''}`}
+      className={`relative flex h-full min-h-0 min-w-0 flex-1 flex-col ${isActivePane ? 'ring-1 ring-inset ring-primary/30' : ''}`}
       onMouseDown={() => setActivePane(paneId)}
+      onDragOver={handleExternalDragOver}
+      onDragLeave={handleExternalDragLeave}
+      onDrop={handleExternalDrop}
     >
       {pane.tabs.length > 0 && activeTab ? (
         <Tabs
@@ -182,9 +205,16 @@ export function EditorPane({ paneId }: { paneId: string }) {
           </div>
         </Tabs>
       ) : (
-        <div className="relative flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
-          Open a file from the sidebar
+        <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span>Open a file from the sidebar or drop files here</span>
           {isDragging && <EditorDropOverlay {...dropOverlayProps} />}
+        </div>
+      )}
+      {isFileDropActive && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-primary bg-primary/10">
+          <span className="rounded-md bg-background px-3 py-1.5 text-sm font-medium text-foreground shadow-sm">
+            Drop files to open in editor
+          </span>
         </div>
       )}
     </div>
