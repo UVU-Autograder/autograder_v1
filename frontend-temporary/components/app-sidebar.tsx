@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 
 type AppSidebarData = {
+  header?: React.ReactNode
   user?: {
     name: string
     email: string
@@ -48,6 +49,7 @@ export function AppSidebar({ data, ...props }: React.ComponentProps<typeof Sideb
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
+        {data.header}
         {data.teams && <TeamSwitcher teams={data.teams} />}
       </SidebarHeader>
       <SidebarContent>

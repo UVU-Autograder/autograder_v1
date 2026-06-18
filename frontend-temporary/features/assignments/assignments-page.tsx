@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { ArrowLeftIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AssignmentsResponse } from "@/features/assignments/types";
 import AssignmentCard from "@/features/assignments/assignment-card";
 
@@ -5,6 +8,12 @@ export default function AssignmentsPage({ data }: { data: AssignmentsResponse })
   return (
     <div className="w-full px-4 pt-8">
       <div className="mb-6">
+        <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
+          <Link href="/courses">
+            <ArrowLeftIcon />
+            Back to courses
+          </Link>
+        </Button>
         <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
         <p className="text-muted-foreground mt-1">{data.course_id}</p>
       </div>

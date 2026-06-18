@@ -1,3 +1,5 @@
+import type { OpenFile } from './editor-layout';
+
 const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
   py: 'python',
   js: 'javascript',
@@ -38,7 +40,7 @@ export function languageFromFilename(filename: string) {
 }
 
 export async function readFilesAsOpenFiles(files: File[]) {
-  const openFiles: Array<{ filename: string; content: string; language: string }> = [];
+  const openFiles: OpenFile[] = [];
 
   for (const file of files) {
     const filename = basename(file.name);
@@ -47,6 +49,7 @@ export async function readFilesAsOpenFiles(files: File[]) {
       filename,
       content,
       language: languageFromFilename(filename),
+      category: 'workspace',
     });
   }
 

@@ -20,7 +20,7 @@ type AssignmentFileContextType = {
   dragTab: DragTabData | null;
   openFileByName: (
     filename: string,
-    options?: { content?: string; language?: string }
+    options?: { content?: string; language?: string; category?: OpenFile['category'] }
   ) => Promise<void>;
   setActiveTab: (paneId: string, filename: string) => void;
   setActivePane: (paneId: string) => void;
@@ -55,7 +55,7 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
 
   const openFileByName = async (
     filename: string,
-    options?: { content?: string; language?: string }
+    options?: { content?: string; language?: string; category?: OpenFile['category'] }
   ) => {
     let file = files[filename];
 
@@ -64,6 +64,7 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
         filename,
         content: options?.content ?? '',
         language: options?.language ?? 'python',
+        category: options?.category ?? 'workspace',
       };
       setFiles((prev) => ({ ...prev, [filename]: file! }));
     }

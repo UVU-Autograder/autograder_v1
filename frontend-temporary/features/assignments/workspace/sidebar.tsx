@@ -1,6 +1,8 @@
 'use client';
 
-import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon } from "lucide-react"
+import Link from "next/link";
+import { ArrowLeftIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon } from "lucide-react"
+import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/app-sidebar"
 import { Assignment, Constraint } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assingment-file-context";
@@ -14,11 +16,28 @@ function constraintFileContent(constraint: Constraint) {
     return `${constraint.label}\n${'='.repeat(constraint.label.length)}\n\n${constraint.value}`;
 }
 
-export function AssignmentSidebar({ assignment }: { assignment: Assignment }) {
+export function AssignmentSidebar({
+    assignment,
+    courseId,
+}: {
+    assignment: Assignment;
+    courseId: string;
+}) {
     const { files, openFileByName, uploadFiles } = useAssignmentFile();
-    const workspaceFiles = Object.keys(files).sort((a, b) => a.localeCompare(b));
+    const workspaceFiles = Object.values(files)
+        .filter((file) => file.category === 'workspace')
+        .map((file) => file.filename)
+        .sort((a, b) => a.localeCompare(b));
 
     const data = {
+        header: (
+            <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
+                <Link href={`/courses/${courseId}/assignments`}>
+                    <ArrowLeftIcon />
+                    Back to assignments
+                </Link>
+            </Button>
+        ),
         navMain: [
             {
                 title: "Details",
@@ -39,11 +58,13 @@ export function AssignmentSidebar({ assignment }: { assignment: Assignment }) {
                 items: [
                 {
                     title: "Test Case 1",
-                    onClick: () => openFileByName("test_case_1.txt"),
+                    onClick: () =>
+                        openFileByName("test_case_1.txt", { category: 'test_case' }),
                 },
                 {
                     title: "Test Case 2",
-                    url: "#",
+                    onClick: () =>
+                        openFileByName("test_case_2.txt", { category: 'test_case' }),
                 }
                 ],
             },
@@ -79,6 +100,7 @@ export function AssignmentSidebar({ assignment }: { assignment: Assignment }) {
                         openFileByName(constraintFilename(constraint.label), {
                             content: constraintFileContent(constraint),
                             language: 'plaintext',
+                            category: 'constraint',
                         }),
                 })),
             },

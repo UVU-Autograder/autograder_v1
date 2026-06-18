@@ -1,7 +1,10 @@
+export type FileCategory = 'workspace' | 'constraint' | 'test_case';
+
 export type OpenFile = {
   filename: string;
   content: string;
   language: string;
+  category: FileCategory;
 };
 
 export type PaneState = {
