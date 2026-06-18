@@ -1,6 +1,5 @@
 'use client';
 
-import { AssignmentsDataType } from "@/fakedata/assignments-reponse";
 import CodeResults from "./code-results";
 import { useAssignmentFile } from "./assingment-file-context";
 import { EditorSplitView } from "./editor-split-view";
@@ -10,8 +9,17 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
 
+type AssignmentsPageProps = {
+  courseId: string;
+  assignmentId: string;
+  maxScore: number;
+};
 
-export default function AssignmentsPage({ data }: { data: AssignmentsDataType }) {
+export default function AssignmentsPage({
+  courseId,
+  assignmentId,
+  maxScore,
+}: AssignmentsPageProps) {
   const { layout } = useAssignmentFile();
   
   return (
@@ -22,7 +30,11 @@ export default function AssignmentsPage({ data }: { data: AssignmentsDataType })
 			</ResizablePanel>
 			<ResizableHandle withHandle />
 			<ResizablePanel defaultSize={25} minSize={0} className="overflow-y-auto">
-				<CodeResults data={data} />
+				<CodeResults
+          courseId={courseId}
+          assignmentId={assignmentId}
+          maxScore={maxScore}
+        />
 			</ResizablePanel>
         </ResizablePanelGroup>
     </div>

@@ -1,3 +1,5 @@
+
+
 export type Constraint = {
     label: string;
     value: string;
@@ -44,3 +46,46 @@ export type AssignmentsResponse = {
     course_id: string;
     assignments: AssignmentsDetails[];
 }
+
+export type RunState = "queue" | "run" | "complete" | "failure";
+
+export type RunStatusResponse = {
+    run_id: string;
+    state: RunState;
+    queue_position: number | null;
+    eta_band: string | null;
+    message: string | null;
+};
+
+export type SandboxRunCreateResponse = {
+    run_id: string;
+    sandbox_session: string;
+    status_url: string;
+    result_url: string;
+    upload_quota: UploadQuota;
+    initial_status: RunStatusResponse;
+};
+
+export type SandboxTestSummary = {
+    label: string;
+    status: "passed" | "failed" | "warning" | "not_run";
+    points_awarded: number;
+    points_possible: number;
+    message: string;
+};
+
+export type SandboxWarning = {
+    code: string;
+    message: string;
+};
+
+export type SandboxRunResultResponse = {
+    run_id: string;
+    state: "complete" | "failure";
+    projected_score: number;
+    max_score: number;
+    warnings: SandboxWarning[];
+    test_summaries: SandboxTestSummary[];
+    sanitized_feedback: string;
+    retention_notice: string;
+};

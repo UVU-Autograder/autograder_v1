@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import type { OpenFile } from './editor-layout';
 
 const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
@@ -54,4 +55,19 @@ export async function readFilesAsOpenFiles(files: File[]) {
   }
 
   return openFiles;
+}
+
+export async function createSubmissionBundle(files: Record<string, OpenFile>) {
+  const zip = new JSZip();
+  const workspaceFiles = Object.values(files).filter((file) => file.category === "workspace");
+
+  if (workspaceFiles.length === 0) {
+    zip.file("main.py", "# No workspace files uploaded yet.\n");
+  } else {
+    for (const file of workspaceFiles) {
+      zip.file(file.filename, file.content);
+    }
+  }
+
+  return zip.generateAsync({ type: "blob" });
 }
