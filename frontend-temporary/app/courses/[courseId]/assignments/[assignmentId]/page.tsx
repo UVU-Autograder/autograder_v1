@@ -15,7 +15,7 @@ export default async function Page({ params }: PageProps) {
     return (
         <AssignmentFileProvider>
         <SidebarProvider className="h-svh min-h-0">
-            <AssignmentSidebar assignment={assignment} courseId={courseId} />
+            <AssignmentSidebar assignment={assignment} courseId={courseId} className="mt-15" />
             <SidebarInset className="min-h-0 flex-1 overflow-hidden">
                 <AssignmentsPage
                   courseId={courseId}

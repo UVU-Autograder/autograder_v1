@@ -19,9 +19,11 @@ function constraintFileContent(constraint: Constraint) {
 export function AssignmentSidebar({
     assignment,
     courseId,
+    className
 }: {
     assignment: Assignment;
     courseId: string;
+    className: string
 }) {
     const { files, openFileByName, uploadFiles } = useAssignmentFile();
     const workspaceFiles = Object.values(files)
@@ -108,6 +110,6 @@ export function AssignmentSidebar({
     }
 
     return (
-        <AppSidebar data={data} />
+        <AppSidebar data={data} className={className} />
     )
 }
