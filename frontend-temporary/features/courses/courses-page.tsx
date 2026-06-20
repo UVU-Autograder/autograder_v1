@@ -1,7 +1,7 @@
-import { CoursesResponse } from "@/features/courses/types";
+import { SandboxCoursesResponse, StaffCoursesResponse } from "@/features/courses/types";
 import CourseCard from "@/features/courses/coursecard";
 
-export default function CoursesPage({ data }: { data: CoursesResponse }) {
+export default function CoursesPage({ data }: { data: SandboxCoursesResponse | StaffCoursesResponse }) {
   return (
     <div className="w-full flex justify-center pt-8">
     	<div className="w-full max-w-7xl px-4">

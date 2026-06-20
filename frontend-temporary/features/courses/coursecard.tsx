@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Card,
@@ -6,7 +8,8 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Course } from "@/features/courses/types";
+import { SandboxCourse, StaffCourse } from "@/features/courses/types";
+import { useBasePath } from "@/lib/view-context";
 
 const colors = [
   "from-blue-500 to-blue-200",
@@ -25,11 +28,13 @@ function getColor(id: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export default function CourseCard({ course }: { course: Course }) {
+
+export default function CourseCard({ course }: { course: SandboxCourse | StaffCourse }) {
   const colorClass = getColor(course.id);
+  const basePath = useBasePath();
 
   return (
-    <Link href={`/courses/${course.id}/assignments`} className="block">
+    <Link href={`${basePath}/courses/${course.id}/assignments`} className="block">
       <Card className="overflow-hidden hover:shadow-lg transition-all cursor-pointer">
 
         {/* TOP COLOR BANNER (like CardMedia) */}

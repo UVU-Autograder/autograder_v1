@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Card,
@@ -6,6 +8,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { AssignmentsDetails } from "@/features/assignments/types";
+import { useBasePath } from "@/lib/view-context";
 
 export default function AssignmentCard({
   assignment,
@@ -14,9 +17,10 @@ export default function AssignmentCard({
   assignment: AssignmentsDetails;
   courseId: string;
 }) {
+  const basePath = useBasePath();
   return (
     <Link
-      href={`/courses/${courseId}/assignments/${assignment.id}`}
+      href={`${basePath}/courses/${courseId}/assignments/${assignment.id}`}
       className="block"
     >
       <Card className="cursor-pointer py-3 transition-shadow hover:shadow-md">

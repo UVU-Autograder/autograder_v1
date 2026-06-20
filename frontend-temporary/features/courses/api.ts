@@ -1,6 +1,10 @@
 import { apiClient } from "@/lib/api-client";
-import { CoursesResponse } from "@/features/courses/types";
+import { SandboxCoursesResponse, StaffCoursesResponse } from "@/features/courses/types";
 
-export function getCourses() {
-    return apiClient.get<CoursesResponse>("/sandbox/courses");
+export function getSandboxCourses() {
+    return apiClient.get<SandboxCoursesResponse>("/sandbox/courses");
+}
+
+export function getStaffCourses() {
+    return apiClient.get<StaffCoursesResponse>("/staff/courses");
 }

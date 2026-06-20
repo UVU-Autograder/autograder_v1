@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { Assignment, Constraint } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assingment-file-context";
 import { FileUploadButton } from "./file-upload-button";
+import { useBasePath } from "@/lib/view-context";
 
 function constraintFilename(label: string) {
     return `${label.toLowerCase().replace(/\s+/g, '_').replace(/[^\w.-]/g, '')}.txt`;
@@ -23,6 +24,7 @@ export function AssignmentSidebar({
     assignment: Assignment;
     courseId: string;
 }) {
+    const basePath = useBasePath();
     const { files, openFileByName, uploadFiles } = useAssignmentFile();
     const workspaceFiles = Object.values(files)
         .filter((file) => file.category === 'workspace')
@@ -32,7 +34,7 @@ export function AssignmentSidebar({
     const data = {
         header: (
             <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
-                <Link href={`/courses/${courseId}/assignments`}>
+                <Link href={`${basePath}/courses/${courseId}/assignments`}>
                     <ArrowLeftIcon />
                     Back to assignments
                 </Link>

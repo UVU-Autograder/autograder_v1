@@ -1,15 +1,19 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssignmentsResponse } from "@/features/assignments/types";
 import AssignmentCard from "@/features/assignments/assignment-card";
+import { useBasePath } from "@/lib/view-context";
 
 export default function AssignmentsPage({ data }: { data: AssignmentsResponse }) {
+  const basePath = useBasePath();
   return (
     <div className="w-full px-4 pt-8">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-          <Link href="/courses">
+          <Link href={`${basePath}/courses`}>
             <ArrowLeftIcon />
             Back to courses
           </Link>
