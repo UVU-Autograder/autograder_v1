@@ -20,9 +20,11 @@ function constraintFileContent(constraint: Constraint) {
 export function AssignmentSidebar({
     assignment,
     courseId,
+    className
 }: {
     assignment: Assignment;
     courseId: string;
+    className: string
 }) {
     const basePath = useBasePath();
     const { files, openFileByName, uploadFiles } = useAssignmentFile();
@@ -110,6 +112,6 @@ export function AssignmentSidebar({
     }
 
     return (
-        <AppSidebar data={data} />
+        <AppSidebar data={data} className={className} />
     )
 }
