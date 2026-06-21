@@ -293,3 +293,82 @@ def test_validate_submission_bundle_file_requirements_pattern(tmp_path: Path, ba
 
     (extract_dir / "something.txt").write_text("text")
     validate_submission_bundle(extract_dir, config)
+
+
+from app.domains.ingestion.extractor import (
+    parse_canvas_filename,
+    group_canvas_files,
+    prepare_student_bundle,
+)
+
+
+def test_parse_canvas_filename():
+    assert parse_canvas_filename("jaxonlarsen_12345_67890_student_functions.py") == (
+        "jaxonlarsen",
+        "12345",
+        "67890",
+        "student_functions.py",
+    )
+    assert parse_canvas_filename("easton-smith_24680_13579_project.zip") == (
+        "easton-smith",
+        "24680",
+        "13579",
+        "project.zip",
+    )
+    assert parse_canvas_filename("invalid_filename.py") is None
+
+
+def test_group_canvas_files(tmp_path: Path):
+    extract_dir = tmp_path / "canvas_extracted"
+    extract_dir.mkdir()
+    (extract_dir / "jaxonlarsen_12345_67890_student_functions.py").write_text("code1")
+    (extract_dir / "jaxonlarsen_12345_67890_helper.py").write_text("code2")
+    (extract_dir / "eastonsmith_24680_13579_submission.zip").write_bytes(b"zip")
+    (extract_dir / "unmatched_file.txt").write_text("garbage")
+
+    grouped, unmatched = group_canvas_files(extract_dir)
+
+    assert "12345" in grouped
+    assert len(grouped["12345"]) == 2
+    assert {p.name for p in grouped["12345"]} == {
+        "jaxonlarsen_12345_67890_student_functions.py",
+        "jaxonlarsen_12345_67890_helper.py",
+    }
+
+    assert "24680" in grouped
+    assert len(grouped["24680"]) == 1
+
+    assert len(unmatched) == 1
+    assert unmatched[0].name == "unmatched_file.txt"
+
+
+def test_prepare_student_bundle_loose_files(tmp_path: Path):
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    f1 = src_dir / "jaxonlarsen_12345_67890_student_functions.py"
+    f1.write_text("print('f1')")
+    f2 = src_dir / "jaxonlarsen_12345_67890_helper.py"
+    f2.write_text("print('f2')")
+
+    student_dir = tmp_path / "student_12345"
+
+    prepare_student_bundle([f1, f2], student_dir)
+
+    assert (student_dir / "student_functions.py").read_text() == "print('f1')"
+    assert (student_dir / "helper.py").read_text() == "print('f2')"
+
+
+def test_prepare_student_bundle_zip_file(tmp_path: Path):
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+
+    nested_zip_data = create_zip_bytes({"main.py": b"print('nested')"})
+
+    zip_filename = src_dir / "eastonsmith_24680_13579_submission.zip"
+    zip_filename.write_bytes(nested_zip_data)
+
+    student_dir = tmp_path / "student_24680"
+
+    prepare_student_bundle([zip_filename], student_dir)
+
+    assert (student_dir / "main.py").read_text() == "print('nested')"

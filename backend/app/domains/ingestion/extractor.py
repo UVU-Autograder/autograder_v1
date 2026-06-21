@@ -123,3 +123,66 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
     entrypoint_path = extract_dir / config.bundle.entrypoint
     if not entrypoint_path.exists() or not entrypoint_path.is_file():
         raise ValueError(f"Entrypoint file '{config.bundle.entrypoint}' not found in submission.")
+
+
+import re
+
+CANVAS_FILENAME_PATTERN = re.compile(r"^([a-zA-Z0-9\-]+)_([0-9]+)_([0-9]+)_(.*)$")
+
+
+def parse_canvas_filename(filename: str) -> tuple[str, str, str, str] | None:
+    """Parse Canvas filename pattern.
+
+    Returns (student_name, canvas_user_id, submission_id, original_filename) if matching,
+    else None.
+    """
+    match = CANVAS_FILENAME_PATTERN.match(filename)
+    if not match:
+        return None
+    return match.groups()
+
+
+def group_canvas_files(extract_dir: Path) -> tuple[dict[str, list[Path]], list[Path]]:
+    """Scan extract_dir and group files by canvas_user_id.
+
+    Returns (grouped_files, unmatched_files).
+    """
+    extract_dir = Path(extract_dir).resolve()
+    grouped_files = {}
+    unmatched_files = []
+
+    for path in extract_dir.iterdir():
+        if path.is_file():
+            parsed = parse_canvas_filename(path.name)
+            if parsed:
+                _, canvas_user_id, _, _ = parsed
+                grouped_files.setdefault(canvas_user_id, []).append(path)
+            else:
+                unmatched_files.append(path)
+
+    return grouped_files, unmatched_files
+
+
+def prepare_student_bundle(student_files: list[Path], student_dir: Path) -> None:
+    """Prepare a student's submission workspace directory.
+
+    Extracts any zip files, and copies loose files renamed to their original filenames.
+    """
+    student_dir = Path(student_dir).resolve()
+    student_dir.mkdir(parents=True, exist_ok=True)
+
+    for path in student_files:
+        parsed = parse_canvas_filename(path.name)
+        if not parsed:
+            continue
+        _, _, _, original_filename = parsed
+
+        if original_filename.lower().endswith(".zip"):
+            try:
+                safe_extract_zip(path.read_bytes(), student_dir)
+            except Exception as e:
+                raise ValueError(f"Failed to extract student ZIP '{original_filename}': {e}")
+        else:
+            dest = student_dir / original_filename
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, dest)
