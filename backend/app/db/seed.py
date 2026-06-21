@@ -50,7 +50,7 @@ def seed_development_data(db: Session) -> None:
     if course_cs1400 is None:
         course_cs1400 = Course(
             code="cs1400",
-            title="CS 1400: Programming Foundations",
+            title="CS 1400: Fundamentals of Programming",
             term="Spring 2026",
             default_concepts=["variables", "conditionals"],
             instructor=staff_user,

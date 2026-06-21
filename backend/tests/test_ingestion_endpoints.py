@@ -37,6 +37,13 @@ def client():
     return TestClient(create_app())
 
 
+@pytest.fixture(autouse=True)
+def mock_mock_official_run():
+    from unittest.mock import patch
+    with patch("app.domains.runs.tasks.run_mock_official_run") as mock:
+        yield mock
+
+
 def test_ingest_canvas_submissions_success(client, temp_workspace_storage):
     # 1. Create a valid Canvas ZIP in memory
     zip_bytes = create_zip_bytes({

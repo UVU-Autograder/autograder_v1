@@ -93,6 +93,17 @@ async def ingest_canvas_submissions(
     zip_dest = workspaces_dir / f"official_{run.id}.zip"
     zip_dest.write_bytes(content)
 
+    # 8. Trigger processing based on sandbox_service's celery configuration
+    from app.domains.sandbox.service import sandbox_service
+    from app.domains.runs.tasks import grade_official_run, run_mock_official_run
+
+    if sandbox_service._use_celery:
+        grade_official_run.delay(run.id)
+    else:
+        # Run synchronous mock processing for offline development
+        run_mock_official_run(run.id)
+        db.refresh(run)
+
     return OfficialRunResponse(
         run_id=str(run.id),
         status=run.status,

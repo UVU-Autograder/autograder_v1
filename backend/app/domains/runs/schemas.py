@@ -31,3 +31,28 @@ class RunStatusResponse(BaseModel):
     counters: RunCounters
     backpressure: QueueBackpressure
     message: str | None = None
+
+
+from datetime import datetime
+
+class RunSummaryResponse(BaseModel):
+    id: int
+    workflow_type: str
+    actor_user_id: int | None = None
+    assignment_id: int
+    status: str
+    total_submission_count: int
+    success_count: int
+    warning_count: int
+    failure_count: int
+    timeout_count: int
+    failure_summary: dict
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RunSummaryListResponse(BaseModel):
+    runs: list[RunSummaryResponse]
+
