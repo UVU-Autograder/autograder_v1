@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,6 +11,10 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="sqlite+pysqlite:///:memory:",
         validation_alias="DATABASE_URL",
+    )
+    artifact_storage_dir: str = Field(
+        default="data/artifacts",
+        validation_alias="ARTIFACT_STORAGE_DIR",
     )
     redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
     celery_broker_url: str = Field(
@@ -34,6 +39,15 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
+
+    @property
+    def artifact_storage_path(self) -> Path:
+        path = Path(self.artifact_storage_dir)
+        if not path.is_absolute():
+            # Make relative to backend root directory
+            backend_dir = Path(__file__).resolve().parents[2]
+            path = (backend_dir / path).resolve()
+        return path
 
 
 @lru_cache

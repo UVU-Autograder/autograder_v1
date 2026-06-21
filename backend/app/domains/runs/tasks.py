@@ -168,3 +168,178 @@ def grade_sandbox_run(
             raise self.retry(exc=exc)
 
         return error_result
+
+
+@celery_app.task(
+    name="app.domains.runs.tasks.validate_assignment_model_solution",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=5,
+    acks_late=True,
+)
+def validate_assignment_model_solution(
+    self,
+    course_code: str,
+    assignment_slug: str,
+) -> dict:
+    """Run model solution against assignment tests in Judge0.
+
+    This task:
+    1. Runs preflight checks (AST marker verification, config validation)
+    2. Packages model solution into a student ZIP format
+    3. Executes grading pipeline
+    4. Records validation outcome (success or failure) in Redis
+    """
+    import base64
+    import io
+    import zipfile
+    from app.db.session import SessionLocal
+    from app.domains.assignments.service import get_assignment_for_course, get_artifact_content
+    from app.domains.assignments.validation import run_preflight_validation
+    from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.grading.service import run_grading_pipeline
+
+    run_id = f"val:{course_code}:{assignment_slug}"
+    set_run_state(run_id, "run")
+
+    try:
+        with SessionLocal() as db:
+            # 1. Run preflight validation first
+            preflight_errors = run_preflight_validation(db, course_code, assignment_slug)
+            if preflight_errors:
+                err_payload = {
+                    "passed": False,
+                    "errors": preflight_errors,
+                    "score": 0,
+                    "max_score": 0,
+                }
+                set_run_result(run_id, err_payload)
+                set_run_state(run_id, "failure")
+                return err_payload
+
+            # Get assignment
+            assignment = get_assignment_for_course(db, course_code, assignment_slug)
+            config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+            max_score = config.base_points
+
+            # 2. Retrieve model solution artifact
+            # Find the model_solution artifact key
+            model_sol_key = None
+            for key, art in config.artifacts.items():
+                if art.type == "model_solution":
+                    model_sol_key = key
+                    break
+
+            if not model_sol_key:
+                err_payload = {
+                    "passed": False,
+                    "errors": ["No 'model_solution' artifact key defined in config."],
+                    "score": 0,
+                    "max_score": max_score,
+                }
+                set_run_result(run_id, err_payload)
+                set_run_state(run_id, "failure")
+                return err_payload
+
+            # Load model solution content
+            model_sol_content = get_artifact_content(db, course_code, assignment_slug, model_sol_key)
+            if not model_sol_content:
+                err_payload = {
+                    "passed": False,
+                    "errors": [f"Model solution file content is missing or cannot be read for key '{model_sol_key}'."],
+                    "score": 0,
+                    "max_score": max_score,
+                }
+                set_run_result(run_id, err_payload)
+                set_run_state(run_id, "failure")
+                return err_payload
+
+            content_bytes, _ = model_sol_content
+
+            # 3. Package model solution into a student ZIP format matching config entrypoint
+            entrypoint = config.bundle.entrypoint
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                # Add model solution as the entrypoint file
+                zip_file.writestr(entrypoint, content_bytes)
+                # Also add any required files that might be empty/placeholders
+                # to satisfy bundle required_files checks
+                for req_file in config.bundle.required_files:
+                    if req_file != entrypoint:
+                        zip_file.writestr(req_file, b"")
+
+            zip_data = zip_buffer.getvalue()
+
+            # 4. Collect other artifact references
+            artifact_refs = {}
+            for art in assignment.artifacts:
+                # Skip the model_solution itself, but include tests and support files
+                if art.artifact_key != model_sol_key and art.storage_ref:
+                    artifact_refs[art.artifact_key] = art.storage_ref
+
+            # Merged concepts covered list
+            allowed_concepts = list(assignment.course.default_concepts or [])
+            if assignment.concept_additions:
+                allowed_concepts.extend(assignment.concept_additions.added_concepts or [])
+
+        # 5. Run the grading pipeline asynchronously
+        loop = asyncio.new_event_loop()
+        try:
+            grading_result = loop.run_until_complete(
+                run_grading_pipeline(
+                    zip_data=zip_data,
+                    config=config,
+                    artifact_refs=artifact_refs,
+                    allowed_concepts=allowed_concepts,
+                )
+            )
+        finally:
+            loop.close()
+
+        # 6. Verify success (model solution must score 100% of base points)
+        errors = []
+        passed = grading_result.success
+        if not passed:
+            errors.append(f"Grading pipeline failed to run successfully: {grading_result.failure_message}")
+        elif grading_result.score < max_score:
+            passed = False
+            errors.append(
+                f"Model solution scored {grading_result.score}/{max_score}. Model solution must score 100%."
+            )
+            # Find failing test summaries
+            for test_res in grading_result.test_results:
+                if test_res.get("outcome") != "passed":
+                    errors.append(
+                        f"Test case '{test_res.get('key')}' failed: {test_res.get('message')}"
+                    )
+
+        result_payload = {
+            "passed": passed,
+            "errors": errors,
+            "score": grading_result.score,
+            "max_score": max_score,
+        }
+        set_run_result(run_id, result_payload)
+
+        if passed:
+            set_run_state(run_id, "complete")
+        else:
+            set_run_state(run_id, "failure")
+
+        return result_payload
+
+    except Exception as exc:
+        logger.exception("Model solution validation failed for assignment %s", assignment_slug)
+        error_result = {
+            "passed": False,
+            "errors": [f"Internal validation error: {type(exc).__name__}: {str(exc)}"],
+            "score": 0,
+            "max_score": 0,
+        }
+        set_run_result(run_id, error_result)
+        set_run_state(run_id, "failure")
+
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc)
+
+        return error_result

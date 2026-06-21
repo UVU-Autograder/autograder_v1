@@ -230,3 +230,140 @@ def list_artifacts(
         )
         for artifact in sorted(assignment.artifacts, key=lambda item: item.artifact_key)
     ]
+
+
+def save_artifact(
+    db: Session,
+    course_code: str,
+    assignment_slug: str,
+    artifact_key: str,
+    artifact_type: str,
+    display_filename: str,
+    file_content: bytes,
+) -> ArtifactMetadata | None:
+    import hashlib
+    import uuid
+    from app.core.settings import get_settings
+
+    assignment = get_assignment_for_course(db, course_code, assignment_slug)
+    if assignment is None:
+        return None
+
+    settings = get_settings()
+    storage_dir = settings.artifact_storage_path
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate opaque unique filename
+    unique_filename = f"{uuid.uuid4().hex}"
+    file_path = storage_dir / unique_filename
+
+    # Calculate SHA256 and size
+    sha256 = hashlib.sha256(file_content).hexdigest()
+    size_bytes = len(file_content)
+
+    # Write file content
+    file_path.write_bytes(file_content)
+
+    # Find existing or create new artifact metadata
+    artifact = db.scalar(
+        select(AssignmentArtifact).where(
+            AssignmentArtifact.assignment_id == assignment.id,
+            AssignmentArtifact.artifact_key == artifact_key,
+        )
+    )
+
+    old_ref = None
+    if artifact is None:
+        artifact = AssignmentArtifact(
+            assignment_id=assignment.id,
+            artifact_key=artifact_key,
+            artifact_type=artifact_type,
+            storage_ref=f"file://{file_path.as_posix()}",
+            display_filename=display_filename,
+            content_type="text/plain",
+            size_bytes=size_bytes,
+            sha256=sha256,
+        )
+        db.add(artifact)
+    else:
+        # Keep old storage_ref to delete afterwards
+        old_ref = artifact.storage_ref
+        artifact.artifact_type = artifact_type
+        artifact.storage_ref = f"file://{file_path.as_posix()}"
+        artifact.display_filename = display_filename
+        artifact.size_bytes = size_bytes
+        artifact.sha256 = sha256
+
+    db.commit()
+    db.refresh(artifact)
+
+    # Clean up the old physical file if it was overwritten
+    if old_ref and old_ref.startswith("file://"):
+        try:
+            import os
+            clean_ref = old_ref[7:]
+            if clean_ref.startswith("/"):
+                clean_ref = clean_ref[1:]
+            os.remove(clean_ref)
+        except Exception:
+            pass
+
+    return ArtifactMetadata(
+        artifact_key=artifact.artifact_key,
+        artifact_type=artifact.artifact_type,
+        display_filename=artifact.display_filename,
+        size_bytes=artifact.size_bytes,
+        sha256=artifact.sha256,
+    )
+
+
+def delete_artifact(
+    db: Session,
+    course_code: str,
+    assignment_slug: str,
+    artifact_key: str,
+) -> bool:
+    assignment = get_assignment_for_course(db, course_code, assignment_slug)
+    if assignment is None:
+        return False
+
+    artifact = db.scalar(
+        select(AssignmentArtifact).where(
+            AssignmentArtifact.assignment_id == assignment.id,
+            AssignmentArtifact.artifact_key == artifact_key,
+        )
+    )
+    if artifact is None:
+        return False
+
+    db.delete(artifact)
+    db.commit()
+    return True
+
+
+def get_artifact_content(
+    db: Session,
+    course_code: str,
+    assignment_slug: str,
+    artifact_key: str,
+) -> tuple[bytes, str] | None:
+    from app.integrations.artifacts.resolver import resolve_storage_ref
+
+    assignment = get_assignment_for_course(db, course_code, assignment_slug)
+    if assignment is None:
+        return None
+
+    artifact = db.scalar(
+        select(AssignmentArtifact).where(
+            AssignmentArtifact.assignment_id == assignment.id,
+            AssignmentArtifact.artifact_key == artifact_key,
+        )
+    )
+    if artifact is None or not artifact.storage_ref:
+        return None
+
+    try:
+        path = resolve_storage_ref(artifact.storage_ref)
+        return path.read_bytes(), artifact.display_filename or artifact_key
+    except Exception:
+        return None
