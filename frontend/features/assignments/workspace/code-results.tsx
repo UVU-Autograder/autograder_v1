@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { runSandboxCheck } from "@/features/assignments/api";
 import type { SandboxRunResultResponse } from "@/features/assignments/types";
-import { useAssignmentFile } from "./assingment-file-context";
+import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 
 type CodeResultsProps = {

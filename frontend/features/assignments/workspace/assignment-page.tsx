@@ -1,7 +1,7 @@
 'use client';
 
 import CodeResults from "./code-results";
-import { useAssignmentFile } from "./assingment-file-context";
+import { useAssignmentFile } from "./assignment-file-context";
 import { EditorSplitView } from "./editor-split-view";
 import {
   ResizableHandle,

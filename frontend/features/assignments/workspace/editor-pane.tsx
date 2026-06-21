@@ -4,7 +4,7 @@ import MonacoEditor from '@/components/monaco-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { XIcon } from 'lucide-react';
 import { useState } from 'react';
-import { useAssignmentFile } from './assingment-file-context';
+import { useAssignmentFile } from './assignment-file-context';
 
 type DropZone = 'top' | 'bottom' | null;
 

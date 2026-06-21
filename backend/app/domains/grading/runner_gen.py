@@ -146,8 +146,6 @@ def generate_runner_script(test_filenames: list[str]) -> str:
 
         if __name__ == "__main__":
             main()
-        else:
-            main()
         """
     )
 

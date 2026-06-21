@@ -5,7 +5,7 @@ import { ArrowLeftIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/app-sidebar"
 import { Assignment, Constraint } from "@/features/assignments/types";
-import { useAssignmentFile } from "./assingment-file-context";
+import { useAssignmentFile } from "./assignment-file-context";
 import { FileUploadButton } from "./file-upload-button";
 import { useBasePath } from "@/lib/view-context";
 

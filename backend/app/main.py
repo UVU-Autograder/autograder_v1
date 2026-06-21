@@ -17,9 +17,6 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
-    if settings.is_sqlite:
-        initialize_database(seed=True)
     app = FastAPI(title="Autograder API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,

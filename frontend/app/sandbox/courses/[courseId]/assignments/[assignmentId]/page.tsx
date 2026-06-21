@@ -1,7 +1,7 @@
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAssignment } from "@/features/assignments/api";
 import AssignmentsPage from "@/features/assignments/workspace/assignment-page";
-import { AssignmentFileProvider } from "@/features/assignments/workspace/assingment-file-context";
+import { AssignmentFileProvider } from "@/features/assignments/workspace/assignment-file-context";
 import { AssignmentSidebar } from "@/features/assignments/workspace/sidebar";
 
 type PageProps = {
