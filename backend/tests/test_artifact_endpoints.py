@@ -61,13 +61,19 @@ def mock_redis_and_celery(monkeypatch):
 
 @pytest.fixture()
 def client():
-    # Use create_app from app.main
     return TestClient(create_app())
 
 
-def test_artifact_lifecycle(client):
+@pytest.fixture()
+def headers():
+    from app.core.auth_utils import create_access_token
+    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_artifact_lifecycle(client, headers):
     # 1. List artifacts
-    response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts")
+    response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts", headers=headers)
     assert response.status_code == 200
     body = response.json()
     assert body["course_id"] == "cs1400"
@@ -83,7 +89,8 @@ def test_artifact_lifecycle(client):
         },
         files={
             "file": ("pytest.ini", b"[pytest]\nmarkers = ag_test", "text/plain")
-        }
+        },
+        headers=headers
     )
     assert upload_response.status_code == 200
     meta = upload_response.json()
@@ -92,46 +99,46 @@ def test_artifact_lifecycle(client):
     assert meta["display_filename"] == "pytest.ini"
 
     # 3. Download/Retrieve file content
-    download_response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers")
+    download_response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=headers)
     assert download_response.status_code == 200
     assert download_response.content == b"[pytest]\nmarkers = ag_test"
     assert "pytest.ini" in download_response.headers.get("Content-Disposition", "")
 
     # 4. Delete the artifact
-    delete_response = client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers")
+    delete_response = client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=headers)
     assert delete_response.status_code == 200
     assert delete_response.json()["status"] == "success"
 
     # Try downloading deleted file - should return 404
-    download_deleted = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers")
+    download_deleted = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=headers)
     assert download_deleted.status_code == 404
 
 
-def test_validate_assignment(client):
+def test_validate_assignment(client, headers):
     # Trigger synchronous preflight validation (seeded is valid)
-    response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate")
+    response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate", headers=headers)
     assert response.status_code == 200
     body = response.json()
     assert body["passed"] is True
     assert body["errors"] == []
 
     # Deleting pytest_file artifact should make preflight validation fail
-    client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/assignment_tests")
-    response_fail = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate")
+    client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/assignment_tests", headers=headers)
+    response_fail = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate", headers=headers)
     assert response_fail.status_code == 200
     body_fail = response_fail.json()
     assert body_fail["passed"] is False
     assert len(body_fail["errors"]) > 0
 
 
-def test_validate_model_solution_queued_and_status(client):
+def test_validate_model_solution_queued_and_status(client, headers):
     run_id = "val:cs1400:simple-python-functions"
 
     # Mock validation task queueing
     with patch("app.domains.runs.tasks.validate_assignment_model_solution.delay") as mock_delay:
         # Mock preflight checks passing by overriding the validator to return no errors
         with patch("app.domains.assignments.validation.run_preflight_validation", return_value=[]):
-            response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate-model-solution")
+            response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate-model-solution", headers=headers)
             assert response.status_code == 200
             assert response.json()["status"] == "queued"
             assert response.json()["run_id"] == run_id
@@ -140,7 +147,7 @@ def test_validate_model_solution_queued_and_status(client):
     # Now verify GET /validation-status endpoint reads from Redis correctly
     # Set status to running
     runs_tasks.set_run_state(run_id, "run")
-    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status")
+    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status", headers=headers)
     assert status_resp.status_code == 200
     assert status_resp.json()["status"] == "run"
 
@@ -152,7 +159,7 @@ def test_validate_model_solution_queued_and_status(client):
         "score": 25,
         "max_score": 25,
     })
-    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status")
+    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status", headers=headers)
     assert status_resp.status_code == 200
     body = status_resp.json()
     assert body["status"] == "success"

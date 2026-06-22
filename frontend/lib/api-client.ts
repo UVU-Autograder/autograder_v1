@@ -40,6 +40,11 @@ async function parseErrorMessage(response: Response): Promise<string> {
     return response.statusText;
 }
 
+function getAuthToken(): string | null {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("token") || sessionStorage.getItem("token");
+}
+
 async function apiFetch<T>(
     path: string,
     init?: RequestInit & ApiFetchOptions
@@ -49,6 +54,11 @@ async function apiFetch<T>(
 
     if (!isFormData && !headers.has("content-type") && init?.body !== undefined) {
         headers.set("content-type", "application/json");
+    }
+
+    const token = getAuthToken();
+    if (token && !headers.has("authorization")) {
+        headers.set("authorization", `Bearer ${token}`);
     }
 
     const response = await fetch(resolveUrl(path), {

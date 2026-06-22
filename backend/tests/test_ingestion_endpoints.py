@@ -37,6 +37,13 @@ def client():
     return TestClient(create_app())
 
 
+@pytest.fixture()
+def headers():
+    from app.core.auth_utils import create_access_token
+    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.fixture(autouse=True)
 def mock_mock_official_run():
     from unittest.mock import patch
@@ -44,7 +51,7 @@ def mock_mock_official_run():
         yield mock
 
 
-def test_ingest_canvas_submissions_success(client, temp_workspace_storage):
+def test_ingest_canvas_submissions_success(client, temp_workspace_storage, headers):
     # 1. Create a valid Canvas ZIP in memory
     zip_bytes = create_zip_bytes({
         "jaxonlarsen_12345_67890_student_functions.py": b"print('hello')"
@@ -53,7 +60,8 @@ def test_ingest_canvas_submissions_success(client, temp_workspace_storage):
     # 2. POST to endpoint
     response = client.post(
         "/staff/courses/cs1400/assignments/simple-python-functions/submissions/ingest",
-        files={"file": ("submissions.zip", zip_bytes, "application/zip")}
+        files={"file": ("submissions.zip", zip_bytes, "application/zip")},
+        headers=headers
     )
 
     assert response.status_code == 200
@@ -70,36 +78,39 @@ def test_ingest_canvas_submissions_success(client, temp_workspace_storage):
     assert zip_dest.read_bytes() == zip_bytes
 
 
-def test_ingest_canvas_submissions_invalid_extension(client):
+def test_ingest_canvas_submissions_invalid_extension(client, headers):
     response = client.post(
         "/staff/courses/cs1400/assignments/simple-python-functions/submissions/ingest",
-        files={"file": ("submissions.txt", b"not a zip", "text/plain")}
+        files={"file": ("submissions.txt", b"not a zip", "text/plain")},
+        headers=headers
     )
     assert response.status_code == 400
     assert "Only ZIP files are accepted" in response.json()["detail"]
 
 
-def test_ingest_canvas_submissions_not_canvas_zip(client):
+def test_ingest_canvas_submissions_not_canvas_zip(client, headers):
     zip_bytes = create_zip_bytes({
         "main.py": b"print('hello')"
     })
 
     response = client.post(
         "/staff/courses/cs1400/assignments/simple-python-functions/submissions/ingest",
-        files={"file": ("submissions.zip", zip_bytes, "application/zip")}
+        files={"file": ("submissions.zip", zip_bytes, "application/zip")},
+        headers=headers
     )
     assert response.status_code == 400
     assert "does not contain recognized Canvas submissions" in response.json()["detail"]
 
 
-def test_ingest_canvas_submissions_traversal_blocked(client):
+def test_ingest_canvas_submissions_traversal_blocked(client, headers):
     zip_bytes = create_zip_bytes({
         "../escaped.txt": b"traversal"
     })
 
     response = client.post(
         "/staff/courses/cs1400/assignments/simple-python-functions/submissions/ingest",
-        files={"file": ("submissions.zip", zip_bytes, "application/zip")}
+        files={"file": ("submissions.zip", zip_bytes, "application/zip")},
+        headers=headers
     )
     assert response.status_code == 400
     assert "Invalid or unsafe ZIP" in response.json()["detail"]

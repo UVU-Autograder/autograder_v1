@@ -34,6 +34,13 @@ def client():
 
 
 @pytest.fixture()
+def headers():
+    from app.core.auth_utils import create_access_token
+    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
 def temp_workspaces(tmp_path, monkeypatch):
     from app.core.settings import get_settings
     settings = get_settings()
@@ -41,15 +48,16 @@ def temp_workspaces(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_list_official_runs_empty(client):
+def test_list_official_runs_empty(client, headers):
     response = client.get(
-        "/staff/courses/cs1400/assignments/simple-python-functions/runs"
+        "/staff/courses/cs1400/assignments/simple-python-functions/runs",
+        headers=headers
     )
     assert response.status_code == 200
     assert response.json() == {"runs": []}
 
 
-def test_list_and_get_official_runs(client, db_session):
+def test_list_and_get_official_runs(client, db_session, headers):
     # Create an official run record
     run = RunSummary(
         workflow_type="official",
@@ -65,7 +73,8 @@ def test_list_and_get_official_runs(client, db_session):
 
     # List runs
     response = client.get(
-        "/staff/courses/cs1400/assignments/simple-python-functions/runs"
+        "/staff/courses/cs1400/assignments/simple-python-functions/runs",
+        headers=headers
     )
     assert response.status_code == 200
     runs = response.json()["runs"]
@@ -75,13 +84,14 @@ def test_list_and_get_official_runs(client, db_session):
 
     # Get single run
     response = client.get(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}"
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}",
+        headers=headers
     )
     assert response.status_code == 200
     assert response.json()["id"] == run.id
 
 
-def test_run_details_and_exports(client, db_session, temp_workspaces):
+def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     run = RunSummary(
         workflow_type="official",
         assignment_id=1,
@@ -113,14 +123,16 @@ def test_run_details_and_exports(client, db_session, temp_workspaces):
 
     # Request details
     response = client.get(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/details"
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/details",
+        headers=headers
     )
     assert response.status_code == 200
     assert response.json() == details_data
 
     # Request CSV export
     response = client.get(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv"
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
+        headers=headers
     )
     assert response.status_code == 200
     assert "grades.csv" in response.headers["content-disposition"]
@@ -128,14 +140,16 @@ def test_run_details_and_exports(client, db_session, temp_workspaces):
 
     # Request Feedback ZIP export
     response = client.get(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback"
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
+        headers=headers
     )
     assert response.status_code == 200
     assert "feedback.zip" in response.headers["content-disposition"]
 
     # Trigger cleanup
     response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/cleanup"
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/cleanup",
+        headers=headers
     )
     assert response.status_code == 200
     assert "cleaned up successfully" in response.json()["message"]
@@ -145,9 +159,10 @@ def test_run_details_and_exports(client, db_session, temp_workspaces):
     assert not zip_file.exists()
 
 
-def test_run_details_not_found(client):
+def test_run_details_not_found(client, headers):
     response = client.get(
-        "/staff/courses/cs1400/assignments/simple-python-functions/runs/999/details"
+        "/staff/courses/cs1400/assignments/simple-python-functions/runs/999/details",
+        headers=headers
     )
     assert response.status_code == 404
     assert "not available" in response.json()["detail"]

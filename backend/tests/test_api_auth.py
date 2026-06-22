@@ -33,19 +33,22 @@ def client():
 def test_staff_endpoints_allow_default_dev_staff(client):
     # By default, require_staff returns dev.staff@uvu.edu (seeded as admin).
     # All staff routes should respond successfully (200 status code).
+    from app.core.auth_utils import create_access_token
+    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
+    headers = {"Authorization": f"Bearer {token}"}
     
     # 1. Courses list
-    res = client.get("/staff/courses")
+    res = client.get("/staff/courses", headers=headers)
     assert res.status_code == status.HTTP_200_OK
     assert "courses" in res.json()
 
     # 2. Assignment setup
-    res = client.get("/staff/courses/cs1400/assignments/simple-python-functions/setup")
+    res = client.get("/staff/courses/cs1400/assignments/simple-python-functions/setup", headers=headers)
     assert res.status_code == status.HTTP_200_OK
     assert res.json()["assignment_id"] == "simple-python-functions"
 
     # 3. Artifacts list
-    res = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts")
+    res = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts", headers=headers)
     assert res.status_code == status.HTTP_200_OK
     assert "artifacts" in res.json()
 
