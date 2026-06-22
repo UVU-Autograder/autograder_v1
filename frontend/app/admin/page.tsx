@@ -6,9 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
 
-
 type Person = "instructors" | "ias" | "students"
-
 
 export default function AdminPage () {
     const [open, setOpen] = useState(false)
@@ -18,13 +16,12 @@ export default function AdminPage () {
     const [ias, setIas] = useState<string[]>([])
     const [students, setStudents] = useState<string[]>([])
 
-    function openDialog(target: Person) {
+    const openDialog = (target: Person) => {
         setSection(target)
         setName("")
         setOpen(true)
     }
-
-    function savePerson() {
+    const savePerson = () => {
         if (!name.trim()) return
 
         if (section === "instructors") {
@@ -36,6 +33,16 @@ export default function AdminPage () {
         }
         setOpen(false)
     }
+    const deletePerson = (section: Person, index: number) => {
+      if (section === "instructors") {
+        setInstructors((prev) => prev.filter((_, i) => i !== index))
+      } else if (section === "ias") {
+        setIas((prev) => prev.filter((_, i) => i !== index))
+      } else {
+        setStudents((prev) => prev.filter((_, i) => i !== index))
+      }
+    }
+
     return (
     <div>
         <h1 className="flex justify-center text-xl">Admin</h1>
@@ -46,11 +53,27 @@ export default function AdminPage () {
                         <AccordionTrigger className="text-base">
                             <span>Instructors</span>
                         </AccordionTrigger>
+                        {instructors.length > 0 && (
                         <AccordionContent>
+                          <div className="flex flex-col gap-1">
                             {instructors.map((person, index) => (
-                                <div key={`${person}-${index}`}>{person}</div>
+                              <div
+                                key={`${person}-${index}`}
+                                className="flex items-center gap-2"
+                              >
+                                <span>{person}</span>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => deletePerson("instructors", index)}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
                             ))}
+                          </div>
                         </AccordionContent>
+                      )}
                     </AccordionItem>
                 </Accordion>
                 <Accordion type="single" collapsible>
@@ -58,11 +81,27 @@ export default function AdminPage () {
                         <AccordionTrigger className="text-base">
                             <span>Instructional Assistants</span>
                         </AccordionTrigger>
-                        <AccordionContent>
-                            {ias.map((person, index) => (
-                                <div key={`${person}-${index}`}>{person}</div>
-                            ))}
-                        </AccordionContent>
+                          {ias.length > 0 && (
+                          <AccordionContent>
+                            <div className="flex flex-col gap-1">
+                              {ias.map((person, index) => (
+                                <div
+                                  key={`${person}-${index}`}
+                                  className="flex items-center gap-2"
+                                >
+                                  <span>{person}</span>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => deletePerson("ias", index)}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        )}
                     </AccordionItem>
                 </Accordion>
                 <Accordion type="single" collapsible>
@@ -70,11 +109,27 @@ export default function AdminPage () {
                         <AccordionTrigger className="text-base">
                             <span>Students</span>
                         </AccordionTrigger>
-                        <AccordionContent>
-                            {students.map((person, index) => (
-                                <div key={`${person}-${index}`}>{person}</div>
-                            ))}
-                        </AccordionContent>
+                            {students.length > 0 && (
+                            <AccordionContent>
+                              <div className="flex flex-col gap-1">
+                                {students.map((person, index) => (
+                                  <div
+                                    key={`${person}-${index}`}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <span>{person}</span>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => deletePerson("students", index)}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          )}
                     </AccordionItem>
                 </Accordion>
             </div>
