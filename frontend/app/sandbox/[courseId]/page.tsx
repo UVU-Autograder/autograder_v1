@@ -3,7 +3,6 @@ import AssignmentsPage from "@/features/assignments/assignments-page";
 
 export const dynamic = "force-dynamic";
 
-
 type PageProps = {
     params: Promise<{ courseId: string }>;
 }

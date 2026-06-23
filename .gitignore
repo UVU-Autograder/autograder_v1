@@ -1,13 +1,25 @@
 # MacOS being funny
 .DS_Store
+Thumbs.db
+Desktop.ini
 
 # Python & other AI based fragments
 env
 venv
+backend/venv/
 .idea
 __pycache__/
 *.pyc
 .pytest_cache/
 .pytest-tmp/
+backend/data/
+
+# Sync / editor temp files
+**/~syncthing~*
+*.tmp
+
+# Logs
+*.log
+npm-debug.log*
 
 node_modules/
