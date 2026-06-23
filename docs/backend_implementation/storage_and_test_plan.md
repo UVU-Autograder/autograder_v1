@@ -26,7 +26,7 @@ This file is the canonical M1 plan for assignment config storage, grading assets
 - Default scoring is implicit: a scoring item contributes its `points` only when all pytest functions with its derived marker pass. Non-extra-credit items define the base total; passed extra-credit items add points above that base total.
 - Assignments that require "complete at least X of these Y objectives" use an optional `completion_requirements` section that names existing scoring-item keys and a `minimum_passed` count. Completion requirements report whether the objective threshold is met; they do not replace scoring-item points.
 - Hidden tests are not supported in M1. All M1 scoring entries are visible in staff and sandbox result surfaces.
-- `test_cases` and `scoring_items` rows are derived projections used only for UI, validation, and query convenience. They are regenerated from canonical config and are never editable grading truth.
+- `scoring_items` rows are derived projections used for UI, validation, and query convenience. They are regenerated from canonical config and are never editable grading truth.
 
 Example optional completion requirement:
 
@@ -56,7 +56,7 @@ Example optional completion requirement:
    - invalid `completion_requirements` references or thresholds
    - missing bundle entrypoint or required-file rules
    - unsupported artifact types
-5. Derived `test_cases` and `scoring_items` rows are regenerated from `assignment_configs.config_json` after setup changes.
+5. Derived `scoring_items` rows are regenerated from `assignment_configs.config_json` after setup changes.
 6. Official and sandbox grading copy assignment artifacts plus the student bundle into an ephemeral execution workspace.
 7. Judge0/Kata runs pytest in the isolated workspace.
 8. Pytest results are mapped back to config scoring entries by `ag_<key>` marker.

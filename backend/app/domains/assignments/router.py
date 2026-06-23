@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import DbSession, require_staff
+from app.core.dependencies import DbSession, require_role, require_staff
 from app.domains.assignments.schemas import StaffAssignmentSetup, StaffAssignmentSetupUpdate
 from app.domains.assignments.service import get_staff_setup, update_staff_setup
 
@@ -23,7 +23,11 @@ def read_assignment_setup(
     return setup
 
 
-@router.put("/{assignment_id}/setup", response_model=StaffAssignmentSetup)
+@router.put(
+    "/{assignment_id}/setup",
+    response_model=StaffAssignmentSetup,
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
 def write_assignment_setup(
     course_id: str,
     assignment_id: str,

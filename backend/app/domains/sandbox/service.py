@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
 
+from app.core.settings import get_settings
 from app.domains.runs.schemas import (
     QueueBackpressure,
     RunCounters,
@@ -395,5 +396,5 @@ class SandboxService:
             del self._runs[run_id]
 
 
-# Default instance - use_celery=False preserves existing contract test behavior
-sandbox_service = SandboxService(use_celery=False)
+# Default instance - use_celery controlled via SANDBOX_USE_CELERY env var
+sandbox_service = SandboxService(use_celery=get_settings().sandbox_use_celery)

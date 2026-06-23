@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
+import { staffArtifactPath } from "@/features/staff/api";
 
 type ArtifactMetadata = {
   artifact_key: string;
@@ -112,9 +113,16 @@ export default function ArtifactsPage({ params }: PageProps) {
     }
   };
 
-  const getDownloadUrl = (key: string) => {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-    return `${base.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`;
+  const handleDownload = async (key: string, filename: string | null) => {
+    setError(null);
+    try {
+      await apiClient.download(
+        staffArtifactPath(courseId, assignmentId, key),
+        filename || key
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed.");
+    }
   };
 
   if (isLoading) {
@@ -237,10 +245,14 @@ export default function ArtifactsPage({ params }: PageProps) {
                           </div>
                         </div>
                         <div className="flex space-x-2">
-                          <Button variant="ghost" size="icon" asChild>
-                            <a href={getDownloadUrl(art.artifact_key)} download target="_blank" rel="noreferrer">
-                              <DownloadIcon className="size-4 text-slate-600" />
-                            </a>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleDownload(art.artifact_key, art.display_filename)
+                            }
+                          >
+                            <DownloadIcon className="size-4 text-slate-600" />
                           </Button>
                           <Button
                             variant="ghost"

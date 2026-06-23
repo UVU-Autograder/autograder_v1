@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import {
   Card,
@@ -9,7 +7,8 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { SandboxCourse, StaffCourse } from "@/features/courses/types";
-import { useBasePath } from "@/lib/view-context";
+
+type ViewMode = "sandbox" | "staff";
 
 const colors = [
   "from-blue-500 to-blue-200",
@@ -29,10 +28,15 @@ function getColor(id: string) {
 }
 
 
-export default function CourseCard({ course }: { course: SandboxCourse | StaffCourse }) {
+export default function CourseCard({
+  course,
+  mode,
+}: {
+  course: SandboxCourse | StaffCourse;
+  mode: ViewMode;
+}) {
   const colorClass = getColor(course.id);
-  const basePath = useBasePath();
-  const linkHref = basePath === "/sandbox" ? `/sandbox/${course.id}` : `/staff/courses/${course.id}`;
+  const linkHref = mode === "sandbox" ? `/sandbox/${course.id}` : `/staff/courses/${course.id}`;
 
   return (
     <Link href={linkHref} className="block">

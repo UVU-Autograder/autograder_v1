@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import {
   Card,
@@ -8,18 +6,20 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { AssignmentsDetails } from "@/features/assignments/types";
-import { useBasePath } from "@/lib/view-context";
+
+type ViewMode = "sandbox" | "staff";
 
 export default function AssignmentCard({
   assignment,
   courseId,
+  mode,
 }: {
   assignment: AssignmentsDetails;
   courseId: string;
+  mode: ViewMode;
 }) {
-  const basePath = useBasePath();
   const linkHref =
-    basePath === "/sandbox"
+    mode === "sandbox"
       ? `/sandbox/${courseId}/assignments/${assignment.id}`
       : `/staff/courses/${courseId}/assignments/${assignment.id}/setup`;
 

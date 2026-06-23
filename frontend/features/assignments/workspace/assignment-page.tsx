@@ -18,7 +18,7 @@ type AssignmentsPageProps = {
   initialQuota?: AssignmentsDetails["upload_quota"];
 };
 
-export default function AssignmentsPage({
+export default function AssignmentWorkspace({
   courseId,
   assignmentId,
   maxScore,

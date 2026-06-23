@@ -17,7 +17,7 @@ This file captures the frontend contract, route structure, and UI-surface respon
 - `/staff/courses/[courseId]/assignments/[assignmentId]/setup`: wizard-first assignment setup hub
 - `/staff/courses/[courseId]/assignments/[assignmentId]/concepts`: assignment concept additions editor plus merged effective-list preview
 - `/staff/courses/[courseId]/assignments/[assignmentId]/artifacts`: assignment-owned grading assets
-- `/staff/runs` and `/staff/runs/[runId]`: official-run monitoring and export workflow surfaces
+- `/staff/courses/[courseId]/assignments/[assignmentId]/runs` and `/staff/courses/[courseId]/assignments/[assignmentId]/runs/[runId]`: official-run monitoring and export workflow surfaces (nested under the assignment)
 
 ## Frontend Information Architecture
 
@@ -26,6 +26,7 @@ This file captures the frontend contract, route structure, and UI-surface respon
   - assignment selection within that course
   - sandbox workspace for one course-scoped assignment
 - The student sandbox flow is public for M1 and does not require student authentication, student profile storage, or roster-derived authorization.
+- Staff assignment lists intentionally call `/sandbox/courses/{courseId}/assignments` for a student-parity view of sandbox-enabled assignments.
 - Staff navigation is organized around:
   - admin-only course, section, access, and monitoring surfaces
   - course list and course detail
@@ -46,8 +47,8 @@ This file captures the frontend contract, route structure, and UI-surface respon
 - The assignment artifacts surface owns the single M1 pytest file, model solution files, and support files through the backend `assignment_artifacts` storage-reference model.
 - UI-visible "test cases" are scoring items from the assignment setup/config, not separate physical test files.
 - Admin monitoring is admin-only in M1 and should summarize Azure token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
-- The `/staff/runs/[runId]` surface is a preview-only review workflow in M1: staff can inspect derived results, per-student feedback, and ephemeral read-only Monaco previews while available, but cannot edit grades or feedback in the app.
-- The `/staff/runs/[runId]` surface should expose separate download actions for the Canvas-grade CSV and the feedback ZIP.
+- The `/staff/courses/[courseId]/assignments/[assignmentId]/runs/[runId]` surface is a preview-only review workflow in M1: staff can inspect derived results, per-student feedback, and ephemeral read-only Monaco previews while available, but cannot edit grades or feedback in the app.
+- The `/staff/courses/[courseId]/assignments/[assignmentId]/runs/[runId]` surface should expose separate download actions for the Canvas-grade CSV and the feedback ZIP.
 
 ## Frontend Constraints
 

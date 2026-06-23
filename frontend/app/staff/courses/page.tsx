@@ -37,5 +37,5 @@ export default function Page() {
     );
   }
 
-  return <CoursesPage data={data} />;
+  return <CoursesPage data={data} mode="staff" />;
 }

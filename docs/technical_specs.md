@@ -186,7 +186,7 @@ classDiagram
 - `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
 - `assignment_concepts` store assignment-specific additive concept entries only; the runtime-effective allow-list is derived by merging course defaults with assignment additions when AST checks or UI surfaces need it.
 - `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
-- `test_cases` are optional derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
+- `scoring_items` are derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
 - `scoring_items` are derived projections of both automated test keys and manual rubric items, used for grading display and configuration checking.
 - `run_summaries` store workflow type, actor, aggregate counts, failure categories, and sanitized Azure token usage only.
 - Judge0 submission tokens and raw Judge0 result payloads are transient execution-service data and must not be persisted as app-owned Postgres records.

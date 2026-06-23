@@ -6,6 +6,10 @@ import { ArrowLeftIcon, DownloadIcon, TrashIcon, AwardIcon } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
+import {
+  staffRunCsvExportPath,
+  staffRunFeedbackExportPath,
+} from "@/features/staff/api";
 
 type RunSummary = {
   id: number;
@@ -105,14 +109,28 @@ export default function RunDetailPage({ params }: PageProps) {
     }
   };
 
-  const getCsvExportUrl = () => {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-    return `${base.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/export/csv`;
+  const handleCsvExport = async () => {
+    setError(null);
+    try {
+      await apiClient.download(
+        staffRunCsvExportPath(courseId, assignmentId, runId),
+        `run-${runId}-grades.csv`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "CSV export failed.");
+    }
   };
 
-  const getFeedbackExportUrl = () => {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-    return `${base.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/export/feedback`;
+  const handleFeedbackExport = async () => {
+    setError(null);
+    try {
+      await apiClient.download(
+        staffRunFeedbackExportPath(courseId, assignmentId, runId),
+        `run-${runId}-feedback.zip`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Feedback export failed.");
+    }
   };
 
   if (isLoading) {
@@ -137,15 +155,11 @@ export default function RunDetailPage({ params }: PageProps) {
             <p className="text-slate-500">Grading results overview and student lists</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <a href={getCsvExportUrl()} download target="_blank" rel="noreferrer">
-                <DownloadIcon className="mr-2 size-4" /> Export Grades CSV
-              </a>
+            <Button variant="outline" onClick={handleCsvExport}>
+              <DownloadIcon className="mr-2 size-4" /> Export Grades CSV
             </Button>
-            <Button variant="outline" asChild>
-              <a href={getFeedbackExportUrl()} download target="_blank" rel="noreferrer">
-                <DownloadIcon className="mr-2 size-4" /> Export Feedback ZIP
-              </a>
+            <Button variant="outline" onClick={handleFeedbackExport}>
+              <DownloadIcon className="mr-2 size-4" /> Export Feedback ZIP
             </Button>
             <Button variant="destructive" onClick={handleCleanup} disabled={isCleaning}>
               <TrashIcon className="mr-2 size-4" /> Clean Workspace

@@ -40,7 +40,9 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
   if (isAuthenticated !== true) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
-        <div className="text-center font-medium text-slate-500">Checking authorization...</div>
+        <div className="text-center font-medium text-slate-500" role="status">
+          Checking authorization...
+        </div>
       </div>
     );
   }

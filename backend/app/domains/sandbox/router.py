@@ -1,6 +1,8 @@
 from fastapi import APIRouter, File, Header, HTTPException, Response, UploadFile
 
 from app.core.dependencies import DbSession
+from app.core.settings import get_settings
+from app.domains.assignments.service import get_assignment_for_course
 from app.domains.sandbox.catalog import (
     get_sandbox_assignment,
     list_sandbox_assignments,
@@ -77,7 +79,11 @@ async def create_run(
     bundle: UploadFile = File(...),
     x_sandbox_session: str | None = Header(default=None),
 ) -> SandboxRunCreateResponse:
-    await bundle.close()
+    settings = get_settings()
+    zip_data = await bundle.read()
+    if len(zip_data) > settings.max_upload_bytes:
+        raise HTTPException(status_code=413, detail="Upload exceeds maximum size.")
+
     assignment = get_sandbox_assignment(
         db,
         course_id,
@@ -86,12 +92,30 @@ async def create_run(
     )
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
+
+    db_assignment = get_assignment_for_course(db, course_id, assignment_id)
+    if db_assignment is None or db_assignment.config is None:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+
+    artifact_refs: dict[str, str] = {}
+    for art in db_assignment.artifacts:
+        if art.storage_ref:
+            artifact_refs[art.artifact_key] = art.storage_ref
+
+    allowed_concepts = list(db_assignment.course.default_concepts or [])
+    if db_assignment.concept_additions:
+        allowed_concepts.extend(db_assignment.concept_additions.added_concepts or [])
+
     run, session, error_status = sandbox_service.create_run(
         course_id=course_id,
         assignment_id=assignment_id,
         session_id=x_sandbox_session,
         assignment_exists=True,
         max_score=assignment.max_score,
+        zip_data=zip_data,
+        config_json=db_assignment.config.config_json,
+        artifact_refs=artifact_refs,
+        allowed_concepts=allowed_concepts,
     )
     response.headers["X-Sandbox-Session"] = session
     if error_status == 429:

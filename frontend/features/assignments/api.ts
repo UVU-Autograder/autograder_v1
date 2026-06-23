@@ -33,6 +33,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Staff assignment lists reuse the sandbox endpoint for a student-parity view. */
 export function getAssignments(courseId: string) {
   return apiClient.get<AssignmentsResponse>(`/sandbox/courses/${courseId}/assignments`);
 }

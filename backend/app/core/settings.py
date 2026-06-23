@@ -42,6 +42,9 @@ class Settings(BaseSettings):
 
     jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
     jwt_expiration_hours: int = Field(default=24, ge=1, validation_alias="JWT_EXPIRATION_HOURS")
+    sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
+    azure_openai_api_key: str | None = Field(default=None, validation_alias="AZURE_OPENAI_API_KEY")
+    azure_openai_endpoint: str | None = Field(default=None, validation_alias="AZURE_OPENAI_ENDPOINT")
 
     @property
     def is_sqlite(self) -> bool:

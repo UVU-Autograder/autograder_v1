@@ -1,15 +1,19 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssignmentsResponse } from "@/features/assignments/types";
 import AssignmentCard from "@/features/assignments/assignment-card";
-import { useBasePath } from "@/lib/view-context";
 
-export default function AssignmentsPage({ data }: { data: AssignmentsResponse }) {
-  const basePath = useBasePath();
-  const backHref = basePath === "/sandbox" ? "/sandbox" : "/staff/courses";
+type ViewMode = "sandbox" | "staff";
+
+export default function AssignmentsPage({
+  data,
+  mode,
+}: {
+  data: AssignmentsResponse;
+  mode: ViewMode;
+}) {
+  const backHref = mode === "sandbox" ? "/sandbox" : "/staff/courses";
 
   return (
     <div className="w-full px-4 pt-8">
@@ -25,7 +29,7 @@ export default function AssignmentsPage({ data }: { data: AssignmentsResponse })
             <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
             <p className="text-muted-foreground mt-1">{data.course_id}</p>
           </div>
-          {basePath === "/staff" && (
+          {mode === "staff" && (
             <Button variant="outline" asChild>
               <Link href={`/staff/courses/${data.course_id}/concepts`}>
                 Edit Course Defaults
@@ -44,6 +48,7 @@ export default function AssignmentsPage({ data }: { data: AssignmentsResponse })
               key={assignment.id}
               assignment={assignment}
               courseId={data.course_id}
+              mode={mode}
             />
           ))}
         </div>

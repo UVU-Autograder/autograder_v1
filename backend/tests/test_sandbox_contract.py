@@ -8,7 +8,20 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.main import create_app  # noqa: E402
+from app.db.base import Base, import_domain_models
+from app.db.seed import initialize_database
+from app.db.session import engine
 from app.domains.sandbox.service import sandbox_service  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def initialized_database():
+    import_domain_models()
+    Base.metadata.drop_all(bind=engine)
+    initialize_database(seed=True)
+    yield
+    Base.metadata.drop_all(bind=engine)
+    initialize_database(seed=True)
 
 
 @pytest.fixture(autouse=True)
@@ -89,6 +102,37 @@ def test_assignment_detail_returns_contract_metadata(client):
     assert "config_json" not in body_1410
     assert "model_solution" not in str(body_1410)
     assert "storage_ref" not in str(body_1410)
+
+
+from unittest.mock import MagicMock
+
+
+def test_create_run_passes_zip_to_celery_when_enabled(client, monkeypatch):
+    mock_delay = MagicMock()
+    monkeypatch.setattr("app.domains.runs.tasks.grade_sandbox_run.delay", mock_delay)
+    monkeypatch.setattr("app.domains.runs.tasks.set_run_state", lambda *args, **kwargs: None)
+
+    sandbox_service._use_celery = True
+    try:
+        zip_bytes = b"print('raw code body')"
+        response = client.post(
+            "/sandbox/courses/cs1400/assignments/simple-python-functions/runs",
+            files={
+                "bundle": (
+                    "student_secret.py.zip",
+                    zip_bytes,
+                    "application/zip",
+                )
+            },
+        )
+        assert response.status_code == 202
+        mock_delay.assert_called_once()
+        call_kwargs = mock_delay.call_args.kwargs
+        assert call_kwargs["run_id"] == response.json()["run_id"]
+        assert call_kwargs["config_json"] is not None
+        assert call_kwargs["artifact_refs"]
+    finally:
+        sandbox_service._use_celery = False
 
 
 def test_run_creation_returns_session_quota_urls_and_queue_state(client):

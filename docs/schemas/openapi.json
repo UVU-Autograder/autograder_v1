@@ -5,6 +5,71 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/mock-login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Mock Login",
+        "description": "Local mock login endpoint. Enabled only in SQLite local development mode.\n\nGenerates a signed JWT token. Auto-provisions the user if they do not exist.",
+        "operationId": "mock_login_auth_mock_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MockLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sandbox/courses": {
       "get": {
         "tags": [
@@ -386,6 +451,379 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs": {
+      "get": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "List Official Runs",
+        "operationId": "list_official_runs_staff_courses__course_id__assignments__assignment_id__runs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummaryListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Get Official Run",
+        "operationId": "get_official_run_staff_courses__course_id__assignments__assignment_id__runs__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/details": {
+      "get": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Get Official Run Details",
+        "operationId": "get_official_run_details_staff_courses__course_id__assignments__assignment_id__runs__run_id__details_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/export/csv": {
+      "get": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Export Official Run Csv",
+        "operationId": "export_official_run_csv_staff_courses__course_id__assignments__assignment_id__runs__run_id__export_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/export/feedback": {
+      "get": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Export Official Run Feedback",
+        "operationId": "export_official_run_feedback_staff_courses__course_id__assignments__assignment_id__runs__run_id__export_feedback_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/cleanup": {
+      "post": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Cleanup Official Run",
+        "operationId": "cleanup_official_run_staff_courses__course_id__assignments__assignment_id__runs__run_id__cleanup_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses": {
       "get": {
         "tags": [
@@ -404,7 +842,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/staff/courses/{course_id}/assignments": {
@@ -414,6 +857,11 @@
         ],
         "summary": "Get Staff Assignments",
         "operationId": "get_staff_assignments_staff_courses__course_id__assignments_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "course_id",
@@ -449,6 +897,108 @@
         }
       }
     },
+    "/staff/courses/{course_id}/concepts": {
+      "get": {
+        "tags": [
+          "staff-courses"
+        ],
+        "summary": "Get Concepts",
+        "operationId": "get_concepts_staff_courses__course_id__concepts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseConceptsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "staff-courses"
+        ],
+        "summary": "Update Concepts",
+        "operationId": "update_concepts_staff_courses__course_id__concepts_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseConceptsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseConceptsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses/{course_id}/assignments/{assignment_id}/setup": {
       "get": {
         "tags": [
@@ -456,6 +1006,11 @@
         ],
         "summary": "Read Assignment Setup",
         "operationId": "read_assignment_setup_staff_courses__course_id__assignments__assignment_id__setup_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "course_id",
@@ -505,6 +1060,11 @@
         ],
         "summary": "Write Assignment Setup",
         "operationId": "write_assignment_setup_staff_courses__course_id__assignments__assignment_id__setup_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "course_id",
@@ -559,6 +1119,168 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/validate": {
+      "post": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Validate Assignment",
+        "operationId": "validate_assignment_staff_courses__course_id__assignments__assignment_id__validate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/validate-model-solution": {
+      "post": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Validate Model Solution",
+        "operationId": "validate_model_solution_staff_courses__course_id__assignments__assignment_id__validate_model_solution_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/validation-status": {
+      "get": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Get Validation Status",
+        "operationId": "get_validation_status_staff_courses__course_id__assignments__assignment_id__validation_status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses/{course_id}/assignments/{assignment_id}/artifacts": {
       "get": {
         "tags": [
@@ -566,6 +1288,11 @@
         ],
         "summary": "Get Assignment Artifacts",
         "operationId": "get_assignment_artifacts_staff_courses__course_id__assignments__assignment_id__artifacts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "course_id",
@@ -593,6 +1320,260 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ArtifactListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "staff-artifacts"
+        ],
+        "summary": "Upload Assignment Artifact",
+        "operationId": "upload_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactMetadata"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/artifacts/{artifact_key}": {
+      "delete": {
+        "tags": [
+          "staff-artifacts"
+        ],
+        "summary": "Delete Assignment Artifact",
+        "operationId": "delete_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts__artifact_key__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "artifact_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Artifact Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "staff-artifacts"
+        ],
+        "summary": "Download Assignment Artifact",
+        "operationId": "download_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts__artifact_key__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "artifact_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Artifact Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/submissions/ingest": {
+      "post": {
+        "tags": [
+          "staff-submissions"
+        ],
+        "summary": "Ingest Canvas Submissions",
+        "operationId": "ingest_canvas_submissions_staff_courses__course_id__assignments__assignment_id__submissions_ingest_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ingest_canvas_submissions_staff_courses__course_id__assignments__assignment_id__submissions_ingest_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficialRunResponse"
                 }
               }
             }
@@ -808,7 +1789,7 @@
         "properties": {
           "bundle": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Bundle"
           }
         },
@@ -817,6 +1798,44 @@
           "bundle"
         ],
         "title": "Body_create_run_sandbox_courses__course_id__assignments__assignment_id__runs_post"
+      },
+      "Body_ingest_canvas_submissions_staff_courses__course_id__assignments__assignment_id__submissions_ingest_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_ingest_canvas_submissions_staff_courses__course_id__assignments__assignment_id__submissions_ingest_post"
+      },
+      "Body_upload_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts_post": {
+        "properties": {
+          "artifact_key": {
+            "type": "string",
+            "title": "Artifact Key"
+          },
+          "artifact_type": {
+            "type": "string",
+            "title": "Artifact Type"
+          },
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "artifact_key",
+          "artifact_type",
+          "file"
+        ],
+        "title": "Body_upload_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts_post"
       },
       "BundleConfig": {
         "properties": {
@@ -926,6 +1945,43 @@
         },
         "type": "object",
         "title": "ConceptsConfig"
+      },
+      "CourseConceptsResponse": {
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "title": "Course Id"
+          },
+          "default_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Default Concepts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course_id",
+          "default_concepts"
+        ],
+        "title": "CourseConceptsResponse"
+      },
+      "CourseConceptsUpdate": {
+        "properties": {
+          "default_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Default Concepts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "default_concepts"
+        ],
+        "title": "CourseConceptsUpdate"
       },
       "ExecutionConfig": {
         "properties": {
@@ -1067,6 +2123,64 @@
           "extra_credit"
         ],
         "title": "ManualRubricItemConfig"
+      },
+      "MockLoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "MockLoginRequest"
+      },
+      "OfficialRunResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "workflow_type": {
+            "type": "string",
+            "title": "Workflow Type"
+          },
+          "total_submission_count": {
+            "type": "integer",
+            "title": "Total Submission Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "workflow_type",
+          "total_submission_count",
+          "created_at"
+        ],
+        "title": "OfficialRunResponse"
       },
       "OutputArtifactConfig": {
         "properties": {
@@ -1305,6 +2419,98 @@
           "backpressure"
         ],
         "title": "RunStatusResponse"
+      },
+      "RunSummaryListResponse": {
+        "properties": {
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummaryResponse"
+            },
+            "type": "array",
+            "title": "Runs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "runs"
+        ],
+        "title": "RunSummaryListResponse"
+      },
+      "RunSummaryResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "workflow_type": {
+            "type": "string",
+            "title": "Workflow Type"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "assignment_id": {
+            "type": "integer",
+            "title": "Assignment Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "total_submission_count": {
+            "type": "integer",
+            "title": "Total Submission Count"
+          },
+          "success_count": {
+            "type": "integer",
+            "title": "Success Count"
+          },
+          "warning_count": {
+            "type": "integer",
+            "title": "Warning Count"
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count"
+          },
+          "timeout_count": {
+            "type": "integer",
+            "title": "Timeout Count"
+          },
+          "failure_summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Failure Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workflow_type",
+          "assignment_id",
+          "status",
+          "total_submission_count",
+          "success_count",
+          "warning_count",
+          "failure_count",
+          "timeout_count",
+          "failure_summary",
+          "created_at"
+        ],
+        "title": "RunSummaryResponse"
       },
       "SandboxAssignmentDetail": {
         "properties": {
@@ -1927,6 +3133,9 @@
             },
             "type": "array",
             "title": "Artifacts"
+          },
+          "config_json": {
+            "$ref": "#/components/schemas/AssignmentConfigV1"
           }
         },
         "type": "object",
@@ -1944,7 +3153,8 @@
           "scoring_items",
           "rubric_groups",
           "completion_requirements",
-          "artifacts"
+          "artifacts",
+          "config_json"
         ],
         "title": "StaffAssignmentSetup"
       },
@@ -2273,6 +3483,17 @@
           "type"
         ],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }

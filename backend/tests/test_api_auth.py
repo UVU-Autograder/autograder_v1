@@ -133,3 +133,38 @@ def test_staff_endpoints_allow_other_roles(client):
         assert res.status_code == status.HTTP_200_OK
     finally:
         app.dependency_overrides.clear()
+
+
+def test_ia_cannot_put_assignment_setup(client):
+    from sqlalchemy import select
+    from app.core.auth_utils import create_access_token
+    from app.domains.courses.models import Course, Section
+
+    with SessionLocal() as db:
+        ia_role = db.scalar(select(Role).where(Role.name == "IA"))
+        course = db.scalar(select(Course).where(Course.code == "cs1400"))
+        section = db.scalar(select(Section).where(Section.course_id == course.id))
+
+        ia_user = User(email="ia.only@uvu.edu", display_name="IA Only")
+        db.add(ia_user)
+        db.flush()
+        db.add(
+            StaffAccess(
+                user=ia_user,
+                role=ia_role,
+                course=course,
+                section=section,
+                is_active=True,
+            )
+        )
+        db.commit()
+
+    token = create_access_token(email="ia.only@uvu.edu", display_name="IA Only")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.put(
+        "/staff/courses/cs1400/assignments/simple-python-functions/setup",
+        headers=headers,
+        json={"title": "Updated Title"},
+    )
+    assert res.status_code == status.HTTP_403_FORBIDDEN

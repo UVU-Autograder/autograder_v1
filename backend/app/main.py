@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
 from app.api.router import api_router
+from app.core.exception_handlers import AppError, app_error_handler
 from app.core.settings import get_settings
 from app.db.seed import initialize_database
 
@@ -43,6 +45,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Autograder API", version="0.1.0", lifespan=lifespan)
+    app.add_exception_handler(AppError, app_error_handler)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -56,6 +59,22 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router)
+
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            routes=app.routes,
+        )
+        openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})[
+            "BearerAuth"
+        ] = {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    app.openapi = custom_openapi
     return app
 
 

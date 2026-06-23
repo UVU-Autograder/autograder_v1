@@ -111,4 +111,29 @@ export const apiClient = {
 
     delete: <T>(path: string, options?: ApiFetchOptions) =>
         apiFetch<T>(path, { method: "DELETE", headers: options?.headers }).then((result) => result.data),
+
+    download: async (path: string, filename: string, options?: ApiFetchOptions): Promise<void> => {
+        const headers = new Headers(options?.headers);
+        const token = getAuthToken();
+        if (token && !headers.has("authorization")) {
+            headers.set("authorization", `Bearer ${token}`);
+        }
+
+        const response = await fetch(resolveUrl(path), { method: "GET", headers });
+        if (!response.ok) {
+            const message = await parseErrorMessage(response);
+            if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+                window.dispatchEvent(new Event("unauthorized-api-call"));
+            }
+            throw new ApiError(response.status, message);
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+    },
 };
