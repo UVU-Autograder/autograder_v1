@@ -18,9 +18,14 @@ export default function AssignmentCard({
   courseId: string;
 }) {
   const basePath = useBasePath();
+  const linkHref =
+    basePath === "/sandbox"
+      ? `/sandbox/${courseId}/assignments/${assignment.id}`
+      : `/staff/courses/${courseId}/assignments/${assignment.id}/setup`;
+
   return (
     <Link
-      href={`${basePath}/courses/${courseId}/assignments/${assignment.id}`}
+      href={linkHref}
       className="block"
     >
       <Card className="cursor-pointer py-3 transition-shadow hover:shadow-md">

@@ -1,23 +1,24 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from sqlalchemy.orm import Session
 
+from app.core.auth_utils import decode_access_token
 from app.db.session import get_db
 from app.domains.auth.models import User
 
 DbSession = Annotated[Session, Depends(get_db)]
-
-
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.core.auth_utils import decode_access_token
 
 security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
     db: DbSession,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)] = None
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(security)
+    ] = None,
 ) -> User:
     """Retrieve current authenticated user from JWT token.
 
@@ -35,6 +36,7 @@ def get_current_user(
     name = payload.get("name")
 
     from sqlalchemy import select
+
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
         user = User(email=email, display_name=name, is_active=True)
@@ -51,18 +53,22 @@ def get_current_user(
     return user
 
 
-
 def require_role(allowed_roles: list[str]):
     """Standardized guard to enforce specific user roles."""
 
     def dependency(user: User = Depends(get_current_user)) -> User:
-        user_roles = {access.role.name for access in user.staff_access if access.is_active}
-        if not user_roles.intersection(allowed_roles) and not any(r == "admin" for r in user_roles):
+        user_roles = {
+            access.role.name for access in user.staff_access if access.is_active
+        }
+        if not user_roles.intersection(allowed_roles) and not any(
+            r == "admin" for r in user_roles
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Operation not permitted for user role.",
             )
         return user
+
     return dependency
 
 

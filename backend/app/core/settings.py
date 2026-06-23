@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     default_max_files: int = Field(default=100, ge=1, validation_alias="DEFAULT_MAX_FILES")
     default_max_zip_size: int = Field(default=50 * 1024 * 1024, ge=1, validation_alias="DEFAULT_MAX_ZIP_SIZE")
     test_execution_timeout_seconds: int = Field(default=30, ge=1, validation_alias="TEST_EXECUTION_TIMEOUT_SECONDS")
-    jwt_secret: str = Field(default="dev_fallback_secret", validation_alias="JWT_SECRET")
+    jwt_secret: str = Field(
+        default="dev_fallback_secret_longer_than_32_characters_for_security_compliance",
+        validation_alias="JWT_SECRET",
+    )
+
     jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
     jwt_expiration_hours: int = Field(default=24, ge=1, validation_alias="JWT_EXPIRATION_HOURS")
 

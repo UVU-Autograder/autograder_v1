@@ -36,7 +36,7 @@ export function AssignmentSidebar({
     const data = {
         header: (
             <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
-                <Link href={`${basePath}/courses/${courseId}/assignments`}>
+                <Link href={basePath === "/sandbox" ? `/sandbox/${courseId}` : `/staff/courses/${courseId}`}>
                     <ArrowLeftIcon />
                     Back to assignments
                 </Link>

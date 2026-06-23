@@ -25,3 +25,13 @@ class StaffAssignmentSummary(BaseModel):
 class StaffAssignmentListResponse(BaseModel):
     course_id: str
     assignments: list[StaffAssignmentSummary]
+
+
+class CourseConceptsUpdate(BaseModel):
+    default_concepts: list[str]
+
+
+class CourseConceptsResponse(BaseModel):
+    course_id: str
+    default_concepts: list[str]
+

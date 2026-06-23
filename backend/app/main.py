@@ -8,12 +8,37 @@ from app.core.settings import get_settings
 from app.db.seed import initialize_database
 
 
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def schedule_workspaces_cleanup():
+    # Wait 10 seconds after startup before the first run
+    await asyncio.sleep(10)
+    while True:
+        try:
+            from app.domains.runs.tasks import cleanup_expired_workspaces
+            cleanup_expired_workspaces()
+        except Exception as e:
+            logger.error("Error in background workspace cleanup: %s", e)
+        # Run every hour
+        await asyncio.sleep(3600)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     if settings.is_sqlite:
         initialize_database(seed=True)
-    yield
+
+    cleanup_task = asyncio.create_task(schedule_workspaces_cleanup())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+
 
 
 def create_app() -> FastAPI:

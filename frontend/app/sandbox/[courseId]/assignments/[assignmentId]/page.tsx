@@ -4,6 +4,9 @@ import AssignmentsPage from "@/features/assignments/workspace/assignment-page";
 import { AssignmentFileProvider } from "@/features/assignments/workspace/assignment-file-context";
 import { AssignmentSidebar } from "@/features/assignments/workspace/sidebar";
 
+export const dynamic = "force-dynamic";
+
+
 type PageProps = {
     params: Promise<{ courseId: string; assignmentId: string }>;
 }
@@ -21,6 +24,7 @@ export default async function Page({ params }: PageProps) {
                   courseId={courseId}
                   assignmentId={assignmentId}
                   maxScore={assignment.max_score}
+                  initialQuota={assignment.upload_quota}
                 />
             </SidebarInset>
         </SidebarProvider>

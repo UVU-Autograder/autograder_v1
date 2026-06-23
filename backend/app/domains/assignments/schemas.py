@@ -279,6 +279,7 @@ class StaffAssignmentSetup(BaseModel):
     rubric_groups: list[RubricGroup]
     completion_requirements: list[CompletionRequirement]
     artifacts: list[ArtifactMetadata]
+    config_json: AssignmentConfigV1
 
 
 class StaffAssignmentSetupUpdate(BaseModel):

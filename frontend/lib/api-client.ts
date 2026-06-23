@@ -68,6 +68,9 @@ async function apiFetch<T>(
 
     if (!response.ok) {
         const message = await parseErrorMessage(response);
+        if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+            window.dispatchEvent(new Event("unauthorized-api-call"));
+        }
         throw new ApiError(response.status, message);
     }
 

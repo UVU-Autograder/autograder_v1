@@ -166,3 +166,43 @@ def test_validate_model_solution_queued_and_status(client, headers):
     assert body["score"] == 25
     assert body["max_score"] == 25
     assert body["errors"] == []
+
+
+def test_artifact_physical_file_deletion(client, headers, temp_artifact_storage):
+    # 1. Upload a support file artifact
+    upload_response = client.post(
+        "/staff/courses/cs1400/assignments/simple-python-functions/artifacts",
+        data={
+            "artifact_key": "test_physical_delete",
+            "artifact_type": "support_file",
+        },
+        files={
+            "file": ("test_delete.txt", b"temporary test file content", "text/plain")
+        },
+        headers=headers
+    )
+    assert upload_response.status_code == 200
+
+    # 2. Verify that there is a physical file written containing our content
+    files_before = list(temp_artifact_storage.glob("*"))
+    found_file = False
+    for file_path in files_before:
+        if file_path.is_file() and b"temporary test file content" in file_path.read_bytes():
+            found_file = True
+            break
+    assert found_file, "Uploaded file content not found in temp_artifact_storage"
+
+    # 3. Delete the artifact
+    delete_response = client.delete(
+        "/staff/courses/cs1400/assignments/simple-python-functions/artifacts/test_physical_delete",
+        headers=headers
+    )
+    assert delete_response.status_code == 200
+    assert delete_response.json()["status"] == "success"
+
+    # 4. Verify that the physical file containing our content is deleted
+    files_after = list(temp_artifact_storage.glob("*"))
+    for file_path in files_after:
+        if file_path.is_file():
+            assert b"temporary test file content" not in file_path.read_bytes(), "Physical file was not unlinked on delete"
+

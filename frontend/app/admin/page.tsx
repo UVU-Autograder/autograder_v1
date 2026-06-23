@@ -1,7 +1,8 @@
 "use client"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "../../components/ui/accordion"
 import {Dialog, DialogContent, DialogFooter, 
-  DialogDescription, DialogHeader, DialogTitle, } from "../../components/ui/dialog"
+  DialogHeader, DialogTitle, } from "../../components/ui/dialog"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"

@@ -133,12 +133,7 @@ services:
       - "8000:8000"
     volumes:
       - ./:/workspace
-    command:
-      - sh
-      - -c
-      - |
-        echo "Backend service placeholder: replace this command with uvicorn once the FastAPI app is executable."
-        sleep infinity
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   celery-worker:
     image: python:3.11-slim
@@ -169,12 +164,7 @@ services:
       CLEANUP_TTL_SECONDS: "0"
     volumes:
       - ./:/workspace
-    command:
-      - sh
-      - -c
-      - |
-        echo "Celery worker placeholder: replace this command with a real Celery worker once tasks are executable."
-        sleep infinity
+    command: celery -A app.integrations.celery.app worker --loglevel=info -Q sandbox,official,default
 
 volumes:
   postgres_data:

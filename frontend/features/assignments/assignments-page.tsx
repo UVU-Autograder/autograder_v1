@@ -9,17 +9,30 @@ import { useBasePath } from "@/lib/view-context";
 
 export default function AssignmentsPage({ data }: { data: AssignmentsResponse }) {
   const basePath = useBasePath();
+  const backHref = basePath === "/sandbox" ? "/sandbox" : "/staff/courses";
+
   return (
     <div className="w-full px-4 pt-8">
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-          <Link href={`${basePath}/courses`}>
+          <Link href={backHref}>
             <ArrowLeftIcon />
             Back to courses
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
-        <p className="text-muted-foreground mt-1">{data.course_id}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
+            <p className="text-muted-foreground mt-1">{data.course_id}</p>
+          </div>
+          {basePath === "/staff" && (
+            <Button variant="outline" asChild>
+              <Link href={`/staff/courses/${data.course_id}/concepts`}>
+                Edit Course Defaults
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {data.assignments.length === 0 ? (

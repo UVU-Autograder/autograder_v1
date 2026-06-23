@@ -32,9 +32,10 @@ function getColor(id: string) {
 export default function CourseCard({ course }: { course: SandboxCourse | StaffCourse }) {
   const colorClass = getColor(course.id);
   const basePath = useBasePath();
+  const linkHref = basePath === "/sandbox" ? `/sandbox/${course.id}` : `/staff/courses/${course.id}`;
 
   return (
-    <Link href={`${basePath}/courses/${course.id}/assignments`} className="block">
+    <Link href={linkHref} className="block">
       <Card className="overflow-hidden hover:shadow-lg transition-all cursor-pointer">
 
         {/* TOP COLOR BANNER (like CardMedia) */}

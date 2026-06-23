@@ -779,3 +779,54 @@ def run_mock_official_run(run_id: int) -> None:
         run.failure_summary = {"missing_required_file": 1} if failure_count else {}
         db.commit()
 
+
+@celery_app.task(name="app.domains.runs.tasks.cleanup_expired_workspaces")
+def cleanup_expired_workspaces() -> dict:
+    """Clean up workspaces and ZIP files for runs older than 24 hours."""
+    from datetime import datetime, timedelta, UTC
+    import shutil
+    from sqlalchemy import select
+    from app.db.session import SessionLocal
+    from app.domains.runs.models import RunSummary
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
+
+    cleaned_count = 0
+    errors = []
+
+    with SessionLocal() as db:
+        # Select official runs older than 24 hours
+        stmt = select(RunSummary).where(
+            RunSummary.created_at < cutoff,
+            RunSummary.workflow_type == "official",
+        )
+        old_runs = db.scalars(stmt).all()
+
+        for run in old_runs:
+            run_dir = workspaces_dir / f"official_{run.id}"
+            zip_file = workspaces_dir / f"official_{run.id}.zip"
+            deleted_any = False
+
+            if run_dir.exists():
+                try:
+                    shutil.rmtree(run_dir, ignore_errors=True)
+                    deleted_any = True
+                except Exception as e:
+                    errors.append(f"Failed to remove run_dir {run.id}: {str(e)}")
+
+            if zip_file.exists():
+                try:
+                    zip_file.unlink(missing_ok=True)
+                    deleted_any = True
+                except Exception as e:
+                    errors.append(f"Failed to unlink ZIP {run.id}: {str(e)}")
+
+            if deleted_any:
+                cleaned_count += 1
+
+    return {"cleaned_runs_count": cleaned_count, "errors": errors}
+
+

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { runSandboxCheck } from "@/features/assignments/api";
-import type { SandboxRunResultResponse } from "@/features/assignments/types";
+import { ApiError } from "@/lib/api-client";
+import type { SandboxRunResultResponse, AssignmentsDetails } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 
@@ -11,6 +12,7 @@ type CodeResultsProps = {
   courseId: string;
   assignmentId: string;
   maxScore: number;
+  initialQuota?: AssignmentsDetails["upload_quota"];
 };
 
 type RunPhase = "idle" | "submitting" | "running" | "complete" | "error";
@@ -58,13 +60,63 @@ function testStatusTextClass(
   }
 }
 
-export default function CodeResults({ courseId, assignmentId, maxScore }: CodeResultsProps) {
+import { useEffect } from "react";
+
+export default function CodeResults({
+  courseId,
+  assignmentId,
+  maxScore,
+  initialQuota,
+}: CodeResultsProps) {
   const { files } = useAssignmentFile();
   const [showCheckCode, setShowCheckCode] = useState(true);
   const [showFeedback, setShowFeedback] = useState(true);
   const [phase, setPhase] = useState<RunPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<SandboxRunResultResponse | null>(null);
+  const [quota, setQuota] = useState<AssignmentsDetails["upload_quota"] | undefined>(initialQuota);
+  const [prevInitialQuota, setPrevInitialQuota] = useState(initialQuota);
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  if (initialQuota !== prevInitialQuota) {
+    setQuota(initialQuota);
+    setPrevInitialQuota(initialQuota);
+  }
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+
+    Promise.resolve().then(() => {
+      if (!quota || quota.remaining > 0) {
+        setCountdown(null);
+        return;
+      }
+
+      const calculateRemaining = () => {
+        const resetTime = new Date(quota.reset_at).getTime();
+        const now = new Date().getTime();
+        return Math.max(0, Math.floor((resetTime - now) / 1000));
+      };
+
+      const initialDiff = calculateRemaining();
+      setCountdown(initialDiff);
+
+      if (initialDiff <= 0) return;
+
+      timer = setInterval(() => {
+        const diff = calculateRemaining();
+        setCountdown(diff);
+        if (diff <= 0) {
+          clearInterval(timer);
+          setQuota((prev) => prev ? { ...prev, remaining: prev.limit } : prev);
+        }
+      }, 1000);
+    });
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [quota]);
 
   const handleCheckCode = async () => {
     setPhase("submitting");
@@ -74,14 +126,24 @@ export default function CodeResults({ courseId, assignmentId, maxScore }: CodeRe
     try {
       const bundle = await createSubmissionBundle(files);
       setPhase("running");
-      const { result: runResult } = await runSandboxCheck(courseId, assignmentId, bundle);
+      const { result: runResult, run } = await runSandboxCheck(courseId, assignmentId, bundle);
       setResult(runResult);
+      if (run.upload_quota) {
+        setQuota(run.upload_quota);
+      }
       setPhase("complete");
     } catch (error) {
       setPhase("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to run sandbox check."
-      );
+      if (error instanceof ApiError && error.status === 429) {
+        setErrorMessage("Upload limit reached. Please wait for the quota to reset.");
+        if (quota) {
+          setQuota({ ...quota, remaining: 0 });
+        }
+      } else {
+        setErrorMessage(
+          error instanceof Error ? error.message : "Failed to run sandbox check."
+        );
+      }
     }
   };
 
@@ -89,20 +151,39 @@ export default function CodeResults({ courseId, assignmentId, maxScore }: CodeRe
   const totalScore = result?.max_score ?? maxScore;
   const percent = totalScore > 0 ? Math.round((score / totalScore) * 100) : 0;
   const isLoading = phase === "submitting" || phase === "running";
+  const isQuotaExhausted = quota !== undefined && quota.remaining === 0;
 
   return (
     <div className="px-1">
       <Button
         onClick={handleCheckCode}
-        disabled={isLoading}
-        className="w-full mt-2 bg-gradient-to-r from-gray-800 to-gray-500 hover:from-black hover:to-indigo-600 text-white text-lg font-semibold px-6 py-3 rounded-lg"
+        disabled={isLoading || isQuotaExhausted}
+        className="w-full mt-2 bg-gradient-to-r from-gray-800 to-gray-500 hover:from-black hover:to-indigo-600 text-white text-lg font-semibold px-6 py-3 rounded-lg disabled:opacity-50"
       >
         {phase === "submitting"
           ? "Submitting..."
           : phase === "running"
             ? "Running Tests..."
-            : "Run Tests"}
+            : isQuotaExhausted
+              ? "Upload Limit Reached"
+              : "Run Tests"}
       </Button>
+
+      {quota && (
+        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+          <div className="flex justify-between items-center">
+            <span className="font-semibold text-slate-700">Sandbox Uploads:</span>
+            <span className={`font-bold ${quota.remaining === 0 ? "text-red-600" : "text-slate-600"}`}>
+              {quota.remaining} / {quota.limit} remaining
+            </span>
+          </div>
+          {quota.remaining === 0 && countdown !== null && (
+            <div className="mt-2 text-red-600 font-semibold border-t border-red-200 pt-2 text-center">
+              Resets in {Math.floor(countdown / 60)}m {countdown % 60}s
+            </div>
+          )}
+        </div>
+      )}
 
       {errorMessage && (
         <p className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">

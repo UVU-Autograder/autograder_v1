@@ -9,7 +9,9 @@ from app.domains.courses.schemas import (
     StaffAssignmentSummary,
     StaffCourseListResponse,
     StaffCourseSummary,
+    CourseConceptsResponse,
 )
+
 
 
 def list_staff_courses(db: Session) -> StaffCourseListResponse:
@@ -60,3 +62,27 @@ def list_staff_assignments(db: Session, course_code: str) -> StaffAssignmentList
         )
 
     return StaffAssignmentListResponse(course_id=course.code, assignments=assignments)
+
+
+def get_course_concepts(db: Session, course_code: str) -> CourseConceptsResponse | None:
+    course = db.scalar(
+        select(Course)
+        .where(Course.code == course_code, Course.is_active.is_(True))
+    )
+    if course is None:
+        return None
+    return CourseConceptsResponse(course_id=course.code, default_concepts=course.default_concepts or [])
+
+
+def update_course_concepts(db: Session, course_code: str, default_concepts: list[str]) -> CourseConceptsResponse | None:
+    course = db.scalar(
+        select(Course)
+        .where(Course.code == course_code, Course.is_active.is_(True))
+    )
+    if course is None:
+        return None
+    course.default_concepts = default_concepts
+    db.commit()
+    db.refresh(course)
+    return CourseConceptsResponse(course_id=course.code, default_concepts=course.default_concepts or [])
+

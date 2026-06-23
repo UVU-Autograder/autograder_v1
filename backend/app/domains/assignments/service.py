@@ -209,6 +209,7 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
             )
             for artifact in sorted(assignment.artifacts, key=lambda item: item.artifact_key)
         ],
+        config_json=config,
     )
 
 
@@ -323,6 +324,10 @@ def delete_artifact(
     assignment_slug: str,
     artifact_key: str,
 ) -> bool:
+    import logging
+    logger = logging.getLogger(__name__)
+    from app.integrations.artifacts.resolver import resolve_storage_ref
+
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
     if assignment is None:
         return False
@@ -336,9 +341,22 @@ def delete_artifact(
     if artifact is None:
         return False
 
+    if artifact.storage_ref and artifact.storage_ref.startswith("file://"):
+        try:
+            path = resolve_storage_ref(artifact.storage_ref)
+            if path.exists():
+                path.unlink()
+        except Exception as exc:
+            logger.warning(
+                "Failed to delete physical file for artifact %s: %s",
+                artifact_key,
+                exc,
+            )
+
     db.delete(artifact)
     db.commit()
     return True
+
 
 
 def get_artifact_content(
