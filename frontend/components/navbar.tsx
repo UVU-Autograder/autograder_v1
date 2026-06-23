@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
 
 function getOppositePath(pathname: string): string | null {
   if (pathname.startsWith("/staff")) {
@@ -43,18 +44,33 @@ function getOppositePath(pathname: string): string | null {
   return null;
 }
 
-function hasStaffToken(): boolean {
-  if (typeof window === "undefined") return false;
+function subscribeToStaffAuth(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  return () => window.removeEventListener("storage", onStoreChange);
+}
+
+function getStaffAuthSnapshot(): boolean {
   return Boolean(localStorage.getItem("token") || sessionStorage.getItem("token"));
+}
+
+function getStaffAuthServerSnapshot(): boolean {
+  return false;
 }
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const hasStaffToken = useSyncExternalStore(
+    subscribeToStaffAuth,
+    getStaffAuthSnapshot,
+    getStaffAuthServerSnapshot
+  );
 
   const isStaffArea = pathname.startsWith("/staff");
   const isSandboxArea = pathname.startsWith("/sandbox");
-  const isStaffLoggedIn = isStaffArea && pathname !== "/staff/login" && hasStaffToken();
+  const isStaffLoggedIn =
+    isStaffArea && pathname !== "/staff/login" && hasStaffToken;
+
   const oppositePath = getOppositePath(pathname);
 
   const switchRole = () => {
