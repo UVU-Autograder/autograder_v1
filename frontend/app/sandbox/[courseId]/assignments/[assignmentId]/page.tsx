@@ -25,6 +25,7 @@ export default async function Page({ params }: PageProps) {
                   assignmentId={assignmentId}
                   maxScore={assignment.max_score}
                   initialQuota={assignment.upload_quota}
+                  assignment={assignment}
                 />
             </SidebarInset>
         </SidebarProvider>

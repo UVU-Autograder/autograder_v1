@@ -1,20 +1,31 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeftIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon } from "lucide-react"
+import { ArrowLeftIcon, TerminalSquareIcon, BookOpenIcon } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/app-sidebar"
-import { Assignment, Constraint } from "@/features/assignments/types";
+import { Assignment } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
 import { FileUploadButton } from "./file-upload-button";
 import { useBasePath } from "@/lib/view-context";
 
-function constraintFilename(label: string) {
-    return `${label.toLowerCase().replace(/\s+/g, '_').replace(/[^\w.-]/g, '')}.txt`;
-}
+function detailsFileContent(assignment: Assignment) {
+    const constraintsList = (assignment.constraints || [])
+        .map((c) => `- ${c.label}: ${c.value}`)
+        .join("\n") || "None";
 
-function constraintFileContent(constraint: Constraint) {
-    return `${constraint.label}\n${'='.repeat(constraint.label.length)}\n\n${constraint.value}`;
+    return `Assignment Details: ${assignment.title}
+==================================================
+
+Max Score: ${assignment.max_score} points
+
+Submission Rules & Constraints:
+${constraintsList}
+
+Allowed Concepts:
+-----------------
+${(assignment.allowed_concepts || []).map(c => `- ${c}`).join("\n") || "No concepts whitelist configured (all concepts allowed)."}
+`;
 }
 
 export function AssignmentSidebar({
@@ -27,7 +38,7 @@ export function AssignmentSidebar({
     className: string
 }) {
     const basePath = useBasePath();
-    const { files, openFileByName, uploadFiles } = useAssignmentFile();
+    const { files, openFileByName, uploadFiles, deleteFile } = useAssignmentFile();
     const workspaceFiles = Object.values(files)
         .filter((file) => file.category === 'workspace')
         .map((file) => file.filename)
@@ -51,26 +62,17 @@ export function AssignmentSidebar({
                 />
                 ),
                 isActive: true,
-            },
-            {
-                title: "Test Cases",
-                url: "#",
-                icon: (
-                <BotIcon
-                />
-                ),
                 items: [
-                {
-                    title: "Test Case 1",
-                    onClick: () =>
-                        openFileByName("test_case_1.txt", { category: 'test_case' }),
-                },
-                {
-                    title: "Test Case 2",
-                    onClick: () =>
-                        openFileByName("test_case_2.txt", { category: 'test_case' }),
-                }
-                ],
+                    {
+                        title: "details.txt",
+                        onClick: () =>
+                            openFileByName("details.txt", {
+                                content: detailsFileContent(assignment),
+                                language: 'plaintext',
+                                category: 'constraint',
+                            }),
+                    }
+                ]
             },
             {
                 title: "Files",
@@ -83,6 +85,7 @@ export function AssignmentSidebar({
                 items: workspaceFiles.map((filename) => ({
                     title: filename,
                     onClick: () => openFileByName(filename),
+                    onDelete: () => deleteFile(filename),
                 })),
                 actions: (
                     <FileUploadButton
@@ -90,23 +93,6 @@ export function AssignmentSidebar({
                         onFilesSelected={uploadFiles}
                     />
                 ),
-            },
-            {
-                title: "Constraints",
-                url: "#",
-                icon: (
-                <Settings2Icon
-                />
-                ),
-                items: assignment.constraints.map((constraint) => ({
-                    title: constraint.label,
-                    onClick: () =>
-                        openFileByName(constraintFilename(constraint.label), {
-                            content: constraintFileContent(constraint),
-                            language: 'plaintext',
-                            category: 'constraint',
-                        }),
-                })),
             },
         ]
     }

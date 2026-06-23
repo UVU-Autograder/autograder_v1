@@ -35,6 +35,7 @@ type AssignmentFileContextType = {
   ) => void;
   moveTabToPane: (filename: string, sourcePaneId: string, targetPaneId: string) => void;
   uploadFiles: (files: FileList | File[]) => Promise<void>;
+  deleteFile: (filename: string) => void;
 };
 
 const AssignmentFileContext = createContext<AssignmentFileContextType | null>(null);
@@ -189,6 +190,27 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const deleteFile = (filename: string) => {
+    setFiles((prev) => {
+      const next = { ...prev };
+      delete next[filename];
+      return next;
+    });
+
+    setEditorLayout((prev) => {
+      let nextLayout = { ...prev };
+      let changed = false;
+      for (const paneId of Object.keys(prev.panes)) {
+        const updated = computeCloseTab(nextLayout, paneId, filename);
+        if (updated) {
+          nextLayout = updated;
+          changed = true;
+        }
+      }
+      return changed ? nextLayout : prev;
+    });
+  };
+
   const { panes, layout, activePaneId } = editorLayout;
 
   return (
@@ -208,6 +230,7 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
         splitTabToPane,
         moveTabToPane,
         uploadFiles,
+        deleteFile,
       }}
     >
       {children}

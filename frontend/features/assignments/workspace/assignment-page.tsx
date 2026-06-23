@@ -9,13 +9,14 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
 
-import type { AssignmentsDetails } from "@/features/assignments/types";
+import type { AssignmentsDetails, Assignment } from "@/features/assignments/types";
 
 type AssignmentsPageProps = {
   courseId: string;
   assignmentId: string;
   maxScore: number;
   initialQuota?: AssignmentsDetails["upload_quota"];
+  assignment: Assignment;
 };
 
 export default function AssignmentWorkspace({
@@ -23,6 +24,7 @@ export default function AssignmentWorkspace({
   assignmentId,
   maxScore,
   initialQuota,
+  assignment,
 }: AssignmentsPageProps) {
   const { layout } = useAssignmentFile();
   
@@ -39,6 +41,7 @@ export default function AssignmentWorkspace({
           assignmentId={assignmentId}
           maxScore={maxScore}
           initialQuota={initialQuota}
+          assignment={assignment}
         />
 			</ResizablePanel>
         </ResizablePanelGroup>

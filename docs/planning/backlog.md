@@ -180,10 +180,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ### Azure Feedback And Privacy Confirmation
 
-- [ ] Confirm Azure OpenAI privacy posture, UVU approval, and launch-blocking evidence before live student-code AI feedback is enabled.
-- [ ] Write the Azure/UVU compliance confirmation checklist and approval evidence expectations before go-live.
 - [ ] Use UVU-approved Azure OpenAI configuration before sending live student code.
-- [ ] Disable Azure feedback for live, pseudonymous, or real student-derived code unless the UVU/Azure approval checklist is complete.
 - [ ] Inject allowed-concepts context into the Azure OpenAI prompt.
 - [ ] Generate rubric-context explanations and feedback without re-grading correctness.
 - [ ] Enforce hallucination guard: tests remain ground truth and the LLM explains rather than re-evaluates.

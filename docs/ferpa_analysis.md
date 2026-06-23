@@ -10,9 +10,7 @@ It complements:
 
 ## Current Posture
 
-The current specification is materially better than the earlier sandbox model, but it is still not cleared for unrestricted live student-record use.
-
-The biggest FERPA improvement already made is the removal of student-specific sandbox access. UVU treats student schedule and schedule details as non-directory information, and UVU treats student ID as directory information only because it cannot by itself unlock education records without the student's password and MFA. Under the earlier model, the sandbox used student-specific identity and enrollment-linked visibility. Under the current model, sandbox assignments are globally visible and no student authentication is required, which materially reduces that specific FERPA problem. See UVU FERPA guidance and the U.S. Department of Education FAQ on student identifiers as directory information:
+UVU treats student schedule and schedule details as non-directory information, and UVU treats student ID as directory information only because it cannot by itself unlock education records without the student's password and MFA. Under the earlier model, the sandbox used student-specific identity and enrollment-linked visibility. Under the current model, sandbox assignments are globally visible and no student authentication is required, which materially reduces that specific FERPA problem. See UVU FERPA guidance and the U.S. Department of Education FAQ on student identifiers as directory information:
 
 - [UVU FERPA](https://www.uvu.edu/registration/ferpa/index.html)
 - [May a social security number or other student identification number be listed as directory information?](https://studentprivacy.ed.gov/faq/may-social-security-number-or-other-student-identification-number-be-listed-directory)
@@ -36,7 +34,6 @@ Answered project questions incorporated into this analysis:
 - Moving from testing mode to real-course grading requires a request through the myUVU Software Approval Process for ATSC and related institutional review.
 - If the autograder cannot map assignment-specific identifiers back to student-identifiable information, that reduces the direct-identification risk; however, exports that can be mapped back through Canvas still need an approved mapping and handling process.
 - External vendor APIs require UVU-approved contracting controls, including HECVAT review and an active Data Protection Agreement where applicable.
-- UVU-approved Azure AI/OpenAI use must be confirmed for the specific resource and workflow before live student-derived code is sent; approval cannot be inferred from an independent developer tenant.
 - Moving from local hosting to cloud deployment requires an active DPA that places the vendor under UVU's direct control and restricts student-data use or disclosure.
 - A fully local model on university-managed infrastructure can reduce third-party disclosure, but it still requires formal review of institutional approval, access control, data isolation, and operating procedures before live FERPA-covered use.
 
@@ -70,7 +67,7 @@ Pseudonymous labels with a retained mapping, even if the mapping stays outside t
 
 The app should treat fake and fully anonymized validation bundles with the same zero-retention discipline used for student-code-bearing data: no persistent source bodies, filenames, detailed tracebacks, detailed feedback, or per-student artifacts.
 
-Anonymization reduces validation risk, but it does not by itself authorize all downstream uses. Azure OpenAI feedback must remain disabled for any real student-derived code unless the UVU/Azure approval checklist is complete. Live official grading with education-record-linked data still requires formal institutional approval.
+Anonymization reduces validation risk, but it does not by itself authorize all downstream uses.  Live official grading with education-record-linked data still requires formal institutional approval.
 
 ## Issues And Fixes Matrix
 

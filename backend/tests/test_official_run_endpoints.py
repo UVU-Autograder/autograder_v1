@@ -111,7 +111,24 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     zip_file.write_bytes(b"dummy zip content")
 
     # 1. details json
-    details_data = {"unmatched_files": [], "student_results": {}}
+    details_data = {
+        "unmatched_files": [],
+        "student_results": {
+            "11111": {
+                "student_identifier": "studenta",
+                "submission_id": "90123",
+                "matched_file": "student_functions.py",
+                "success": True,
+                "score": 100,
+                "max_score": 100,
+                "test_results": [],
+                "warnings": [],
+                "failure_category": None,
+                "failure_message": None,
+                "feedback_html": "<html></html>"
+            }
+        }
+    }
     (run_dir / "run_details.json").write_text(json.dumps(details_data))
 
     # 2. grades csv
@@ -127,7 +144,21 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
         headers=headers
     )
     assert response.status_code == 200
-    assert response.json() == details_data
+    assert response.json() == {
+        "run_id": run.id,
+        "status": "complete",
+        "students": [
+            {
+                "student_name": "studenta",
+                "canvas_id": "11111",
+                "matched_file": "student_functions.py",
+                "score": 100,
+                "max_score": 100,
+                "status": "success",
+                "feedback_preview": "All tests passed successfully."
+            }
+        ]
+    }
 
     # Request CSV export
     response = client.get(

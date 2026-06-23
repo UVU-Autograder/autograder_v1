@@ -16,7 +16,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-import { ChevronRightIcon } from "lucide-react"
+import { ChevronRightIcon, Trash2Icon } from "lucide-react"
 
 export function NavMain({
   items,
@@ -30,6 +30,7 @@ export function NavMain({
       title: string
       url?: string
       onClick?: () => void
+      onDelete?: () => void
     }[]
     actions?: ReactNode
   }[]
@@ -56,7 +57,7 @@ export function NavMain({
               <CollapsibleContent>
                 <SidebarMenuSub>
                   {item.items?.map((subItem) => (
-                    <SidebarMenuSubItem key={subItem.title}>
+                    <SidebarMenuSubItem key={subItem.title} className="flex items-center justify-between group/sub">
                       <SidebarMenuSubButton asChild>
                         {subItem.url ? (
                           <a href={subItem.url}>
@@ -66,7 +67,7 @@ export function NavMain({
                           <button
                             type="button"
                             onClick={subItem.onClick}
-                            className="w-full cursor-pointer"
+                            className="w-full cursor-pointer text-left truncate"
                           >
                             <span>{subItem.title}</span>
                           </button>
@@ -75,6 +76,19 @@ export function NavMain({
                           <span>{subItem.title}</span>
                         )}
                       </SidebarMenuSubButton>
+                      {subItem.onDelete && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            subItem.onDelete!();
+                          }}
+                          className="mr-2 opacity-0 group-hover/sub:opacity-100 text-red-500 hover:text-red-700 transition-opacity p-0.5 rounded cursor-pointer"
+                          aria-label={`Delete ${subItem.title}`}
+                        >
+                          <Trash2Icon className="size-3" />
+                        </button>
+                      )}
                     </SidebarMenuSubItem>
                   ))}
                 </SidebarMenuSub>

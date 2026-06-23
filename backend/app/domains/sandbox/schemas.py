@@ -64,6 +64,7 @@ class SandboxAssignmentDetail(SandboxAssignmentSummary):
     accepted_bundle_types: list[str]
     max_upload_bytes: int = Field(ge=1)
     constraints: list[SandboxConstraint]
+    allowed_concepts: list[str] = Field(default_factory=list)
     rubric: list[SandboxRubricItem]
     rubric_groups: list[SandboxRubricGroup] = Field(default_factory=list)
     completion_requirements: list[dict] = Field(default_factory=list)

@@ -196,6 +196,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
                     width="100%"
                     defaultLanguage={file.language}
                     defaultValue={file.content}
+                    options={{ readOnly: file.category !== 'workspace' }}
                   />
                 </TabsContent>
               );

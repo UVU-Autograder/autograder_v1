@@ -5,6 +5,7 @@ import {
   RunStatusResponse,
   SandboxRunCreateResponse,
   SandboxRunResultResponse,
+  SandboxCancelResponse,
 } from "@/features/assignments/types";
 
 const SANDBOX_SESSION_HEADER = "X-Sandbox-Session";
@@ -79,13 +80,16 @@ export async function getRunStatus(statusUrl: string) {
 
 export async function pollRunUntilComplete(
   statusUrl: string,
-  options?: { intervalMs?: number; maxAttempts?: number }
+  options?: { intervalMs?: number; maxAttempts?: number; onStateChange?: (state: string) => void }
 ) {
-  const intervalMs = options?.intervalMs ?? 500;
+  const intervalMs = options?.intervalMs ?? 2000;
   const maxAttempts = options?.maxAttempts ?? 60;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const status = await getRunStatus(statusUrl);
+    if (options?.onStateChange) {
+      options.onStateChange(status.state);
+    }
     if (status.state === "complete" || status.state === "failure") {
       return status;
     }
@@ -100,7 +104,7 @@ export async function getRunResult(
   sessionId: string,
   options?: { intervalMs?: number; maxAttempts?: number }
 ) {
-  const intervalMs = options?.intervalMs ?? 500;
+  const intervalMs = options?.intervalMs ?? 2000;
   const maxAttempts = options?.maxAttempts ?? 20;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -129,4 +133,14 @@ export async function runSandboxCheck(
   await pollRunUntilComplete(run.status_url);
   const result = await getRunResult(run.result_url, sessionId);
   return { run, result, sessionId };
+}
+
+export async function cancelSandboxRun(runId: string, sessionId: string) {
+  return apiClient.post<SandboxCancelResponse>(
+    `/sandbox/runs/${runId}/cancel`,
+    {},
+    {
+      headers: { [SANDBOX_SESSION_HEADER]: sessionId },
+    }
+  );
 }

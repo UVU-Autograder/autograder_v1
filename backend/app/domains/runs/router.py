@@ -98,7 +98,41 @@ def get_official_run_details(
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to load run details.")
 
-    return data
+    run_summary = db.scalar(select(RunSummary).where(RunSummary.id == run_id))
+    status = run_summary.status if run_summary else "unknown"
+
+    students = []
+    student_results = data.get("student_results", {})
+    for canvas_id, res in student_results.items():
+        success = res.get("success", False)
+        warnings = res.get("warnings", [])
+        
+        status_val = "failure"
+        if success:
+            status_val = "warning" if warnings else "success"
+
+        if not success:
+            feedback_preview = res.get("failure_message") or "Grading execution failed."
+        elif warnings:
+            feedback_preview = "; ".join([w.get("message") for w in warnings if w.get("message")])
+        else:
+            feedback_preview = "All tests passed successfully."
+
+        students.append({
+            "student_name": res.get("student_identifier", "Unknown"),
+            "canvas_id": canvas_id,
+            "matched_file": res.get("matched_file") or "student_functions.py",
+            "score": res.get("score", 0),
+            "max_score": res.get("max_score", 100),
+            "status": status_val,
+            "feedback_preview": feedback_preview
+        })
+
+    return {
+        "run_id": run_id,
+        "status": status,
+        "students": students
+    }
 
 
 @staff_runs_router.get("/{run_id}/export/csv")

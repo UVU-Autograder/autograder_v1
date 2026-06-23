@@ -91,6 +91,7 @@ def get_sandbox_assignment(
 
     config = validate_config_json(assignment.config.config_json)
     settings = get_settings()
+    allowed_concepts = config.concepts.additions if config.concepts else []
     return SandboxAssignmentDetail(
         **_summary_for(assignment, quota).model_dump(),
         description=assignment.title,
@@ -100,6 +101,7 @@ def get_sandbox_assignment(
             SandboxConstraint(label="Entrypoint", value=config.bundle.entrypoint),
             SandboxConstraint(label="Required files", value=", ".join(config.bundle.required_files)),
         ],
+        allowed_concepts=allowed_concepts,
         rubric=[
             SandboxRubricItem(
                 key=item.config_item_key,

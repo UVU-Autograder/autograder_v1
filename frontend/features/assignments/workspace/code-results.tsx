@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { runSandboxCheck } from "@/features/assignments/api";
+import {
+  createSandboxRun,
+  pollRunUntilComplete,
+  getRunResult,
+  cancelSandboxRun,
+} from "@/features/assignments/api";
 import { ApiError } from "@/lib/api-client";
-import type { SandboxRunResultResponse, AssignmentsDetails } from "@/features/assignments/types";
+import type { SandboxRunResultResponse, AssignmentsDetails, Assignment } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 
@@ -13,6 +18,7 @@ type CodeResultsProps = {
   assignmentId: string;
   maxScore: number;
   initialQuota?: AssignmentsDetails["upload_quota"];
+  assignment: Assignment;
 };
 
 type RunPhase = "idle" | "submitting" | "running" | "complete" | "error";
@@ -67,6 +73,7 @@ export default function CodeResults({
   assignmentId,
   maxScore,
   initialQuota,
+  assignment,
 }: CodeResultsProps) {
   const { files } = useAssignmentFile();
   const [showCheckCode, setShowCheckCode] = useState(true);
@@ -77,6 +84,9 @@ export default function CodeResults({
   const [quota, setQuota] = useState<AssignmentsDetails["upload_quota"] | undefined>(initialQuota);
   const [prevInitialQuota, setPrevInitialQuota] = useState(initialQuota);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [runState, setRunState] = useState<string>("queue");
 
   if (initialQuota !== prevInitialQuota) {
     setQuota(initialQuota);
@@ -121,12 +131,21 @@ export default function CodeResults({
   const handleCheckCode = async () => {
     setPhase("submitting");
     setErrorMessage(null);
+    setRunState("queue");
     setShowCheckCode(true);
 
     try {
       const bundle = await createSubmissionBundle(files);
+      const { run, sessionId } = await createSandboxRun(courseId, assignmentId, bundle);
+      setActiveRunId(run.run_id);
+      setActiveSessionId(sessionId);
       setPhase("running");
-      const { result: runResult, run } = await runSandboxCheck(courseId, assignmentId, bundle);
+
+      await pollRunUntilComplete(run.status_url, {
+        onStateChange: (state) => setRunState(state)
+      });
+      const runResult = await getRunResult(run.result_url, sessionId);
+      
       setResult(runResult);
       if (run.upload_quota) {
         setQuota(run.upload_quota);
@@ -144,6 +163,23 @@ export default function CodeResults({
           error instanceof Error ? error.message : "Failed to run sandbox check."
         );
       }
+    } finally {
+      setActiveRunId(null);
+      setActiveSessionId(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!activeRunId || !activeSessionId) return;
+    try {
+      await cancelSandboxRun(activeRunId, activeSessionId);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setErrorMessage("Cannot cancel: the run has already started executing.");
+        return;
+      }
+      console.error("Failed to cancel run:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Failed to cancel run.");
     }
   };
 
@@ -152,9 +188,30 @@ export default function CodeResults({
   const percent = totalScore > 0 ? Math.round((score / totalScore) * 100) : 0;
   const isLoading = phase === "submitting" || phase === "running";
   const isQuotaExhausted = quota !== undefined && quota.remaining === 0;
+  const testCases = (assignment.rubric || []).filter((item) => item.item_type === 'pytest');
 
   return (
     <div className="px-1">
+      <div className="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
+        <h4 className="text-xs font-bold text-slate-800 mb-2 uppercase tracking-wide">Test Case Specifications</h4>
+        <div className="space-y-2">
+          {testCases.length === 0 ? (
+            <p className="text-xs text-slate-500">No test cases specified.</p>
+          ) : (
+            testCases.map((tc, index) => (
+              <div key={tc.key} className="text-xs flex justify-between items-start gap-2 border-b border-slate-100 last:border-b-0 pb-1.5 last:pb-0">
+                <span className="font-medium text-slate-700">
+                  {tc.label || `Test Case #${index + 1}`}
+                </span>
+                <span className="text-slate-500 whitespace-nowrap">
+                  {tc.points} pts {tc.extra_credit ? "(EC)" : ""}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       <Button
         onClick={handleCheckCode}
         disabled={isLoading || isQuotaExhausted}
@@ -168,6 +225,17 @@ export default function CodeResults({
               ? "Upload Limit Reached"
               : "Run Tests"}
       </Button>
+
+      {isLoading && activeRunId && activeSessionId && (
+        <Button
+          onClick={handleCancel}
+          variant="destructive"
+          disabled={runState !== "queue"}
+          className="w-full mt-2"
+        >
+          {runState === "queue" ? "Cancel Run" : "Executing (Cannot Cancel)"}
+        </Button>
+      )}
 
       {quota && (
         <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
@@ -218,8 +286,9 @@ export default function CodeResults({
                     className={`p-3 mb-2 rounded-lg border ${testStatusContainerClass(test.status)}`}
                   >
                     <div className="flex justify-between items-center mb-2 gap-2">
-                      <p className="font-semibold">Test Case #{index + 1}</p>
-                      <p className="text-sm">{test.label}</p>
+                      <p className="font-semibold">
+                        {test.label ? `Test Case: ${test.label}` : `Test Case #${index + 1}`}
+                      </p>
                       <span className={`text-sm font-bold ${testStatusTextClass(test.status)}`}>
                         {testStatusLabel(test.status)}
                       </span>

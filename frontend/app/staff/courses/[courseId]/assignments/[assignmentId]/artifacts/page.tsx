@@ -2,12 +2,13 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, UploadIcon, TrashIcon, DownloadIcon, FileIcon } from "lucide-react";
+import { ArrowLeftIcon, UploadIcon, TrashIcon, DownloadIcon, FileIcon, EditIcon, XIcon, ShieldAlertIcon, SaveIcon, FileTextIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
 import { staffArtifactPath } from "@/features/staff/api";
+import MonacoEditor from "@/components/monaco-editor";
 
 type ArtifactMetadata = {
   artifact_key: string;
@@ -33,6 +34,16 @@ export default function ArtifactsPage({ params }: PageProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Code Editor states
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
+  const [isLoadingCode, setIsLoadingCode] = useState(false);
+  const [editArtifactKey, setEditArtifactKey] = useState("");
+  const [editArtifactType, setEditArtifactType] = useState("");
+  const [editArtifactFilename, setEditArtifactFilename] = useState("");
+  const [editCodeText, setEditCodeText] = useState("");
+  const [isSavingCode, setIsSavingCode] = useState(false);
+  const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
 
   // Form states for new upload
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -122,6 +133,68 @@ export default function ArtifactsPage({ params }: PageProps) {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Download failed.");
+    }
+  };
+
+  const fetchArtifactText = async (key: string): Promise<string> => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+    const url = `${baseUrl.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["authorization"] = `Bearer ${token}`;
+    }
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch artifact content: ${res.statusText}`);
+    }
+    return res.text();
+  };
+
+  const openCodeEditor = async (key: string, type: string, filename: string) => {
+    setError(null);
+    setCodeEditorError(null);
+    setEditArtifactKey(key);
+    setEditArtifactType(type);
+    setEditArtifactFilename(filename);
+    setEditCodeText("");
+    setIsCodeModalOpen(true);
+    setIsLoadingCode(true);
+    setIsSavingCode(false);
+
+    try {
+      const text = await fetchArtifactText(key);
+      setEditCodeText(text);
+      setIsLoadingCode(false);
+    } catch (err) {
+      setCodeEditorError(err instanceof Error ? err.message : "Failed to load artifact code.");
+      setIsLoadingCode(false);
+    }
+  };
+
+  const saveCodeChanges = async () => {
+    if (!editArtifactKey) return;
+    setIsSavingCode(true);
+    setCodeEditorError(null);
+
+    const file = new File([editCodeText], editArtifactFilename, { type: "text/plain" });
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("artifact_key", editArtifactKey);
+    formData.append("artifact_type", editArtifactType);
+
+    try {
+      await apiClient.postForm(
+        `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
+        formData
+      );
+      setIsCodeModalOpen(false);
+      setSuccess(`Code saved successfully for '${editArtifactFilename}'.`);
+      fetchArtifacts();
+    } catch (err) {
+      setCodeEditorError(err instanceof Error ? err.message : "Failed to save code changes.");
+    } finally {
+      setIsSavingCode(false);
     }
   };
 
@@ -249,6 +322,15 @@ export default function ArtifactsPage({ params }: PageProps) {
                             variant="ghost"
                             size="icon"
                             onClick={() =>
+                              openCodeEditor(art.artifact_key, art.artifact_type, art.display_filename || art.artifact_key)
+                            }
+                          >
+                            <EditIcon className="size-4 text-indigo-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
                               handleDownload(art.artifact_key, art.display_filename)
                             }
                           >
@@ -271,6 +353,57 @@ export default function ArtifactsPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Code Editor Modal Overlay */}
+      {isCodeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-xl w-full max-w-5xl h-[85vh] flex flex-col">
+            <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <FileTextIcon className="size-5 text-indigo-600 animate-pulse" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Editing Grading Asset: {editArtifactFilename}</h3>
+                  <p className="text-xs text-slate-400">Directly modify the asset content on the server.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsCodeModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                <XIcon className="size-5" />
+              </button>
+            </div>
+
+            {codeEditorError && (
+              <div className="bg-red-50 text-red-600 p-3 text-xs border-b border-red-100 flex items-center gap-2">
+                <ShieldAlertIcon className="size-4 shrink-0" />
+                <span>{codeEditorError}</span>
+              </div>
+            )}
+
+            <div className="grow bg-slate-900 overflow-hidden relative flex items-center justify-center">
+              {isLoadingCode ? (
+                <p className="text-xs text-slate-400 animate-pulse font-mono">Fetching file content from server...</p>
+              ) : (
+                <MonacoEditor
+                  height="100%"
+                  width="100%"
+                  defaultLanguage={editArtifactFilename.endsWith(".py") ? "python" : editArtifactFilename.endsWith(".json") ? "json" : "plaintext"}
+                  defaultValue={editCodeText}
+                  onChange={(val) => setEditCodeText(val || "")}
+                />
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 rounded-b-lg">
+              <Button variant="outline" size="sm" onClick={() => setIsCodeModalOpen(false)} disabled={isSavingCode}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={saveCodeChanges} disabled={isSavingCode}>
+                <SaveIcon className="size-4 mr-1.5" />
+                {isSavingCode ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

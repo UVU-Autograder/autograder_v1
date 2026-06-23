@@ -548,13 +548,16 @@ def grade_official_run(self, run_id: int) -> dict:
     timeout_count = 0
     failure_summary_counts = {}
 
-    for canvas_user_id, paths in grouped_files.items():
+    async def grade_student_async(canvas_user_id: str, paths: list[Path], semaphore: asyncio.Semaphore):
+        nonlocal success_count, warning_count, failure_count, timeout_count
+
         student_identifier = "unknown"
         submission_id = "unknown"
+        original_filename = "unknown"
         for p in paths:
             parsed = parse_canvas_filename(p.name)
             if parsed:
-                student_identifier, _, submission_id, _ = parsed
+                student_identifier, _, submission_id, original_filename = parsed
                 break
 
         student_temp_dir = run_dir / f"student_{canvas_user_id}"
@@ -568,6 +571,7 @@ def grade_official_run(self, run_id: int) -> dict:
             student_results[canvas_user_id] = {
                 "student_identifier": student_identifier,
                 "submission_id": submission_id,
+                "matched_file": original_filename,
                 "success": False,
                 "score": 0,
                 "max_score": max_score,
@@ -577,7 +581,8 @@ def grade_official_run(self, run_id: int) -> dict:
                 "failure_message": f"Failed to prepare submission bundle: {str(e)}",
                 "feedback_html": f"<html><body><p>Error preparing submission: {str(e)}</p></body></html>"
             }
-            continue
+            shutil.rmtree(student_temp_dir, ignore_errors=True)
+            return
 
         student_zip_buffer = io.BytesIO()
         with zipfile.ZipFile(student_zip_buffer, "w", zipfile.ZIP_DEFLATED) as sz:
@@ -586,16 +591,14 @@ def grade_official_run(self, run_id: int) -> dict:
                     sz.write(filepath, filepath.relative_to(student_temp_dir))
         student_zip_bytes = student_zip_buffer.getvalue()
 
-        loop = asyncio.new_event_loop()
         try:
-            grading_result = loop.run_until_complete(
-                run_grading_pipeline(
+            async with semaphore:
+                grading_result = await run_grading_pipeline(
                     zip_data=student_zip_bytes,
                     config=config,
                     artifact_refs=artifact_refs,
                     allowed_concepts=allowed_concepts,
                 )
-            )
         except Exception as exc:
             logger.exception("Grading pipeline crashed for student %s", student_identifier)
             grading_result = GradingResult(
@@ -604,8 +607,6 @@ def grade_official_run(self, run_id: int) -> dict:
                 failure_message=f"Grading error: {type(exc).__name__}",
                 max_score=max_score
             )
-        finally:
-            loop.close()
 
         feedback_html = generate_pedagogical_feedback_html(student_identifier, grading_result)
 
@@ -625,6 +626,7 @@ def grade_official_run(self, run_id: int) -> dict:
         student_results[canvas_user_id] = {
             "student_identifier": student_identifier,
             "submission_id": submission_id,
+            "matched_file": original_filename,
             "success": grading_result.success,
             "score": grading_result.score,
             "max_score": grading_result.max_score,
@@ -637,15 +639,28 @@ def grade_official_run(self, run_id: int) -> dict:
 
         shutil.rmtree(student_temp_dir, ignore_errors=True)
 
-        with SessionLocal() as db:
-            run_db = db.scalar(select(RunSummary).where(RunSummary.id == run_id))
+        with SessionLocal() as db_inner:
+            run_db = db_inner.scalar(select(RunSummary).where(RunSummary.id == run_id))
             if run_db:
                 run_db.success_count = success_count
                 run_db.warning_count = warning_count
                 run_db.failure_count = failure_count
                 run_db.timeout_count = timeout_count
                 run_db.failure_summary = failure_summary_counts
-                db.commit()
+                db_inner.commit()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        semaphore = asyncio.Semaphore(settings.judge0_max_concurrent)
+        tasks = [
+            grade_student_async(canvas_user_id, paths, semaphore)
+            for canvas_user_id, paths in grouped_files.items()
+        ]
+        loop.run_until_complete(asyncio.gather(*tasks))
+    finally:
+        asyncio.set_event_loop(None)
+        loop.close()
 
     # Clean up extraction workspace directory
     shutil.rmtree(extract_dir, ignore_errors=True)
@@ -738,6 +753,7 @@ def run_mock_official_run(run_id: int) -> None:
             student_results[canvas_id] = {
                 "student_identifier": name,
                 "submission_id": sub_id,
+                "matched_file": "mock_file.py",
                 "success": success,
                 "score": score,
                 "max_score": max_score,

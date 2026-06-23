@@ -37,6 +37,7 @@ export type Assignment = AssignmentsDetails & {
     accepted_bundle_types: string[];
     max_upload_bytes: number;
     constraints: Constraint[];
+    allowed_concepts?: string[];
     rubric: RubricItem[];
     rubric_groups: [];
     completion_requirements: [];
@@ -88,4 +89,10 @@ export type SandboxRunResultResponse = {
     test_summaries: SandboxTestSummary[];
     sanitized_feedback: string;
     retention_notice: string;
+};
+
+export type SandboxCancelResponse = {
+    run_id: string;
+    state: string;
+    message: string;
 };

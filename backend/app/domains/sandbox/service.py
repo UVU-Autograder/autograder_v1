@@ -92,7 +92,15 @@ class SandboxService:
             return None, session, 503
 
         now = datetime.now(UTC)
-        self._session_uploads.setdefault(session, []).append(now)
+        if self._use_celery:
+            try:
+                r = self._redis_conn()
+                r.rpush(f"sandbox:uploads:{session}", str(now.timestamp()))
+                r.expire(f"sandbox:uploads:{session}", int(UPLOAD_WINDOW.total_seconds()))
+            except Exception:
+                self._session_uploads.setdefault(session, []).append(now)
+        else:
+            self._session_uploads.setdefault(session, []).append(now)
         run_id = f"run_{token_urlsafe(16)}"
         record = SandboxRunRecord(
             run_id=run_id,
@@ -139,21 +147,24 @@ class SandboxService:
 
         # Try Redis first if Celery mode is active
         if self._use_celery:
-            from app.domains.runs.tasks import get_run_state
-            redis_state = get_run_state(run_id)
-            if redis_state is not None:
-                state = redis_state.get("state", "queue")
-                record = self._runs.get(run_id)
-                queue_pos = redis_state.get("queue_position")
-                return RunStatusResponse(
-                    run_id=run_id,
-                    state=state,
-                    queue_position=queue_pos if state == "queue" else None,
-                    eta_band="1_to_3_min" if state == "queue" else None,
-                    counters=self._counters(),
-                    backpressure=self._backpressure(),
-                    message=self._message_for(state),
-                )
+            try:
+                from app.domains.runs.tasks import get_run_state
+                redis_state = get_run_state(run_id)
+                if redis_state is not None:
+                    state = redis_state.get("state", "queue")
+                    record = self._runs.get(run_id)
+                    queue_pos = redis_state.get("queue_position")
+                    return RunStatusResponse(
+                        run_id=run_id,
+                        state=state,
+                        queue_position=queue_pos if state == "queue" else None,
+                        eta_band="1_to_3_min" if state == "queue" else None,
+                        counters=self._counters(),
+                        backpressure=self._backpressure(),
+                        message=self._message_for(state),
+                    )
+            except Exception:
+                pass
 
         # Fall back to in-memory mock
         record = self._runs.get(run_id)
@@ -176,8 +187,11 @@ class SandboxService:
 
         # Also update Redis if in Celery mode
         if self._use_celery:
-            from app.domains.runs.tasks import set_run_state
-            set_run_state(run_id, "failure", {"failure_category": "cancelled"})
+            try:
+                from app.domains.runs.tasks import set_run_state
+                set_run_state(run_id, "failure", {"failure_category": "cancelled"})
+            except Exception:
+                pass
 
         return SandboxCancelResponse(
             run_id=run_id,
@@ -197,65 +211,68 @@ class SandboxService:
 
         # Try Redis for real results if in Celery mode
         if self._use_celery:
-            from app.domains.runs.tasks import get_run_result, get_run_state
-            redis_state = get_run_state(run_id)
-            if redis_state is None:
-                return "not_ready"
-            state = redis_state.get("state", "queue")
-            if state not in {"complete", "failure"}:
-                return "not_ready"
+            try:
+                from app.domains.runs.tasks import get_run_result, get_run_state
+                redis_state = get_run_state(run_id)
+                if redis_state is None:
+                    return "not_ready"
+                state = redis_state.get("state", "queue")
+                if state not in {"complete", "failure"}:
+                    return "not_ready"
 
-            redis_result = get_run_result(run_id)
-            if redis_result is None:
-                return "not_ready"
+                redis_result = get_run_result(run_id)
+                if redis_result is None:
+                    return "not_ready"
 
-            if state == "failure":
+                if state == "failure":
+                    return SandboxRunResultResponse(
+                        run_id=run_id,
+                        state="failure",
+                        projected_score=0,
+                        max_score=record.max_score,
+                        warnings=[
+                            SandboxWarning(
+                                code=redis_result.get("failure_category", "internal_error"),
+                                message=redis_result.get("failure_message", "Run failed."),
+                            )
+                        ],
+                        test_summaries=[],
+                        sanitized_feedback="The sandbox run ended with an error.",
+                        file_preview=self._file_preview(),
+                        retention_notice="Sandbox results are session-only and are not retained as student submissions.",
+                    )
+
+                # Build test summaries from real results
+                test_summaries = []
+                for tr in redis_result.get("test_results", []):
+                    test_summaries.append(
+                        TestSummary(
+                            label=tr.get("label", tr.get("key", "Unknown")),
+                            status="passed" if tr.get("passed") else "failed",
+                            points_awarded=tr.get("points_awarded", 0),
+                            points_possible=tr.get("points", 0),
+                            message=tr.get("label", ""),
+                        )
+                    )
+
+                warnings = [
+                    SandboxWarning(code=w.get("code", "warning"), message=w.get("message", ""))
+                    for w in redis_result.get("warnings", [])
+                ]
+
                 return SandboxRunResultResponse(
                     run_id=run_id,
-                    state="failure",
-                    projected_score=0,
-                    max_score=record.max_score,
-                    warnings=[
-                        SandboxWarning(
-                            code=redis_result.get("failure_category", "internal_error"),
-                            message=redis_result.get("failure_message", "Run failed."),
-                        )
-                    ],
-                    test_summaries=[],
-                    sanitized_feedback="The sandbox run ended with an error.",
+                    state="complete",
+                    projected_score=redis_result.get("score", 0),
+                    max_score=redis_result.get("max_score", record.max_score),
+                    warnings=warnings,
+                    test_summaries=test_summaries,
+                    sanitized_feedback="Review your results above.",
                     file_preview=self._file_preview(),
                     retention_notice="Sandbox results are session-only and are not retained as student submissions.",
                 )
-
-            # Build test summaries from real results
-            test_summaries = []
-            for tr in redis_result.get("test_results", []):
-                test_summaries.append(
-                    TestSummary(
-                        label=tr.get("label", tr.get("key", "Unknown")),
-                        status="passed" if tr.get("passed") else "failed",
-                        points_awarded=tr.get("points_awarded", 0),
-                        points_possible=tr.get("points", 0),
-                        message=tr.get("label", ""),
-                    )
-                )
-
-            warnings = [
-                SandboxWarning(code=w.get("code", "warning"), message=w.get("message", ""))
-                for w in redis_result.get("warnings", [])
-            ]
-
-            return SandboxRunResultResponse(
-                run_id=run_id,
-                state="complete",
-                projected_score=redis_result.get("score", 0),
-                max_score=redis_result.get("max_score", record.max_score),
-                warnings=warnings,
-                test_summaries=test_summaries,
-                sanitized_feedback="Review your results above.",
-                file_preview=self._file_preview(),
-                retention_notice="Sandbox results are session-only and are not retained as student submissions.",
-            )
+            except Exception:
+                pass
 
         # In-memory mock behavior for contract tests
         if record.state not in {"complete", "failure"}:
@@ -309,24 +326,76 @@ class SandboxService:
             retention_notice="Sandbox results are session-only and are not retained as student submissions.",
         )
 
+    def _redis_conn(self):
+        import redis
+        return redis.Redis.from_url(get_settings().redis_url, decode_responses=True)
+
     def _quota_for(self, session_id: str | None) -> UploadQuota:
         now = datetime.now(UTC)
-        if session_id is not None:
+        if session_id is None:
+            return UploadQuota(
+                limit=UPLOAD_LIMIT,
+                window_seconds=int(UPLOAD_WINDOW.total_seconds()),
+                remaining=UPLOAD_LIMIT,
+                reset_at=(now + UPLOAD_WINDOW).isoformat(),
+            )
+
+        def _fallback_quota():
             uploads = [
                 ts
                 for ts in self._session_uploads.get(session_id, [])
                 if now - ts < UPLOAD_WINDOW
             ]
             self._session_uploads[session_id] = uploads
-        else:
-            uploads = []
-        reset_at = now + UPLOAD_WINDOW
-        if uploads:
-            reset_at = uploads[0] + UPLOAD_WINDOW
-        return UploadQuota(
-            remaining=max(UPLOAD_LIMIT - len(uploads), 0),
-            reset_at=reset_at.isoformat(),
-        )
+            reset_at = now + UPLOAD_WINDOW
+            if uploads:
+                reset_at = uploads[0] + UPLOAD_WINDOW
+            return UploadQuota(
+                limit=UPLOAD_LIMIT,
+                window_seconds=int(UPLOAD_WINDOW.total_seconds()),
+                remaining=max(UPLOAD_LIMIT - len(uploads), 0),
+                reset_at=reset_at.isoformat(),
+            )
+
+        if not self._use_celery:
+            return _fallback_quota()
+
+        try:
+            # Redis rate-limiting
+            r = self._redis_conn()
+            key = f"sandbox:uploads:{session_id}"
+            raw_uploads = r.lrange(key, 0, -1)
+            uploads_ts = []
+            for raw in raw_uploads:
+                try:
+                    uploads_ts.append(float(raw))
+                except ValueError:
+                    pass
+            
+            now_ts = now.timestamp()
+            cutoff_ts = now_ts - UPLOAD_WINDOW.total_seconds()
+            active_ts = [ts for ts in uploads_ts if ts > cutoff_ts]
+            
+            r.delete(key)
+            if active_ts:
+                r.rpush(key, *[str(ts) for ts in active_ts])
+                r.expire(key, int(UPLOAD_WINDOW.total_seconds()))
+
+            remaining = max(UPLOAD_LIMIT - len(active_ts), 0)
+            if active_ts:
+                oldest_dt = datetime.fromtimestamp(min(active_ts), tz=UTC)
+                reset_at = oldest_dt + UPLOAD_WINDOW
+            else:
+                reset_at = now + UPLOAD_WINDOW
+
+            return UploadQuota(
+                limit=UPLOAD_LIMIT,
+                window_seconds=int(UPLOAD_WINDOW.total_seconds()),
+                remaining=remaining,
+                reset_at=reset_at.isoformat(),
+            )
+        except Exception:
+            return _fallback_quota()
 
     def _status_for(self, record: SandboxRunRecord) -> RunStatusResponse:
         return RunStatusResponse(
@@ -356,6 +425,29 @@ class SandboxService:
 
     def _counters(self) -> RunCounters:
         values = list(self._runs.values())
+        if self._use_celery:
+            try:
+                from app.domains.runs.tasks import get_run_state
+                for item in values:
+                    redis_state = get_run_state(item.run_id)
+                    if redis_state:
+                        item.state = redis_state.get("state", "queue")
+                r = self._redis_conn()
+                sandbox_len = r.llen("sandbox") or 0
+                official_len = r.llen("official") or 0
+                queued = sandbox_len + official_len
+            except Exception:
+                queued = sum(1 for item in values if item.state == "queue")
+            
+            return RunCounters(
+                total=len(values),
+                queued=queued,
+                running=sum(1 for item in values if item.state == "run"),
+                completed=sum(1 for item in values if item.state == "complete"),
+                failed=sum(1 for item in values if item.state == "failure"),
+                warnings=sum(item.warnings for item in values if item.state == "complete"),
+            )
+
         return RunCounters(
             total=len(values),
             queued=sum(1 for item in values if item.state == "queue"),
@@ -374,7 +466,15 @@ class SandboxService:
         )
 
     def _queued_count(self) -> int:
-        return sum(1 for item in self._runs.values() if item.state == "queue")
+        if not self._use_celery:
+            return sum(1 for item in self._runs.values() if item.state == "queue")
+        try:
+            r = self._redis_conn()
+            sandbox_len = r.llen("sandbox") or 0
+            official_len = r.llen("official") or 0
+            return sandbox_len + official_len
+        except Exception:
+            return sum(1 for item in self._runs.values() if item.state == "queue")
 
     def _assignment_max_score(self, record: SandboxRunRecord) -> int:
         return record.max_score
