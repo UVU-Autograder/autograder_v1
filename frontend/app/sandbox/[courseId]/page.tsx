@@ -9,10 +9,11 @@ type PageProps = {
 
 export default async function Page({ params }: PageProps) {
     const { courseId } = await params;
+    let data;
     try {
-        const data = await getAssignments(courseId);
-        return <AssignmentsPage data={data} mode="sandbox" />;
+        data = await getAssignments(courseId);
     } catch {
         throw new Error("Failed to load assignments.");
     }
+    return <AssignmentsPage data={data} mode="sandbox" />;
 }
