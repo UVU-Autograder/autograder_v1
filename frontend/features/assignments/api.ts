@@ -83,13 +83,19 @@ export async function getRunStatus(statusUrl: string) {
 
 export async function pollRunUntilComplete(
   statusUrl: string,
-  options?: { intervalMs?: number; maxAttempts?: number; onStateChange?: (state: string) => void }
+  options?: {
+    intervalMs?: number;
+    maxAttempts?: number;
+    onStateChange?: (state: string) => void;
+    onStatusUpdate?: (status: RunStatusResponse) => void;
+  }
 ) {
   const intervalMs = options?.intervalMs ?? intervalsMsDefault;
   const maxAttempts = options?.maxAttempts ?? 60;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const status = await getRunStatus(statusUrl);
+    options?.onStatusUpdate?.(status);
     if (options?.onStateChange) {
       options.onStateChange(status.state);
     }

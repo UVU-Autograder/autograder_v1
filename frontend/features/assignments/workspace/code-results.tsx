@@ -9,7 +9,12 @@ import {
   cancelSandboxRun,
 } from "@/features/assignments/api";
 import { ApiError } from "@/lib/api-client";
-import type { SandboxRunResultResponse, AssignmentsDetails, Assignment } from "@/features/assignments/types";
+import type {
+  SandboxRunResultResponse,
+  AssignmentsDetails,
+  Assignment,
+  RunStatusResponse,
+} from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 
@@ -66,6 +71,32 @@ function testStatusTextClass(
   }
 }
 
+function formatEtaBand(etaBand: string | null): string | null {
+  if (!etaBand) return null;
+  const labels: Record<string, string> = {
+    under_1_min: "Under 1 minute",
+    "1_to_3_min": "1–3 minutes",
+    "3_to_5_min": "3–5 minutes",
+    over_5_min: "Over 5 minutes",
+  };
+  return labels[etaBand] ?? etaBand;
+}
+
+function runStateLabel(state: string): string {
+  switch (state) {
+    case "queue":
+      return "Queued";
+    case "run":
+      return "Running";
+    case "complete":
+      return "Complete";
+    case "failure":
+      return "Failed";
+    default:
+      return state;
+  }
+}
+
 import { useEffect } from "react";
 
 export default function CodeResults({
@@ -87,6 +118,7 @@ export default function CodeResults({
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [runState, setRunState] = useState<string>("queue");
+  const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
 
   if (initialQuota !== prevInitialQuota) {
     setQuota(initialQuota);
@@ -132,6 +164,7 @@ export default function CodeResults({
     setPhase("submitting");
     setErrorMessage(null);
     setRunState("queue");
+    setRunStatus(null);
     setShowCheckCode(true);
 
     try {
@@ -139,10 +172,13 @@ export default function CodeResults({
       const { run, sessionId } = await createSandboxRun(courseId, assignmentId, bundle);
       setActiveRunId(run.run_id);
       setActiveSessionId(sessionId);
+      setRunStatus(run.initial_status);
+      setRunState(run.initial_status.state);
       setPhase("running");
 
       await pollRunUntilComplete(run.status_url, {
-        onStateChange: (state) => setRunState(state)
+        onStateChange: (state) => setRunState(state),
+        onStatusUpdate: (status) => setRunStatus(status),
       });
       const runResult = await getRunResult(run.result_url, sessionId);
       
@@ -166,6 +202,7 @@ export default function CodeResults({
     } finally {
       setActiveRunId(null);
       setActiveSessionId(null);
+      setRunStatus(null);
     }
   };
 
@@ -225,6 +262,31 @@ export default function CodeResults({
               ? "Upload Limit Reached"
               : "Run Tests"}
       </Button>
+
+      {isLoading && runStatus && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <p className="mb-2 font-semibold uppercase tracking-wide">Run Status</p>
+          <div className="space-y-1 text-amber-700">
+            <p>
+              <span className="font-semibold">State:</span> {runStateLabel(runStatus.state)}
+            </p>
+            {runStatus.queue_position !== null && (
+              <p>
+                <span className="font-semibold">Queue position:</span> {runStatus.queue_position}
+              </p>
+            )}
+            {formatEtaBand(runStatus.eta_band) && (
+              <p>
+                <span className="font-semibold">Estimated wait: </span>
+                {formatEtaBand(runStatus.eta_band)}
+              </p>
+            )}
+            {runStatus.message && (
+              <p className="mt-2 border-t border-amber-200 pt-2 italic">{runStatus.message}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {isLoading && activeRunId && activeSessionId && (
         <Button
@@ -328,7 +390,11 @@ export default function CodeResults({
         ) : (
           <p className="mt-4 text-sm text-slate-600">
             {isLoading
-              ? "Waiting for sandbox results..."
+              ? runState === "queue"
+                ? "Your submission is queued. Position and ETA update as capacity clears."
+                : runState === "run"
+                  ? "Your submission is running. Results will appear here when grading finishes."
+                  : "Waiting for sandbox results..."
               : "Run Check Code to see your projected score and test summaries."}
           </p>
         )}
