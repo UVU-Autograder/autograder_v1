@@ -17,6 +17,7 @@ import type {
 } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
+import { useEffect } from "react";
 
 type CodeResultsProps = {
   courseId: string;
@@ -96,8 +97,6 @@ function runStateLabel(state: string): string {
       return state;
   }
 }
-
-import { useEffect } from "react";
 
 export default function CodeResults({
   courseId,
@@ -395,7 +394,7 @@ export default function CodeResults({
                 : runState === "run"
                   ? "Your submission is running. Results will appear here when grading finishes."
                   : "Waiting for sandbox results..."
-              : "Run Check Code to see your projected score and test summaries."}
+              : "Run tests to see your projected score and test summaries."}
           </p>
         )}
       </div>
@@ -413,7 +412,7 @@ export default function CodeResults({
           <p className="font-bold text-lg">Feedback:</p>
           <p className="mt-2 text-sm text-slate-700">
             {result?.sanitized_feedback ??
-              "Run Check Code to generate session-only projected feedback."}
+              "Run tests to generate session-only projected feedback."}
           </p>
           {result?.retention_notice && (
             <p className="mt-3 text-xs text-slate-500">{result.retention_notice}</p>
