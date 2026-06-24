@@ -4,6 +4,7 @@ python-multipart>=0.0.22,<1
 pytest>=8.4.2,<9
 pytest-asyncio>=1.4.0,<2
 httpx>=0.28.1,<1
+httpx2
 sqlalchemy>=2.0.45,<3
 alembic>=1.18.4,<2
 psycopg[binary]>=3.3.4,<4

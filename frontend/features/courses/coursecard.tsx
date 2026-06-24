@@ -36,7 +36,7 @@ export default function CourseCard({
   mode: ViewMode;
 }) {
   const colorClass = getColor(course.id);
-  const linkHref = mode === "sandbox" ? `/sandbox/${course.id}` : `/staff/courses/${course.id}`;
+  const linkHref = mode === "sandbox" ? `/sandbox/${course.id}/assignments` : `/staff/courses/${course.id}/assignments`;
 
   return (
     <Link href={linkHref} className="block">

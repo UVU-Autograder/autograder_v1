@@ -31,8 +31,8 @@ export default function AssignmentsPage({
           </div>
           {mode === "staff" && (
             <Button variant="outline" asChild>
-              <Link href={`/staff/courses/${data.course_id}/concepts`}>
-                Edit Course Defaults
+              <Link href={`/staff/courses/${data.course_id}/settings`}>
+                Course Settings
               </Link>
             </Button>
           )}

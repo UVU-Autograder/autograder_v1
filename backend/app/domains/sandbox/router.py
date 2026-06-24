@@ -15,6 +15,7 @@ from app.domains.sandbox.schemas import (
     SandboxCourseListResponse,
     SandboxRunCreateResponse,
     SandboxRunResultResponse,
+    ConceptMetadata,
 )
 from app.domains.sandbox.service import sandbox_service
 
@@ -152,3 +153,10 @@ def get_result(
     if result == "not_ready":
         raise HTTPException(status_code=409, detail="Sandbox result is not ready yet.")
     return result
+
+
+@router.get("/concepts/metadata", response_model=dict[str, ConceptMetadata])
+def get_concepts_metadata_endpoint():
+    from app.integrations.ast_checker.validator import get_concepts_metadata
+    return get_concepts_metadata()
+

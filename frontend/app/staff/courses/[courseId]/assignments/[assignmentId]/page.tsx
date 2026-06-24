@@ -21,6 +21,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import MonacoEditor from "@/components/monaco-editor";
+import { getConceptsMetadata } from "@/features/assignments/api";
+import { ConceptMetadata } from "@/features/assignments/types";
 
 type ScoringItem = {
   key: string;
@@ -294,9 +296,8 @@ export default function SetupWizardPage({ params }: PageProps) {
 
   // Step 4
   const [concepts, setConcepts] = useState<string[]>([]);
-  const [customConcepts, setCustomConcepts] = useState<string[]>([]);
-  const [newCustomConcept, setNewCustomConcept] = useState("");
   const [stdinScenarios, setStdinScenarios] = useState<StdinScenarioConfig[]>([]);
+  const [conceptMeta, setConceptMeta] = useState<Record<string, ConceptMetadata>>({});
 
   // Step 5
   const [dependencies, setDependencies] = useState<string[]>([]);
@@ -326,7 +327,7 @@ export default function SetupWizardPage({ params }: PageProps) {
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
 
   // Centralized State Initialization Helper
-  const syncSetupState = (data: StaffAssignmentSetup) => {
+  const syncSetupState = (data: StaffAssignmentSetup, meta: Record<string, ConceptMetadata> = conceptMeta) => {
     const config = data.config_json;
     setSetup(data);
     setTitle(data.title);
@@ -344,9 +345,8 @@ export default function SetupWizardPage({ params }: PageProps) {
 
     // Step 4
     const additions = config.concepts?.additions || [];
-    const predefined = ["variables", "conditionals", "loops", "functions", "file-io", "image-processing"];
+    const predefined = Object.keys(meta);
     setConcepts(additions.filter(c => predefined.includes(c)));
-    setCustomConcepts(additions.filter(c => !predefined.includes(c)));
     setStdinScenarios(config.stdin_scenarios || []);
 
     // Step 5
@@ -362,11 +362,13 @@ export default function SetupWizardPage({ params }: PageProps) {
       }
     });
 
-    apiClient.get<StaffAssignmentSetup>(
-      `/staff/courses/${courseId}/assignments/${assignmentId}/setup`
-    ).then((data) => {
+    Promise.all([
+      apiClient.get<StaffAssignmentSetup>(`/staff/courses/${courseId}/assignments/${assignmentId}/setup`),
+      getConceptsMetadata(),
+    ]).then(([setupData, metaData]) => {
       if (active) {
-        syncSetupState(data);
+        setConceptMeta(metaData);
+        syncSetupState(setupData, metaData);
         setIsLoading(false);
       }
     }).catch((err) => {
@@ -557,7 +559,7 @@ export default function SetupWizardPage({ params }: PageProps) {
         file_requirements: fileRequirements,
       },
       concepts: {
-        additions: [...concepts, ...customConcepts],
+        additions: concepts,
       },
       tests: tests.map(t => ({
         key: t.key,
@@ -876,18 +878,6 @@ export default function SetupWizardPage({ params }: PageProps) {
     );
   };
 
-  const addCustomConcept = () => {
-    const val = newCustomConcept.trim().toLowerCase();
-    if (val && !concepts.includes(val) && !customConcepts.includes(val)) {
-      setCustomConcepts([...customConcepts, val]);
-      setNewCustomConcept("");
-    }
-  };
-
-  const removeCustomConcept = (concept: string) => {
-    setCustomConcepts(customConcepts.filter(c => c !== concept));
-  };
-
   const addStdinScenario = () => {
     const nextId = stdinScenarios.length + 1;
     setStdinScenarios([...stdinScenarios, {
@@ -933,14 +923,11 @@ export default function SetupWizardPage({ params }: PageProps) {
     );
   }
 
-  const allPossibleConcepts = [
-    { key: "variables", desc: "Allows variable declarations and assignments (e.g. x = 5)." },
-    { key: "conditionals", desc: "Allows comparison operators, if-else logic, and ternary statements." },
-    { key: "loops", desc: "Allows iterative processing structures (for loops, while loops)." },
-    { key: "functions", desc: "Allows declaring custom modular operations (def / async def statements)." },
-    { key: "file-io", desc: "Allows opening, reading, or writing physical files (e.g. open(), read())." },
-    { key: "image-processing", desc: "Allows importing and executing operations on the Pillow/PIL library." },
-  ];
+  const allPossibleConcepts = Object.values(conceptMeta).map((item) => ({
+    key: item.key,
+    title: item.title,
+    patterns: item.syntax_patterns,
+  }));
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10">
@@ -948,7 +935,7 @@ export default function SetupWizardPage({ params }: PageProps) {
         <div className="mb-6 flex items-center justify-between">
           <div className="space-y-1">
             <Button variant="ghost" size="sm" className="-ml-3" asChild>
-              <Link href={`/staff/courses/${courseId}`}>
+              <Link href={`/staff/courses/${courseId}/assignments`}>
                 <ArrowLeftIcon className="mr-1 size-4" /> Back to course details
               </Link>
             </Button>
@@ -959,11 +946,6 @@ export default function SetupWizardPage({ params }: PageProps) {
             <Button variant="outline" asChild>
               <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`}>
                 Manage Artifacts
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}/runs`}>
-                Official Runs
               </Link>
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
@@ -1334,41 +1316,20 @@ export default function SetupWizardPage({ params }: PageProps) {
                           id={`concept-${item.key}`}
                           checked={concepts.includes(item.key)}
                           onChange={() => handleConceptChange(item.key)}
-                          className="size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer"
+                          className="size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-1 cursor-pointer"
                         />
-                        <div className="space-y-0.5">
+                        <div className="space-y-0.5 flex-1">
                           <label htmlFor={`concept-${item.key}`} className="text-xs font-bold text-slate-700 uppercase cursor-pointer">
-                            {item.key}
+                            {item.title}
                           </label>
-                          <p className="text-[11px] text-slate-400 leading-normal">{item.desc}</p>
+                          <ul className="text-[10px] text-slate-400 leading-relaxed list-disc pl-4 mt-1 space-y-0.5">
+                            {(item.patterns || []).map((p) => (
+                              <li key={p}>{p}</li>
+                            ))}
+                          </ul>
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-
-                {/* Custom concepts additions */}
-                <div className="space-y-3 pt-4 border-t border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-800">Custom Concepts Whitelist</h3>
-                  <p className="text-xs text-slate-400">Add any other arbitrary custom concepts to log or analyze during submissions.</p>
-
-                  <TagBadgeList
-                    tags={customConcepts}
-                    onRemove={removeCustomConcept}
-                    emptyText="No custom whitelist concepts added."
-                  />
-
-                  <div className="flex gap-2 max-w-sm">
-                    <Input
-                      value={newCustomConcept}
-                      onChange={(e) => setNewCustomConcept(e.target.value)}
-                      placeholder="e.g. recursion"
-                      className="text-sm"
-                      onKeyDown={(e) => e.key === "Enter" && addCustomConcept()}
-                    />
-                    <Button type="button" onClick={addCustomConcept} variant="outline" size="sm">
-                      <PlusIcon className="size-4 mr-1" /> Add
-                    </Button>
                   </div>
                 </div>
 

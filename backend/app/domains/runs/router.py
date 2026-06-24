@@ -6,7 +6,7 @@ import json
 import shutil
 
 from app.core.dependencies import DbSession, require_staff
-from app.domains.runs.schemas import RunStatusResponse, RunSummaryResponse, RunSummaryListResponse
+from app.domains.runs.schemas import RunStatusResponse, RunSummaryResponse, RunSummaryListResponse, RunCounters, QueueBackpressure
 from app.domains.sandbox.service import sandbox_service
 from app.domains.runs.models import RunSummary
 from app.core.settings import get_settings
@@ -15,7 +15,25 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 
 # Main runs status query endpoint (used by both sandbox and official flows)
 @router.get("/{run_id}/status", response_model=RunStatusResponse)
-def get_run_status(run_id: str) -> RunStatusResponse:
+def get_run_status(run_id: str, db: DbSession) -> RunStatusResponse:
+    # 1. Check if numeric ID (official run)
+    if run_id.isdigit():
+        run = db.scalar(select(RunSummary).where(RunSummary.id == int(run_id)))
+        if run:
+            state_val = run.status
+            if state_val not in ("queue", "run", "complete", "failure"):
+                state_val = "complete"  # fallback
+            return RunStatusResponse(
+                run_id=run_id,
+                state=state_val,
+                queue_position=None,
+                eta_band=None,
+                counters=RunCounters(total=0, queued=0, running=0, completed=0, failed=0, warnings=0),
+                backpressure=QueueBackpressure(current_waiting=0, high_load=False, accepting_runs=True),
+                message=f"Official run status: {run.status}",
+            )
+
+    # 2. Sandbox flow
     status = sandbox_service.get_status(run_id)
     if status is None:
         raise HTTPException(status_code=404, detail="Run not found.")

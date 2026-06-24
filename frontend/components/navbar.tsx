@@ -15,9 +15,9 @@ function getOppositePath(pathname: string): string | null {
     if (pathname === "/staff/courses" || pathname === "/staff/courses/") {
       return "/sandbox";
     }
-    const courseMatch = pathname.match(/^\/staff\/courses\/([^\/]+)\/?$/);
+    const courseMatch = pathname.match(/^\/staff\/courses\/([^\/]+)\/assignments\/?$/) || pathname.match(/^\/staff\/courses\/([^\/]+)\/?$/);
     if (courseMatch) {
-      return `/sandbox/${courseMatch[1]}`;
+      return `/sandbox/${courseMatch[1]}/assignments`;
     }
     const assignmentMatch = pathname.match(/^\/staff\/courses\/([^\/]+)\/assignments\/([^\/]+)/);
     if (assignmentMatch) {
@@ -32,11 +32,11 @@ function getOppositePath(pathname: string): string | null {
     }
     const assignmentMatch = pathname.match(/^\/sandbox\/([^\/]+)\/assignments\/([^\/]+)\/?$/);
     if (assignmentMatch) {
-      return `/staff/courses/${assignmentMatch[1]}/assignments/${assignmentMatch[2]}/setup`;
+      return `/staff/courses/${assignmentMatch[1]}/assignments/${assignmentMatch[2]}`;
     }
-    const courseMatch = pathname.match(/^\/sandbox\/([^\/]+)\/?$/);
+    const courseMatch = pathname.match(/^\/sandbox\/([^\/]+)\/assignments\/?$/) || pathname.match(/^\/sandbox\/([^\/]+)\/?$/);
     if (courseMatch) {
-      return `/staff/courses/${courseMatch[1]}`;
+      return `/staff/courses/${courseMatch[1]}/assignments`;
     }
     return null;
   }

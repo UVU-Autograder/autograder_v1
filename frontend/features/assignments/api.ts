@@ -6,9 +6,12 @@ import {
   SandboxRunCreateResponse,
   SandboxRunResultResponse,
   SandboxCancelResponse,
+  ConceptMetadata,
 } from "@/features/assignments/types";
 
+
 const SANDBOX_SESSION_HEADER = "X-Sandbox-Session";
+const intervalsMsDefault = 2000;
 
 function sandboxSessionKey(courseId: string, assignmentId: string) {
   return `sandbox-session:${courseId}:${assignmentId}`;
@@ -82,7 +85,7 @@ export async function pollRunUntilComplete(
   statusUrl: string,
   options?: { intervalMs?: number; maxAttempts?: number; onStateChange?: (state: string) => void }
 ) {
-  const intervalMs = options?.intervalMs ?? 2000;
+  const intervalMs = options?.intervalMs ?? intervalsMsDefault;
   const maxAttempts = options?.maxAttempts ?? 60;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -104,7 +107,7 @@ export async function getRunResult(
   sessionId: string,
   options?: { intervalMs?: number; maxAttempts?: number }
 ) {
-  const intervalMs = options?.intervalMs ?? 2000;
+  const intervalMs = options?.intervalMs ?? intervalsMsDefault;
   const maxAttempts = options?.maxAttempts ?? 20;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -144,3 +147,8 @@ export async function cancelSandboxRun(runId: string, sessionId: string) {
     }
   );
 }
+
+export function getConceptsMetadata() {
+  return apiClient.get<Record<string, ConceptMetadata>>("/sandbox/concepts/metadata");
+}
+

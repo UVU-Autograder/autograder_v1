@@ -1,18 +1,28 @@
 'use client';
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, TerminalSquareIcon, BookOpenIcon } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/app-sidebar"
-import { Assignment } from "@/features/assignments/types";
+import { Assignment, ConceptMetadata } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
 import { FileUploadButton } from "./file-upload-button";
 import { useBasePath } from "@/lib/view-context";
+import { getConceptsMetadata } from "@/features/assignments/api";
 
-function detailsFileContent(assignment: Assignment) {
+function detailsFileContent(assignment: Assignment, conceptMeta: Record<string, ConceptMetadata>) {
     const constraintsList = (assignment.constraints || [])
         .map((c) => `- ${c.label}: ${c.value}`)
         .join("\n") || "None";
+
+    const conceptsList = (assignment.allowed_concepts || []).map(c => {
+        const item = conceptMeta[c];
+        if (!item) return `- ${c}`;
+        const title = item.title;
+        const patterns = (item.syntax_patterns || []).map(p => `  - ${p}`).join("\n");
+        return `${title}:\n${patterns}`;
+    }).join("\n\n") || "No concepts whitelist configured (all concepts allowed).";
 
     return `Assignment Details: ${assignment.title}
 ==================================================
@@ -24,7 +34,7 @@ ${constraintsList}
 
 Allowed Concepts:
 -----------------
-${(assignment.allowed_concepts || []).map(c => `- ${c}`).join("\n") || "No concepts whitelist configured (all concepts allowed)."}
+${conceptsList}
 `;
 }
 
@@ -39,6 +49,12 @@ export function AssignmentSidebar({
 }) {
     const basePath = useBasePath();
     const { files, openFileByName, uploadFiles, deleteFile } = useAssignmentFile();
+    const [conceptMeta, setConceptMeta] = useState<Record<string, ConceptMetadata>>({});
+
+    useEffect(() => {
+        getConceptsMetadata().then(setConceptMeta).catch(console.error);
+    }, []);
+
     const workspaceFiles = Object.values(files)
         .filter((file) => file.category === 'workspace')
         .map((file) => file.filename)
@@ -47,7 +63,7 @@ export function AssignmentSidebar({
     const data = {
         header: (
             <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
-                <Link href={basePath === "/sandbox" ? `/sandbox/${courseId}` : `/staff/courses/${courseId}`}>
+                <Link href={basePath === "/sandbox" ? `/sandbox/${courseId}/assignments` : `/staff/courses/${courseId}/assignments`}>
                     <ArrowLeftIcon />
                     Back to assignments
                 </Link>
@@ -67,7 +83,7 @@ export function AssignmentSidebar({
                         title: "details.txt",
                         onClick: () =>
                             openFileByName("details.txt", {
-                                content: detailsFileContent(assignment),
+                                content: detailsFileContent(assignment, conceptMeta),
                                 language: 'plaintext',
                                 category: 'constraint',
                             }),

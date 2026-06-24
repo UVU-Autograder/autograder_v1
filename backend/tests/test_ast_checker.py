@@ -325,3 +325,27 @@ class TestMultipleConceptDetection:
         assert "image-processing" in result.detected_concepts
         assert result.warnings == []
         assert result.blocked == []
+
+
+def test_concepts_metadata():
+    from app.integrations.ast_checker.validator import get_concepts_metadata, CONCEPT_NODE_MAP
+    import ast
+
+    meta = get_concepts_metadata()
+    assert "loops" in meta
+    assert meta["loops"]["title"] == "Loops"
+    assert "For" in meta["loops"]["nodes"]
+    assert "While" in meta["loops"]["nodes"]
+    assert "AsyncFor" in meta["loops"]["nodes"]
+
+    assert "conditionals" in meta
+    assert meta["conditionals"]["title"] == "Conditionals"
+    
+    assert "file-io" in meta
+    assert len(meta["file-io"]["nodes"]) == 0
+    assert len(meta["file-io"]["syntax_patterns"]) > 0
+
+    # Ensure CONCEPT_NODE_MAP has the right keys/values
+    assert set(CONCEPT_NODE_MAP.keys()) == {"loops", "conditionals", "functions", "variables"}
+    assert CONCEPT_NODE_MAP["loops"] == (ast.For, ast.While, ast.AsyncFor)
+

@@ -117,3 +117,11 @@ class SandboxCancelResponse(BaseModel):
     counters: RunCounters
     backpressure: QueueBackpressure
     message: str
+
+
+class ConceptMetadata(BaseModel):
+    key: str
+    title: str
+    syntax_patterns: list[str]
+    nodes: list[str]
+

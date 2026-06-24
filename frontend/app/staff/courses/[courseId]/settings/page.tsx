@@ -6,6 +6,8 @@ import { ArrowLeftIcon, SaveIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
+import { getConceptsMetadata } from "@/features/assignments/api";
+import { ConceptMetadata } from "@/features/assignments/types";
 
 type CourseConceptsResponse = {
   course_id: string;
@@ -19,6 +21,7 @@ type PageProps = {
 export default function CourseConceptsPage({ params }: PageProps) {
   const { courseId } = use(params);
   const [concepts, setConcepts] = useState<string[]>([]);
+  const [metadata, setMetadata] = useState<Record<string, ConceptMetadata>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +36,13 @@ export default function CourseConceptsPage({ params }: PageProps) {
       }
     });
 
-    apiClient.get<CourseConceptsResponse>(
-      `/staff/courses/${courseId}/concepts`
-    ).then((data) => {
+    Promise.all([
+      apiClient.get<CourseConceptsResponse>(`/staff/courses/${courseId}/concepts`),
+      getConceptsMetadata(),
+    ]).then(([courseData, metaData]) => {
       if (active) {
-        setConcepts(data.default_concepts);
+        setConcepts(courseData.default_concepts);
+        setMetadata(metaData);
         setIsLoading(false);
       }
     }).catch((err) => {
@@ -83,21 +88,12 @@ export default function CourseConceptsPage({ params }: PageProps) {
     );
   }
 
-  const allPossibleConcepts = [
-    "variables",
-    "conditionals",
-    "loops",
-    "functions",
-    "file-io",
-    "image-processing",
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 space-y-1">
           <Button variant="ghost" size="sm" className="-ml-3" asChild>
-            <Link href={`/staff/courses/${courseId}`}>
+            <Link href={`/staff/courses/${courseId}/assignments`}>
               <ArrowLeftIcon className="mr-1 size-4" /> Back to course details
             </Link>
           </Button>
@@ -119,25 +115,32 @@ export default function CourseConceptsPage({ params }: PageProps) {
         <Card>
           <CardHeader>
             <CardTitle>Whitelisted Concepts</CardTitle>
-            <CardDescription>Select default allowed structures. Any other structures will flagwarnings during execution.</CardDescription>
+            <CardDescription>Select default allowed structures. Any other structures will flag warnings during execution.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {allPossibleConcepts.map((concept) => (
-                <div key={concept} className="flex items-center space-x-2 border rounded-md p-3 bg-white hover:bg-slate-50 cursor-pointer">
+              {Object.values(metadata).map((item) => (
+                <div key={item.key} className="flex items-start space-x-3 border rounded-md p-3 bg-white hover:bg-slate-50 cursor-pointer">
                   <input
                     type="checkbox"
-                    id={`concept-${concept}`}
-                    checked={concepts.includes(concept)}
-                    onChange={() => handleCheckboxChange(concept)}
-                    className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    id={`concept-${item.key}`}
+                    checked={concepts.includes(item.key)}
+                    onChange={() => handleCheckboxChange(item.key)}
+                    className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-1"
                   />
-                  <label
-                    htmlFor={`concept-${concept}`}
-                    className="text-sm font-semibold text-slate-700 uppercase cursor-pointer flex-1"
-                  >
-                    {concept}
-                  </label>
+                  <div className="space-y-0.5 flex-1">
+                    <label
+                      htmlFor={`concept-${item.key}`}
+                      className="text-sm font-semibold text-slate-700 uppercase cursor-pointer block"
+                    >
+                      {item.title}
+                    </label>
+                    <ul className="text-xs text-slate-400 leading-relaxed list-disc pl-4 mt-1 space-y-0.5">
+                      {(item.syntax_patterns || []).map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               ))}
             </div>

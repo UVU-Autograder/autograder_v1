@@ -96,3 +96,10 @@ export type SandboxCancelResponse = {
     state: string;
     message: string;
 };
+
+export type ConceptMetadata = {
+    key: string;
+    title: string;
+    syntax_patterns: string[];
+    nodes: string[];
+};

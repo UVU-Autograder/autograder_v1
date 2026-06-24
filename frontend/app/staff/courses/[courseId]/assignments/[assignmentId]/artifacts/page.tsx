@@ -211,8 +211,8 @@ export default function ArtifactsPage({ params }: PageProps) {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 space-y-1">
           <Button variant="ghost" size="sm" className="-ml-3" asChild>
-            <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}/setup`}>
-              <ArrowLeftIcon className="mr-1 size-4" /> Back to setup wizard
+            <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}`}>
+              <ArrowLeftIcon className="mr-1 size-4" /> Back to assignment
             </Link>
           </Button>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Grading Assets</h1>

@@ -70,6 +70,27 @@ def test_safe_extract_zip_malformed(tmp_path: Path):
         safe_extract_zip(b"not a zip file", extract_dir)
 
 
+def test_cleanup_system_files(tmp_path: Path):
+    from app.domains.ingestion.extractor import cleanup_system_files
+    directory = tmp_path / "target"
+    directory.mkdir()
+    
+    (directory / ".DS_Store").write_text("dsstore")
+    (directory / "Thumbs.db").write_text("thumbs")
+    (directory / "normal_file.py").write_text("python")
+    
+    macosx_dir = directory / "__MACOSX"
+    macosx_dir.mkdir()
+    (macosx_dir / "nested_file.jpg").write_text("image")
+    
+    cleanup_system_files(directory)
+    
+    assert not (directory / ".DS_Store").exists()
+    assert not (directory / "Thumbs.db").exists()
+    assert not macosx_dir.exists()
+    assert (directory / "normal_file.py").exists()
+
+
 def test_normalize_root_directory_single_subdir(tmp_path: Path):
     # Create a structure: extract_dir/subdir/file.py
     extract_dir = tmp_path / "extracted"
@@ -77,12 +98,18 @@ def test_normalize_root_directory_single_subdir(tmp_path: Path):
     subdir.mkdir(parents=True)
     (subdir / "main.py").write_text("main")
     (subdir / "utils.py").write_text("utils")
+    
+    (extract_dir / ".DS_Store").write_text("junk")
+    (extract_dir / "__MACOSX").mkdir()
+    (extract_dir / "__MACOSX" / "nested.xml").write_text("xml")
 
     normalize_root_directory(extract_dir)
 
     assert (extract_dir / "main.py").exists()
     assert (extract_dir / "utils.py").exists()
     assert not subdir.exists()
+    assert not (extract_dir / ".DS_Store").exists()
+    assert not (extract_dir / "__MACOSX").exists()
 
 
 def test_normalize_root_directory_no_change_multiple_items(tmp_path: Path):

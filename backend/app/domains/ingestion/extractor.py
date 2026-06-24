@@ -45,11 +45,27 @@ def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | N
     except zipfile.BadZipFile as e:
         raise ExtractionError("Malformed or corrupted ZIP file") from e
 
+def cleanup_system_files(directory: Path) -> None:
+    """Recursively deletes hidden/system files and directories like .DS_Store, __MACOSX, Thumbs.db."""
+    directory = Path(directory).resolve()
+    paths = sorted(list(directory.rglob("*")), key=lambda p: len(p.parts), reverse=True)
+    for path in paths:
+        if not path.exists():
+            continue
+        name_lower = path.name.lower()
+        if name_lower in {".ds_store", "__macosx", "thumbs.db", ".git", ".idea", ".vscode"}:
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                path.unlink(missing_ok=True)
+
+
 def normalize_root_directory(extract_dir: Path) -> None:
     """If extract_dir contains exactly one directory and no files, moves all files
     from that directory up into extract_dir and deletes the empty subdirectory.
     """
     extract_dir = Path(extract_dir).resolve()
+    cleanup_system_files(extract_dir)
     items = list(extract_dir.iterdir())
     
     if len(items) == 1 and items[0].is_dir():

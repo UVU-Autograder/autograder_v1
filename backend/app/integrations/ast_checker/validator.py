@@ -16,48 +16,101 @@ from dataclasses import dataclass, field
 # Concept-to-node mapping
 # ---------------------------------------------------------------------------
 
+CONCEPT_DETAILS: dict[str, dict] = {
+    "loops": {
+        "title": "Loops",
+        "syntax_patterns": ["for loops", "while loops", "async for loops"],
+        "nodes": (ast.For, ast.While, ast.AsyncFor),
+    },
+    "conditionals": {
+        "title": "Conditionals",
+        "syntax_patterns": [
+            "if / elif / else statements",
+            "Comparison operators (<, >, ==, etc.)",
+            "Ternary inline if expressions",
+        ],
+        "nodes": (ast.If, ast.Compare, ast.IfExp),
+    },
+    "functions": {
+        "title": "Functions",
+        "syntax_patterns": [
+            "Custom function declarations (def)",
+            "Custom async function declarations (async def)",
+        ],
+        "nodes": (ast.FunctionDef, ast.AsyncFunctionDef),
+    },
+    "variables": {
+        "title": "Variables",
+        "syntax_patterns": [
+            "Variable declarations & assignments",
+            "Type-annotated variable assignments",
+        ],
+        "nodes": (ast.Assign, ast.AnnAssign),
+    },
+    "file-io": {
+        "title": "File I/O",
+        "syntax_patterns": [
+            "Opening files with open()",
+            "Reading/writing files with .read()/.write()/.readlines()",
+            "using 'with open()' context managers",
+        ],
+        "nodes": (),
+    },
+    "image-processing": {
+        "title": "Image Processing",
+        "syntax_patterns": [
+            "Importing PIL / Pillow library",
+            "Executing operations using Image, ImageDraw, ImageFilter",
+        ],
+        "nodes": (),
+    },
+}
+
 CONCEPT_NODE_MAP: dict[str, tuple[type, ...]] = {
-    "loops": (ast.For, ast.While, ast.AsyncFor),
-    "conditionals": (ast.If, ast.Compare, ast.IfExp),
-    "functions": (ast.FunctionDef, ast.AsyncFunctionDef),
-    "variables": (ast.Assign, ast.AnnAssign),
+    k: v["nodes"] for k, v in CONCEPT_DETAILS.items() if v["nodes"]
 }
 
 # ---------------------------------------------------------------------------
 # Security deny-lists
 # ---------------------------------------------------------------------------
 
-BLOCKED_IMPORTS: frozenset[str] = frozenset({
-    "subprocess",
-    "os",
-    "shutil",
-    "sys",
-    "socket",
-    "http",
-    "urllib",
-    "ctypes",
-    "multiprocessing",
-})
+BLOCKED_IMPORTS: frozenset[str] = frozenset(
+    {
+        "subprocess",
+        "os",
+        "shutil",
+        "sys",
+        "socket",
+        "http",
+        "urllib",
+        "ctypes",
+        "multiprocessing",
+    }
+)
 
-BLOCKED_CALLS: frozenset[str] = frozenset({
-    "eval",
-    "exec",
-    "__import__",
-    "compile",
-    "globals",
-    "locals",
-    "getattr",
-    "setattr",
-    "delattr",
-})
+BLOCKED_CALLS: frozenset[str] = frozenset(
+    {
+        "eval",
+        "exec",
+        "__import__",
+        "compile",
+        "globals",
+        "locals",
+        "getattr",
+        "setattr",
+        "delattr",
+    }
+)
 
 # Methods whose invocation signals the ``file-io`` concept.
-_FILE_IO_METHODS: frozenset[str] = frozenset({
-    "read",
-    "write",
-    "readlines",
-    "writelines",
-})
+_FILE_IO_METHODS: frozenset[str] = frozenset(
+    {
+        "read",
+        "write",
+        "readlines",
+        "writelines",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -264,3 +317,16 @@ def check_student_code(
         warnings=warnings,
         blocked=blocked,
     )
+
+
+def get_concepts_metadata() -> dict[str, dict]:
+    """Return JSON-serializable concept definitions and checked rules."""
+    return {
+        k: {
+            "key": k,
+            "title": v["title"],
+            "syntax_patterns": v["syntax_patterns"],
+            "nodes": [node.__name__ for node in v["nodes"]],
+        }
+        for k, v in CONCEPT_DETAILS.items()
+    }

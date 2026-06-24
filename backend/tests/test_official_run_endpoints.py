@@ -197,3 +197,25 @@ def test_run_details_not_found(client, headers):
     )
     assert response.status_code == 404
     assert "not available" in response.json()["detail"]
+
+
+def test_official_run_status(client, db_session, headers):
+    run = RunSummary(
+        workflow_type="official",
+        assignment_id=1,
+        status="run",
+        total_submission_count=3,
+        success_count=2,
+        failure_count=1,
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    response = client.get(
+        f"/runs/{run.id}/status",
+        headers=headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["run_id"] == str(run.id)
+    assert body["state"] == "run"

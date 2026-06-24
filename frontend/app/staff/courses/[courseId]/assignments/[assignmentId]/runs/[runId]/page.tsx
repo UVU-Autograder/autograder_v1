@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, DownloadIcon, TrashIcon, AwardIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, AwardIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
@@ -47,7 +47,6 @@ export default function RunDetailPage({ params }: PageProps) {
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [details, setDetails] = useState<RunDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCleaning, setIsCleaning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -88,26 +87,46 @@ export default function RunDetailPage({ params }: PageProps) {
     };
   }, [courseId, assignmentId, runId]);
 
-  const handleCleanup = async () => {
-    if (!confirm("Are you sure you want to clean up this run's workspace? Student code and feedback files will be purged from the server's workspace disk (grades database entries persist).")) {
-      return;
-    }
+  useEffect(() => {
+    let cleanedUp = false;
 
-    setIsCleaning(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      await apiClient.post(
-        `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/cleanup`,
-        {}
-      );
-      setSuccess("Workspace files cleaned up successfully.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Workspace cleanup failed.");
-    } finally {
-      setIsCleaning(false);
-    }
-  };
+    const triggerCleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      
+      const url = `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/cleanup`;
+      const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
+      const headers = new Headers();
+      if (token) {
+        headers.set("authorization", `Bearer ${token}`);
+      }
+      const base = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
+      
+      fetch(`${base}${url}`, {
+        method: "POST",
+        headers,
+        keepalive: true,
+      }).catch((err) => console.error("Auto cleanup failed", err));
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    const handleUnload = () => {
+      triggerCleanup();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handleUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handleUnload);
+      triggerCleanup();
+    };
+  }, [courseId, assignmentId, runId]);
 
   const handleCsvExport = async () => {
     setError(null);
@@ -147,8 +166,8 @@ export default function RunDetailPage({ params }: PageProps) {
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <Button variant="ghost" size="sm" className="-ml-3" asChild>
-              <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}/runs`}>
-                <ArrowLeftIcon className="mr-1 size-4" /> Back to runs history
+              <Link href={`/staff/courses/${courseId}/assignments`}>
+                <ArrowLeftIcon className="mr-1 size-4" /> Back to course details
               </Link>
             </Button>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Run #{runId} Details</h1>
@@ -161,10 +180,18 @@ export default function RunDetailPage({ params }: PageProps) {
             <Button variant="outline" onClick={handleFeedbackExport}>
               <DownloadIcon className="mr-2 size-4" /> Export Feedback ZIP
             </Button>
-            <Button variant="destructive" onClick={handleCleanup} disabled={isCleaning}>
-              <TrashIcon className="mr-2 size-4" /> Clean Workspace
-            </Button>
           </div>
+        </div>
+
+        {/* Zero-Retention Warning Banner */}
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="flex gap-2 items-start font-semibold mb-1">
+            <AwardIcon className="size-4 shrink-0 mt-0.5 animate-pulse text-amber-600" />
+            <span>Zero-Retention Policy Active</span>
+          </div>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            Important: Leaving, refreshing, or closing this page will permanently purge all student submissions, grades CSVs, and feedback ZIPs from the server workspace. Make sure to download your exports first!
+          </p>
         </div>
 
         {error && (

@@ -1,10 +1,14 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { PlayIcon } from "lucide-react";
 import { AssignmentsDetails } from "@/features/assignments/types";
 
 type ViewMode = "sandbox" | "staff";
@@ -18,18 +22,19 @@ export default function AssignmentCard({
   courseId: string;
   mode: ViewMode;
 }) {
+  const router = useRouter();
   const linkHref =
     mode === "sandbox"
       ? `/sandbox/${courseId}/assignments/${assignment.id}`
-      : `/staff/courses/${courseId}/assignments/${assignment.id}/setup`;
+      : `/staff/courses/${courseId}/assignments/${assignment.id}`;
 
   return (
-    <Link
-      href={linkHref}
-      className="block"
+    <Card
+      onClick={() => router.push(linkHref)}
+      className="cursor-pointer py-3 transition-shadow hover:shadow-md hover:bg-slate-50/50"
     >
-      <Card className="cursor-pointer py-3 transition-shadow hover:shadow-md">
-        <CardContent className="flex items-center gap-3 py-0">
+      <CardContent className="flex items-center justify-between py-0 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="flex w-2.5 shrink-0 justify-center">
             {assignment.sandbox_enabled && (
               <span
@@ -50,8 +55,22 @@ export default function AssignmentCard({
               </span>
             </CardDescription>
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+
+        {mode === "staff" && (
+          <Button
+            size="sm"
+            className="shrink-0 relative z-10"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(`/staff/courses/${courseId}/assignments/${assignment.id}/runs`);
+            }}
+          >
+            <PlayIcon className="mr-1.5 size-3.5" /> Grade Now
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
