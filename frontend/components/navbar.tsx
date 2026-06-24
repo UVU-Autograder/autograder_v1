@@ -96,6 +96,13 @@ export default function Navbar() {
               Dashboard
             </NavigationMenuLink>
           </NavigationMenuItem>
+          {isStaffLoggedIn && (
+            <NavigationMenuItem>
+              <NavigationMenuLink href="/staff/admin">
+                Admin
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          )}
           {isSandboxArea && (
             <NavigationMenuItem>
               <NavigationMenuLink href="/sandbox">

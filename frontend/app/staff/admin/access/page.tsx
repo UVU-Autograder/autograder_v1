@@ -1,7 +1,7 @@
 "use client"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "../../components/ui/accordion"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "@/components/ui/accordion"
 import {Dialog, DialogContent, DialogFooter, 
-  DialogHeader, DialogTitle, } from "../../components/ui/dialog"
+  DialogHeader, DialogTitle, } from "@/components/ui/dialog"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { useState } from "react"
 
 type Person = "instructors" | "ias" | "students"
 
-export default function AdminPage () {
+export default function AccessPage () {
     const [open, setOpen] = useState(false)
     const [section, setSection] = useState<Person>("instructors")
     const [name, setName] = useState("")
