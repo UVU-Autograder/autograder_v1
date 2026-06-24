@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import os
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,13 +14,33 @@ from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Section
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+def _repo_root() -> Path:
+    configured = os.environ.get("REPO_ROOT")
+    if configured:
+        return Path(configured).resolve()
+
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "docs" / "backend_implementation" / "examples").exists():
+            return parent
+    return Path.cwd().resolve()
+
+
+REPO_ROOT = _repo_root()
 EXAMPLE_DIR = REPO_ROOT / "docs" / "backend_implementation" / "examples" / "simple_python_functions"
 EXAMPLE_CONFIG = EXAMPLE_DIR / "config_json.example.json"
 
 
 def load_example_config() -> dict:
     return json.loads(EXAMPLE_CONFIG.read_text(encoding="utf-8"))
+
+
+def _seed_storage_ref(example_slug: str, artifact_key: str, display_filename: str) -> str:
+    # Model solutions are stored under their instructor-owned filename, then
+    # materialized at the student-facing display filename during execution.
+    if artifact_key == "model_solution":
+        return f"seed://{example_slug}/model_solution.py"
+    return f"seed://{example_slug}/{display_filename}"
 
 
 def initialize_database(seed: bool = True) -> None:
@@ -91,7 +112,11 @@ def seed_development_data(db: Session) -> None:
                 assignment=assignment,
                 artifact_key=artifact_key,
                 artifact_type=artifact["type"],
-                storage_ref=f"seed://simple_python_functions/{artifact['display_filename']}",
+                storage_ref=_seed_storage_ref(
+                    "simple_python_functions",
+                    artifact_key,
+                    artifact["display_filename"],
+                ),
                 display_filename=artifact.get("display_filename"),
                 content_type="text/plain",
             )
@@ -144,7 +169,11 @@ def seed_development_data(db: Session) -> None:
                 assignment=assignment_cs1410,
                 artifact_key=artifact_key,
                 artifact_type=artifact["type"],
-                storage_ref=f"seed://lab_1_image_processing/{artifact['display_filename']}",
+                storage_ref=_seed_storage_ref(
+                    "lab_1_image_processing",
+                    artifact_key,
+                    artifact["display_filename"],
+                ),
                 display_filename=artifact.get("display_filename"),
                 content_type="text/plain",
             )

@@ -8,6 +8,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
+def file_storage_ref_to_path(storage_ref: str) -> Path | None:
+    if not storage_ref.startswith("file://"):
+        return None
+    return Path(storage_ref[len("file://"):]).resolve()
+
+
 class AssignmentArtifact(Base):
     __tablename__ = "assignment_artifacts"
     __table_args__ = (UniqueConstraint("assignment_id", "artifact_key", name="uq_assignment_artifacts_key"),)
@@ -33,12 +39,7 @@ def delete_physical_file(mapper, connection, target) -> None:
         ref = target.storage_ref
         file_path = None
         if ref.startswith("file://"):
-            # Strip file:// prefix
-            # On Windows, need to handle file:///C:/path (3 slashes) or file://C:/path (2 slashes)
-            clean_ref = ref[7:]
-            if clean_ref.startswith("/"):
-                clean_ref = clean_ref[1:]
-            file_path = Path(clean_ref).resolve()
+            file_path = file_storage_ref_to_path(ref)
         elif ref.startswith("/") or ref.startswith("\\") or (len(ref) > 1 and ref[1] == ":"):
             # Handle absolute paths directly, ignoring seed:// or relative stubs
             if not ref.startswith("seed://"):

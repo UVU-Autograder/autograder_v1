@@ -19,10 +19,10 @@ def mock_login(request: MockLoginRequest, db: DbSession):
     Generates a signed JWT token. Auto-provisions the user if they do not exist.
     """
     settings = get_settings()
-    if not settings.is_sqlite:
+    if not settings.is_sqlite and settings.enable_mock_login is not True:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Mock login is only available in local development mode.",
+            detail="Mock login is only available in local development mode or when explicitly enabled.",
         )
         
     email = request.email.strip().lower()

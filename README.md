@@ -8,6 +8,7 @@ On-prem autograder for zero-retention Python grading with a public student sandb
 - [M1 backlog](docs/planning/backlog.md) — delivery checklist
 - [Frontend routes](docs/frontend_implementation/frontend_implementation.md)
 - [OpenAPI schema](docs/schemas/openapi.json)
+- [Ubuntu 24.x local POC deployment](docs/ubuntu_poc_deployment.md)
 
 ## Quick start
 

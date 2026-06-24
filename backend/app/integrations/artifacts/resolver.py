@@ -7,10 +7,22 @@ knowing the underlying storage layout.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-# backend/app/integrations/artifacts/resolver.py  →  4 parents up = repo root.
-REPO_ROOT = Path(__file__).resolve().parents[4]
+def _repo_root() -> Path:
+    configured = os.environ.get("REPO_ROOT")
+    if configured:
+        return Path(configured).resolve()
+
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "docs" / "backend_implementation" / "examples").exists():
+            return parent
+    return Path.cwd().resolve()
+
+
+REPO_ROOT = _repo_root()
 EXAMPLES_DIR = REPO_ROOT / "docs" / "backend_implementation" / "examples"
 
 

@@ -20,6 +20,7 @@ from app.domains.assignments.schemas import (
     pytest_marker_for_key,
 )
 from app.domains.courses.models import Course
+from app.domains.artifacts.models import file_storage_ref_to_path
 
 
 def validate_config_json(config_json: dict) -> AssignmentConfigV1:
@@ -301,11 +302,9 @@ def save_artifact(
     # Clean up the old physical file if it was overwritten
     if old_ref and old_ref.startswith("file://"):
         try:
-            import os
-            clean_ref = old_ref[7:]
-            if clean_ref.startswith("/"):
-                clean_ref = clean_ref[1:]
-            os.remove(clean_ref)
+            old_path = file_storage_ref_to_path(old_ref)
+            if old_path is not None:
+                old_path.unlink(missing_ok=True)
         except Exception:
             pass
 

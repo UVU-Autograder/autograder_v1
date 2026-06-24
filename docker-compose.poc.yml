@@ -1,0 +1,210 @@
+name: uvu-autograder-poc
+
+services:
+  app-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-autograder}
+      POSTGRES_USER: ${POSTGRES_USER:-autograder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autograder_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - app_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autograder} -d ${POSTGRES_DB:-autograder}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  judge0-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
+    volumes:
+      - judge0_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  judge0:
+    image: judge0/judge0:1.13.1
+    restart: unless-stopped
+    privileged: true
+    depends_on:
+      judge0-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "2358:2358"
+    environment:
+      REDIS_URL: redis://redis:6379/1
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD:
+      POSTGRES_HOST: judge0-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
+      AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
+      AUTHZ_HEADER: X-Auth-Token
+      AUTHZ_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
+      ENABLE_SUBMISSION_DELETE: "true"
+      ALLOW_ENABLE_NETWORK: "false"
+      CPU_TIME_LIMIT: "10"
+      MAX_CPU_TIME_LIMIT: "15"
+      WALL_TIME_LIMIT: "20"
+      MAX_WALL_TIME_LIMIT: "30"
+      MEMORY_LIMIT: "262144"
+      MAX_MEMORY_LIMIT: "524288"
+      RAILS_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:2358/languages || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+
+  judge0-worker:
+    image: judge0/judge0:1.13.1
+    restart: unless-stopped
+    privileged: true
+    depends_on:
+      judge0-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379/1
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD:
+      POSTGRES_HOST: judge0-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
+      AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
+      AUTHZ_HEADER: X-Auth-Token
+      AUTHZ_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
+      ENABLE_SUBMISSION_DELETE: "true"
+      ALLOW_ENABLE_NETWORK: "false"
+      CPU_TIME_LIMIT: "10"
+      MAX_CPU_TIME_LIMIT: "15"
+      WALL_TIME_LIMIT: "20"
+      MAX_WALL_TIME_LIMIT: "30"
+      MEMORY_LIMIT: "262144"
+      MAX_MEMORY_LIMIT: "524288"
+      RAILS_ENV: production
+    command: ["/bin/sh", "-c", "cd /api && bundle exec rake resque:work QUEUE=default"]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      app-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@app-postgres:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
+      JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
+      JUDGE0_LANGUAGE_ID: ${JUDGE0_LANGUAGE_ID:-71}
+      JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
+      SANDBOX_USE_CELERY: ${SANDBOX_USE_CELERY:-true}
+      SANDBOX_UPLOAD_LIMIT: ${SANDBOX_UPLOAD_LIMIT:-5}
+      SANDBOX_UPLOAD_WINDOW_SECONDS: ${SANDBOX_UPLOAD_WINDOW_SECONDS:-3600}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
+      DEFAULT_MAX_FILES: ${DEFAULT_MAX_FILES:-100}
+      DEFAULT_MAX_ZIP_SIZE: ${DEFAULT_MAX_ZIP_SIZE:-52428800}
+      TEST_EXECUTION_TIMEOUT_SECONDS: ${TEST_EXECUTION_TIMEOUT_SECONDS:-10}
+      ARTIFACT_STORAGE_DIR: ${ARTIFACT_STORAGE_DIR:-/data/artifacts}
+      RUN_ALEMBIC_MIGRATIONS: ${RUN_ALEMBIC_MIGRATIONS:-true}
+      SEED_DATABASE: ${SEED_DATABASE:-true}
+      ENABLE_MOCK_LOGIN: ${ENABLE_MOCK_LOGIN:-true}
+      JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-24}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_data:/data
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      app-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@app-postgres:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
+      JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
+      JUDGE0_LANGUAGE_ID: ${JUDGE0_LANGUAGE_ID:-71}
+      JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
+      SANDBOX_USE_CELERY: ${SANDBOX_USE_CELERY:-true}
+      SANDBOX_UPLOAD_LIMIT: ${SANDBOX_UPLOAD_LIMIT:-5}
+      SANDBOX_UPLOAD_WINDOW_SECONDS: ${SANDBOX_UPLOAD_WINDOW_SECONDS:-3600}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
+      DEFAULT_MAX_FILES: ${DEFAULT_MAX_FILES:-100}
+      DEFAULT_MAX_ZIP_SIZE: ${DEFAULT_MAX_ZIP_SIZE:-52428800}
+      TEST_EXECUTION_TIMEOUT_SECONDS: ${TEST_EXECUTION_TIMEOUT_SECONDS:-10}
+      ARTIFACT_STORAGE_DIR: ${ARTIFACT_STORAGE_DIR:-/data/artifacts}
+      RUN_ALEMBIC_MIGRATIONS: "false"
+      SEED_DATABASE: "false"
+      ENABLE_MOCK_LOGIN: ${ENABLE_MOCK_LOGIN:-true}
+      JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-24}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+    command: ["celery", "-A", "app.integrations.celery.app", "worker", "--loglevel=info", "-Q", "sandbox,official,default"]
+    volumes:
+      - backend_data:/data
+
+
+volumes:
+  app_postgres_data:
+  judge0_postgres_data:
+  redis_data:
+  backend_data:

@@ -24,10 +24,18 @@ def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | N
         with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
             # First pass: check for traversal and calculate total uncompressed size
             for info in zf.infolist():
-                # Rejects path traversal attempts
-                target_path = (extract_dir / info.filename).resolve()
-                if not str(target_path).startswith(str(extract_dir)):
+                if Path(info.filename).is_absolute():
                     raise ExtractionError("Directory traversal detected in ZIP file")
+
+                target_path = (extract_dir / info.filename).resolve()
+                try:
+                    target_path.relative_to(extract_dir)
+                except ValueError:
+                    raise ExtractionError("Directory traversal detected in ZIP file")
+
+                mode = info.external_attr >> 16
+                if mode & 0o120000 == 0o120000:
+                    raise ExtractionError("Symbolic links are not allowed in ZIP files")
                 
                 total_size += info.file_size
                 if total_size > max_total_size:
@@ -36,6 +44,10 @@ def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | N
             # Second pass: extract safely
             for info in zf.infolist():
                 target_path = (extract_dir / info.filename).resolve()
+                try:
+                    target_path.relative_to(extract_dir)
+                except ValueError:
+                    raise ExtractionError("Directory traversal detected in ZIP file")
                 if info.is_dir():
                     target_path.mkdir(parents=True, exist_ok=True)
                 else:
@@ -199,6 +211,10 @@ def prepare_student_bundle(student_files: list[Path], student_dir: Path) -> None
             except Exception as e:
                 raise ValueError(f"Failed to extract student ZIP '{original_filename}': {e}")
         else:
-            dest = student_dir / original_filename
+            dest = (student_dir / original_filename).resolve()
+            try:
+                dest.relative_to(student_dir)
+            except ValueError as exc:
+                raise ValueError(f"Unsafe Canvas filename '{original_filename}'") from exc
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, dest)

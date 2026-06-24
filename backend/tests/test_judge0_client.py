@@ -149,7 +149,7 @@ async def test_poll_submission_returns_result_when_status_above_two(
     # Verify the GET URL and params of the last call.
     last_call = client_no_auth._client.get.call_args
     assert "abc-123" in last_call.args[0]
-    assert last_call.kwargs["params"]["fields"] == "*"
+    assert last_call.kwargs["params"] == {"base64_encoded": "false"}
 
 
 # ---------------------------------------------------------------------------

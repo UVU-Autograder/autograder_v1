@@ -28,8 +28,6 @@ from app.domains.sandbox.schemas import (
     UploadQuota,
 )
 
-UPLOAD_LIMIT = 5
-UPLOAD_WINDOW = timedelta(hours=1)
 SESSION_TTL = timedelta(hours=1)
 HIGH_LOAD_THRESHOLD = 40
 FULL_QUEUE_THRESHOLD = 50
@@ -65,6 +63,14 @@ class SandboxService:
         self._runs: dict[str, SandboxRunRecord] = {}
         self._session_uploads: dict[str, list[datetime]] = {}
 
+    @property
+    def _upload_limit(self) -> int:
+        return get_settings().sandbox_upload_limit
+
+    @property
+    def _upload_window(self) -> timedelta:
+        return timedelta(seconds=get_settings().sandbox_upload_window_seconds)
+
     def quota_for_session(self, session_id: str | None) -> UploadQuota:
         return self._quota_for(session_id)
 
@@ -96,7 +102,7 @@ class SandboxService:
             try:
                 r = self._redis_conn()
                 r.rpush(f"sandbox:uploads:{session}", str(now.timestamp()))
-                r.expire(f"sandbox:uploads:{session}", int(UPLOAD_WINDOW.total_seconds()))
+                r.expire(f"sandbox:uploads:{session}", int(self._upload_window.total_seconds()))
             except Exception:
                 self._session_uploads.setdefault(session, []).append(now)
         else:
@@ -334,26 +340,26 @@ class SandboxService:
         now = datetime.now(UTC)
         if session_id is None:
             return UploadQuota(
-                limit=UPLOAD_LIMIT,
-                window_seconds=int(UPLOAD_WINDOW.total_seconds()),
-                remaining=UPLOAD_LIMIT,
-                reset_at=(now + UPLOAD_WINDOW).isoformat(),
+                limit=self._upload_limit,
+                window_seconds=int(self._upload_window.total_seconds()),
+                remaining=self._upload_limit,
+                reset_at=(now + self._upload_window).isoformat(),
             )
 
         def _fallback_quota():
             uploads = [
                 ts
                 for ts in self._session_uploads.get(session_id, [])
-                if now - ts < UPLOAD_WINDOW
+                if now - ts < self._upload_window
             ]
             self._session_uploads[session_id] = uploads
-            reset_at = now + UPLOAD_WINDOW
+            reset_at = now + self._upload_window
             if uploads:
-                reset_at = uploads[0] + UPLOAD_WINDOW
+                reset_at = uploads[0] + self._upload_window
             return UploadQuota(
-                limit=UPLOAD_LIMIT,
-                window_seconds=int(UPLOAD_WINDOW.total_seconds()),
-                remaining=max(UPLOAD_LIMIT - len(uploads), 0),
+                limit=self._upload_limit,
+                window_seconds=int(self._upload_window.total_seconds()),
+                remaining=max(self._upload_limit - len(uploads), 0),
                 reset_at=reset_at.isoformat(),
             )
 
@@ -373,24 +379,24 @@ class SandboxService:
                     pass
             
             now_ts = now.timestamp()
-            cutoff_ts = now_ts - UPLOAD_WINDOW.total_seconds()
+            cutoff_ts = now_ts - self._upload_window.total_seconds()
             active_ts = [ts for ts in uploads_ts if ts > cutoff_ts]
             
             r.delete(key)
             if active_ts:
                 r.rpush(key, *[str(ts) for ts in active_ts])
-                r.expire(key, int(UPLOAD_WINDOW.total_seconds()))
+                r.expire(key, int(self._upload_window.total_seconds()))
 
-            remaining = max(UPLOAD_LIMIT - len(active_ts), 0)
+            remaining = max(self._upload_limit - len(active_ts), 0)
             if active_ts:
                 oldest_dt = datetime.fromtimestamp(min(active_ts), tz=UTC)
-                reset_at = oldest_dt + UPLOAD_WINDOW
+                reset_at = oldest_dt + self._upload_window
             else:
-                reset_at = now + UPLOAD_WINDOW
+                reset_at = now + self._upload_window
 
             return UploadQuota(
-                limit=UPLOAD_LIMIT,
-                window_seconds=int(UPLOAD_WINDOW.total_seconds()),
+                limit=self._upload_limit,
+                window_seconds=int(self._upload_window.total_seconds()),
                 remaining=remaining,
                 reset_at=reset_at.isoformat(),
             )

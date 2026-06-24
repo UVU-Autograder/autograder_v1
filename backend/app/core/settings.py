@@ -42,9 +42,11 @@ class Settings(BaseSettings):
 
     jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
     jwt_expiration_hours: int = Field(default=24, ge=1, validation_alias="JWT_EXPIRATION_HOURS")
+    enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
     azure_openai_api_key: str | None = Field(default=None, validation_alias="AZURE_OPENAI_API_KEY")
     azure_openai_endpoint: str | None = Field(default=None, validation_alias="AZURE_OPENAI_ENDPOINT")
+    repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
 
     @property
     def is_sqlite(self) -> bool:
@@ -58,6 +60,10 @@ class Settings(BaseSettings):
             backend_dir = Path(__file__).resolve().parents[2]
             path = (backend_dir / path).resolve()
         return path
+
+    @property
+    def mock_login_enabled(self) -> bool:
+        return self.enable_mock_login or self.is_sqlite
 
 
 @lru_cache

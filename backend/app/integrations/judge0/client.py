@@ -188,7 +188,7 @@ class Judge0Client:
         for _ in range(max_polls):
             response = await self._client.get(
                 f"/submissions/{token}",
-                params={"base64_encoded": "false", "fields": "*"},
+                params={"base64_encoded": "false"},
             )
             response.raise_for_status()
             data: dict[str, Any] = response.json()
