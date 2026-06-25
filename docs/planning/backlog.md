@@ -90,8 +90,8 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Add role-based route protection in Next.js.
 - [x] Add role-based API protection in FastAPI.
 - [x] Support minimal staff role management for admin, instructor, and IA.
-- [ ] Add admin course management for creating, editing, and deactivating courses.
-- [ ] Add admin section management for creating, editing, and deactivating sections.
+- [x] Add admin course management for creating, editing, and deactivating courses.
+- [x] Add admin section management for creating, editing, and deactivating sections.
 - [ ] Add admin staff/user management for assigning instructors and IAs to course or section scopes.
 - [ ] Add admin-only monitoring for Azure token usage, sandbox upload-limit state, and worker/capacity status.
 - [x] Keep IA access strict by default and exclude assignment-config authoring in M1.
