@@ -10,6 +10,9 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from app.db.base import import_domain_models
+import_domain_models()
+
 from app.integrations.celery.app import celery_app
 
 logger = logging.getLogger(__name__)

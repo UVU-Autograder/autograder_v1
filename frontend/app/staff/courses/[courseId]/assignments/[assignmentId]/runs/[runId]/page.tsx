@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, DownloadIcon, AwardIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,13 +87,16 @@ export default function RunDetailPage({ params }: PageProps) {
     };
   }, [courseId, assignmentId, runId]);
 
+  const cleanupTimeoutRef = useRef<any>(null);
+
   useEffect(() => {
-    let cleanedUp = false;
+    // Cancel any pending cleanup from a previous mount/strict-mode cycle
+    if (cleanupTimeoutRef.current) {
+      clearTimeout(cleanupTimeoutRef.current);
+      cleanupTimeoutRef.current = null;
+    }
 
     const triggerCleanup = () => {
-      if (cleanedUp) return;
-      cleanedUp = true;
-      
       const url = `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/cleanup`;
       const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
       const headers = new Headers();
@@ -124,7 +127,11 @@ export default function RunDetailPage({ params }: PageProps) {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("pagehide", handleUnload);
-      triggerCleanup();
+      
+      // Delay unmount cleanup to avoid React 18 strict mode double-render purging files on initial load
+      cleanupTimeoutRef.current = setTimeout(() => {
+        triggerCleanup();
+      }, 1500);
     };
   }, [courseId, assignmentId, runId]);
 

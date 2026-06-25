@@ -119,7 +119,7 @@ services:
       MEMORY_LIMIT: "262144"
       MAX_MEMORY_LIMIT: "524288"
       RAILS_ENV: production
-    command: ["/bin/sh", "-c", "cd /api && bundle exec rake resque:work QUEUE=default"]
+    command: ["/bin/sh", "-c", "cd /api && bundle exec rake resque:work QUEUE=*"]
 
   backend:
     build:
