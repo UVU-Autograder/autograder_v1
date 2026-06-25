@@ -33,10 +33,10 @@ Use **Staff Portal Sign In** at `/staff/login` with a `@uvu.edu` address. Local 
 
 ## npm layout
 
-| Path | Purpose |
-|------|---------|
-| Root `package.json` | Orchestration only (`concurrently` for `npm run dev`) |
-| `frontend/package.json` | Next.js app — run `npm install` here for app deps |
+| Path                    | Purpose                                               |
+| ----------------------- | ----------------------------------------------------- |
+| Root `package.json`     | Orchestration only (`concurrently` for `npm run dev`) |
+| `frontend/package.json` | Next.js app — run `npm install` here for app deps     |
 
 Do not install `next`/`react` at the repo root.
 

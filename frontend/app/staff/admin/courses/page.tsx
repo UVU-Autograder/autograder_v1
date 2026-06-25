@@ -1,21 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStaffCourses } from "@/features/courses/api";
+import { getAdminCourses } from "@/features/courses/api";
 import AllCoursesPage from "@/features/courses/admin/all-courses-page";
-import { StaffCoursesResponse } from "@/features/courses/types";
+import { CourseAdminDetail } from "@/features/courses/types";
 
 export default function AdminCoursesPage() {
-  const [data, setData] = useState<StaffCoursesResponse | null>(null);
+  const [courses, setCourses] = useState<CourseAdminDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getStaffCourses()
-      .then((res) => setData(res))
+  const loadCourses = () => {
+    getAdminCourses()
+      .then((res) => setCourses(res))
       .catch((err) => {
         console.error(err);
         setError(err instanceof Error ? err.message : "Failed to load courses.");
       });
+  };
+
+  useEffect(() => {
+    loadCourses();
   }, []);
 
   if (error) {
@@ -29,7 +33,7 @@ export default function AdminCoursesPage() {
     );
   }
 
-  if (!data) {
+  if (!courses) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <p className="animate-pulse font-medium text-slate-500">Loading courses...</p>
@@ -37,5 +41,5 @@ export default function AdminCoursesPage() {
     );
   }
 
-  return <AllCoursesPage data={data} />;
+  return <AllCoursesPage initialCourses={courses} refreshCourses={loadCourses} />;
 }

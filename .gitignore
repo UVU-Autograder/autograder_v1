@@ -6,6 +6,7 @@ Desktop.ini
 # Python & other AI based fragments
 env
 venv
+.env.local
 backend/venv/
 .idea
 __pycache__/

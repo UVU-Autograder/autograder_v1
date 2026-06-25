@@ -10,17 +10,17 @@ const adminLinks = [
   {
     href: "/staff/admin/courses",
     title: "Courses",
-    description: "View all courses",
-  },
-  {
-    href: "/staff/admin/assignments",
-    title: "Assignments",
-    description: "View all assignments across courses",
+    description: "Manage courses, terms, assignments, and roles",
   },
   {
     href: "/staff/admin/access",
     title: "Access",
-    description: "Manage instructors, IAs, and students",
+    description: "Manage instructors and IAs access control grants",
+  },
+  {
+    href: "/staff/admin/monitoring",
+    title: "Monitoring",
+    description: "View active runs, queue size, and token usage statistics",
   },
 ];
 
