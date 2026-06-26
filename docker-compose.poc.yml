@@ -48,7 +48,10 @@ services:
       retries: 10
 
   judge0:
-    image: judge0/judge0:1.13.1
+    build:
+      context: .
+      dockerfile: judge0.Dockerfile
+    image: uvu-autograder-judge0:latest
     restart: unless-stopped
     privileged: true
     depends_on:
@@ -87,9 +90,13 @@ services:
       retries: 10
 
   judge0-worker:
-    image: judge0/judge0:1.13.1
+    build:
+      context: .
+      dockerfile: judge0.Dockerfile
+    image: uvu-autograder-judge0:latest
     restart: unless-stopped
     privileged: true
+
     depends_on:
       judge0-postgres:
         condition: service_healthy

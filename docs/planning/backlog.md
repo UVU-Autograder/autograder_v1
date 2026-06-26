@@ -23,7 +23,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 | [x]  | Local stack and metadata-only persistence foundation is working         | Developers can run the local stack; Postgres stores only approved metadata tables; Redis/Celery/Judge0 integration path and Compose harness are documented.  |
 | [x]  | Judge0/Kata cleanup proof is established                                | The team has evidence that Judge0 submission/result artifacts and Kata execution state are destroyed after result retrieval.                                 |
 | [x]  | Staff `@uvu.edu` authentication and role boundaries are implemented     | Staff sign-in rejects non-UVU accounts; admin, instructor, and IA access rules are enforced. (NextAuth pending, Mock Login complete)                         |
-| [ ]  | Admin course, section, staff, and monitoring workflows are usable       | Admins can manage courses, sections, access grants, and admin-only operational monitoring for token usage, upload limits, and worker/capacity status.        |
+| [x]  | Admin course, section, staff, and monitoring workflows are usable       | Admins can manage courses, sections, access grants, and admin-only operational monitoring for token usage, upload limits, and worker/capacity status.        |
 | [x]  | Assignment setup and canonical `config_json` are usable                 | Staff can create or open an assignment, edit setup through the wizard, define ZIP/project bundle requirements, define visible scoring items, and persist validated internal config. |
 | [x]  | Assignment artifact management is usable                               | Staff can manage the single assignment pytest file, model solutions, and support files through local filesystem-backed `assignment_artifacts` storage references. |
 | [x]  | Ephemeral Canvas ZIP ingest is implemented                              | Staff can upload a Canvas ZIP containing single-file or multi-file student bundles; malformed archives, path traversal, and unmatched filenames surface actionable errors without persistent student submissions. |
@@ -92,8 +92,8 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Support minimal staff role management for admin, instructor, and IA.
 - [x] Add admin course management for creating, editing, and deactivating courses.
 - [x] Add admin section management for creating, editing, and deactivating sections.
-- [ ] Add admin staff/user management for assigning instructors and IAs to course or section scopes.
-- [ ] Add admin-only monitoring for Azure token usage, sandbox upload-limit state, and worker/capacity status.
+- [x] Add admin staff/user management for assigning instructors and IAs to course or section scopes.
+- [x] Add admin-only monitoring for Azure token usage, sandbox upload-limit state, and worker/capacity status.
 - [x] Keep IA access strict by default and exclude assignment-config authoring in M1.
 - [x] Ensure instructors can view assigned courses and edit only explicitly assigned sections.
 - [x] Ensure IAs can view only explicitly assigned sections for grading validation.
@@ -280,3 +280,28 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Review deployment configuration.
 - [ ] Update README with deployment and operating notes.
 - [ ] Record a demo walkthrough.
+
+### Expected Input/Output & Visual Diffing
+- [ ] **Expected Input/Output Test Case Extraction (Pytest AST Parser)**:
+  - [ ] Implement backend AST parsing of pytest files to extract convention-based expected inputs and outputs (e.g. `test_name.EXPECTED_INPUT` / `EXPECTED_OUTPUT`).
+  - [ ] Expose these extracted expected fields in the sandbox run results API.
+- [ ] **Visual Diff Rendering**:
+  - [ ] Integrate a React visual string diff component (e.g., `react-diff-viewer`) in the student sandbox view.
+  - [ ] Show side-by-side or unified diff comparison of actual student stdout/stderr against expected outputs.
+- [ ] **Instructor Settings Integration**:
+  - [ ] Expose parsed expected inputs/outputs next to test items in the Instructor's assignment setup rubric panel.
+
+### 5-Minute Inactivity Session Timeout
+- [ ] **Client-side Activity Listener**:
+  - [ ] Build global mouse, keyboard, and scroll event listeners in the frontend to track active interaction.
+  - [ ] Auto-redirect the user to the login page and clear local session state after 5 minutes of inactivity.
+- [ ] **Backend Expiration Sync**:
+  - [ ] Align JWT token lifespan with the 5-minute inactivity window.
+  - [ ] Enable sliding expiration window refreshed on request activity.
+
+### Vercel Deployment & Mocking
+- [ ] **Local Mock Next.js API Routes**:
+  - [ ] Implement mock endpoints (under `app/api/*`) to return static mock datasets for assignments, runs, and grading.
+- [ ] **Vercel Preview Deploy**:
+  - [ ] Deploy Next.js frontend workspace to Vercel in static preview mode for rapid testing.
+

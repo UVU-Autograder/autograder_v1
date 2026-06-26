@@ -13,7 +13,9 @@ import {
   XIcon,
   HelpCircleIcon,
   PlusCircleIcon,
-  FileTextIcon
+  FileTextIcon,
+  CopyIcon,
+  CheckIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -325,6 +327,19 @@ export default function SetupWizardPage({ params }: PageProps) {
   const [editCodeText, setEditCodeText] = useState("");
   const [isSavingCode, setIsSavingCode] = useState(false);
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyStudentLink = () => {
+    const studentLink = `${window.location.origin}/sandbox/${courseId}/assignments/${assignmentId}`;
+    navigator.clipboard.writeText(studentLink)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy link: ", err);
+      });
+  };
 
   // Centralized State Initialization Helper
   const syncSetupState = (data: StaffAssignmentSetup, meta: Record<string, ConceptMetadata> = conceptMeta) => {
@@ -943,6 +958,19 @@ export default function SetupWizardPage({ params }: PageProps) {
             <p className="text-slate-500">Configure parameters for assignment "{assignmentId}"</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={handleCopyStudentLink} className="flex items-center gap-1.5">
+              {copied ? (
+                <>
+                  <CheckIcon className="size-4 text-green-600" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <CopyIcon className="size-4" />
+                  <span>Copy Student Link</span>
+                </>
+              )}
+            </Button>
             <Button variant="outline" asChild>
               <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`}>
                 Manage Artifacts
