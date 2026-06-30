@@ -278,6 +278,7 @@ class StaffAssignmentSetup(BaseModel):
     scoring_items: list[ScoringItem]
     rubric_groups: list[RubricGroup]
     completion_requirements: list[CompletionRequirement]
+    canvas_ref: str | None = None
     artifacts: list[ArtifactMetadata]
     config_json: AssignmentConfigV1
 
@@ -285,4 +286,15 @@ class StaffAssignmentSetup(BaseModel):
 class StaffAssignmentSetupUpdate(BaseModel):
     title: str | None = None
     sandbox_enabled: bool | None = None
+    canvas_ref: str | None = None
+    language: str | None = None
     config_json: AssignmentConfigV1
+
+
+class AssignmentCreate(BaseModel):
+    slug: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    title: str = Field(min_length=1)
+    language: str = Field(default="python")
+    canvas_ref: str | None = Field(default=None)
+    sandbox_enabled: bool = Field(default=True)
+

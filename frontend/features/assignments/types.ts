@@ -102,4 +102,30 @@ export type ConceptMetadata = {
     title: string;
     syntax_patterns: string[];
     nodes: string[];
-};
+};
+
+export type StaffAssignmentSetup = {
+    course_id: string;
+    assignment_id: string;
+    title: string;
+    language: string;
+    sandbox_enabled: boolean;
+    canvas_ref: string | null;
+    base_points: number;
+    extra_credit_points: number;
+    required_files: string[];
+    entrypoint_path: string;
+    concept_additions: string[];
+    scoring_items: any[];
+    artifacts: any[];
+    config_json: any;
+};
+
+export type AssignmentCreatePayload = {
+    slug: string;
+    title: string;
+    language: string;
+    canvas_ref?: string | null;
+    sandbox_enabled?: boolean;
+};
+

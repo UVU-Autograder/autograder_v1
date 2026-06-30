@@ -12,6 +12,7 @@ from app.domains.assignments.models import (
 from app.domains.assignments.schemas import (
     ArtifactMetadata,
     AssignmentConfigV1,
+    AssignmentCreate,
     CompletionRequirement,
     RubricGroup,
     ScoringItem,
@@ -144,6 +145,10 @@ def update_staff_setup(
         assignment.title = payload.title
     if payload.sandbox_enabled is not None:
         assignment.sandbox_enabled = payload.sandbox_enabled
+    if payload.canvas_ref is not None:
+        assignment.canvas_ref = payload.canvas_ref
+    if payload.language is not None:
+        assignment.language = payload.language
 
     upsert_assignment_config(db, assignment, payload.config_json.model_dump(mode="json"))
     db.commit()
@@ -177,6 +182,7 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
         title=assignment.title,
         language=assignment.language,
         sandbox_enabled=assignment.sandbox_enabled,
+        canvas_ref=assignment.canvas_ref,
         base_points=config.base_points,
         extra_credit_points=config.extra_credit_points,
         required_files=config.bundle.required_files,
@@ -384,3 +390,110 @@ def get_artifact_content(
         return path.read_bytes(), artifact.display_filename or artifact_key
     except Exception:
         return None
+
+
+def get_default_config_json() -> dict:
+    return {
+        "schema_version": 1,
+        "bundle": {
+            "required_files": ["main.py"],
+            "entrypoint": "main.py",
+            "file_requirements": [],
+        },
+        "concepts": {
+            "additions": [],
+        },
+        "artifacts": {
+            "tests": {
+                "type": "pytest_file",
+                "display_filename": "test_main.py",
+            },
+        },
+        "tests": [
+            {
+                "key": "t1",
+                "label": "Test 1",
+                "points": 10,
+                "extra_credit": False,
+            },
+        ],
+        "completion_requirements": [],
+        "execution": {
+            "dependencies": [],
+        },
+        "support_artifacts": [],
+        "output_artifacts": [],
+        "rubric_groups": [],
+        "manual_rubric_items": [],
+        "stdin_scenarios": [],
+    }
+
+
+def create_assignment(
+    db: Session,
+    course_code: str,
+    payload: AssignmentCreate,
+) -> Assignment:
+    course = db.scalar(
+        select(Course)
+        .where(Course.code == course_code, Course.is_active.is_(True))
+    )
+    if course is None:
+        raise ValueError("Course not found.")
+
+    # Check for existing assignment (either active or inactive)
+    existing = db.scalar(
+        select(Assignment)
+        .where(
+            Assignment.course_id == course.id,
+            Assignment.slug == payload.slug,
+        )
+    )
+
+    if existing is not None:
+        # Reactivate and update metadata
+        existing.title = payload.title
+        existing.language = payload.language
+        existing.canvas_ref = payload.canvas_ref
+        existing.sandbox_enabled = payload.sandbox_enabled
+        existing.is_active = True
+        if existing.config is None:
+            default_config_json = get_default_config_json()
+            upsert_assignment_config(db, existing, default_config_json)
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    # Create new assignment
+    assignment = Assignment(
+        course_id=course.id,
+        slug=payload.slug,
+        title=payload.title,
+        language=payload.language,
+        canvas_ref=payload.canvas_ref,
+        sandbox_enabled=payload.sandbox_enabled,
+        is_active=True,
+    )
+    db.add(assignment)
+    db.flush()
+
+    default_config_json = get_default_config_json()
+    upsert_assignment_config(db, assignment, default_config_json)
+
+    db.commit()
+    db.refresh(assignment)
+    return assignment
+
+
+def deactivate_assignment(
+    db: Session,
+    course_code: str,
+    assignment_slug: str,
+) -> bool:
+    assignment = get_assignment_for_course(db, course_code, assignment_slug)
+    if assignment is None:
+        return False
+    assignment.is_active = False
+    db.commit()
+    return True
+

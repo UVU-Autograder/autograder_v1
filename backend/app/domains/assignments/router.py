@@ -1,14 +1,64 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.dependencies import DbSession, require_role, require_staff
-from app.domains.assignments.schemas import StaffAssignmentSetup, StaffAssignmentSetupUpdate
-from app.domains.assignments.service import get_staff_setup, update_staff_setup
+from app.domains.assignments.schemas import (
+    StaffAssignmentSetup,
+    StaffAssignmentSetupUpdate,
+    AssignmentCreate,
+)
+from app.domains.assignments.service import (
+    get_staff_setup,
+    update_staff_setup,
+    create_assignment,
+    deactivate_assignment,
+    build_staff_setup,
+)
 
 router = APIRouter(
     prefix="/staff/courses/{course_id}/assignments",
     tags=["staff-assignments"],
     dependencies=[Depends(require_staff)],
 )
+
+
+@router.post(
+    "",
+    response_model=StaffAssignmentSetup,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
+def create_new_assignment(
+    course_id: str,
+    payload: AssignmentCreate,
+    db: DbSession,
+) -> StaffAssignmentSetup:
+    try:
+        assignment = create_assignment(db, course_id, payload)
+        return build_staff_setup(assignment)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        )
+
+
+@router.delete(
+    "/{assignment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
+def delete_assignment(
+    course_id: str,
+    assignment_id: str,
+    db: DbSession,
+):
+    success = deactivate_assignment(db, course_id, assignment_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found.",
+        )
+    return
 
 
 @router.get("/{assignment_id}/setup", response_model=StaffAssignmentSetup)

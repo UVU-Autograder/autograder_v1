@@ -7,6 +7,8 @@ import {
   SandboxRunResultResponse,
   SandboxCancelResponse,
   ConceptMetadata,
+  StaffAssignmentSetup,
+  AssignmentCreatePayload,
 } from "@/features/assignments/types";
 
 
@@ -156,5 +158,13 @@ export async function cancelSandboxRun(runId: string, sessionId: string) {
 
 export function getConceptsMetadata() {
   return apiClient.get<Record<string, ConceptMetadata>>("/sandbox/concepts/metadata");
+}
+
+export function createStaffAssignment(courseId: string, payload: AssignmentCreatePayload) {
+  return apiClient.post<StaffAssignmentSetup>(`/staff/courses/${courseId}/assignments`, payload);
+}
+
+export function deleteStaffAssignment(courseId: string, assignmentId: string) {
+  return apiClient.delete<void>(`/staff/courses/${courseId}/assignments/${assignmentId}`);
 }
 
