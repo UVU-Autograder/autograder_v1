@@ -348,7 +348,11 @@ def validate_assignment_model_solution(
         return error_result
 
 
-def generate_pedagogical_feedback_html(student_identifier: str, result: GradingResult) -> str:
+def generate_pedagogical_feedback_html(
+    student_identifier: str,
+    result: GradingResult,
+    manual_results: dict | None = None
+) -> str:
     """Generate a clean HTML pedagogical feedback page for the student."""
     from html import escape
 
@@ -413,6 +417,36 @@ def generate_pedagogical_feedback_html(student_identifier: str, result: GradingR
         </div>
         """
 
+    from app.domains.runs.service import manual_score_sum
+
+    total_score = result.score + manual_score_sum(manual_results)
+
+    manual_html = ""
+    if manual_results:
+        manual_blocks = [
+            "<h2 style='border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 30px; margin-bottom: 15px;'>Manual Grading Criteria</h2>"
+        ]
+        for key, item in manual_results.items():
+            score_val = item.get("score")
+            score_text = f"{score_val} / {item.get('points')}" if score_val is not None else f"Pending / {item.get('points')}"
+            status_color = "#16a34a" if score_val is not None else "#d97706"
+            safe_label = escape(str(item.get("label", key)))
+            safe_comments = escape(str(item.get("comments", "")))
+            comments_block = ""
+            if safe_comments:
+                comments_block = f"<p style='margin: 8px 0 0 0; font-size: 0.9em; color: #4b5563; font-style: italic; border-left: 3px solid #cbd5e1; padding-left: 8px;'>Comments: {safe_comments}</p>"
+
+            manual_blocks.append(f"""
+            <div style="border: 1px solid #e5e7eb; padding: 15px; margin-bottom: 12px; border-radius: 8px; background-color: #ffffff; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; margin-bottom: 8px;">
+                    <h3 style="margin: 0; font-size: 1.1em; color: #1f2937;">{safe_label}</h3>
+                    <span style="color: {status_color}; font-weight: bold; font-size: 0.9em; background-color: {status_color}15; padding: 2px 8px; border-radius: 4px;">{score_text}</span>
+                </div>
+                {comments_block}
+            </div>
+            """)
+        manual_html = "".join(manual_blocks)
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -438,7 +472,7 @@ def generate_pedagogical_feedback_html(student_identifier: str, result: GradingR
                     <h2>Pedagogical Report</h2>
                     <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 0.9em;">Student: {safe_student_identifier}</p>
                 </div>
-                <div class="score">{result.score} / {result.max_score}</div>
+                <div class="score">{total_score} / {result.max_score}</div>
             </div>
             
             {overall_failure_html}
@@ -447,6 +481,8 @@ def generate_pedagogical_feedback_html(student_identifier: str, result: GradingR
             
             <h2 style="border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 15px;">Test Cases</h2>
             {tests_html}
+            
+            {manual_html}
         </div>
     </body>
     </html>
@@ -484,7 +520,7 @@ def grade_official_run(self, run_id: int) -> dict:
     )
     from app.domains.grading.service import run_grading_pipeline, GradingResult
     from app.core.settings import get_settings
-
+    from app.domains.runs.service import init_manual_results, official_run_dir, write_feedback_zip, write_run_grades_csv
     settings = get_settings()
     workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
     zip_path = workspaces_dir / f"official_{run_id}.zip"
@@ -536,7 +572,7 @@ def grade_official_run(self, run_id: int) -> dict:
                 db.commit()
         return {"error": "Official ZIP not found"}
 
-    run_dir = workspaces_dir / f"official_{run_id}"
+    run_dir = official_run_dir(run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     extract_dir = run_dir / "extracted"
     extract_dir.mkdir(parents=True, exist_ok=True)
@@ -576,6 +612,7 @@ def grade_official_run(self, run_id: int) -> dict:
 
         student_temp_dir = run_dir / f"student_{canvas_user_id}"
         student_temp_dir.mkdir(parents=True, exist_ok=True)
+        manual_results = init_manual_results(config.manual_rubric_items)
 
         try:
             prepare_student_bundle(paths, student_temp_dir)
@@ -593,7 +630,8 @@ def grade_official_run(self, run_id: int) -> dict:
                 "warnings": [],
                 "failure_category": "preparation_error",
                 "failure_message": f"Failed to prepare submission bundle: {str(e)}",
-                "feedback_html": f"<html><body><p>Error preparing submission: {str(e)}</p></body></html>"
+                "feedback_html": f"<html><body><p>Error preparing submission: {str(e)}</p></body></html>",
+                "manual_results": manual_results
             }
             shutil.rmtree(student_temp_dir, ignore_errors=True)
             return
@@ -622,7 +660,7 @@ def grade_official_run(self, run_id: int) -> dict:
                 max_score=max_score
             )
 
-        feedback_html = generate_pedagogical_feedback_html(student_identifier, grading_result)
+        feedback_html = generate_pedagogical_feedback_html(student_identifier, grading_result, manual_results)
 
         if grading_result.success:
             if grading_result.warnings:
@@ -648,10 +686,11 @@ def grade_official_run(self, run_id: int) -> dict:
             "warnings": [dict(w) for w in grading_result.warnings],
             "failure_category": grading_result.failure_category,
             "failure_message": grading_result.failure_message,
-            "feedback_html": feedback_html
+            "feedback_html": feedback_html,
+            "manual_results": manual_results
         }
 
-        shutil.rmtree(student_temp_dir, ignore_errors=True)
+        # Keep student_temp_dir on disk so staff can browse submission files after grading.
 
         with SessionLocal() as db_inner:
             run_db = db_inner.scalar(select(RunSummary).where(RunSummary.id == run_id))
@@ -685,25 +724,8 @@ def grade_official_run(self, run_id: int) -> dict:
         "student_results": student_results
     }
     (run_dir / "run_details.json").write_text(json.dumps(details_payload, indent=2))
-
-    csv_path = run_dir / "grades.csv"
-    with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Student Identifier", "Canvas User ID", "Submission ID", "Score", "Max Score"])
-        for canvas_user_id, res in student_results.items():
-            writer.writerow([
-                res["student_identifier"],
-                canvas_user_id,
-                res["submission_id"],
-                res["score"],
-                res["max_score"]
-            ])
-
-    zip_export_path = run_dir / "feedback.zip"
-    with zipfile.ZipFile(zip_export_path, "w", zipfile.ZIP_DEFLATED) as z_out:
-        for canvas_user_id, res in student_results.items():
-            filename = f"{res['student_identifier']}_{canvas_user_id}_feedback.html"
-            z_out.writestr(filename, res["feedback_html"])
+    write_run_grades_csv(run_dir, student_results)
+    write_feedback_zip(run_dir, student_results)
 
     with SessionLocal() as db:
         run_db = db.scalar(select(RunSummary).where(RunSummary.id == run_id))
@@ -724,6 +746,7 @@ def run_mock_official_run(run_id: int) -> None:
     from app.domains.runs.models import RunSummary
     from app.domains.assignments.models import Assignment
     from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.runs.service import init_manual_results, official_run_dir, write_feedback_zip, write_run_grades_csv
     from app.core.settings import get_settings
 
     with SessionLocal() as db:
@@ -736,12 +759,15 @@ def run_mock_official_run(run_id: int) -> None:
 
         assignment = db.scalar(select(Assignment).where(Assignment.id == run.assignment_id))
         max_score = 100
+        config = None
         if assignment and assignment.config:
             try:
                 config = AssignmentConfigV1.model_validate(assignment.config.config_json)
                 max_score = config.base_points
             except Exception:
                 pass
+
+        mock_manual_results = init_manual_results(config.manual_rubric_items) if config else {}
 
         # Generate simulated results for 3 mock students
         mock_students = [
@@ -777,12 +803,11 @@ def run_mock_official_run(run_id: int) -> None:
                 "warnings": warnings,
                 "failure_category": None if success else "missing_required_file",
                 "failure_message": None if success else "Required file 'entrypoint.py' is missing.",
-                "feedback_html": f"<html><body><h1>Mock Feedback for {name}</h1><p>Score: {score}/{max_score}</p></body></html>"
+                "feedback_html": f"<html><body><h1>Mock Feedback for {name}</h1><p>Score: {score}/{max_score}</p></body></html>",
+                "manual_results": {key: dict(item) for key, item in mock_manual_results.items()},
             }
 
-        settings = get_settings()
-        workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
-        run_dir = workspaces_dir / f"official_{run_id}"
+        run_dir = official_run_dir(run_id)
         run_dir.mkdir(parents=True, exist_ok=True)
 
         # Save mock files
@@ -791,16 +816,8 @@ def run_mock_official_run(run_id: int) -> None:
             "student_results": student_results
         }
         (run_dir / "run_details.json").write_text(json.dumps(details_payload, indent=2))
-
-        with open(run_dir / "grades.csv", "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Student Identifier", "Canvas User ID", "Submission ID", "Score", "Max Score"])
-            for canvas_id, res in student_results.items():
-                writer.writerow([res["student_identifier"], canvas_id, res["submission_id"], res["score"], res["max_score"]])
-
-        with zipfile.ZipFile(run_dir / "feedback.zip", "w", zipfile.ZIP_DEFLATED) as z_out:
-            for canvas_id, res in student_results.items():
-                z_out.writestr(f"{res['student_identifier']}_{canvas_id}_feedback.html", res["feedback_html"])
+        write_run_grades_csv(run_dir, student_results)
+        write_feedback_zip(run_dir, student_results)
 
         run.success_count = success_count
         run.warning_count = warning_count

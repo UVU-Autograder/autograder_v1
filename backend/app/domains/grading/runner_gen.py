@@ -124,7 +124,12 @@ def generate_runner_script(
                     def normalize(s):
                         return {joiner}.join(line.strip() for line in s.splitlines() if line.strip())
                         
-                    assert normalize(actual) == normalize(case_output)
+                    try:
+                        assert normalize(actual) == normalize(case_output)
+                    except AssertionError as e:
+                        request.node.user_properties.append(("actual", actual))
+                        request.node.user_properties.append(("expected", case_output))
+                        raise e
                     
                 return _run
 
@@ -151,6 +156,13 @@ def generate_runner_script(
                         if isinstance(key, str) and key.startswith("ag_"):
                             markers.append(key)
 
+                actual = None
+                expected = None
+                if hasattr(report, "user_properties"):
+                    props = dict(report.user_properties)
+                    actual = props.get("actual")
+                    expected = props.get("expected")
+
                 message = None
                 if report.failed:
                     longrepr = str(report.longrepr) if report.longrepr else None
@@ -164,6 +176,8 @@ def generate_runner_script(
                     "markers": sorted(markers),
                     "duration": round(report.duration, 6),
                     "message": message,
+                    "actual": actual,
+                    "expected": expected,
                 }})
 
 

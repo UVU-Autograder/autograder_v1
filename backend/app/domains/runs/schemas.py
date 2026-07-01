@@ -55,3 +55,12 @@ class RunSummaryResponse(BaseModel):
 class RunSummaryListResponse(BaseModel):
     runs: list[RunSummaryResponse]
 
+
+class ManualGradeInput(BaseModel):
+    score: int | None = Field(default=None, ge=0)
+    comments: str | None = Field(default="")
+
+
+class UpdateManualGradesRequest(BaseModel):
+    grades: dict[str, ManualGradeInput]
+

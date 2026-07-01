@@ -94,6 +94,8 @@ class TestSummary(BaseModel):
     points_awarded: int = Field(ge=0)
     points_possible: int = Field(ge=0)
     message: str
+    actual: str | None = None
+    expected: str | None = None
 
 
 class SandboxWarning(BaseModel):

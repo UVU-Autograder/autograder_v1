@@ -47,6 +47,9 @@ class PytestTestResult:
     message: str | None
     """Short, sanitized failure/error message (``None`` when passed/skipped)."""
 
+    actual: str | None = None
+    expected: str | None = None
+
 
 @dataclass
 class PytestRunResult:
@@ -112,6 +115,8 @@ def _parse_test_entry(entry: dict) -> PytestTestResult:
         markers=entry.get("markers", []),
         duration=float(entry.get("duration", 0.0)),
         message=_truncate(entry.get("message")),
+        actual=entry.get("actual"),
+        expected=entry.get("expected"),
     )
 
 
@@ -240,6 +245,8 @@ def calculate_scores(
                 "outcome": t.outcome,
                 "duration": t.duration,
                 "message": t.message,
+                "actual": t.actual,
+                "expected": t.expected,
             }
             for t in matching_tests
         ]

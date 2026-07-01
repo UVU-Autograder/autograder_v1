@@ -188,3 +188,5 @@ def test_runner_execution_failing(tmp_path):
     assert len(tests) == 1
     assert tests[0]["outcome"] == "failed"
     assert "AssertionError" in tests[0]["message"]
+    assert tests[0]["actual"].strip() == "2"
+    assert tests[0]["expected"].strip() == "8"

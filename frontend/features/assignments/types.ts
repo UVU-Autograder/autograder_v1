@@ -75,6 +75,8 @@ export type SandboxTestSummary = {
     points_awarded: number;
     points_possible: number;
     message: string;
+    actual?: string;
+    expected?: string;
 };
 
 export type SandboxWarning = {
