@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from sqlalchemy.orm import Session
@@ -16,6 +16,7 @@ security = HTTPBearer(auto_error=False)
 
 def get_current_user(
     db: DbSession,
+    response: Response,
     credentials: Annotated[
         HTTPAuthorizationCredentials | None, Depends(security)
     ] = None,
@@ -49,6 +50,11 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User is inactive.",
         )
+
+    # Generate new token with sliding expiration
+    from app.core.auth_utils import create_access_token
+    refreshed_token = create_access_token(email=email, display_name=name)
+    response.headers["x-refresh-token"] = refreshed_token
 
     return user
 

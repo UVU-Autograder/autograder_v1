@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     )
 
     jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
-    jwt_expiration_hours: int = Field(default=24, ge=1, validation_alias="JWT_EXPIRATION_HOURS")
+    jwt_expiration_minutes: int = Field(default=5, ge=1, validation_alias="JWT_EXPIRATION_MINUTES")
     enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
     azure_openai_api_key: str | None = Field(default=None, validation_alias="AZURE_OPENAI_API_KEY")
