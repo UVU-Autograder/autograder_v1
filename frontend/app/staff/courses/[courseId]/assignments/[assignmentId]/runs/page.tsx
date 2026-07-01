@@ -1,9 +1,9 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, PlayIcon, ClockIcon } from "lucide-react";
+import { PlayIcon } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
@@ -160,11 +160,9 @@ export default function RunsPage({ params }: PageProps) {
     <div className="min-h-screen bg-slate-50 p-6 md:p-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 space-y-1">
-          <Button variant="ghost" size="sm" className="-ml-3" asChild>
-            <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}`}>
-              <ArrowLeftIcon className="mr-1 size-4" /> Back to assignment
-            </Link>
-          </Button>
+          <BackLink href={`/staff/courses/${courseId}/assignments/${assignmentId}`} variant="compact">
+            Back to assignment
+          </BackLink>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Official Canvas Runs</h1>
           <p className="text-slate-500">Launch student grading cycles via Canvas ZIP exports.</p>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -180,12 +180,7 @@ export default function AllCoursesPage({
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 pt-8">
-      <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-        <Link href="/staff/admin">
-          <ArrowLeftIcon className="mr-1 size-4" />
-          Back to admin
-        </Link>
-      </Button>
+      <BackLink href="/staff/admin">Back to admin</BackLink>
 
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">All Courses</h1>

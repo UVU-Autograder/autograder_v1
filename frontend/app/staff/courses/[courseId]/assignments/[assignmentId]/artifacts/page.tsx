@@ -2,7 +2,8 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, UploadIcon, TrashIcon, DownloadIcon, FileIcon, EditIcon, XIcon, ShieldAlertIcon, SaveIcon, FileTextIcon } from "lucide-react";
+import { UploadIcon, TrashIcon, DownloadIcon, FileIcon, EditIcon, XIcon, ShieldAlertIcon, SaveIcon, FileTextIcon } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -210,11 +211,9 @@ export default function ArtifactsPage({ params }: PageProps) {
     <div className="min-h-screen bg-slate-50 p-6 md:p-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 space-y-1">
-          <Button variant="ghost" size="sm" className="-ml-3" asChild>
-            <Link href={`/staff/courses/${courseId}/assignments/${assignmentId}`}>
-              <ArrowLeftIcon className="mr-1 size-4" /> Back to assignment
-            </Link>
-          </Button>
+          <BackLink href={`/staff/courses/${courseId}/assignments/${assignmentId}`} variant="compact">
+            Back to assignment
+          </BackLink>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Grading Assets</h1>
           <p className="text-slate-500">Upload and manage test suites or reference solutions.</p>
         </div>

@@ -1,8 +1,8 @@
 "use client";
 
 import { use, useState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { ArrowLeftIcon, DownloadIcon, AwardIcon } from "lucide-react";
+import { DownloadIcon, AwardIcon } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
@@ -172,11 +172,9 @@ export default function RunDetailPage({ params }: PageProps) {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            <Button variant="ghost" size="sm" className="-ml-3" asChild>
-              <Link href={`/staff/courses/${courseId}/assignments`}>
-                <ArrowLeftIcon className="mr-1 size-4" /> Back to course details
-              </Link>
-            </Button>
+            <BackLink href={`/staff/courses/${courseId}/assignments`} variant="compact">
+              Back to course details
+            </BackLink>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Run #{runId} Details</h1>
             <p className="text-slate-500">Grading results overview and student lists</p>
           </div>

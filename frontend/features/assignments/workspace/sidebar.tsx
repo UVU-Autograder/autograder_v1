@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { ArrowLeftIcon, TerminalSquareIcon, BookOpenIcon } from "lucide-react"
-import { Button } from "@/components/ui/button";
+import { TerminalSquareIcon, BookOpenIcon } from "lucide-react"
+import { BackLink } from "@/components/back-link";
 import { AppSidebar } from "@/components/app-sidebar"
 import { Assignment, ConceptMetadata } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
@@ -62,12 +61,12 @@ export function AssignmentSidebar({
 
     const data = {
         header: (
-            <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
-                <Link href={basePath === "/sandbox" ? `/sandbox/${courseId}/assignments` : `/staff/courses/${courseId}/assignments`}>
-                    <ArrowLeftIcon />
-                    Back to assignments
-                </Link>
-            </Button>
+            <BackLink
+                href={basePath === "/sandbox" ? `/sandbox/${courseId}/assignments` : `/staff/courses/${courseId}/assignments`}
+                variant="sidebar"
+            >
+                Back to assignments
+            </BackLink>
         ),
         navMain: [
             {

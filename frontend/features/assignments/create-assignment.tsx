@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ArrowLeftIcon } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -86,12 +86,9 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
     <div className="w-full px-4 pt-8">
       <div className="mx-auto max-w-lg">
         <div className="mb-6">
-          <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-            <Link href={`/staff/courses/${courseId}/assignments`}>
-              <ArrowLeftIcon />
-              Back to assignments
-            </Link>
-          </Button>
+          <BackLink href={`/staff/courses/${courseId}/assignments`}>
+            Back to assignments
+          </BackLink>
           <h1 className="text-2xl font-semibold tracking-tight">New Assignment</h1>
           <p className="text-muted-foreground mt-1">{courseId}</p>
         </div>

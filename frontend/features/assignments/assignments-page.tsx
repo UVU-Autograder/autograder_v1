@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeftIcon } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { AssignmentsResponse } from "@/features/assignments/types";
 import AssignmentCard from "@/features/assignments/assignment-card";
@@ -18,12 +18,7 @@ export default function AssignmentsPage({
   return (
     <div className="w-full px-4 pt-8">
       <div className="mb-6">
-        <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-          <Link href={backHref}>
-            <ArrowLeftIcon />
-            Back to courses
-          </Link>
-        </Button>
+        <BackLink href={backHref}>Back to courses</BackLink>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>

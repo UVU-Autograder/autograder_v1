@@ -2,7 +2,8 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, SaveIcon } from "lucide-react";
+import { SaveIcon } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
@@ -92,11 +93,9 @@ export default function CourseConceptsPage({ params }: PageProps) {
     <div className="min-h-screen bg-slate-50 p-6 md:p-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 space-y-1">
-          <Button variant="ghost" size="sm" className="-ml-3" asChild>
-            <Link href={`/staff/courses/${courseId}/assignments`}>
-              <ArrowLeftIcon className="mr-1 size-4" /> Back to course details
-            </Link>
-          </Button>
+          <BackLink href={`/staff/courses/${courseId}/assignments`} variant="compact">
+            Back to course details
+          </BackLink>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Course Default Concepts Whitelist</h1>
           <p className="text-slate-500">Configure default whitelisting rules that apply to all assignments in {courseId}.</p>
         </div>
