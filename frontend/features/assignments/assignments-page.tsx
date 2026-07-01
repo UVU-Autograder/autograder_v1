@@ -30,11 +30,18 @@ export default function AssignmentsPage({
             <p className="text-muted-foreground mt-1">{data.course_id}</p>
           </div>
           {mode === "staff" && (
-            <Button variant="outline" asChild>
-              <Link href={`/staff/courses/${data.course_id}/settings`}>
-                Course Settings
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link href={`/staff/courses/${data.course_id}/settings`}>
+                  Course Settings
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href={`/staff/courses/${data.course_id}/assignments/new`}>
+                  New Assignment
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
       </div>
