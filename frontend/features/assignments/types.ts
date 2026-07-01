@@ -1,5 +1,3 @@
-
-
 export type Constraint = {
     label: string;
     value: string;
@@ -13,6 +11,8 @@ type RubricItem = {
     pytest_marker: string | null;
     item_type: string;
     rubric_group_key: string | null;
+    inputs?: string[] | null;
+    outputs?: string[] | null;
 }
 
 type UploadQuota = {
@@ -73,6 +73,8 @@ export type SandboxTestSummary = {
     points_awarded: number;
     points_possible: number;
     message: string;
+    actual?: string;
+    expected?: string;
 };
 
 export type SandboxWarning = {

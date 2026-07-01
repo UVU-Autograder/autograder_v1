@@ -45,6 +45,17 @@ function getAuthToken(): string | null {
     return localStorage.getItem("token") || sessionStorage.getItem("token");
 }
 
+function updateStoredToken(response: Response) {
+    const refreshToken = response.headers.get("x-refresh-token");
+    if (refreshToken && typeof window !== "undefined") {
+        if (localStorage.getItem("token")) {
+            localStorage.setItem("token", refreshToken);
+        } else if (sessionStorage.getItem("token")) {
+            sessionStorage.setItem("token", refreshToken);
+        }
+    }
+}
+
 async function apiFetch<T>(
     path: string,
     init?: RequestInit & ApiFetchOptions
@@ -75,9 +86,11 @@ async function apiFetch<T>(
     }
 
     if (response.status === 204) {
+        updateStoredToken(response);
         return { data: undefined as T, response };
     }
 
+    updateStoredToken(response);
     return {
         data: (await response.json()) as T,
         response,
@@ -127,6 +140,8 @@ export const apiClient = {
             }
             throw new ApiError(response.status, message);
         }
+
+        updateStoredToken(response);
 
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);

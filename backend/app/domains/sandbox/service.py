@@ -251,13 +251,29 @@ class SandboxService:
                 # Build test summaries from real results
                 test_summaries = []
                 for tr in redis_result.get("test_results", []):
+                    failed_sub = None
+                    for sub in tr.get("test_results", []):
+                        if sub.get("outcome") != "passed":
+                            failed_sub = sub
+                            break
+                    
+                    msg = tr.get("label", "")
+                    actual_val = None
+                    expected_val = None
+                    if failed_sub:
+                        msg = failed_sub.get("message") or ""
+                        actual_val = failed_sub.get("actual")
+                        expected_val = failed_sub.get("expected")
+
                     test_summaries.append(
                         TestSummary(
                             label=tr.get("label", tr.get("key", "Unknown")),
                             status="passed" if tr.get("passed") else "failed",
                             points_awarded=tr.get("points_awarded", 0),
                             points_possible=tr.get("points", 0),
-                            message=tr.get("label", ""),
+                            message=msg,
+                            actual=actual_val,
+                            expected=expected_val,
                         )
                     )
 
@@ -301,7 +317,7 @@ class SandboxService:
             run_id=run_id,
             state="complete",
             projected_score=86,
-            max_score=self._assignment_max_score(record),
+            max_score=100,
             warnings=[
                 SandboxWarning(
                     code="style_signal",

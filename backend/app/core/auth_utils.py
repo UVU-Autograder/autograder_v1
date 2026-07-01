@@ -6,7 +6,7 @@ from app.core.settings import get_settings
 def create_access_token(email: str, display_name: str | None = None) -> str:
     """Create a signed JWT token for the user."""
     settings = get_settings()
-    expire = datetime.now(UTC) + timedelta(hours=settings.jwt_expiration_hours)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expiration_minutes)
     
     payload = {
         "email": email.strip().lower(),

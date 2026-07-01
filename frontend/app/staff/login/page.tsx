@@ -27,10 +27,20 @@ export default function StaffLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
   useEffect(() => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (token) {
       router.replace("/staff/courses");
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("reason") === "timeout") {
+        setInfoMessage("Your session has expired due to 5 minutes of inactivity. Please sign in again.");
+      }
     }
   }, [router]);
 
@@ -78,6 +88,11 @@ export default function StaffLogin() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {infoMessage && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                {infoMessage}
+              </div>
+            )}
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
                 {error}

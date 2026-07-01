@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import React, { use, useState, useEffect, Fragment } from "react";
 import Link from "next/link";
 import {
   SaveIcon,
@@ -69,6 +69,8 @@ type TestItemConfig = {
   points: number;
   extra_credit: boolean;
   rubric_group_key?: string | null;
+  inputs?: string[] | null;
+  outputs?: string[] | null;
 };
 
 type ManualRubricItemConfig = {
@@ -174,6 +176,7 @@ type ScoringItemsTableProps<T extends { key: string; label: string; points: numb
   addButtonLabel: string;
   onAdd: () => void;
   emptyText: string;
+  renderDetails?: (item: T) => React.ReactNode;
 };
 
 function ScoringItemsTable<T extends { key: string; label: string; points: number; extra_credit: boolean; rubric_group_key?: string | null }>({
@@ -185,8 +188,12 @@ function ScoringItemsTable<T extends { key: string; label: string; points: numbe
   description,
   addButtonLabel,
   onAdd,
-  emptyText
+  emptyText,
+  renderDetails
 }: ScoringItemsTableProps<T>) {
+  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
+  const colSpan = renderDetails ? 7 : 6;
+
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
@@ -208,65 +215,91 @@ function ScoringItemsTable<T extends { key: string; label: string; points: numbe
               <th className="py-2 px-2 w-20">Points</th>
               <th className="py-2 px-2 w-24 text-center">Extra Credit?</th>
               <th className="py-2 px-2">Rubric Group</th>
+              {renderDetails && <th className="py-2 px-2 w-32 text-center">I/O Cases</th>}
               <th className="py-2 pl-2 text-right">Delete</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {items.map((item) => (
-              <tr key={item.key} className="hover:bg-slate-50/50">
-                <td className="py-2 pr-2">
-                  <Input
-                    value={item.key}
-                    onChange={(e) => onUpdate(item.key, "key" as keyof T, e.target.value)}
-                    className="font-mono text-xs h-8"
-                  />
-                </td>
-                <td className="py-2 px-2">
-                  <Input
-                    value={item.label}
-                    onChange={(e) => onUpdate(item.key, "label" as keyof T, e.target.value)}
-                    className="text-xs h-8"
-                  />
-                </td>
-                <td className="py-2 px-2">
-                  <Input
-                    type="number"
-                    value={item.points}
-                    onChange={(e) => onUpdate(item.key, "points" as keyof T, e.target.value)}
-                    className="w-16 h-8 text-xs text-center"
-                  />
-                </td>
-                <td className="py-2 px-2 text-center">
-                  <input
-                    type="checkbox"
-                    checked={item.extra_credit}
-                    onChange={(e) => onUpdate(item.key, "extra_credit" as keyof T, e.target.checked)}
-                    className="size-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                  />
-                </td>
-                <td className="py-2 px-2">
-                  <select
-                    value={item.rubric_group_key || ""}
-                    onChange={(e) => onUpdate(item.key, "rubric_group_key" as keyof T, e.target.value || null)}
-                    className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none h-8"
-                  >
-                    <option value="">-- None --</option>
-                    {rubricGroups.map((g) => (
-                      <option key={g.key} value={g.key}>{g.label || g.key}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="py-2 pl-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onDelete(item.key)}
-                    className="text-slate-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
-                  >
-                    <Trash2Icon className="size-3.5" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {items.map((item) => {
+              const isExpanded = !!expandedKeys[item.key];
+              return (
+                <Fragment key={item.key}>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2 pr-2">
+                      <Input
+                        value={item.key}
+                        onChange={(e) => onUpdate(item.key, "key" as keyof T, e.target.value)}
+                        className="font-mono text-xs h-8"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <Input
+                        value={item.label}
+                        onChange={(e) => onUpdate(item.key, "label" as keyof T, e.target.value)}
+                        className="text-xs h-8"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <Input
+                        type="number"
+                        value={item.points}
+                        onChange={(e) => onUpdate(item.key, "points" as keyof T, e.target.value)}
+                        className="w-16 h-8 text-xs text-center"
+                      />
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={item.extra_credit}
+                        onChange={(e) => onUpdate(item.key, "extra_credit" as keyof T, e.target.checked)}
+                        className="size-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <select
+                        value={item.rubric_group_key || ""}
+                        onChange={(e) => onUpdate(item.key, "rubric_group_key" as keyof T, e.target.value || null)}
+                        className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none h-8"
+                      >
+                        <option value="">-- None --</option>
+                        {rubricGroups.map((g) => (
+                          <option key={g.key} value={g.key}>{g.label || g.key}</option>
+                        ))}
+                      </select>
+                    </td>
+                    {renderDetails && (
+                      <td className="py-2 px-2 text-center">
+                        <Button
+                          type="button"
+                          variant={isExpanded ? "secondary" : "outline"}
+                          size="sm"
+                          onClick={() => setExpandedKeys(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                          className="text-xs h-7 px-2 font-mono whitespace-nowrap"
+                        >
+                          {isExpanded ? "Hide I/O" : `I/O Cases (${(item as any).inputs?.length || 0})`}
+                        </Button>
+                      </td>
+                    )}
+                    <td className="py-2 pl-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => onDelete(item.key)}
+                        className="text-slate-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
+                      >
+                        <Trash2Icon className="size-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                  {renderDetails && isExpanded && (
+                    <tr className="bg-slate-50/40">
+                      <td colSpan={colSpan} className="py-3 px-4">
+                        {renderDetails(item)}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
         {items.length === 0 && (
@@ -581,7 +614,9 @@ export default function SetupWizardPage({ params }: PageProps) {
         label: t.label,
         points: Number(t.points),
         extra_credit: t.extra_credit,
-        rubric_group_key: t.rubric_group_key || null
+        rubric_group_key: t.rubric_group_key || null,
+        inputs: t.inputs || null,
+        outputs: t.outputs || null
       })),
       manual_rubric_items: manualRubricItems.map(m => ({
         key: m.key,
@@ -866,6 +901,104 @@ export default function SetupWizardPage({ params }: PageProps) {
   const updateTestField = (key: string, field: keyof TestItemConfig, val: any) => {
     updateListItemField(setTests, key, field, val);
   };
+
+  const renderTestDetails = (test: TestItemConfig) => {
+    const inputs = test.inputs || [];
+    const outputs = test.outputs || [];
+
+    const handleAddCase = () => {
+      const nextInputs = [...inputs, ""];
+      const nextOutputs = [...outputs, ""];
+      updateTestField(test.key, "inputs", nextInputs);
+      updateTestField(test.key, "outputs", nextOutputs);
+    };
+
+    const handleUpdateCase = (index: number, field: "input" | "output", value: string) => {
+      if (field === "input") {
+        const nextInputs = [...inputs];
+        nextInputs[index] = value;
+        updateTestField(test.key, "inputs", nextInputs);
+      } else {
+        const nextOutputs = [...outputs];
+        nextOutputs[index] = value;
+        updateTestField(test.key, "outputs", nextOutputs);
+      }
+    };
+
+    const handleRemoveCase = (index: number) => {
+      const nextInputs = inputs.filter((_, idx) => idx !== index);
+      const nextOutputs = outputs.filter((_, idx) => idx !== index);
+      const finalInputs = nextInputs.length > 0 ? nextInputs : null;
+      const finalOutputs = nextOutputs.length > 0 ? nextOutputs : null;
+      updateTestField(test.key, "inputs", finalInputs);
+      updateTestField(test.key, "outputs", finalOutputs);
+    };
+
+    return (
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4 max-h-[300px] overflow-y-auto">
+        <div className="flex justify-between items-center">
+          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+            Compare Output Test Cases for: <span className="font-mono text-indigo-600">{test.key}</span>
+          </h4>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddCase}
+            className="text-xs h-7"
+          >
+            <PlusIcon className="size-3 mr-1" /> Add Case Scenario
+          </Button>
+        </div>
+
+        {inputs.length === 0 ? (
+          <p className="text-xs text-slate-400 italic">
+            No input/output test cases configured. This item behaves as a standard unit test.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {inputs.map((inp, index) => (
+              <div key={index} className="bg-white p-3 rounded border border-slate-200 shadow-2xs relative">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-bold text-slate-500">Case #{index + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCase(index)}
+                    className="text-slate-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
+                  >
+                    <XIcon className="size-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Input (stdin)</label>
+                    <textarea
+                      value={inp}
+                      onChange={(e) => handleUpdateCase(index, "input", e.target.value)}
+                      placeholder="Sequence of inputs (e.g. 2\n3)"
+                      rows={2}
+                      className="w-full min-h-[60px] max-h-40 rounded border border-slate-300 bg-white p-2 text-xs font-mono focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Expected Output</label>
+                    <textarea
+                      value={outputs[index] || ""}
+                      onChange={(e) => handleUpdateCase(index, "output", e.target.value)}
+                      placeholder="Expected program output"
+                      rows={2}
+                      className="w-full min-h-[60px] max-h-40 rounded border border-slate-300 bg-white p-2 text-xs font-mono focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
 
   const addManualItem = () => {
     const nextId = manualRubricItems.length + 1;
@@ -1297,6 +1430,7 @@ export default function SetupWizardPage({ params }: PageProps) {
                     addButtonLabel="Add Test"
                     onAdd={addTest}
                     emptyText="No autograded tests configured. At least one pytest marker test is required."
+                    renderDetails={renderTestDetails}
                   />
                 </div>
 

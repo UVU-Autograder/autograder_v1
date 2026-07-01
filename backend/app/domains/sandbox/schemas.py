@@ -51,6 +51,8 @@ class SandboxRubricItem(BaseModel):
     pytest_marker: str | None = None
     item_type: Literal["pytest", "manual"] = "pytest"
     rubric_group_key: str | None = None
+    inputs: list[str] | None = None
+    outputs: list[str] | None = None
 
 
 class SandboxRubricGroup(BaseModel):
@@ -92,6 +94,8 @@ class TestSummary(BaseModel):
     points_awarded: int = Field(ge=0)
     points_possible: int = Field(ge=0)
     message: str
+    actual: str | None = None
+    expected: str | None = None
 
 
 class SandboxWarning(BaseModel):

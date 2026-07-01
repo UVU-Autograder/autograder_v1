@@ -92,6 +92,7 @@ def get_sandbox_assignment(
     config = validate_config_json(assignment.config.config_json)
     settings = get_settings()
     allowed_concepts = config.concepts.additions if config.concepts else []
+    tests_map = {test.key: test for test in config.tests}
     return SandboxAssignmentDetail(
         **_summary_for(assignment, quota).model_dump(),
         description=assignment.title,
@@ -111,6 +112,8 @@ def get_sandbox_assignment(
                 item_type=item.item_type,
                 pytest_marker=item.pytest_marker,
                 rubric_group_key=item.rubric_group_key,
+                inputs=tests_map[item.config_item_key].inputs if item.config_item_key in tests_map else None,
+                outputs=tests_map[item.config_item_key].outputs if item.config_item_key in tests_map else None,
             )
             for item in sorted(assignment.scoring_items, key=lambda row: row.display_order)
         ],

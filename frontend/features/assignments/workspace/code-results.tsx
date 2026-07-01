@@ -18,6 +18,21 @@ import type {
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 import { useEffect } from "react";
+import VisualDiffViewer from "@/components/visual-diff-viewer";
+
+function cleanTestMessage(message: string | null | undefined): string {
+  if (!message) return "";
+
+  const lines = message.split("\n");
+  const assertIndex = lines.findIndex(
+    (line) => line.includes("AssertionError") || line.trim().startsWith("E   ")
+  );
+  if (assertIndex !== -1) {
+    return lines.slice(assertIndex).join("\n");
+  }
+
+  return message;
+}
 
 type CodeResultsProps = {
   courseId: string;
@@ -328,10 +343,10 @@ export default function CodeResults({
               <p>
                 {score} / {totalScore}
               </p>
-              <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
+              <div className="w-full bg-slate-200 rounded-full h-2 mt-3 overflow-hidden">
                 <div
                   className="h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg"
-                  style={{ width: `${percent}%` }}
+                  style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
                 />
               </div>
             </div>
@@ -360,9 +375,18 @@ export default function CodeResults({
                         <span className="font-medium">Points:</span> {test.points_awarded} /{" "}
                         {test.points_possible}
                       </p>
-                      <p>
-                        <span className="font-medium">Details:</span> {test.message}
-                      </p>
+                      {test.message && (
+                        <div className="mt-2 space-y-2">
+                          <span className="font-medium text-slate-700">Details:</span>
+                          {test.expected != null && test.actual != null ? (
+                            <VisualDiffViewer expected={test.expected} actual={test.actual} />
+                          ) : (
+                            <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
+                              {cleanTestMessage(test.message)}
+                            </pre>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
