@@ -156,7 +156,16 @@ async def run_grading_pipeline(
             return result
 
         # Generate runner.py
-        runner_source = generate_runner_script(test_filenames)
+        test_cases_map = {}
+        for test in config.tests:
+            if test.inputs is not None and test.outputs is not None:
+                test_cases_map[test.key] = {
+                    "inputs": test.inputs,
+                    "outputs": test.outputs,
+                }
+        entrypoint_module = Path(config.bundle.entrypoint).stem
+
+        runner_source = generate_runner_script(test_filenames, test_cases_map, entrypoint_module)
         (exec_dir / "runner.py").write_text(runner_source, encoding="utf-8")
 
         # Create additional_files ZIP

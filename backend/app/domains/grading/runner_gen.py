@@ -4,11 +4,14 @@ Produces a self-contained Python script string that can be submitted as
 ``source_code`` to Judge0.  The generated script:
 
 1. Redirects ``sys.stdout`` to a buffer while pytest runs, preventing
-   student ``print()`` calls from corrupting the structured output.
+   student ``print() !!`` calls from corrupting the structured output.
 2. Uses a lightweight custom pytest plugin (registered via ``pytest.main``'s
    ``plugins`` kwarg) that hooks ``pytest_runtest_makereport`` to collect
    outcomes and ``ag_*`` markers.
-3. After the run, restores ``sys.stdout`` and prints a JSON payload preceded
+3. Automatically parametrizes tests using `pytest_generate_tests` if they match
+   the configured input/output test cases.
+4. Exposes a `run_case` fixture to mock stdin/stdout dynamically.
+5. After the run, restores ``sys.stdout`` and prints a JSON payload preceded
    by a delimiter line so the result parser can reliably locate it.
 """
 
@@ -17,7 +20,11 @@ from __future__ import annotations
 import textwrap
 
 
-def generate_runner_script(test_filenames: list[str]) -> str:
+def generate_runner_script(
+    test_filenames: list[str],
+    test_cases: dict[str, dict[str, list[str]]],
+    entrypoint_module: str,
+) -> str:
     """Generate the ``runner.py`` source code string.
 
     The generated script depends only on ``pytest`` (which is pre-installed
@@ -26,12 +33,17 @@ def generate_runner_script(test_filenames: list[str]) -> str:
     Args:
         test_filenames: List of test file names to pass to ``pytest.main()``,
             e.g. ``["assignment_tests.py"]``.
+        test_cases: Dict mapping test marker keys (e.g. "t1") to their inputs
+            and outputs.
+        entrypoint_module: Stem of the student entrypoint file, e.g. "main".
 
     Returns:
         A complete, self-contained Python source string ready for Judge0.
     """
-    # Serialise the filename list as a Python literal.
     filenames_literal = repr(test_filenames)
+    test_cases_literal = repr(test_cases)
+    entrypoint_literal = repr(entrypoint_module)
+    joiner = '"\\n"'
 
     script = textwrap.dedent(
         f"""\
@@ -50,6 +62,8 @@ def generate_runner_script(test_filenames: list[str]) -> str:
 
         RESULTS_DELIMITER = "---AUTOGRADER_RESULTS---"
         TEST_FILENAMES = {filenames_literal}
+        TEST_CASES = {test_cases_literal}
+        ENTRYPOINT_MODULE = {entrypoint_literal}
 
 
         # ------------------------------------------------------------------ #
@@ -57,11 +71,62 @@ def generate_runner_script(test_filenames: list[str]) -> str:
         # ------------------------------------------------------------------ #
 
         class AutograderPlugin:
-            \"\"\"Collects per-test outcomes and ag_* markers.\"\"\"
+            \"\"\"Collects per-test outcomes, markers, hooks, and fixtures.\"\"\"
 
             def __init__(self):
                 self.results = []
                 self._call_outcomes = {{}}
+
+            def pytest_generate_tests(self, metafunc):
+                marker_key = None
+                if hasattr(metafunc, "definition") and hasattr(metafunc.definition, "own_markers"):
+                    for marker in metafunc.definition.own_markers:
+                        if marker.name.startswith("ag_"):
+                            marker_key = marker.name[3:]
+                            break
+                if marker_key and marker_key in TEST_CASES:
+                    case_data = TEST_CASES[marker_key]
+                    inputs = case_data.get("inputs") or []
+                    outputs = case_data.get("outputs") or []
+                    if inputs and outputs:
+                        metafunc.parametrize("case_input,case_output", list(zip(inputs, outputs)))
+
+            @pytest.fixture
+            def run_case(self, monkeypatch, capsys, request):
+                case_input = None
+                case_output = None
+                if hasattr(request.node, "callspec") and request.node.callspec is not None:
+                    case_input = request.node.callspec.params.get("case_input")
+                    case_output = request.node.callspec.params.get("case_output")
+                    
+                def _run():
+                    if case_input is None or case_output is None:
+                        pytest.fail("Test case parameters 'case_input' or 'case_output' are missing.")
+                    
+                    import io
+                    import sys
+                    import importlib
+                    
+                    # 1. Mock stdin
+                    monkeypatch.setattr('sys.stdin', io.StringIO(case_input))
+                    
+                    # 2. Import / Reload student entrypoint
+                    if ENTRYPOINT_MODULE in sys.modules:
+                        importlib.reload(sys.modules[ENTRYPOINT_MODULE])
+                    else:
+                        importlib.import_module(ENTRYPOINT_MODULE)
+                        
+                    # 3. Capture stdout
+                    captured = capsys.readouterr()
+                    actual = captured.out
+                    
+                    # 4. Compare with whitespace normalization
+                    def normalize(s):
+                        return {joiner}.join(line.strip() for line in s.splitlines() if line.strip())
+                        
+                    assert normalize(actual) == normalize(case_output)
+                    
+                return _run
 
             # We only care about the "call" phase (not setup/teardown).
             def pytest_runtest_makereport(self, item, call):

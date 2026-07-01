@@ -13,6 +13,8 @@ type RubricItem = {
     pytest_marker: string | null;
     item_type: string;
     rubric_group_key: string | null;
+    inputs?: string[] | null;
+    outputs?: string[] | null;
 }
 
 type UploadQuota = {

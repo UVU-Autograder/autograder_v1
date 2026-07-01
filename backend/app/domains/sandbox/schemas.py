@@ -51,6 +51,8 @@ class SandboxRubricItem(BaseModel):
     pytest_marker: str | None = None
     item_type: Literal["pytest", "manual"] = "pytest"
     rubric_group_key: str | None = None
+    inputs: list[str] | None = None
+    outputs: list[str] | None = None
 
 
 class SandboxRubricGroup(BaseModel):

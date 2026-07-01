@@ -62,6 +62,18 @@ class TestItemConfig(BaseModel):
     points: int = Field(ge=0)
     extra_credit: bool
     rubric_group_key: str | None = Field(default=None, pattern=TEST_KEY_RE.pattern)
+    inputs: list[str] | None = Field(default=None)
+    outputs: list[str] | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_inputs_outputs(self) -> "TestItemConfig":
+        if (self.inputs is None) != (self.outputs is None):
+            raise ValueError("Both inputs and outputs must be specified, or both omitted.")
+        if self.inputs is not None and self.outputs is not None:
+            if len(self.inputs) != len(self.outputs):
+                raise ValueError("The number of inputs and outputs must match.")
+        return self
+
 
 
 class ManualRubricItemConfig(BaseModel):

@@ -19,6 +19,20 @@ import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 import { useEffect } from "react";
 
+function cleanTestMessage(message: string | null | undefined): string {
+  if (!message) return "";
+
+  const lines = message.split("\n");
+  const assertIndex = lines.findIndex(
+    (line) => line.includes("AssertionError") || line.trim().startsWith("E   ")
+  );
+  if (assertIndex !== -1) {
+    return lines.slice(assertIndex).join("\n");
+  }
+
+  return message;
+}
+
 type CodeResultsProps = {
   courseId: string;
   assignmentId: string;
@@ -360,9 +374,14 @@ export default function CodeResults({
                         <span className="font-medium">Points:</span> {test.points_awarded} /{" "}
                         {test.points_possible}
                       </p>
-                      <p>
-                        <span className="font-medium">Details:</span> {test.message}
-                      </p>
+                      {test.message && (
+                        <div className="mt-2 space-y-1">
+                          <span className="font-medium text-slate-700">Details:</span>
+                          <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
+                            {cleanTestMessage(test.message)}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
