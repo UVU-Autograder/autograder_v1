@@ -36,7 +36,7 @@ trap 'rm -rf "${tmp_dir}"' EXIT
 
 echo "Installing dependencies..."
 apt-get update
-apt-get install -y curl ca-certificates tar xz-utils python3
+apt-get install -y curl ca-certificates tar zstd python3
 
 if [ -n "${KATA_RELEASE_URL:-}" ]; then
   release_url="${KATA_RELEASE_URL}"
@@ -59,7 +59,7 @@ with urllib.request.urlopen(api_url) as response:
 
 for asset in release.get("assets", []):
     name = asset.get("name", "")
-    if name.startswith("kata-static-") and arch in name and name.endswith(".tar.xz"):
+    if name.startswith("kata-static-") and arch in name and name.endswith(".tar.zst"):
         print(asset["browser_download_url"])
         break
 else:
@@ -69,10 +69,10 @@ PY
 fi
 
 echo "Downloading Kata Containers from ${release_url}..."
-curl -fL "${release_url}" -o "${tmp_dir}/kata-static.tar.xz"
+curl -fL "${release_url}" -o "${tmp_dir}/kata-static.tar.zst"
 
 echo "Installing Kata static payload into /opt/kata..."
-tar -xJf "${tmp_dir}/kata-static.tar.xz" -C /
+tar --zstd -xf "${tmp_dir}/kata-static.tar.zst" -C /
 
 if [ ! -x "${KATA_INSTALL_DIR}/bin/kata-runtime" ]; then
   echo "kata-runtime was not found at ${KATA_INSTALL_DIR}/bin/kata-runtime after extraction." >&2
