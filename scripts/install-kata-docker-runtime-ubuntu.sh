@@ -12,7 +12,7 @@ fi
 
 case "$(uname -m)" in
   x86_64 | amd64)
-    kata_arch="x86_64"
+    kata_arch="amd64"
     ;;
   aarch64 | arm64)
     kata_arch="arm64"
@@ -47,7 +47,8 @@ tar -xJf "${tmp_dir}/kata-static.tar.xz" -C /
 
 if [ ! -x "${KATA_INSTALL_DIR}/bin/kata-runtime" ]; then
   echo "kata-runtime was not found at ${KATA_INSTALL_DIR}/bin/kata-runtime after extraction." >&2
-  echo "If the release asset layout changed, rerun with KATA_RELEASE_URL=<asset-url>." >&2
+  echo "If the release asset layout changed, find the current kata-static asset URL and rerun with:" >&2
+  echo "  sudo KATA_RELEASE_URL=<asset-url> $0" >&2
   exit 1
 fi
 
