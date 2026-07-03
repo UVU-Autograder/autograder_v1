@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KATA_VERSION="${KATA_VERSION:-3.32.0}"
+KATA_VERSION="${KATA_VERSION:-latest}"
 KATA_RUNTIME_NAME="${KATA_RUNTIME_NAME:-kata-runtime}"
 KATA_INSTALL_DIR="${KATA_INSTALL_DIR:-/opt/kata}"
 
@@ -31,7 +31,6 @@ EOF
   exit 1
 fi
 
-release_url="${KATA_RELEASE_URL:-https://github.com/kata-containers/kata-containers/releases/download/${KATA_VERSION}/kata-static-${KATA_VERSION}-${kata_arch}.tar.xz}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 
@@ -39,7 +38,37 @@ echo "Installing dependencies..."
 apt-get update
 apt-get install -y curl ca-certificates tar xz-utils python3
 
-echo "Downloading Kata Containers ${KATA_VERSION} for ${kata_arch}..."
+if [ -n "${KATA_RELEASE_URL:-}" ]; then
+  release_url="${KATA_RELEASE_URL}"
+else
+  echo "Resolving latest Kata Containers static asset for ${kata_arch}..."
+  release_url="$(python3 - "${kata_arch}" "${KATA_VERSION}" <<'PY'
+import json
+import sys
+import urllib.request
+
+arch = sys.argv[1]
+version = sys.argv[2]
+if version == "latest":
+    api_url = "https://api.github.com/repos/kata-containers/kata-containers/releases/latest"
+else:
+    api_url = f"https://api.github.com/repos/kata-containers/kata-containers/releases/tags/{version}"
+
+with urllib.request.urlopen(api_url) as response:
+    release = json.load(response)
+
+for asset in release.get("assets", []):
+    name = asset.get("name", "")
+    if name.startswith("kata-static-") and arch in name and name.endswith(".tar.xz"):
+        print(asset["browser_download_url"])
+        break
+else:
+    raise SystemExit(f"Could not find kata-static asset for {arch} in latest Kata release.")
+PY
+)"
+fi
+
+echo "Downloading Kata Containers from ${release_url}..."
 curl -fL "${release_url}" -o "${tmp_dir}/kata-static.tar.xz"
 
 echo "Installing Kata static payload into /opt/kata..."
