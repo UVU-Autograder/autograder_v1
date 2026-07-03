@@ -74,14 +74,15 @@ curl -fL "${release_url}" -o "${tmp_dir}/kata-static.tar.zst"
 echo "Installing Kata static payload into /opt/kata..."
 tar --zstd -xf "${tmp_dir}/kata-static.tar.zst" -C /
 
-if [ ! -x "${KATA_INSTALL_DIR}/bin/kata-runtime" ]; then
-  echo "kata-runtime was not found at ${KATA_INSTALL_DIR}/bin/kata-runtime after extraction." >&2
+if [ ! -x "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" ]; then
+  echo "containerd-shim-kata-v2 was not found at ${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2 after extraction." >&2
   echo "If the release asset layout changed, find the current kata-static asset URL and rerun with:" >&2
   echo "  sudo KATA_RELEASE_URL=<asset-url> $0" >&2
   exit 1
 fi
 
 ln -sf "${KATA_INSTALL_DIR}/bin/kata-runtime" /usr/local/bin/kata-runtime
+ln -sf "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" /usr/local/bin/containerd-shim-kata-v2
 
 mkdir -p /etc/docker
 if [ ! -f /etc/docker/daemon.json ]; then
@@ -96,7 +97,7 @@ from pathlib import Path
 path = Path("/etc/docker/daemon.json")
 data = json.loads(path.read_text() or "{}")
 data.setdefault("runtimes", {})["${KATA_RUNTIME_NAME}"] = {
-    "path": "${KATA_INSTALL_DIR}/bin/kata-runtime"
+    "runtimeType": "io.containerd.kata.v2"
 }
 path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
 PY
