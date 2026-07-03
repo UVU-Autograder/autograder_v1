@@ -37,6 +37,35 @@ Then open:
 
 The seeded staff account is `dev.staff@uvu.edu`. The POC compose file enables mock login with `ENABLE_MOCK_LOGIN=true`; turn this off for any non-local deployment.
 
+## Optional Kata Runtime Setup
+
+Kata is host-level infrastructure, not a FastAPI dependency. Install and register it with Docker on the Ubuntu dev machine before starting the stack:
+
+```bash
+sudo scripts/install-kata-docker-runtime-ubuntu.sh
+```
+
+The script downloads the Kata static release, installs it under `/opt/kata`, registers Docker runtime `kata-runtime`, restarts Docker, and verifies:
+
+```bash
+docker run --rm --runtime kata-runtime busybox uname -a
+```
+
+Then start the POC stack with the Kata override:
+
+```bash
+docker compose --env-file .env.local \
+  -f docker-compose.poc.yml \
+  -f docker-compose.kata.yml \
+  up --build
+```
+
+If the dev machine uses a different Docker runtime name, set it in `.env.local`:
+
+```bash
+KATA_DOCKER_RUNTIME=kata-runtime
+```
+
 ## Database Behavior
 
 The backend container waits for `DATABASE_URL`, then runs:
@@ -57,7 +86,7 @@ The seeded data uses `docs/backend_implementation/examples` through `seed://...`
 
 The compose file starts Judge0 CE and its worker locally. The app sends zipped student work to Judge0 through the existing backend grading pipeline and deletes Judge0 submissions after result retrieval.
 
-Kata Containers is host-level execution isolation. The repository cannot configure GRUB or prove Kata isolation from inside the FastAPI image. Before treating the Ubuntu machine as the intended execution target, collect operational evidence on the host that:
+Kata Containers is host-level execution isolation. The repository cannot configure GRUB or prove Kata isolation from inside the FastAPI image. The optional `docker-compose.kata.yml` override requires a host Docker runtime named `kata-runtime`. Before treating the Ubuntu machine as the intended execution target, collect operational evidence on the host that:
 
 - Docker/containerd uses the Kata-capable runtime expected by the Judge0 execution path.
 - Judge0 submissions execute under the expected isolated runtime.

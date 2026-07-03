@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { MOCK_ASSIGNMENTS } from '@/lib/mocks/data';
 
-export async function GET(request: Request, { params }: { params: { cid: string } }) {
-  const { cid } = params;
+export async function GET(_request: Request, { params }: { params: Promise<{ cid: string }> }) {
+  const { cid } = await params;
   const assignments = MOCK_ASSIGNMENTS[cid];
 
   if (!assignments) {
