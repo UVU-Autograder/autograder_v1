@@ -53,9 +53,10 @@ def create_app() -> FastAPI:
             "http://localhost:5173",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:5173",
-            # DEV ONLY: Allow Vercel deployments for Tailscale Funnel testing
-            "https://*.vercel.app", 
         ],
+        # DEV ONLY: Allow Vercel preview/prod frontend domains while testing
+        # against the Tailscale Funnel backend. Remove once real hosting exists.
+        allow_origin_regex=r"https://.*\.vercel\.app",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
