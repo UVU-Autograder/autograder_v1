@@ -30,10 +30,10 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 | [x]  | Grading chain works with AST checks, Judge0/Kata execution, and cleanup | Official and sandbox grading can run through AST checks, Judge0/Kata execution, structured results, and post-result cleanup.                                 |
 | [x]  | Safe Judge0/Kata worker caps are documented                             | Dell-workstation benchmarking defines approved grading worker caps before grading-pipeline implementation begins.                                            |
 | [x]  | Queue admission and wait UX are usable                                  | The system accepts work asynchronously, warns at high load, rejects full queues cleanly, and shows queue position/ETA without exceeding execution caps.       |
-| [ ]  | Azure feedback is available only after privacy confirmation             | Written UVU approval and Azure resource/privacy confirmation are complete before live student-code AI feedback is enabled.                                  |
+| [ ]  | Local LLM feedback is available only after privacy confirmation         | Written UVU approval and local model safety verification are complete before live student-code AI feedback is enabled.                                      |
 | [x]  | Public sandbox workflow is usable                                       | A sandbox user can select an enabled course and assignment, upload a ZIP/project bundle, see a sanitized file tree, quota state, read-only preview, and on-screen projected feedback. |
 | [x]  | Official review and export workflow is usable                           | Staff can monitor an official run, inspect derived/ephemeral read-only previews while available, and download separate Canvas-grade CSV and per-student feedback ZIP outputs. |
-| [x]  | Compliance hardening and realistic end-to-end validation are complete   | Access control, cleanup, Azure readiness, performance targets, fake/synthetic or completely anonymized validation data handling, and Canvas-shaped format assumptions are validated. |
+| [x]  | Compliance hardening and realistic end-to-end validation are complete   | Access control, cleanup, Local LLM readiness, performance targets, fake/synthetic or completely anonymized validation data handling, and Canvas-shaped format assumptions are validated. |
 
 ## Operating Guidelines
 
@@ -79,7 +79,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Configure the M1 execution-slot cap and benchmark any increase according to the canonical capacity policy.
 - [x] Document queue and backpressure thresholds for work beyond the approved cap, including `40` queued-job high-load messaging and `50` queued-job rejection.
 - [x] Host Monaco Editor locally in the frontend scaffold for planned editor and review workflows.
-- [x] Document required environment variables in `.env.example`, including Azure OpenAI settings.
+- [x] Document required environment variables in `.env.example`, including Local LLM settings.
 -/ [x] Update README so a developer can bring up the local stack.
 - [x] Add a seed path for one course, course-level `Concepts Covered` defaults, one assignment, assignment concept additions, one app-owned `config_json`, one assignment pytest file, and one model solution.
 
@@ -93,7 +93,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Add admin course management for creating, editing, and deactivating courses.
 - [x] Add admin section management for creating, editing, and deactivating sections.
 - [x] Add admin staff/user management for assigning instructors and IAs to course or section scopes.
-- [x] Add admin-only monitoring for Azure token usage, sandbox upload-limit state, and worker/capacity status.
+- [x] Add admin-only monitoring for Local LLM token usage, sandbox upload-limit state, and worker/capacity status.
 - [x] Keep IA access strict by default and exclude assignment-config authoring in M1.
 - [x] Ensure instructors can view assigned courses and edit only explicitly assigned sections.
 - [x] Ensure IAs can view only explicitly assigned sections for grading validation.
@@ -178,15 +178,15 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Verify Kata-backed execution artifact deletion after each official and sandbox execution.
 - [x] Destroy extracted student files, generated code artifacts, and temporary feedback files at the end of each official or sandbox run.
 
-### Azure Feedback And Privacy Confirmation
+### Local LLM Feedback And Privacy Confirmation
 
-- [ ] Use UVU-approved Azure OpenAI configuration before sending live student code.
-- [ ] Inject allowed-concepts context into the Azure OpenAI prompt.
+- [ ] Use UVU-approved Local LLM configuration before sending live student code.
+- [ ] Inject allowed-concepts context into the Local LLM prompt.
 - [ ] Generate rubric-context explanations and feedback without re-grading correctness.
 - [ ] Enforce hallucination guard: tests remain ground truth and the LLM explains rather than re-evaluates.
 - [ ] Degrade AI feedback under high queue or resource load by returning grounded test results first and delaying, skipping, or marking AI feedback unavailable.
 - [ ] Show auto-populated LLM feedback beside test-case results after each sandbox run.
-- [ ] Log Azure token usage in `run_summaries` or equivalent non-sensitive metadata storage.
+- [ ] Log Local LLM token usage in `run_summaries` or equivalent non-sensitive metadata storage.
 - [ ] Rotate and purge sensitive debug traces within `24h` if temporary debug traces are enabled.
 
 ### Public Student Sandbox

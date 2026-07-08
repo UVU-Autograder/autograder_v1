@@ -51,7 +51,10 @@ def list_sandbox_assignments(
     course = db.scalar(
         select(Course)
         .where(Course.code == course_code, Course.is_active.is_(True))
-        .options(selectinload(Course.assignments).selectinload(Assignment.config))
+        .options(
+            selectinload(Course.assignments).selectinload(Assignment.config),
+            selectinload(Course.assignments).selectinload(Assignment.module),
+        )
     )
     if course is None:
         return None
@@ -84,6 +87,7 @@ def get_sandbox_assignment(
             selectinload(Assignment.course),
             selectinload(Assignment.config),
             selectinload(Assignment.scoring_items),
+            selectinload(Assignment.module),
         )
     )
     if assignment is None or assignment.config is None:
@@ -139,4 +143,5 @@ def _summary_for(assignment: Assignment, quota: UploadQuota) -> SandboxAssignmen
         language=assignment.language,
         max_score=config.base_points,
         upload_quota=quota,
+        module_name=assignment.module.name if assignment.module else None,
     )

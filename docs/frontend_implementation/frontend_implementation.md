@@ -46,7 +46,7 @@ This file captures the frontend contract, route structure, and UI-surface respon
 - The sandbox workspace does not support loose multi-file drag-and-drop or in-browser code editing in M1.
 - The assignment artifacts surface owns the single M1 pytest file, model solution files, and support files through the backend `assignment_artifacts` storage-reference model.
 - UI-visible "test cases" are scoring items from the assignment setup/config, not separate physical test files.
-- Admin monitoring is admin-only in M1 and should summarize Azure token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
+- Admin monitoring is admin-only in M1 and should summarize local LLM token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
 - The `/staff/courses/[courseId]/assignments/[assignmentId]/runs/[runId]` surface is a preview-only review workflow in M1: staff can inspect derived results, per-student feedback, and ephemeral read-only Monaco previews while available, but cannot edit grades or feedback in the app.
 - The `/staff/courses/[courseId]/assignments/[assignmentId]/runs/[runId]` surface should expose separate download actions for the Canvas-grade CSV and the feedback ZIP.
 

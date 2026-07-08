@@ -1,8 +1,8 @@
 "use client";
-
+ 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApiError } from "@/lib/api-client";
+import { ApiError, apiClient } from "@/lib/api-client";
 import { AssignmentCreatePayload } from "./types";
 import { createStaffAssignment } from "./api";
 
 const SLUG_PATTERN = /^[a-z][a-z0-9-]*$/;
+
+type ModuleConfig = {
+  id: number;
+  name: string;
+};
+
+type CourseConceptsResponse = {
+  course_id: string;
+  default_concepts: string[];
+  modules: ModuleConfig[];
+};
 
 type CreateAssignmentFormValues = {
   slug: string;
@@ -34,11 +45,21 @@ type CreateAssignmentFormValues = {
   language: string;
   canvas_ref: string;
   sandbox_enabled: boolean;
+  module_id: string;
 };
 
 export default function CreateAssignment({ courseId }: { courseId: string }) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [courseModules, setCourseModules] = useState<ModuleConfig[]>([]);
+
+  useEffect(() => {
+    apiClient.get<CourseConceptsResponse>(`/staff/courses/${courseId}/concepts`)
+      .then((data) => {
+        setCourseModules(data.modules || []);
+      })
+      .catch(() => {});
+  }, [courseId]);
 
   const {
     register,
@@ -52,6 +73,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
       language: "python",
       canvas_ref: "",
       sandbox_enabled: true,
+      module_id: "none",
     },
   });
 
@@ -68,6 +90,12 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
     const canvasRef = values.canvas_ref.trim();
     if (canvasRef) {
       payload.canvas_ref = canvasRef;
+    }
+
+    if (values.module_id && values.module_id !== "none") {
+      payload.module_id = parseInt(values.module_id, 10);
+    } else {
+      payload.module_id = null;
     }
 
     try {
@@ -191,7 +219,32 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
               />
             </div>
 
-            <div className="mb-3 flex items-center gap-2">
+            <div className="space-y-1">
+              <label htmlFor="module_id" className="text-xs font-semibold text-slate-500 uppercase">
+                Module Assignment (optional)
+              </label>
+              <Controller
+                name="module_id"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="module_id" className="w-full">
+                      <SelectValue placeholder="No Module" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Module</SelectItem>
+                      {courseModules.map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="mb-3 flex items-center gap-2 pt-2">
               <input
                 id="sandbox_enabled"
                 type="checkbox"

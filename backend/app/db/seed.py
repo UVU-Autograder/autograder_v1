@@ -11,7 +11,7 @@ from app.domains.artifacts.models import AssignmentArtifact
 from app.domains.assignments.models import Assignment
 from app.domains.assignments.service import upsert_assignment_config
 from app.domains.auth.models import Role, StaffAccess, User
-from app.domains.courses.models import Course, Section
+from app.domains.courses.models import Course, Section, Module
 
 
 def _repo_root() -> Path:
@@ -79,6 +79,14 @@ def seed_development_data(db: Session) -> None:
         db.add(course_cs1400)
         db.flush()
 
+        mod_cs1400 = Module(
+            course=course_cs1400,
+            name="Module 1: Expressions & Conditionals",
+            concepts=["variables"]
+        )
+        db.add(mod_cs1400)
+        db.flush()
+
         section = Section(course=course_cs1400, crn="12345")
         db.add(section)
 
@@ -98,6 +106,7 @@ def seed_development_data(db: Session) -> None:
             language="python",
             canvas_ref="canvas:synthetic:simple-python-functions",
             sandbox_enabled=True,
+            module=mod_cs1400,
             is_active=True,
         )
         db.add(assignment)
@@ -135,6 +144,14 @@ def seed_development_data(db: Session) -> None:
         db.add(course_cs1410)
         db.flush()
 
+        mod_cs1410 = Module(
+            course=course_cs1410,
+            name="Module 1: Images & Loops",
+            concepts=["image-processing", "loops"]
+        )
+        db.add(mod_cs1410)
+        db.flush()
+
         section = Section(course=course_cs1410, crn="67890")
         db.add(section)
 
@@ -154,6 +171,7 @@ def seed_development_data(db: Session) -> None:
             language="python",
             canvas_ref="canvas:synthetic:lab-1-image-processing",
             sandbox_enabled=True,
+            module=mod_cs1410,
             is_active=True,
         )
         db.add(assignment_cs1410)

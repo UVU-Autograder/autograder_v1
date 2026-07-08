@@ -22,6 +22,7 @@ class Course(Base):
 
     sections: Mapped[list["Section"]] = relationship(back_populates="course", cascade="all, delete-orphan")
     assignments: Mapped[list["Assignment"]] = relationship(back_populates="course", cascade="all, delete-orphan")
+    modules: Mapped[list["Module"]] = relationship(back_populates="course", cascade="all, delete-orphan")
     staff_access: Mapped[list["StaffAccess"]] = relationship(back_populates="course")
     instructor: Mapped["User | None"] = relationship(foreign_keys=[instructor_id], back_populates="instructed_courses")
     ia: Mapped["User | None"] = relationship(foreign_keys=[ia_id], back_populates="ia_courses")
@@ -38,3 +39,15 @@ class Section(Base):
 
     course: Mapped[Course] = relationship(back_populates="sections")
     staff_access: Mapped[list["StaffAccess"]] = relationship(back_populates="section")
+
+
+class Module(Base):
+    __tablename__ = "modules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(100))
+    concepts: Mapped[list[str]] = mapped_column(MutableList.as_mutable(JSON), default=list)
+
+    course: Mapped[Course] = relationship(back_populates="modules")
+    assignments: Mapped[list["Assignment"]] = relationship(back_populates="module")

@@ -129,8 +129,8 @@ services:
       EXECUTION_ENGINE: judge0
       EXECUTION_ISOLATION_LAYER: kata
       JUDGE0_RETENTION_MODE: delete_after_retrieval
-      AZURE_OPENAI_API_KEY: replace-me
-      AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
+      LOCAL_LLM_API_KEY: replace-me
+      LOCAL_LLM_ENDPOINT: http://localhost:11434/v1
       MOSS_USER_ID: replace-me
       SANDBOX_UPLOAD_LIMIT: "5"
       SANDBOX_UPLOAD_WINDOW_SECONDS: "3600"
@@ -162,8 +162,8 @@ services:
       EXECUTION_ENGINE: judge0
       EXECUTION_ISOLATION_LAYER: kata
       JUDGE0_RETENTION_MODE: delete_after_retrieval
-      AZURE_OPENAI_API_KEY: replace-me
-      AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
+      LOCAL_LLM_API_KEY: replace-me
+      LOCAL_LLM_ENDPOINT: http://localhost:11434/v1
       MOSS_USER_ID: replace-me
       SANDBOX_UPLOAD_LIMIT: "5"
       SANDBOX_UPLOAD_WINDOW_SECONDS: "3600"

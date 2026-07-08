@@ -31,6 +31,7 @@ class SandboxAssignmentSummary(BaseModel):
     language: str
     max_score: int = Field(ge=0)
     upload_quota: UploadQuota
+    module_name: str | None = None
 
 
 class SandboxAssignmentListResponse(BaseModel):

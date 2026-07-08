@@ -15,6 +15,24 @@ export default function AssignmentsPage({
 }) {
   const backHref = mode === "sandbox" ? "/sandbox" : "/staff/courses";
 
+  // Group assignments by module_name
+  const grouped = data.assignments.reduce<Record<string, typeof data.assignments>>((acc, assignment) => {
+    const key = assignment.module_name || "Unassigned";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(assignment);
+    return acc;
+  }, {});
+
+  const groupKeys = Object.keys(grouped);
+  const hasModules = groupKeys.some(k => k !== "Unassigned");
+
+  // Sort keys so modules are ordered, and "Unassigned" comes last
+  const sortedGroupKeys = groupKeys.sort((a, b) => {
+    if (a === "Unassigned") return 1;
+    if (b === "Unassigned") return -1;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
   return (
     <div className="w-full px-4 pt-8">
       <div className="mb-6">
@@ -43,6 +61,26 @@ export default function AssignmentsPage({
 
       {data.assignments.length === 0 ? (
         <p className="text-muted-foreground">No assignments available yet.</p>
+      ) : hasModules ? (
+        <div className="space-y-8">
+          {sortedGroupKeys.map((groupKey) => (
+            <div key={groupKey} className="space-y-3">
+              <h2 className="text-xs font-semibold tracking-wider text-slate-500 uppercase border-b pb-1">
+                {groupKey}
+              </h2>
+              <div className="flex w-full flex-col gap-2">
+                {grouped[groupKey].map((assignment) => (
+                  <AssignmentCard
+                    key={assignment.id}
+                    assignment={assignment}
+                    courseId={data.course_id}
+                    mode={mode}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="flex w-full flex-col gap-2">
           {data.assignments.map((assignment) => (

@@ -44,8 +44,8 @@ class Settings(BaseSettings):
     jwt_expiration_minutes: int = Field(default=5, ge=1, validation_alias="JWT_EXPIRATION_MINUTES")
     enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
-    azure_openai_api_key: str | None = Field(default=None, validation_alias="AZURE_OPENAI_API_KEY")
-    azure_openai_endpoint: str | None = Field(default=None, validation_alias="AZURE_OPENAI_ENDPOINT")
+    local_llm_api_key: str | None = Field(default=None, validation_alias="LOCAL_LLM_API_KEY")
+    local_llm_endpoint: str | None = Field(default=None, validation_alias="LOCAL_LLM_ENDPOINT")
     repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
 
     @property

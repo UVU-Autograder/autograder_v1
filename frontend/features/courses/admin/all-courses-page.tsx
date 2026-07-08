@@ -41,6 +41,13 @@ export default function AllCoursesPage({
   const [courses, setCourses] = useState<CourseAdminDetail[]>(initialCourses);
   const [users, setUsers] = useState<UserSummary[]>([]);
   
+  // Keep track of the prop we synchronized to avoid useEffect setState warning
+  const [prevInitialCourses, setPrevInitialCourses] = useState(initialCourses);
+  if (initialCourses !== prevInitialCourses) {
+    setCourses(initialCourses);
+    setPrevInitialCourses(initialCourses);
+  }
+
   // Dialog Open states
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -58,13 +65,14 @@ export default function AllCoursesPage({
   const [instructorId, setInstructorId] = useState<string>("none");
   const [iaId, setIaId] = useState<string>("none");
 
+  // Email-based states for new users
+  const [instructorEmail, setInstructorEmail] = useState("");
+  const [instructorName, setInstructorName] = useState("");
+  const [iaEmail, setIaEmail] = useState("");
+  const [iaName, setIaName] = useState("");
+
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Update local courses state when initialCourses changes
-  useEffect(() => {
-    setCourses(initialCourses);
-  }, [initialCourses]);
 
   // Load user list for dropdowns when edit dialog is active
   useEffect(() => {
@@ -78,6 +86,12 @@ export default function AllCoursesPage({
     setTitle("");
     setTerm("");
     setConcepts("");
+    setInstructorId("none");
+    setIaId("none");
+    setInstructorEmail("");
+    setInstructorName("");
+    setIaEmail("");
+    setIaName("");
     setFormError(null);
     setIsAddOpen(true);
   };
@@ -91,6 +105,10 @@ export default function AllCoursesPage({
     setIsActive(course.is_active);
     setInstructorId(course.instructor_id ? String(course.instructor_id) : "none");
     setIaId(course.ia_id ? String(course.ia_id) : "none");
+    setInstructorEmail("");
+    setInstructorName("");
+    setIaEmail("");
+    setIaName("");
     setFormError(null);
     setIsEditOpen(true);
   };
@@ -106,6 +124,16 @@ export default function AllCoursesPage({
       setFormError("All fields except concepts are required.");
       return;
     }
+
+    if (instructorId === "custom" && (!instructorEmail.trim() || !instructorEmail.trim().toLowerCase().endsWith("@uvu.edu"))) {
+      setFormError("Instructor email must be a @uvu.edu address.");
+      return;
+    }
+    if (iaId === "custom" && (!iaEmail.trim() || !iaEmail.trim().toLowerCase().endsWith("@uvu.edu"))) {
+      setFormError("IA email must be a @uvu.edu address.");
+      return;
+    }
+
     setFormError(null);
     setIsSubmitting(true);
     try {
@@ -114,12 +142,39 @@ export default function AllCoursesPage({
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
 
-      await createAdminCourse({
+      const payload: {
+        code: string;
+        title: string;
+        term: string;
+        default_concepts: string[];
+        instructor_email?: string | null;
+        instructor_name?: string | null;
+        instructor_id?: number | null;
+        ia_email?: string | null;
+        ia_name?: string | null;
+        ia_id?: number | null;
+      } = {
         code: code.trim(),
         title: title.trim(),
         term: term.trim(),
         default_concepts: conceptsList,
-      });
+      };
+
+      if (instructorId === "custom" && instructorEmail.trim()) {
+        payload.instructor_email = instructorEmail.trim().toLowerCase();
+        payload.instructor_name = instructorName.trim() || null;
+      } else if (instructorId !== "none" && instructorId !== "custom") {
+        payload.instructor_id = Number(instructorId);
+      }
+
+      if (iaId === "custom" && iaEmail.trim()) {
+        payload.ia_email = iaEmail.trim().toLowerCase();
+        payload.ia_name = iaName.trim() || null;
+      } else if (iaId !== "none" && iaId !== "custom") {
+        payload.ia_id = Number(iaId);
+      }
+
+      await createAdminCourse(payload);
 
       setIsAddOpen(false);
       refreshCourses();
@@ -137,6 +192,16 @@ export default function AllCoursesPage({
       setFormError("Code, Title, and Term are required.");
       return;
     }
+
+    if (instructorId === "custom" && (!instructorEmail.trim() || !instructorEmail.trim().toLowerCase().endsWith("@uvu.edu"))) {
+      setFormError("Instructor email must be a @uvu.edu address.");
+      return;
+    }
+    if (iaId === "custom" && (!iaEmail.trim() || !iaEmail.trim().toLowerCase().endsWith("@uvu.edu"))) {
+      setFormError("IA email must be a @uvu.edu address.");
+      return;
+    }
+
     setFormError(null);
     setIsSubmitting(true);
     try {
@@ -145,15 +210,45 @@ export default function AllCoursesPage({
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
 
-      await updateAdminCourse(selectedCourse.id, {
+      const payload: {
+        code: string;
+        title: string;
+        term: string;
+        default_concepts: string[];
+        is_active: boolean;
+        instructor_email?: string | null;
+        instructor_name?: string | null;
+        instructor_id?: number | null;
+        ia_email?: string | null;
+        ia_name?: string | null;
+        ia_id?: number | null;
+      } = {
         code: code.trim(),
         title: title.trim(),
         term: term.trim(),
         default_concepts: conceptsList,
         is_active: isActive,
-        instructor_id: instructorId === "none" ? 0 : Number(instructorId),
-        ia_id: iaId === "none" ? 0 : Number(iaId),
-      });
+      };
+
+      if (instructorId === "custom" && instructorEmail.trim()) {
+        payload.instructor_email = instructorEmail.trim().toLowerCase();
+        payload.instructor_name = instructorName.trim() || null;
+        payload.instructor_id = null;
+      } else {
+        payload.instructor_id = instructorId === "none" ? 0 : Number(instructorId);
+        payload.instructor_email = "";
+      }
+
+      if (iaId === "custom" && iaEmail.trim()) {
+        payload.ia_email = iaEmail.trim().toLowerCase();
+        payload.ia_name = iaName.trim() || null;
+        payload.ia_id = null;
+      } else {
+        payload.ia_id = iaId === "none" ? 0 : Number(iaId);
+        payload.ia_email = "";
+      }
+
+      await updateAdminCourse(selectedCourse.id, payload);
 
       setIsEditOpen(false);
       refreshCourses();
@@ -284,6 +379,86 @@ export default function AllCoursesPage({
               />
             </div>
 
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-500 uppercase">Instructor</label>
+              <select
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                value={instructorId}
+                onChange={(e) => setInstructorId(e.target.value)}
+              >
+                <option value="none">None</option>
+                <option value="custom">+ Add by email...</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {instructorId === "custom" && (
+              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor UVU Email</label>
+                  <Input
+                    type="email"
+                    placeholder="e.g. green.scholar@uvu.edu"
+                    value={instructorEmail}
+                    onChange={(e) => setInstructorEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor Display Name (Optional)</label>
+                  <Input
+                    placeholder="e.g. Professor Green"
+                    value={instructorName}
+                    onChange={(e) => setInstructorName(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-500 uppercase">IA (Teaching Assistant)</label>
+              <select
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                value={iaId}
+                onChange={(e) => setIaId(e.target.value)}
+              >
+                <option value="none">None</option>
+                <option value="custom">+ Add by email...</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {iaId === "custom" && (
+              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA UVU Email</label>
+                  <Input
+                    type="email"
+                    placeholder="e.g. assistant.ta@uvu.edu"
+                    value={iaEmail}
+                    onChange={(e) => setIaEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA Display Name (Optional)</label>
+                  <Input
+                    placeholder="e.g. John TA"
+                    value={iaName}
+                    onChange={(e) => setIaName(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
             {formError && <p className="text-xs text-red-500 font-medium">{formError}</p>}
 
             <DialogFooter className="pt-2">
@@ -345,6 +520,7 @@ export default function AllCoursesPage({
                 onChange={(e) => setInstructorId(e.target.value)}
               >
                 <option value="none">None</option>
+                <option value="custom">+ Add by email...</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.email} {u.display_name ? `(${u.display_name})` : ""}
@@ -352,6 +528,29 @@ export default function AllCoursesPage({
                 ))}
               </select>
             </div>
+
+            {instructorId === "custom" && (
+              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor UVU Email</label>
+                  <Input
+                    type="email"
+                    placeholder="e.g. green.scholar@uvu.edu"
+                    value={instructorEmail}
+                    onChange={(e) => setInstructorEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor Display Name (Optional)</label>
+                  <Input
+                    placeholder="e.g. Professor Green"
+                    value={instructorName}
+                    onChange={(e) => setInstructorName(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-500 uppercase">IA (Teaching Assistant)</label>
@@ -361,6 +560,7 @@ export default function AllCoursesPage({
                 onChange={(e) => setIaId(e.target.value)}
               >
                 <option value="none">None</option>
+                <option value="custom">+ Add by email...</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.email} {u.display_name ? `(${u.display_name})` : ""}
@@ -368,6 +568,29 @@ export default function AllCoursesPage({
                 ))}
               </select>
             </div>
+
+            {iaId === "custom" && (
+              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA UVU Email</label>
+                  <Input
+                    type="email"
+                    placeholder="e.g. assistant.ta@uvu.edu"
+                    value={iaEmail}
+                    onChange={(e) => setIaEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA Display Name (Optional)</label>
+                  <Input
+                    placeholder="e.g. John TA"
+                    value={iaName}
+                    onChange={(e) => setIaName(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-2 pt-1">
               <input
@@ -403,7 +626,7 @@ export default function AllCoursesPage({
             <DialogTitle>Deactivate Course</DialogTitle>
           </DialogHeader>
           <div className="py-2 text-sm text-slate-600">
-            Are you sure you want to deactivate <span className="font-semibold text-slate-900">"{selectedCourse?.title}" ({selectedCourse?.code})</span>?
+            Are you sure you want to deactivate <span className="font-semibold text-slate-900">&quot;{selectedCourse?.title}&quot; ({selectedCourse?.code})</span>?
             This will hide the course from normal staff and sandbox views, but historical records will be preserved.
           </div>
           <DialogFooter>

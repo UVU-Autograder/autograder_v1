@@ -41,7 +41,7 @@ Use this matrix to decide the minimum test shape for M1 work:
 - Benchmark evidence must use mixed synthetic workloads and pass cleanup, no-crash, queue/backpressure, and service-target checks before a cap of `3` or `4` is approved.
 - The global waiting execution queue must reject new intake at `50` queued jobs, warn at `40`, and preserve the approved execution-slot cap.
 - M1 does not approve `8` concurrent Judge0/Kata execution slots from RAM estimates alone; benchmark evidence must cover CPU, Kata, pytest, AI/KV-cache, temp-file, timeout, and cleanup behavior.
-- Live-code Azure feedback must remain disabled until written UVU approval and Azure resource/privacy confirmation are complete.
+- Live student-code AI feedback must remain disabled until written UVU approval is complete.
 - M1 validation must use only fake/synthetic data or completely anonymized data with no retained re-identification map.
 - Canvas ZIP ingest and grade CSV export are dependable M1 workflows only after the synthetic fixture and completely anonymized sample validation matrix passes.
 

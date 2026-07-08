@@ -22,6 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import MonacoEditor from "@/components/monaco-editor";
 import { getConceptsMetadata } from "@/features/assignments/api";
 import { ConceptMetadata } from "@/features/assignments/types";
@@ -317,6 +324,8 @@ export default function SetupWizardPage({ params }: PageProps) {
   // Step 1
   const [title, setTitle] = useState("");
   const [sandboxEnabled, setSandboxEnabled] = useState(true);
+  const [moduleId, setModuleId] = useState<number | null>(null);
+  const [courseModules, setCourseModules] = useState<{ id: number; name: string }[]>([]);
 
   // Step 2
   const [requiredFiles, setRequiredFiles] = useState<string[]>([]);
@@ -380,6 +389,7 @@ export default function SetupWizardPage({ params }: PageProps) {
     setSetup(data);
     setTitle(data.title);
     setSandboxEnabled(data.sandbox_enabled);
+    setModuleId(data.module_id !== undefined ? data.module_id : null);
 
     // Step 2
     setRequiredFiles(config.bundle?.required_files || []);
@@ -413,9 +423,11 @@ export default function SetupWizardPage({ params }: PageProps) {
     Promise.all([
       apiClient.get<StaffAssignmentSetup>(`/staff/courses/${courseId}/assignments/${assignmentId}/setup`),
       getConceptsMetadata(),
-    ]).then(([setupData, metaData]) => {
+      apiClient.get<any>(`/staff/courses/${courseId}/concepts`),
+    ]).then(([setupData, metaData, courseConcepts]) => {
       if (active) {
         setConceptMeta(metaData);
+        setCourseModules(courseConcepts.modules || []);
         syncSetupState(setupData, metaData);
         setIsLoading(false);
       }
@@ -639,6 +651,7 @@ export default function SetupWizardPage({ params }: PageProps) {
         {
           title,
           sandbox_enabled: sandboxEnabled,
+          module_id: moduleId,
           config_json: updatedConfig,
         }
       );
@@ -1149,10 +1162,29 @@ export default function SetupWizardPage({ params }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">Assignment Title *</label>
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Project 1: Calculator" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">Module Assignment</label>
+                    <Select
+                      value={moduleId !== null ? String(moduleId) : "none"}
+                      onValueChange={(val) => setModuleId(val === "none" ? null : parseInt(val, 10))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="No Module" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Module</SelectItem>
+                        {courseModules.map((m) => (
+                          <SelectItem key={m.id} value={String(m.id)}>
+                            {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">Programming Language (Read-only)</label>

@@ -123,12 +123,12 @@ export default function MonitoringPage() {
           </CardContent>
         </Card>
 
-        {/* Azure OpenAI Token Usage Card */}
+        {/* Local LLM Token Usage Card */}
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-sm font-semibold text-slate-500 uppercase">Azure OpenAI Tokens</CardTitle>
-              <CardDescription>Accumulated token counts for generated AI feedback</CardDescription>
+              <CardTitle className="text-sm font-semibold text-slate-500 uppercase">Local LLM Tokens</CardTitle>
+              <CardDescription>Accumulated token counts for generated local AI feedback</CardDescription>
             </div>
             <BarChart2Icon className="size-6 text-purple-500" />
           </CardHeader>

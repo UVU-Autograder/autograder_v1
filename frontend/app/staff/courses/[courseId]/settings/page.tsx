@@ -1,18 +1,25 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
-import Link from "next/link";
 import { SaveIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
 import { getConceptsMetadata } from "@/features/assignments/api";
 import { ConceptMetadata } from "@/features/assignments/types";
 
+type ModuleConfig = {
+  id: number | null;
+  name: string;
+  concepts: string[];
+};
+
 type CourseConceptsResponse = {
   course_id: string;
   default_concepts: string[];
+  modules: ModuleConfig[];
 };
 
 type PageProps = {
@@ -22,6 +29,7 @@ type PageProps = {
 export default function CourseConceptsPage({ params }: PageProps) {
   const { courseId } = use(params);
   const [concepts, setConcepts] = useState<string[]>([]);
+  const [modules, setModules] = useState<ModuleConfig[]>([]);
   const [metadata, setMetadata] = useState<Record<string, ConceptMetadata>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,6 +51,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
     ]).then(([courseData, metaData]) => {
       if (active) {
         setConcepts(courseData.default_concepts);
+        setModules(courseData.modules || []);
         setMetadata(metaData);
         setIsLoading(false);
       }
@@ -65,14 +74,41 @@ export default function CourseConceptsPage({ params }: PageProps) {
     try {
       await apiClient.put<CourseConceptsResponse>(
         `/staff/courses/${courseId}/concepts`,
-        { default_concepts: concepts }
+        { 
+          default_concepts: concepts,
+          modules: modules
+        }
       );
-      setSuccess("Course default concepts saved successfully.");
+      setSuccess("Course concepts and modules configuration saved successfully.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save course concepts.");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleAddModule = () => {
+    setModules((prev) => [...prev, { id: null, name: `Module ${prev.length + 1}`, concepts: [] }]);
+  };
+
+  const handleRemoveModule = (index: number) => {
+    setModules((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleModuleRename = (index: number, newName: string) => {
+    setModules((prev) => prev.map((m, i) => i === index ? { ...m, name: newName } : m));
+  };
+
+  const handleModuleConceptToggle = (index: number, conceptKey: string) => {
+    setModules((prev) => prev.map((m, i) => {
+      if (i === index) {
+        const concepts = m.concepts.includes(conceptKey)
+          ? m.concepts.filter((c) => c !== conceptKey)
+          : [...m.concepts, conceptKey];
+        return { ...m, concepts };
+      }
+      return m;
+    }));
   };
 
   const handleCheckboxChange = (concept: string) => {
@@ -111,9 +147,9 @@ export default function CourseConceptsPage({ params }: PageProps) {
           </div>
         )}
 
-        <Card>
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Whitelisted Concepts</CardTitle>
+            <CardTitle>Whitelisted Base Concepts</CardTitle>
             <CardDescription>Select default allowed structures. Any other structures will flag warnings during execution.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -146,10 +182,61 @@ export default function CourseConceptsPage({ params }: PageProps) {
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button onClick={handleSave} disabled={isSaving}>
-              <SaveIcon className="mr-2 size-4" /> Save Default Whitelist
+              <SaveIcon className="mr-2 size-4" /> Save Whitelist & Modules
             </Button>
           </CardFooter>
         </Card>
+
+        <div className="mt-8 mb-6 space-y-1">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Course Modules & Concept Coverages</h2>
+          <p className="text-slate-500">Define course modules. Map specific allowed concepts to each module. Assignments will inherit these whitelisted concepts.</p>
+        </div>
+
+        {modules.map((mod, modIdx) => (
+          <Card key={modIdx} className="mb-4">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+              <div className="flex-1 mr-4">
+                <Input
+                  value={mod.name}
+                  onChange={(e) => handleModuleRename(modIdx, e.target.value)}
+                  placeholder="e.g. Module 1: Basics"
+                  className="font-semibold text-slate-800 text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                onClick={() => handleRemoveModule(modIdx)}
+              >
+                Delete Module
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs font-medium text-slate-500">Concepts covered in this module:</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {Object.values(metadata).map((item) => (
+                  <label key={item.key} className="flex items-center space-x-2 border rounded-md p-2 bg-white hover:bg-slate-50 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={mod.concepts.includes(item.key)}
+                      onChange={() => handleModuleConceptToggle(modIdx, item.key)}
+                      className="size-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="font-semibold text-slate-700 uppercase">{item.title}</span>
+                  </label>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        <div className="mt-4 mb-8">
+          <Button type="button" variant="outline" className="w-full border-dashed py-6 hover:bg-indigo-50/50 hover:text-indigo-600 cursor-pointer" onClick={handleAddModule}>
+            + Add Course Module
+          </Button>
+        </div>
       </div>
     </div>
   );

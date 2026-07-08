@@ -46,10 +46,15 @@ export default function AssignmentCard({
 
           <div className="min-w-0 space-y-0.5">
             <CardTitle className="truncate text-base">{assignment.title}</CardTitle>
-            <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-0 text-xs">
-              <span className="uppercase tracking-wider">{assignment.language}</span>
-              <span>{assignment.max_score} pts</span>
-              <span>
+            <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              {assignment.module_name && (
+                <span className="font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100/50">
+                  {assignment.module_name}
+                </span>
+              )}
+              <span className="uppercase tracking-wider text-slate-500">{assignment.language}</span>
+              <span className="text-slate-500">{assignment.max_score} pts</span>
+              <span className="text-slate-500">
                 {assignment.upload_quota.remaining} / {assignment.upload_quota.limit}{" "}
                 uploads
               </span>

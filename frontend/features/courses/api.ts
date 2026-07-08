@@ -13,7 +13,16 @@ export function getAdminCourses() {
     return apiClient.get<CourseAdminDetail[]>("/staff/admin/courses");
 }
 
-export function createAdminCourse(payload: { code: string; title: string; term: string; default_concepts?: string[] }) {
+export function createAdminCourse(payload: {
+    code: string;
+    title: string;
+    term: string;
+    default_concepts?: string[];
+    instructor_email?: string | null;
+    instructor_name?: string | null;
+    ia_email?: string | null;
+    ia_name?: string | null;
+}) {
     return apiClient.post<CourseAdminDetail>("/staff/admin/courses", payload);
 }
 
@@ -27,6 +36,10 @@ export function updateAdminCourse(
         is_active?: boolean;
         instructor_id?: number | null;
         ia_id?: number | null;
+        instructor_email?: string | null;
+        instructor_name?: string | null;
+        ia_email?: string | null;
+        ia_name?: string | null;
     }
 ) {
     return apiClient.put<CourseAdminDetail>(`/staff/admin/courses/${courseId}`, payload);

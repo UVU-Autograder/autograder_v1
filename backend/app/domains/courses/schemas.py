@@ -20,6 +20,7 @@ class StaffAssignmentSummary(BaseModel):
     sandbox_enabled: bool
     base_points: int = Field(ge=0)
     extra_credit_points: int = Field(ge=0)
+    module_name: str | None = None
 
 
 class StaffAssignmentListResponse(BaseModel):
@@ -27,11 +28,19 @@ class StaffAssignmentListResponse(BaseModel):
     assignments: list[StaffAssignmentSummary]
 
 
+class ModuleConfig(BaseModel):
+    id: int | None = None
+    name: str
+    concepts: list[str] = Field(default_factory=list)
+
+
 class CourseConceptsUpdate(BaseModel):
     default_concepts: list[str]
+    modules: list[ModuleConfig] = Field(default_factory=list)
 
 
 class CourseConceptsResponse(BaseModel):
     course_id: str
     default_concepts: list[str]
+    modules: list[ModuleConfig] = Field(default_factory=list)
 

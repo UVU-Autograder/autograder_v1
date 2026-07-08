@@ -1,10 +1,16 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint, func
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.domains.courses.models import Course, Module
+    from app.domains.artifacts.models import AssignmentArtifact
+    from app.domains.runs.models import RunSummary
 
 
 class Assignment(Base):
@@ -20,8 +26,10 @@ class Assignment(Base):
     sandbox_enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    module_id: Mapped[int | None] = mapped_column(ForeignKey("modules.id", ondelete="SET NULL"), nullable=True)
 
     course: Mapped["Course"] = relationship(back_populates="assignments")
+    module: Mapped["Module | None"] = relationship(back_populates="assignments")
     config: Mapped["AssignmentConfig | None"] = relationship(
         back_populates="assignment",
         cascade="all, delete-orphan",

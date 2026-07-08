@@ -293,6 +293,7 @@ class StaffAssignmentSetup(BaseModel):
     canvas_ref: str | None = None
     artifacts: list[ArtifactMetadata]
     config_json: AssignmentConfigV1
+    module_id: int | None = None
 
 
 class StaffAssignmentSetupUpdate(BaseModel):
@@ -301,6 +302,7 @@ class StaffAssignmentSetupUpdate(BaseModel):
     canvas_ref: str | None = None
     language: str | None = None
     config_json: AssignmentConfigV1
+    module_id: int | None = None
 
 
 class AssignmentCreate(BaseModel):
@@ -309,4 +311,5 @@ class AssignmentCreate(BaseModel):
     language: str = Field(default="python")
     canvas_ref: str | None = Field(default=None)
     sandbox_enabled: bool = Field(default=True)
+    module_id: int | None = Field(default=None)
 

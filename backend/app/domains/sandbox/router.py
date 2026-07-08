@@ -104,6 +104,8 @@ async def create_run(
             artifact_refs[art.artifact_key] = art.storage_ref
 
     allowed_concepts = list(db_assignment.course.default_concepts or [])
+    if db_assignment.module:
+        allowed_concepts.extend(db_assignment.module.concepts or [])
     if db_assignment.concept_additions:
         allowed_concepts.extend(db_assignment.concept_additions.added_concepts or [])
 

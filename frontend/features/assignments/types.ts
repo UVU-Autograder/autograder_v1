@@ -30,6 +30,7 @@ export type AssignmentsDetails = {
     language: string;
     max_score: number;
     upload_quota: UploadQuota;
+    module_name?: string | null;
 }
 
 export type Assignment = AssignmentsDetails & {
@@ -121,6 +122,7 @@ export type StaffAssignmentSetup = {
     scoring_items: any[];
     artifacts: any[];
     config_json: any;
+    module_id?: number | null;
 };
 
 export type AssignmentCreatePayload = {
@@ -129,5 +131,6 @@ export type AssignmentCreatePayload = {
     language: string;
     canvas_ref?: string | null;
     sandbox_enabled?: boolean;
+    module_id?: number | null;
 };
 

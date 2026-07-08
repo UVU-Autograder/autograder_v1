@@ -23,6 +23,10 @@ class CourseCreate(BaseModel):
     title: str
     term: str
     default_concepts: list[str] = []
+    instructor_email: str | None = None
+    instructor_name: str | None = None
+    ia_email: str | None = None
+    ia_name: str | None = None
 
 class CourseUpdate(BaseModel):
     code: str | None = None
@@ -32,6 +36,10 @@ class CourseUpdate(BaseModel):
     is_active: bool | None = None
     instructor_id: int | None = None
     ia_id: int | None = None
+    instructor_email: str | None = None
+    instructor_name: str | None = None
+    ia_email: str | None = None
+    ia_name: str | None = None
 
 class CourseAdminDetail(BaseModel):
     id: int
@@ -126,6 +134,58 @@ def get_courses_admin(db: DbSession):
         )
     return results
 
+def _get_or_create_user_and_grant_access(
+    db: Session,
+    email: str,
+    name: str | None,
+    role_name: str,
+    course_id: int,
+) -> int:
+    clean_email = email.strip().lower()
+    if not clean_email.endswith("@uvu.edu"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Staff access must be granted to @uvu.edu addresses.",
+        )
+        
+    user = db.scalar(select(User).where(User.email == clean_email))
+    if not user:
+        user = User(email=clean_email, display_name=name, is_active=True)
+        db.add(user)
+        db.flush()
+    elif name and not user.display_name:
+        user.display_name = name
+        
+    role = db.scalar(select(Role).where(Role.name == role_name))
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Role '{role_name}' does not exist.",
+        )
+        
+    existing = db.scalar(
+        select(StaffAccess)
+        .where(
+            StaffAccess.user_id == user.id,
+            StaffAccess.role_id == role.id,
+            StaffAccess.course_id == course_id,
+        )
+    )
+    if not existing:
+        access = StaffAccess(
+            user_id=user.id,
+            role_id=role.id,
+            course_id=course_id,
+            is_active=True,
+        )
+        db.add(access)
+    elif not existing.is_active:
+        existing.is_active = True
+        
+    db.flush()
+    return user.id
+
+
 @router.post("/courses", response_model=CourseAdminDetail, status_code=status.HTTP_201_CREATED)
 def create_course_admin(payload: CourseCreate, db: DbSession):
     existing = db.scalar(select(Course).where(Course.code == payload.code.strip().lower()))
@@ -143,19 +203,34 @@ def create_course_admin(payload: CourseCreate, db: DbSession):
         is_active=True,
     )
     db.add(course)
+    db.flush()
+
+    if payload.instructor_email:
+        instructor_id = _get_or_create_user_and_grant_access(
+            db, payload.instructor_email, payload.instructor_name, "instructor", course.id
+        )
+        course.instructor_id = instructor_id
+
+    if payload.ia_email:
+        ia_id = _get_or_create_user_and_grant_access(
+            db, payload.ia_email, payload.ia_name, "IA", course.id
+        )
+        course.ia_id = ia_id
+
     db.commit()
     db.refresh(course)
     
+    # Calculate section and assignment counts (which are 0)
     return CourseAdminDetail(
         id=course.id,
         code=course.code,
         title=course.title,
         term=course.term,
         is_active=course.is_active,
-        instructor_id=None,
-        instructor_email=None,
-        ia_id=None,
-        ia_email=None,
+        instructor_id=course.instructor_id,
+        instructor_email=course.instructor.email if course.instructor else None,
+        ia_id=course.ia_id,
+        ia_email=course.ia.email if course.ia else None,
         default_concepts=course.default_concepts or [],
         section_count=0,
         assignment_count=0,
@@ -194,6 +269,15 @@ def update_course_admin(course_id: int, payload: CourseUpdate, db: DbSession):
             if not instructor:
                 raise HTTPException(status_code=400, detail="Instructor user not found.")
             course.instructor_id = payload.instructor_id
+    elif payload.instructor_email is not None:
+        if not payload.instructor_email.strip():
+            course.instructor_id = None
+        else:
+            instructor_id = _get_or_create_user_and_grant_access(
+                db, payload.instructor_email, payload.instructor_name, "instructor", course.id
+            )
+            course.instructor_id = instructor_id
+
     if payload.ia_id is not None:
         if payload.ia_id == 0:
             course.ia_id = None
@@ -202,6 +286,14 @@ def update_course_admin(course_id: int, payload: CourseUpdate, db: DbSession):
             if not ia:
                 raise HTTPException(status_code=400, detail="IA user not found.")
             course.ia_id = payload.ia_id
+    elif payload.ia_email is not None:
+        if not payload.ia_email.strip():
+            course.ia_id = None
+        else:
+            ia_id = _get_or_create_user_and_grant_access(
+                db, payload.ia_email, payload.ia_name, "IA", course.id
+            )
+            course.ia_id = ia_id
             
     db.commit()
     db.refresh(course)

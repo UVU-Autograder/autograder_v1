@@ -116,6 +116,7 @@ def get_assignment_for_course(
             selectinload(Assignment.concept_additions),
             selectinload(Assignment.artifacts),
             selectinload(Assignment.scoring_items),
+            selectinload(Assignment.module),
         )
     )
 
@@ -149,6 +150,8 @@ def update_staff_setup(
         assignment.canvas_ref = payload.canvas_ref
     if payload.language is not None:
         assignment.language = payload.language
+    if "module_id" in payload.model_fields_set:
+        assignment.module_id = payload.module_id
 
     upsert_assignment_config(db, assignment, payload.config_json.model_dump(mode="json"))
     db.commit()
@@ -183,6 +186,7 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
         language=assignment.language,
         sandbox_enabled=assignment.sandbox_enabled,
         canvas_ref=assignment.canvas_ref,
+        module_id=assignment.module_id,
         base_points=config.base_points,
         extra_credit_points=config.extra_credit_points,
         required_files=config.bundle.required_files,
@@ -456,6 +460,7 @@ def create_assignment(
         existing.language = payload.language
         existing.canvas_ref = payload.canvas_ref
         existing.sandbox_enabled = payload.sandbox_enabled
+        existing.module_id = payload.module_id
         existing.is_active = True
         if existing.config is None:
             default_config_json = get_default_config_json()
@@ -472,6 +477,7 @@ def create_assignment(
         language=payload.language,
         canvas_ref=payload.canvas_ref,
         sandbox_enabled=payload.sandbox_enabled,
+        module_id=payload.module_id,
         is_active=True,
     )
     db.add(assignment)

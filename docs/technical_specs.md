@@ -17,7 +17,7 @@
 - Database: PostgreSQL in the current local/on-prem M1 stack for non-sensitive metadata only.
 - ORM and migrations: SQLAlchemy plus Alembic.
 - Queue and broker: Celery with Redis for official and sandbox grading jobs.
-- AI inference: Azure OpenAI API for pedagogical explanations grounded in pytest and AST results.
+- AI inference: Local LLM for pedagogical explanations grounded in pytest and AST results.
 - HTTP client: `httpx` for FastAPI-to-Judge0 async REST calls.
 
 ## 2. Core Features
@@ -44,7 +44,7 @@
 1. Staff uploads a Canvas ZIP for one assignment.
 2. The backend validates the archive and rejects malformed or non-Canvas ZIPs before queueing.
 3. Valid archives are extracted into a shared ephemeral workspace.
-4. Student submission bundles are validated against assignment-config requirements, then graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and Azure OpenAI explanation generation when approved for the data being processed.
+4. Student submission bundles are validated against assignment-config requirements, then graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and local LLM explanation generation when approved for the data being processed.
 5. Results are packaged into staff-facing export artifacts.
 6. Export is returned.
 
@@ -57,7 +57,7 @@
 5. The backend applies sandbox rate limiting before any grading work starts.
 6. The backend validates ZIP safety and assignment-config bundle requirements before grading.
 7. The frontend shows upload quota, preview, and rate-limit state.
-8. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and Azure explanation pipeline when approved for the data being processed.
+8. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and local LLM explanation pipeline when approved for the data being processed.
 9. Projected score, warnings, and feedback appear on screen only.
 
 ### Assignment and grading setup
@@ -188,7 +188,7 @@ classDiagram
 - `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
 - `scoring_items` are derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
 - `scoring_items` are derived projections of both automated test keys and manual rubric items, used for grading display and configuration checking.
-- `run_summaries` store workflow type, actor, aggregate counts, failure categories, and sanitized Azure token usage only.
+- `run_summaries` store workflow type, actor, aggregate counts, failure categories, and sanitized local LLM token usage only.
 - Judge0 submission tokens and raw Judge0 result payloads are transient execution-service data and must not be persisted as app-owned Postgres records.
 - Persistent operational metadata must remain aggregate-only and non-identifying; filenames, student identifiers, raw tracebacks, detailed failure text, and code snippets must not be stored in long-lived metadata tables or logs.
 
@@ -448,7 +448,7 @@ Notes:
 
 ### Official run
 
-`upload validation -> ephemeral extraction -> bundle validation -> per-student AST/concept check -> per-student Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> Azure explanation when approved -> feedback rendering -> export packaging -> cleanup`
+`upload validation -> ephemeral extraction -> bundle validation -> per-student AST/concept check -> per-student Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> local LLM explanation when approved -> feedback rendering -> export packaging -> cleanup`
 
 - Per-student parallelization begins only after the official archive has passed validation and been extracted.
 - Per-student bundle validation uses the app-owned assignment config before AST or execution starts.
@@ -460,7 +460,7 @@ Notes:
 
 ### Sandbox run
 
-`rate limit -> ZIP/project bundle intake -> ephemeral workspace creation -> bundle validation -> AST/concept check -> Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> Azure explanation when approved -> on-screen response shaping -> cleanup`
+`rate limit -> ZIP/project bundle intake -> ephemeral workspace creation -> bundle validation -> AST/concept check -> Judge0-backed Kata-isolated test execution -> Judge0 result retrieval -> execution-artifact cleanup -> local LLM explanation when approved -> on-screen response shaping -> cleanup`
 
 - The sandbox limiter is student-only and must run before grading work begins.
 - Sandbox upload intake accepts ZIP/project bundles only.
@@ -537,7 +537,7 @@ Notes:
 - The testing Compose stack is also the current deployment-shape reference for the on-prem M1 stack, even if some teammate machines cannot fully reproduce the final Kata runtime locally.
 - Teammate machines may use reduced local or integration harnesses for development, but those do not replace the Dell workstation in the current M1 hosting plan.
 - Required environment configuration includes:
-  - Azure OpenAI credentials and endpoint
+  - Local LLM credentials and endpoint
   - Judge0 URL and any required service auth token
   - Kata-capable runtime configuration for the Dell workstation deployment
   - PostgreSQL connection settings
@@ -552,10 +552,10 @@ Notes:
 - Judge0 student execution network access: disabled
 - Kata-backed VM isolation is required for the current planned production execution model.
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
-- Azure privacy readiness: ZDR/privacy posture must be confirmed before live student data use
-- Azure approval readiness: written UVU approval plus Azure resource/privacy confirmation must be complete before live student-code AI feedback
-- Azure is disabled for live, pseudonymous, or real student-derived code unless the UVU/Azure approval checklist is complete
-- Azure logging: token usage only, stored as sanitized aggregate metadata
+- Local LLM privacy readiness: model data protection posture must be confirmed before live student data use
+- Local LLM approval readiness: written UVU approval must be complete before live student-code AI feedback
+- Local LLM is disabled for live, pseudonymous, or real student-derived code unless the UVU approval checklist is complete
+- Local LLM logging: token usage only, stored as sanitized aggregate metadata
 
 ### Service targets and reliability guardrails
 
@@ -564,7 +564,7 @@ Notes:
 - Status polling response target: under `200ms`.
 - Export packaging overhead target: under `2 min` for `200` submissions after grading completes.
 - Student sandbox projected grading should feel interactive for normal assignment files.
-- Azure token usage must be measurable per run and assignment in non-sensitive metadata.
+- Local LLM token usage must be measurable per run and assignment in non-sensitive metadata.
 - Grading job failure must not affect other queued jobs.
 - Timeout or packaging failure must return actionable errors to users.
 - Persistent metadata must remain recoverable without retaining student submissions.

@@ -48,7 +48,7 @@ def update_concepts(
     payload: CourseConceptsUpdate,
     db: DbSession,
 ) -> CourseConceptsResponse:
-    concepts = update_course_concepts(db, course_id, payload.default_concepts)
+    concepts = update_course_concepts(db, course_id, payload.default_concepts, payload.modules)
     if concepts is None:
         raise HTTPException(status_code=404, detail="Course not found.")
     return concepts
