@@ -24,3 +24,9 @@ backend/data/
 npm-debug.log*
 
 node_modules/
+
+# Agentic Configuration Ignores
+.agents/
+
+# Student submission datasets
+cs1410/
