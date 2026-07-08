@@ -305,3 +305,15 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] **Vercel Preview Deploy**:
   - [ ] Deploy Next.js frontend workspace to Vercel in static preview mode for rapid testing.
 
+### Codebase Architecture Deepening
+- [ ] **Collapse the Ingestion Pipeline Seam (Candidate A)**:
+  - [ ] Consolidate ZIP validation, safe extraction, Canvas grouping, database record creation, and task triggering from `extractor.py` and `router.py` into a deep `Ingestion` service.
+  - [ ] Abstract filesystem/storage mapping from the router behind a single high-level `ingest` method.
+- [ ] **Consolidate the Pytest Execution Seam (Candidate B)**:
+  - [ ] Unify runner script generation (`runner_gen.py`), Judge0 API communication, and result parsing (`result_parser.py`) under a single `GradingExecutor` interface.
+  - [ ] Hide the script template construction, base64 encoding, delimiter communication, and stdout parsing inside the executor module.
+- [ ] **Deepen the AST Checker Module (Candidate C)**:
+  - [ ] Refactor the AST validator so that it exposes a codebase-level interface accepting directory path and entrypoint directly rather than accepting raw file strings.
+  - [ ] Let the AST validator absorb filesystem read mechanics, character encoding, and I/O error handling.
+
+

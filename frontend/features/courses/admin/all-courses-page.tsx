@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { CourseAdminDetail } from "@/features/courses/types";
@@ -341,6 +342,9 @@ export default function AllCoursesPage({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Course</DialogTitle>
+            <DialogDescription>
+              Fill out the details below to register a new course in the system.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddSubmit} className="space-y-4 py-2">
             <div className="space-y-1">
@@ -478,6 +482,9 @@ export default function AllCoursesPage({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
+            <DialogDescription>
+              Update course details, active status, or assign instructors and IAs.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
             <div className="space-y-1">
@@ -624,11 +631,11 @@ export default function AllCoursesPage({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Deactivate Course</DialogTitle>
+            <DialogDescription className="py-2 text-sm text-slate-600 block">
+              Are you sure you want to deactivate <span className="font-semibold text-slate-900">&quot;{selectedCourse?.title}&quot; ({selectedCourse?.code})</span>?
+              This will hide the course from normal staff and sandbox views, but historical records will be preserved.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-2 text-sm text-slate-600">
-            Are you sure you want to deactivate <span className="font-semibold text-slate-900">&quot;{selectedCourse?.title}&quot; ({selectedCourse?.code})</span>?
-            This will hide the course from normal staff and sandbox views, but historical records will be preserved.
-          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsDeleteOpen(false)}>
               Cancel

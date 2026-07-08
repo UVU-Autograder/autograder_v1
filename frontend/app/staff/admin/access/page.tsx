@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -251,6 +252,9 @@ export default function AccessPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Grant Staff Access</DialogTitle>
+            <DialogDescription>
+              Enter the UVU email address and assign a course-wide or section-wide role.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleGrantSubmit} className="space-y-4 py-2">
             <div className="space-y-1">
