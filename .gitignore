@@ -1,9 +1,37 @@
-# MacOS being funny
+# OS
 .DS_Store
+Thumbs.db
+Desktop.ini
 
-# Python & other AI based fragments
+# Python
 env
 venv
+backend/venv/
 .idea
 __pycache__/
 *.pyc
+.pytest_cache/
+.pytest-tmp/
+backend/data/
+
+# Env / secrets (keep *.example tracked)
+.env
+.env.local
+backend/.env
+frontend/.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+frontend/out/
+
+# Agentic / local agent memory
+.agents/
+
+# Student submission datasets (local-only; FERPA)
+cs1410/
