@@ -1,6 +1,6 @@
-# UVU Autograder v1 - Delivery Controls
+# UVU Autograder — Delivery Controls
 
-This file defines static acceptance gates for completing the M1 checklist. Product decisions live in [decisions.md](../backend_implementation/decisions.md), runtime contracts live in [technical_specs.md](../technical_specs.md), frontend contracts live in [frontend_implementation.md](../frontend_implementation/frontend_implementation.md), and M1 deliverables live in [backlog.md](backlog.md).
+This file defines acceptance gates for active development. Product decisions live in [decisions.md](../backend_implementation/decisions.md), runtime contracts in [technical_specs.md](../technical_specs.md), frontend contracts in [frontend_implementation.md](../frontend_implementation/frontend_implementation.md), and the living backlog in [backlog.md](backlog.md).
 
 ## Definition of Done
 
@@ -12,16 +12,14 @@ A checklist item is complete when:
 - [ ] Ruff and ESLint pass
 - [ ] at least one unit or integration test covers the happy path
 - [ ] risk-based tests cover high-risk paths for the feature: unit, integration, cleanup, FERPA/privacy, or stress coverage as appropriate
-- [ ] edge cases handled: bad input, malformed ZIP, unsafe ZIP path, missing required bundle file, ambiguous entrypoint, unmatched filename, non-UVU login, timeout, cleanup failure, sandbox exit cleanup
+- [ ] edge cases handled where relevant: bad input, malformed ZIP, unsafe ZIP path, missing required bundle file, ambiguous entrypoint, unmatched filename, non-UVU login, timeout, cleanup failure, sandbox exit cleanup
 - [ ] no hardcoded secrets or environment-specific values
 - [ ] docs updated if setup or behavior changed
-- [ ] zero-retention cleanup is verified for any item that touches student code or student-facing grading artifacts
-- [ ] cleanup-touching work includes automated cleanup test evidence and Dell-workstation spot-check evidence
+- [ ] zero-retention / retention-window cleanup is verified for any item that touches student code or student-facing grading artifacts
+- [ ] cleanup-touching work includes automated cleanup test evidence; Dell-workstation spot-check evidence when the change affects on-prem execution
 - [ ] multi-file official and sandbox behavior is covered when the item touches ZIP/project bundle intake, validation, preview, or grading
 
 ## Risk-Based Testing Matrix
-
-Use this matrix to decide the minimum test shape for M1 work:
 
 | Area                       | Required coverage                                                                                                                        |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -30,40 +28,40 @@ Use this matrix to decide the minimum test shape for M1 work:
 | Student sandbox            | End-to-end test for public assignment selection, ZIP/project bundle upload, quota state, results, preview, and cleanup                   |
 | Official runs              | End-to-end test for Canvas ZIP ingest, multi-file submission bundles, run status, preview, exports, and cleanup                          |
 | Compliance-sensitive paths | Regression checks that persistent storage and logs do not contain student code, identifiers, filenames, tracebacks, or detailed feedback |
-| Stress and capacity        | Dell-workstation validation for service targets, worker caps, queue admission at `40`/`50`, official-run chunking, and AI degradation     |
+| Stress and capacity        | Dell-workstation validation for service targets, worker caps, queue admission at `40`/`50`, and AI degradation under load                |
 
 ## Launch-Blocking Signoff Gates
 
-- Cleanup proof must show Judge0 deletion, non-retrievability after deletion, ephemeral workspace removal, and Kata execution-state cleanup through automated tests plus a sanitized Dell-workstation spot-check log.
+- Cleanup proof must show Judge0 deletion, non-retrievability after deletion, ephemeral workspace removal, and Kata execution-state cleanup through automated tests plus a sanitized Dell-workstation spot-check log (when Dell access is available).
 - Cleanup spot-check notes should be brief and dated: reviewer, app commit, synthetic workload, Judge0 deletion/non-retrievability result, workspace cleanup result, Kata runtime evidence, resource observations, and outcome. Do not include student code, filenames, identifiers, raw tracebacks, detailed outputs, raw Judge0 payloads, secrets, or auth tokens.
 - Judge0 deletion must be enabled and verifiable before live official or live student-derived workflows are allowed.
-- Capacity-sensitive work must respect the approved M1 cap of `2` concurrent Judge0/Kata execution slots unless stability-first benchmark evidence approves a higher cap.
+- Capacity-sensitive work must respect the approved cap of `2` concurrent Judge0/Kata execution slots unless stability-first benchmark evidence approves a higher cap.
 - Benchmark evidence must use mixed synthetic workloads and pass cleanup, no-crash, queue/backpressure, and service-target checks before a cap of `3` or `4` is approved.
-- The global waiting execution queue must reject new intake at `50` queued jobs, warn at `40`, and preserve the approved execution-slot cap.
-- M1 does not approve `8` concurrent Judge0/Kata execution slots from RAM estimates alone; benchmark evidence must cover CPU, Kata, pytest, AI/KV-cache, temp-file, timeout, and cleanup behavior.
-- Live student-code AI feedback must remain disabled until written UVU approval is complete.
-- M1 validation must use only fake/synthetic data or completely anonymized data with no retained re-identification map.
-- Canvas ZIP ingest and grade CSV export are dependable M1 workflows only after the synthetic fixture and completely anonymized sample validation matrix passes.
+- The intended global waiting execution queue rejects new intake at `50` queued jobs, warns at `40`, and preserves the approved execution-slot cap (implementation is an active backlog item).
+- Do not approve `8` concurrent Judge0/Kata execution slots from RAM estimates alone.
+- Sandbox Local LLM may process student **code** only when the payload is not personally traceable (no student PII/identifiers). Official-run AI is deferred.
+- Prefer fake/synthetic or completely anonymized validation data until institutional live-data posture is confirmed for a given workflow.
+- Canvas ZIP ingest and grade CSV export are dependable for live courses only after synthetic fixture validation and Dell-host confidence.
 
-## Hard Scope Boundaries - M1
+## Current product boundaries
 
-These are explicitly out of scope for M1. Do not pull them in under deadline pressure:
+In scope for active development (see backlog):
 
-- official university SSO integration beyond staff Microsoft OAuth + `@uvu.edu` domain restriction
+- Manual grading on official review (in progress)
+- Sandbox Local LLM (PII-safe; sandbox only)
+- Official review UX improvements (preview, Monaco, filtering)
+- Platform gap fixes (section auth, queue admission, preflight, concepts unify, run status)
+- Dell workstation validation
+
+Explicitly not in the living product plan (do not pull in without a new decision):
+
 - Canvas LTI or grade passback API integration
-- automated Canvas feedback attachment, upload, or distribution
-- manual or non-code grading workflows
-- in-app grade override or feedback editing workflows for official review
-- persistent student history, saved projected runs, or resubmission timelines
-- downloadable student sandbox artifacts
-- LLM-assisted PDF/text rubric conversion
-- AI-assisted test generation
-- inline in-editor LLM annotation markers for Monaco code review surfaces
-- student plagiarism detection
-- any M1 plagiarism checker implementation or external plagiarism-report workflow
-- loose multi-file drag-and-drop upload outside the ZIP/project bundle contract
-- in-browser code editing or IDE behavior beyond read-only Monaco preview
+- Automated Canvas feedback attachment, upload, or distribution (deferred note only)
+- Persistent student history, saved projected runs, or resubmission timelines
+- Downloadable student sandbox artifacts
+- LLM-assisted PDF/text rubric conversion or AI-assisted test generation
+- Inline in-editor LLM annotation markers for Monaco
+- Loose multi-file drag-and-drop outside the ZIP/project bundle contract
 - PDF feedback generation
-- multi-language support beyond Python
-- analytics or class-wide reporting
-- responsive design for mobile devices
+- Analytics or class-wide reporting
+- Responsive design for mobile devices as a launch requirement

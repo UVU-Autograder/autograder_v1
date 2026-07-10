@@ -21,7 +21,7 @@ For a grading workload characterized by short-lived, high-frequency executions, 
 - **Minimal Rootfs**: Use a stripped-down guest image (e.g., based on Alpine or a custom minimal Linux) to keep the base memory footprint below 128MB.
 - **Pre-baked Runtimes**: Ensure all Python versions and dependencies are pre-installed in the image. Any runtime installation during grading will violate the performance targets.
 
-## 4. Resource Guardrails (M1 Specs)
+## 4. Resource Guardrails
 - **Execution Slot Cap**: Strictly adhere to the cap of `2-4` concurrent jobs. 
 - **Memory Limit**: Ensure Judge0 is configured with a hard limit of `256MB` per container to prevent a single malicious or buggy student submission from crashing the host via OOM (Out of Memory).
 

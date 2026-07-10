@@ -1,4 +1,4 @@
-# UVU Autograder v1 - FERPA Analysis
+# UVU Autograder — FERPA Analysis
 
 This document is an internal engineering analysis of the current FERPA posture of the project. It is not legal advice and it is not a formal university approval memo.
 
@@ -6,7 +6,6 @@ It complements:
 
 - [decisions.md](backend_implementation/decisions.md)
 - [technical_specs.md](technical_specs.md)
-- [ferpa_questions.md](ferpa_questions.md), which now tracks only unresolved questions
 
 ## Current Posture
 
@@ -25,9 +24,9 @@ That change does not clear the whole system. The official grading workflow still
 
 ### Institutional Control Requirements
 
-FERPA can permit school-official or contractor access when the institution keeps direct control over the use and maintenance of education records. For this project, that means the official grading workflow needs more than a good zero-retention design: it needs UVU approval, role-bounded access, approved infrastructure, and approved handling for any external or local AI model.
+FERPA can permit school-official or contractor access when the institution keeps direct control over the use and maintenance of education records. For this project, that means the official grading workflow needs more than a good retention design: it needs UVU approval, role-bounded access, approved infrastructure, and approved handling for any local AI model.
 
-The current M1 design supports that direction by keeping the sandbox public and non-student-specific, limiting persistent data to metadata, and making cleanup part of the grading contract. Those controls reduce risk but do not by themselves authorize live official grading with education-record-linked data.
+The current design supports that direction by keeping the sandbox public and non-student-specific, limiting persistent data to metadata, retaining official review/export artifacts only ≤24h (or until staff cleanup), and wiping sandbox artifacts immediately. Those controls reduce risk but do not by themselves authorize live official grading with education-record-linked data.
 
 Answered project questions incorporated into this analysis:
 
@@ -35,21 +34,22 @@ Answered project questions incorporated into this analysis:
 - If the autograder cannot map assignment-specific identifiers back to student-identifiable information, that reduces the direct-identification risk; however, exports that can be mapped back through Canvas still need an approved mapping and handling process.
 - External vendor APIs require UVU-approved contracting controls, including HECVAT review and an active Data Protection Agreement where applicable.
 - Moving from local hosting to cloud deployment requires an active DPA that places the vendor under UVU's direct control and restricts student-data use or disclosure.
-- A fully local model on university-managed infrastructure can reduce third-party disclosure, but it still requires formal review of institutional approval, access control, data isolation, and operating procedures before live FERPA-covered use.
+- A fully local model on university-managed infrastructure can reduce third-party disclosure, but institutional review of access control, data isolation, and operating procedures still applies for FERPA-covered use.
 
 ## What Changed Already
 
-- Sandbox assignments are now globally visible instead of being tied to student-specific access.
+- Sandbox assignments are globally visible instead of being tied to student-specific access.
 - The sandbox no longer requires student authentication.
 - The persistent roster-based sandbox authorization mapping was removed from the current spec.
-- Zero-retention remains a core design principle for submissions, detailed artifacts, and Judge0 execution records.
+- Retention remains a core design principle: Judge0/Kata artifacts deleted immediately after retrieval; sandbox wipe after results; official identifiable artifacts ≤24h or until staff cleanup.
 - Judge0 cleanup is explicitly documented as `DELETE /submissions/{token}` immediately after retrieval.
+- Sandbox Local LLM may process student **code** when the payload is not personally traceable (no student PII/identifiers). Official-run AI is deferred.
 
 Those changes reduce the chance that the student-facing sandbox itself becomes a disclosure of enrollment or schedule information. They do not eliminate the official workflow's FERPA obligations.
 
-## M1 Validation Data
+## Validation Data
 
-M1 validation uses only fake/synthetic data or completely anonymized data. M1 does not use live student submissions, Canvas exports containing real student identifiers, or pseudonymous datasets that require a re-identification map.
+Prefer fake/synthetic data or completely anonymized data for validation until live-data posture is confirmed for a given workflow. Do not use live student submissions, Canvas exports containing real student identifiers, or pseudonymous datasets that require a re-identification map for casual validation.
 
 Completely anonymized validation data must not be reasonably linkable back to a student by the app, the project team, or an instructor-held mapping file. Synthetic data is preferred because it avoids the ambiguity of whether a real submission has been anonymized enough.
 
@@ -63,50 +63,43 @@ If a real submission is ever considered for anonymized validation, the anonymiza
 - comments, package names, or project labels that directly identify a student
 - any other direct identifier an instructor or UVU reviewer can reasonably spot before upload
 
-Pseudonymous labels with a retained mapping, even if the mapping stays outside the app, are not considered completely anonymized for M1 validation. They may be a future manual-grading bridge only after the official workflow receives institutional approval.
+Pseudonymous labels with a retained mapping, even if the mapping stays outside the app, are not considered completely anonymized.
 
-The app should treat fake and fully anonymized validation bundles with the same zero-retention discipline used for student-code-bearing data: no persistent source bodies, filenames, detailed tracebacks, detailed feedback, or per-student artifacts.
+The app should treat fake and fully anonymized validation bundles with the same retention discipline used for student-code-bearing data.
 
-Anonymization reduces validation risk, but it does not by itself authorize all downstream uses.  Live official grading with education-record-linked data still requires formal institutional approval.
+Anonymization reduces validation risk, but it does not by itself authorize all downstream uses. Live official grading with education-record-linked data still requires formal institutional approval.
 
 ## Issues And Fixes Matrix
 
 | Current issue                                                                                            | Why this is a FERPA or institutional-control problem                                                                                                                                                                                                  | Already mitigated by current spec                                                           | Preferred solution                                                                                                                                                                                                                           | Alternative solution(s)                                                                                                                                                                                                          |
 | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Student-specific sandbox access used to reveal course or assignment visibility based on student identity | UVU classifies schedule details as non-directory information, and UVU's student-ID-as-directory rationale depends on the ID not granting access to education records without additional authentication                                                | Yes. The current sandbox is public and assignment-driven rather than student-driven         | Keep the public sandbox model and do not reintroduce student-specific sandbox visibility without formal approval                                                                                                                             | If a future student-specific sandbox is required, gate it behind an approved UVU-controlled auth system and explicit institutional approval                                                                                      |
-| Official grading ingest, processing, and exports are still live education-record workflows               | Canvas ZIPs, submission-linked identifiers, Canvas-ready grade CSVs, and per-student feedback ZIPs can all contain or produce education-record data; instructor upload or convenience does not by itself make the workflow institutionally authorized | No                                                                                          | Treat live official grading as institutionally gated and require formal UVU approval for ingest, processing, export generation, and handling before production use                                                                           | Keep M1 limited to fake/synthetic or completely anonymized validation data until approval exists; disable live student export generation and keep real-course use out of M1                                                       |
-| AI feedback with live student submissions                                                                | Sending student code, traceback context, or grading context to the AI model is a disclosure that must meet institutional privacy and security standards                | No                                                                                          | Verify that data processed by the local model meets institutional privacy and security standards, and require confirmation before live use                                  | Use the local open-weight model on the Dell workstation; or disable AI feedback for live student data                                                                                            |
-| M1 validation with real or pseudonymous student data                                                     | Pseudonymous or re-identifiable datasets can still be linked back to students, and app-side redaction still receives identifiable data first                                                                                                           | Partly. The current zero-retention model limits persistence after intake                    | Use only fake/synthetic or completely anonymized validation data for M1                                                                                                                                                                      | Treat pseudonymous/manual re-identification workflows as future official-grading options only after formal approval                                                                                                             |
-| Approved hardware does not equal approved workflow                                                       | FERPA compliance turns on institutional control and authorized use, not just device ownership or on-prem location; UVU faculty guidance also says student records should be stored on approved UVU systems                                            | Partly. The current docs assume Dell-workstation permission, but not full workflow approval | Formalize the tool's status through UVU's Software Approval Process, routed through the myUVU portal and reviewed through the Academic Technology Steering Committee (ATSC) and related UVU governance bodies before live student-record use | Keep the app limited to non-live, non-student-record workflows until institutional approval is obtained                                                                                                                          |
-| Manual ZIP and CSV handling increases unmanaged disclosure risk                                          | Manual instructor export/import workflows create more opportunities for local copies, ad hoc sharing, and handling outside approved controls                                                                                                          | No                                                                                          | Prefer a governed Canvas integration path over manual ingest/export where feasible                                                                                                                                                           | Evaluate Canvas LTI 1.3 plus anonymous-grading support so the app can process anonymous assignment-specific identifiers instead of raw student identifiers; treat this as a possible architecture, not a current approved design |
+| Official grading ingest, processing, and exports are still live education-record workflows               | Canvas ZIPs, submission-linked identifiers, Canvas-ready grade CSVs, and per-student feedback ZIPs can all contain or produce education-record data; instructor upload or convenience does not by itself make the workflow institutionally authorized | Partly. ≤24h official retention + metadata-only Postgres                                    | Treat live official grading as institutionally gated and require formal UVU approval for production use                                                                                                                                      | Prefer synthetic/anonymized validation until approval exists                                                                                                                                                                     |
+| AI feedback with student code                                                                            | Model input is a disclosure that must meet institutional privacy and security standards                                                                                                                                                               | Partly. Sandbox-only AI; code must not be personally traceable                              | Keep Local LLM on university-managed infrastructure; strip identifiers; sandbox only until official AI is explicitly approved                                                                                                                | Disable AI if a payload cannot be made non-identifying                                                                                                                                                                           |
+| Validation with real or pseudonymous student data                                                        | Pseudonymous or re-identifiable datasets can still be linked back to students                                                                                                                                                                         | Partly. Retention limits persistence after intake                                           | Prefer fake/synthetic or completely anonymized validation data                                                                                                                                                                               | Treat pseudonymous workflows as future options only after formal approval                                                                                                                                                        |
+| Approved hardware does not equal approved workflow                                                       | FERPA compliance turns on institutional control and authorized use, not just device ownership or on-prem location                                                                                                                                     | Partly. Dell-workstation hosting assumed, full workflow approval may still be needed        | Formalize the tool's status through UVU's Software Approval Process (myUVU / ATSC and related bodies) before live student-record use                                                                                                         | Keep non-live workflows until institutional approval is obtained                                                                                                                                                                 |
+| Manual ZIP and CSV handling increases unmanaged disclosure risk                                          | Manual instructor export/import workflows create more opportunities for local copies and ad hoc sharing                                                                                                                                               | No                                                                                          | Prefer a governed Canvas integration path over manual ingest/export where feasible                                                                                                                                                           | Evaluate Canvas LTI 1.3 plus anonymous-grading support as a possible future architecture                                                                                                                                         |
 
 ## Preferred Path
 
 The preferred compliance posture for the current project is:
 
 - keep the public sandbox in scope
-- limit M1 validation to fake/synthetic or completely anonymized data
+- prefer fake/synthetic or completely anonymized validation data until live-data posture is confirmed
 - do not assume official grading with live student data is cleared by the current docs alone
 - require formal UVU approval and institutional control before production use of live official grading workflows
 - narrow live-data processing to approved workflows only
+- sandbox Local LLM: code-only payloads that are not personally traceable; official AI deferred
 
 Within that posture, the strongest technical direction is:
 
 1. Keep the sandbox public and non-student-specific.
-2. Treat official grading as the only workflow that may touch live student education records.
-3. Pursue UVU approval for the official workflow, including the Dell workstation operating model and any approved vendor disclosures.
+2. Treat official grading as the workflow that may touch live student education records (with ≤24h review retention).
+3. Pursue UVU approval for the official workflow, including the Dell workstation operating model.
 4. Reduce external disclosure where possible:
    - prefer a governed Canvas integration path over manual ZIP/CSV handling when feasible
    - consider Canvas LTI 1.3 with anonymous-grading support as a future architecture path if UVU wants institutional integration
-   - use the local LLM on university-managed infrastructure
-   - defer plagiarism detection unless UVU approves a local or otherwise institutionally approved tool
-
-Reasonable fallback positions if approval is deferred:
-
-- keep the system limited to assignment authoring, test authoring, model-solution validation, fake/synthetic submissions, completely anonymized validation bundles, and the public sandbox
-- disable live official grading exports
-- disable AI feedback for live, pseudonymous, or real student-derived code unless UVU approval is complete
-- keep plagiarism detection out of live M1 workflows
+   - use the local LLM on university-managed infrastructure with PII-safe sandbox payloads
 
 ## References
 
@@ -118,13 +111,3 @@ Official UVU and FERPA sources used in this analysis:
 - [UVU System Procurement and Implementation](https://www.uvu.edu/biservices/system-procurement-implementation.html)
 - [UVU Academic Technology Steering Committee](https://www.uvu.edu/biservices/governance.html)
 - [UVU Policy Manual: Policy 445 Institutional Data Governance and Management](https://www.uvu.edu/policies/manual/)
-- [U.S. Department of Education: Who is a “school official” under FERPA?](https://studentprivacy.ed.gov/faq/who-school-official-under-ferpa)
-- [U.S. Department of Education: FERPA regulations](https://studentprivacy.ed.gov/ferpa?exp=8)
-- [U.S. Department of Education: May a student identification number be listed as directory information?](https://studentprivacy.ed.gov/faq/may-social-security-number-or-other-student-identification-number-be-listed-directory)
-- [FERPA compliance software](https://secureprivacy.ai/blog/ferpa-compliance-software)
-
-User-provided mitigation ideas incorporated here as possible technical directions that still require UVU review and implementation validation:
-
-- Canvas LTI 1.3 plus anonymous-grading support instead of manual ZIP/CSV handling
-- local open-weight LLM fallback on the Dell workstation
-- future local plagiarism tooling such as Dolos or JPlag, if UVU approves it for live student data

@@ -1,6 +1,6 @@
 # Simple Python Functions Grading Example
 
-This folder shows a complete M1-style grading setup for a small Python functions assignment.
+This folder shows a complete grading setup for a small Python functions assignment.
 
 ## Assignment Goal
 
@@ -19,7 +19,7 @@ The submitted file must define:
 ## Files In This Example
 
 - `config_json.example.json`: example value for `assignment_configs.config_json`.
-- `assignment_tests.py`: the single M1 pytest file artifact for the assignment.
+- `assignment_tests.py`: the pytest file artifact for the assignment.
 - `model_solution.py`: instructor-owned model solution file body. During model-solution validation, this body is placed at the required bundle path `student_functions.py`.
 - `pytest.ini`: support-file example that registers the app grading markers.
 

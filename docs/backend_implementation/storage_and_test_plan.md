@@ -1,20 +1,20 @@
 # Storage And Test Architecture Plan
 
-This file is the canonical M1 plan for assignment config storage, grading assets, pytest scoring, and derived test projections. The canonical config schema is auto-generated and stored in [config_v1.schema.json](file:///c:/Users/Jaxon/coding/autograder_v1/docs/schemas/config_v1.schema.json).
+This file is the canonical plan for assignment config storage, grading assets, pytest scoring, and derived test projections. The canonical config schema is auto-generated and stored in [config_v1.schema.json](../schemas/config_v1.schema.json).
 
 ## Canonical Storage Model
 
 - PostgreSQL stores product metadata and the canonical internal grading definition in `assignment_configs.config_json`.
-- `assignment_configs.config_json` is app-owned and wizard-authored in M1. Raw `config.json` import, export, and direct editing are out of scope.
+- `assignment_configs.config_json` is app-owned and wizard-authored. The wizard is the authoring surface; config is an internal API/storage detail.
 - Assignment file bodies live behind the `assignment_artifacts` storage abstraction, not inside config JSON and not as database blobs.
-- M1 assignment artifact types are `pytest_file`, `model_solution`, and `support_file`.
+- Assignment artifact types are `pytest_file`, `model_solution`, and `support_file`.
 - `AssignmentArtifact` metadata stays lightweight: assignment linkage, stable artifact key, artifact type, generated storage reference, optional sanitized display filename, and validation metadata as needed.
 - `config_json` is not an `AssignmentArtifact` class. The canonical config lives in `assignment_configs.config_json`.
-- Student submissions, extracted files, Judge0 payloads, pytest tracebacks, generated feedback bodies, and execution workspaces remain ephemeral and must not become assignment artifacts or long-lived database records.
+- Student submissions, extracted files, Judge0 payloads, pytest tracebacks, generated feedback bodies, and execution workspaces remain ephemeral. Official review/export artifacts may exist ≤24h or until staff cleanup; sandbox artifacts are wiped immediately after results.
 
 ## Assignment Test Model
 
-- M1 allows one or more `pytest_file` artifacts per assignment.
+- One or more `pytest_file` artifacts per assignment are allowed.
 - UI-visible test cases are scoring items from `assignment_configs.config_json`, not separate physical test files.
 - Each config scoring entry has at least:
   - stable `key`
@@ -25,8 +25,9 @@ This file is the canonical M1 plan for assignment config storage, grading assets
 - One scoring item may map to multiple pytest functions when those functions share the same `ag_<key>` marker.
 - Default scoring is implicit: a scoring item contributes its `points` only when all pytest functions with its derived marker pass. Non-extra-credit items define the base total; passed extra-credit items add points above that base total.
 - Assignments that require "complete at least X of these Y objectives" use an optional `completion_requirements` section that names existing scoring-item keys and a `minimum_passed` count. Completion requirements report whether the objective threshold is met; they do not replace scoring-item points.
-- Hidden tests are not supported in M1. All M1 scoring entries are visible in staff and sandbox result surfaces.
+- All scoring entries are visible in staff and sandbox result surfaces.
 - `scoring_items` rows are derived projections used for UI, validation, and query convenience. They are regenerated from canonical config and are never editable grading truth.
+- Manual rubric items (non-executed) are supported; completing that staff workflow is an active backlog item.
 
 Example optional completion requirement:
 
@@ -46,7 +47,7 @@ Example optional completion requirement:
 1. Staff create or edit assignment grading setup through the wizard.
 2. The backend validates and stores the canonical grading definition in `assignment_configs.config_json`.
 3. Staff upload or edit the assignment pytest files, model solution files, and support files through assignment artifact storage.
-4. Strict preflight validation verifies config-to-artifact-to-marker consistency before model-solution validation or grading:
+4. Strict preflight validation verifies config-to-artifact-to-marker consistency before model-solution validation. Extending the same preflight to sandbox/official student grading is an active backlog item. Preflight checks include:
    - supported `schema_version`
    - duplicate config keys
    - missing `ag_<key>` markers in the pytest files
@@ -57,18 +58,15 @@ Example optional completion requirement:
    - missing bundle entrypoint or required-file rules
    - unsupported artifact types
 5. Derived `scoring_items` rows are regenerated from `assignment_configs.config_json` after setup changes.
-6. Official and sandbox grading copy assignment artifacts plus the student bundle into an ephemeral execution workspace.
-7. Judge0/Kata runs pytest in the isolated workspace.
+6. Official and sandbox grading place the student bundle and assignment artifacts into an ephemeral execution workspace.
+7. Judge0/Kata runs pytest in the isolated workspace via `execute_pytest_in_judge0`.
 8. Pytest results are mapped back to config scoring entries by `ag_<key>` marker.
-9. Staff or sandbox responses are shaped from grounded pytest results and sanitized metadata.
-10. Ephemeral workspaces, copied assignment artifacts, student files, Judge0 execution artifacts, tracebacks, and generated feedback bodies are cleaned up according to the zero-retention contract.
+9. Staff or sandbox responses are shaped from grounded pytest results and sanitized metadata. Sandbox Local LLM explanations (when enabled) must not re-grade.
+10. Workspaces and execution artifacts are cleaned up per the retention contract (sandbox immediate; official ≤24h or staff cleanup; Judge0/Kata immediate after retrieval).
 
 ## Non-Goals
 
-- No raw config import, export, download, or direct editing in M1.
 - No file-per-test-case requirement.
 - No database-authored test bodies.
-- No hidden tests in M1.
-- No persistent student submissions, raw filenames, tracebacks, Judge0 payloads, detailed feedback bodies, or sandbox artifacts.
-- No separate simple test-case editor in M1.
-- No manual grade overrides, plagiarism workflows, multi-language execution, compiled-language build pipelines, or Canvas grade passback in the M1 config contract (manual grading is supported only via non-executed rubric placeholders).
+- No persistent student submissions, raw filenames, tracebacks, Judge0 payloads, detailed feedback bodies, or sandbox download artifacts.
+- No Canvas grade passback API in the config/storage contract (manual Canvas CSV import remains assumed).

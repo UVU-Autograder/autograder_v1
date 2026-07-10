@@ -1,14 +1,16 @@
-# UVU Autograder v1
+# UVU Autograder
 
-On-prem autograder for zero-retention Python grading with a public student sandbox and staff setup/official-run workflows.
+On-prem autograder for retention-aware Python grading with a public student sandbox and staff setup/official-run workflows.
 
 ## Documentation
 
 - [Technical specs](docs/technical_specs.md) — system contracts, data model, runtime limits
-- [M1 backlog](docs/planning/backlog.md) — delivery checklist
+- [Active backlog](docs/planning/backlog.md) — living implementation checklist
 - [Frontend routes](docs/frontend_implementation/frontend_implementation.md)
 - [OpenAPI schema](docs/schemas/openapi.json)
-- [Ubuntu 24.x local POC deployment](docs/ubuntu_poc_deployment.md)
+- [Ubuntu 24.x local POC deployment](docs/deployment/ubuntu_poc_deployment.md)
+
+Frontend mockup: https://autograder-frontend-mockup.vercel.app/
 
 ## Quick start
 
@@ -29,7 +31,7 @@ npm run dev
 
 ### Staff dev login
 
-Use **Staff Portal Sign In** at `/staff/login` with a `@uvu.edu` address. Local dev uses mock JWT login (`POST /auth/mock-login`). Microsoft OAuth is planned post-M1.
+Use **Staff Portal Sign In** at `/staff/login` with a `@uvu.edu` address. Local/dev uses mock JWT login (`POST /auth/mock-login`). NextAuth + Microsoft OAuth is planned but deferred.
 
 ## npm layout
 
