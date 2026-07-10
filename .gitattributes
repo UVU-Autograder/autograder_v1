@@ -1,0 +1,9 @@
+# Set default behavior to normalize all text files to LF on commit/checkout
+* text=auto eol=lf
+
+# Force bash scripts to use Unix LF endings
+*.sh text eol=lf
+
+# Force Windows batch scripts to preserve CRLF endings
+*.bat text eol=crlf
+*.cmd text eol=crlf

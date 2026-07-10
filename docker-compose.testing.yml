@@ -40,7 +40,10 @@ services:
       retries: 5
 
   judge0:
-    image: judge0/judge0:1.13.1
+    build:
+      context: .
+      dockerfile: judge0.Dockerfile
+    image: uvu-autograder-judge0:latest
     container_name: uvu-autograder-judge0
     restart: unless-stopped
     ports:
@@ -69,7 +72,10 @@ services:
       retries: 5
 
   judge0-worker:
-    image: judge0/judge0:1.13.1
+    build:
+      context: .
+      dockerfile: judge0.Dockerfile
+    image: uvu-autograder-judge0:latest
     container_name: uvu-autograder-judge0-worker
     restart: unless-stopped
     depends_on:
@@ -115,7 +121,7 @@ services:
       judge0:
         condition: service_healthy
     environment:
-      POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
+      DATABASE_URL: postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       JUDGE0_URL: http://judge0:2358
@@ -123,8 +129,8 @@ services:
       EXECUTION_ENGINE: judge0
       EXECUTION_ISOLATION_LAYER: kata
       JUDGE0_RETENTION_MODE: delete_after_retrieval
-      AZURE_OPENAI_API_KEY: replace-me
-      AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
+      LOCAL_LLM_API_KEY: replace-me
+      LOCAL_LLM_ENDPOINT: http://localhost:11434/v1
       MOSS_USER_ID: replace-me
       SANDBOX_UPLOAD_LIMIT: "5"
       SANDBOX_UPLOAD_WINDOW_SECONDS: "3600"
@@ -133,12 +139,7 @@ services:
       - "8000:8000"
     volumes:
       - ./:/workspace
-    command:
-      - sh
-      - -c
-      - |
-        echo "Backend service placeholder: replace this command with uvicorn once the FastAPI app is executable."
-        sleep infinity
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   celery-worker:
     image: python:3.11-slim
@@ -153,7 +154,7 @@ services:
       judge0:
         condition: service_healthy
     environment:
-      POSTGRES_URL: postgresql://autograder:autograder_dev_password@postgres:5432/autograder
+      DATABASE_URL: postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       JUDGE0_URL: http://judge0:2358
@@ -161,20 +162,15 @@ services:
       EXECUTION_ENGINE: judge0
       EXECUTION_ISOLATION_LAYER: kata
       JUDGE0_RETENTION_MODE: delete_after_retrieval
-      AZURE_OPENAI_API_KEY: replace-me
-      AZURE_OPENAI_ENDPOINT: https://replace-me.openai.azure.com
+      LOCAL_LLM_API_KEY: replace-me
+      LOCAL_LLM_ENDPOINT: http://localhost:11434/v1
       MOSS_USER_ID: replace-me
       SANDBOX_UPLOAD_LIMIT: "5"
       SANDBOX_UPLOAD_WINDOW_SECONDS: "3600"
       CLEANUP_TTL_SECONDS: "0"
     volumes:
       - ./:/workspace
-    command:
-      - sh
-      - -c
-      - |
-        echo "Celery worker placeholder: replace this command with a real Celery worker once tasks are executable."
-        sleep infinity
+    command: celery -A app.integrations.celery.app worker --loglevel=info -Q sandbox,official,default
 
 volumes:
   postgres_data:

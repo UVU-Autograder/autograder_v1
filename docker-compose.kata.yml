@@ -1,0 +1,10 @@
+services:
+  judge0:
+    # Dev-machine Kata wiring: run the Judge0 API container with the host's
+    # registered Kata Docker runtime. Remove this override for non-Kata hosts.
+    runtime: ${KATA_DOCKER_RUNTIME:-kata-runtime}
+
+  judge0-worker:
+    # Dev-machine Kata wiring: run the Judge0 worker container with the host's
+    # registered Kata Docker runtime. Remove this override for non-Kata hosts.
+    runtime: ${KATA_DOCKER_RUNTIME:-kata-runtime}

@@ -1,0 +1,448 @@
+{
+  "$defs": {
+    "ArtifactConfig": {
+      "properties": {
+        "type": {
+          "enum": [
+            "pytest_file",
+            "model_solution",
+            "support_file"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "display_filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Filename"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ArtifactConfig",
+      "type": "object"
+    },
+    "BundleConfig": {
+      "properties": {
+        "required_files": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Files",
+          "type": "array"
+        },
+        "entrypoint": {
+          "minLength": 1,
+          "title": "Entrypoint",
+          "type": "string"
+        },
+        "file_requirements": {
+          "items": {
+            "$ref": "#/$defs/FileRequirementConfig"
+          },
+          "title": "File Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "required_files",
+        "entrypoint"
+      ],
+      "title": "BundleConfig",
+      "type": "object"
+    },
+    "CompletionRequirementConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "test_keys": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Test Keys",
+          "type": "array"
+        },
+        "minimum_passed": {
+          "minimum": 1,
+          "title": "Minimum Passed",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "test_keys",
+        "minimum_passed"
+      ],
+      "title": "CompletionRequirementConfig",
+      "type": "object"
+    },
+    "ConceptsConfig": {
+      "properties": {
+        "additions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Additions",
+          "type": "array"
+        }
+      },
+      "title": "ConceptsConfig",
+      "type": "object"
+    },
+    "ExecutionConfig": {
+      "properties": {
+        "dependencies": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dependencies",
+          "type": "array"
+        }
+      },
+      "title": "ExecutionConfig",
+      "type": "object"
+    },
+    "FileRequirementConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "requirement_type": {
+          "default": "exact",
+          "enum": [
+            "exact",
+            "one_of",
+            "optional",
+            "pattern"
+          ],
+          "title": "Requirement Type",
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "paths"
+      ],
+      "title": "FileRequirementConfig",
+      "type": "object"
+    },
+    "ManualRubricItemConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "points": {
+          "minimum": 0,
+          "title": "Points",
+          "type": "integer"
+        },
+        "extra_credit": {
+          "title": "Extra Credit",
+          "type": "boolean"
+        },
+        "rubric_group_key": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rubric Group Key"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "points",
+        "extra_credit"
+      ],
+      "title": "ManualRubricItemConfig",
+      "type": "object"
+    },
+    "OutputArtifactConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "artifact_type": {
+          "const": "generated_file",
+          "default": "generated_file",
+          "title": "Artifact Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "path"
+      ],
+      "title": "OutputArtifactConfig",
+      "type": "object"
+    },
+    "RubricGroupConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "item_keys": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Item Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "item_keys"
+      ],
+      "title": "RubricGroupConfig",
+      "type": "object"
+    },
+    "StdinScenarioConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "stdin": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Stdin",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "label"
+      ],
+      "title": "StdinScenarioConfig",
+      "type": "object"
+    },
+    "SupportArtifactRefConfig": {
+      "properties": {
+        "artifact_key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Artifact Key",
+          "type": "string"
+        },
+        "workspace_path": {
+          "minLength": 1,
+          "title": "Workspace Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_key",
+        "workspace_path"
+      ],
+      "title": "SupportArtifactRefConfig",
+      "type": "object"
+    },
+    "TestItemConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "points": {
+          "minimum": 0,
+          "title": "Points",
+          "type": "integer"
+        },
+        "extra_credit": {
+          "title": "Extra Credit",
+          "type": "boolean"
+        },
+        "rubric_group_key": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rubric Group Key"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "points",
+        "extra_credit"
+      ],
+      "title": "TestItemConfig",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "bundle": {
+      "$ref": "#/$defs/BundleConfig"
+    },
+    "concepts": {
+      "$ref": "#/$defs/ConceptsConfig"
+    },
+    "artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactConfig"
+      },
+      "minProperties": 1,
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "tests": {
+      "items": {
+        "$ref": "#/$defs/TestItemConfig"
+      },
+      "minItems": 1,
+      "title": "Tests",
+      "type": "array"
+    },
+    "completion_requirements": {
+      "items": {
+        "$ref": "#/$defs/CompletionRequirementConfig"
+      },
+      "title": "Completion Requirements",
+      "type": "array"
+    },
+    "execution": {
+      "$ref": "#/$defs/ExecutionConfig"
+    },
+    "support_artifacts": {
+      "items": {
+        "$ref": "#/$defs/SupportArtifactRefConfig"
+      },
+      "title": "Support Artifacts",
+      "type": "array"
+    },
+    "output_artifacts": {
+      "items": {
+        "$ref": "#/$defs/OutputArtifactConfig"
+      },
+      "title": "Output Artifacts",
+      "type": "array"
+    },
+    "rubric_groups": {
+      "items": {
+        "$ref": "#/$defs/RubricGroupConfig"
+      },
+      "title": "Rubric Groups",
+      "type": "array"
+    },
+    "manual_rubric_items": {
+      "items": {
+        "$ref": "#/$defs/ManualRubricItemConfig"
+      },
+      "title": "Manual Rubric Items",
+      "type": "array"
+    },
+    "stdin_scenarios": {
+      "items": {
+        "$ref": "#/$defs/StdinScenarioConfig"
+      },
+      "title": "Stdin Scenarios",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "bundle",
+    "artifacts",
+    "tests"
+  ],
+  "title": "AssignmentConfigV1",
+  "type": "object"
+}
