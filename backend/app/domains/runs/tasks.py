@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 # Redis key prefixes for run state
 RUN_STATE_PREFIX = "run:state:"
 RUN_RESULT_PREFIX = "run:result:"
+RUN_CANCELLED_PREFIX = "run:cancelled:"
 RUN_STATE_TTL = 3600  # 1 hour
 
 
@@ -47,6 +48,20 @@ def get_run_state(run_id: str) -> dict | None:
     if raw is None:
         return None
     return json.loads(raw)
+
+
+def mark_run_cancelled(run_id: str) -> None:
+    """Durable cancel marker so workers skip release after cancel_run."""
+    r = _get_redis()
+    r.setex(f"{RUN_CANCELLED_PREFIX}{run_id}", RUN_STATE_TTL, "1")
+
+
+def is_run_cancelled(run_id: str) -> bool:
+    try:
+        return bool(_get_redis().get(f"{RUN_CANCELLED_PREFIX}{run_id}"))
+    except Exception:
+        state = get_run_state(run_id) or {}
+        return state.get("failure_category") == "cancelled"
 
 
 def set_run_result(run_id: str, result: dict) -> None:
@@ -101,9 +116,34 @@ def grade_sandbox_run(
     import base64
     from app.domains.assignments.schemas import AssignmentConfigV1
     from app.domains.grading.service import run_grading_pipeline
+    from app.domains.runs.queue_admission import release_execution_slots
+
+    # Cancel may have revoked us or marked Redis before we started.
+    if is_run_cancelled(run_id):
+        return {
+            "run_id": run_id,
+            "success": False,
+            "score": 0,
+            "max_score": 0,
+            "test_results": [],
+            "warnings": [],
+            "failure_category": "cancelled",
+            "failure_message": "Sandbox run was cancelled before execution.",
+        }
 
     # Mark as running
     set_run_state(run_id, "run")
+    if is_run_cancelled(run_id):
+        return {
+            "run_id": run_id,
+            "success": False,
+            "score": 0,
+            "max_score": 0,
+            "test_results": [],
+            "warnings": [],
+            "failure_category": "cancelled",
+            "failure_message": "Sandbox run was cancelled before execution.",
+        }
 
     try:
         # Decode inputs
@@ -123,6 +163,19 @@ def grade_sandbox_run(
             )
         finally:
             loop.close()
+
+        if is_run_cancelled(run_id):
+            # Slot already released by cancel_run; do not release again.
+            return {
+                "run_id": run_id,
+                "success": False,
+                "score": 0,
+                "max_score": grading_result.max_score,
+                "test_results": [],
+                "warnings": [],
+                "failure_category": "cancelled",
+                "failure_message": "Sandbox run was cancelled.",
+            }
 
         # Build result payload
         result_payload = {
@@ -148,10 +201,23 @@ def grade_sandbox_run(
                 {"failure_category": grading_result.failure_category},
             )
 
+        release_execution_slots(1)
         return result_payload
 
     except Exception as exc:
         logger.exception("Grading task failed for run %s", run_id)
+
+        if is_run_cancelled(run_id):
+            return {
+                "run_id": run_id,
+                "success": False,
+                "score": 0,
+                "max_score": 0,
+                "test_results": [],
+                "warnings": [],
+                "failure_category": "cancelled",
+                "failure_message": "Sandbox run was cancelled.",
+            }
 
         error_result = {
             "run_id": run_id,
@@ -170,6 +236,7 @@ def grade_sandbox_run(
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc)
 
+        release_execution_slots(1)
         return error_result
 
 
@@ -281,9 +348,9 @@ def validate_assignment_model_solution(
                     artifact_refs[art.artifact_key] = art.storage_ref
 
             # Merged concepts covered list
-            allowed_concepts = list(assignment.course.default_concepts or [])
-            if assignment.concept_additions:
-                allowed_concepts.extend(assignment.concept_additions.added_concepts or [])
+            from app.domains.assignments.service import effective_allowed_concepts
+
+            allowed_concepts = effective_allowed_concepts(assignment)
 
         # 5. Run the grading pipeline asynchronously
         loop = asyncio.new_event_loop()
@@ -545,16 +612,22 @@ def grade_official_run(self, run_id: int) -> dict:
                 selectinload(Assignment.course),
                 selectinload(Assignment.config),
                 selectinload(Assignment.artifacts),
+                selectinload(Assignment.concept_additions),
             )
         )
         if not assignment or not assignment.config:
             logger.error("Assignment or config not found for run %d", run_id)
             run.status = "failure"
             db.commit()
+            from app.domains.runs.queue_admission import release_execution_slots
+
+            release_execution_slots(run.total_submission_count or 0)
+            set_run_state(str(run_id), "failure", {"message": "Assignment or config not found"})
             return {"error": "Assignment or config not found"}
 
         config = AssignmentConfigV1.model_validate(assignment.config.config_json)
         max_score = config.base_points
+        total_submissions = run.total_submission_count
 
         # Build artifact references
         artifact_refs = {}
@@ -563,9 +636,23 @@ def grade_official_run(self, run_id: int) -> dict:
                 artifact_refs[art.artifact_key] = art.storage_ref
 
         # Merged concepts covered list
-        allowed_concepts = list(assignment.course.default_concepts or [])
-        if assignment.concept_additions:
-            allowed_concepts.extend(assignment.concept_additions.added_concepts or [])
+        from app.domains.assignments.service import effective_allowed_concepts
+
+        allowed_concepts = effective_allowed_concepts(assignment)
+
+    set_run_state(
+        str(run_id),
+        "run",
+        {
+            "total": total_submissions,
+            "queued": 0,
+            "running": total_submissions,
+            "completed": 0,
+            "failed": 0,
+            "warnings": 0,
+            "message": "Official run executing.",
+        },
+    )
 
     if not zip_path.exists():
         logger.error("ZIP path %s not found.", zip_path)
@@ -574,6 +661,10 @@ def grade_official_run(self, run_id: int) -> dict:
             if run_db:
                 run_db.status = "failure"
                 db.commit()
+                from app.domains.runs.queue_admission import release_execution_slots
+
+                release_execution_slots(run_db.total_submission_count or 0)
+        set_run_state(str(run_id), "failure", {"message": "Official ZIP not found"})
         return {"error": "Official ZIP not found"}
 
     run_dir = official_run_dir(run_id)
@@ -591,9 +682,19 @@ def grade_official_run(self, run_id: int) -> dict:
                 run_db.status = "failure"
                 run_db.failure_summary = {"extraction_error": str(e)}
                 db.commit()
+                from app.domains.runs.queue_admission import release_execution_slots
+
+                release_execution_slots(run_db.total_submission_count or 0)
+        set_run_state(str(run_id), "failure", {"message": "Failed to extract ZIP"})
         return {"error": "Failed to extract ZIP"}
 
     grouped_files, unmatched = group_canvas_files(extract_dir)
+
+    from app.domains.runs.queue_admission import release_execution_slots
+
+    unused_slots = max(0, total_submissions - len(grouped_files))
+    if unused_slots:
+        release_execution_slots(unused_slots)
 
     student_results = {}
     success_count = 0
@@ -638,6 +739,23 @@ def grade_official_run(self, run_id: int) -> dict:
                 "manual_results": manual_results
             }
             shutil.rmtree(student_temp_dir, ignore_errors=True)
+            from app.domains.runs.queue_admission import release_execution_slots
+
+            release_execution_slots(1)
+            done = success_count + warning_count + failure_count + timeout_count
+            set_run_state(
+                str(run_id),
+                "run",
+                {
+                    "total": total_submissions,
+                    "queued": 0,
+                    "running": max(0, total_submissions - done),
+                    "completed": success_count + warning_count,
+                    "failed": failure_count + timeout_count,
+                    "warnings": warning_count,
+                    "message": "Official run executing.",
+                },
+            )
             return
 
         student_zip_buffer = io.BytesIO()
@@ -706,6 +824,24 @@ def grade_official_run(self, run_id: int) -> dict:
                 run_db.failure_summary = failure_summary_counts
                 db_inner.commit()
 
+        from app.domains.runs.queue_admission import release_execution_slots
+
+        release_execution_slots(1)
+        done = success_count + warning_count + failure_count + timeout_count
+        set_run_state(
+            str(run_id),
+            "run",
+            {
+                "total": total_submissions,
+                "queued": 0,
+                "running": max(0, total_submissions - done),
+                "completed": success_count + warning_count,
+                "failed": failure_count + timeout_count,
+                "warnings": warning_count,
+                "message": "Official run executing.",
+            },
+        )
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -736,6 +872,20 @@ def grade_official_run(self, run_id: int) -> dict:
         if run_db:
             run_db.status = "complete"
             db.commit()
+
+    set_run_state(
+        str(run_id),
+        "complete",
+        {
+            "total": total_submissions,
+            "queued": 0,
+            "running": 0,
+            "completed": success_count + warning_count,
+            "failed": failure_count + timeout_count,
+            "warnings": warning_count,
+            "message": "Official run complete.",
+        },
+    )
 
     return details_payload
 
@@ -829,6 +979,26 @@ def run_mock_official_run(run_id: int) -> None:
         run.status = "complete"
         run.failure_summary = {"missing_required_file": 1} if failure_count else {}
         db.commit()
+
+        from app.domains.runs.queue_admission import release_execution_slots
+
+        release_execution_slots(run.total_submission_count or 0)
+        try:
+            set_run_state(
+                str(run_id),
+                "complete",
+                {
+                    "total": run.total_submission_count,
+                    "queued": 0,
+                    "running": 0,
+                    "completed": success_count + warning_count,
+                    "failed": failure_count,
+                    "warnings": warning_count,
+                    "message": "Official run complete.",
+                },
+            )
+        except Exception:
+            pass
 
 
 @celery_app.task(name="app.domains.runs.tasks.cleanup_expired_workspaces")

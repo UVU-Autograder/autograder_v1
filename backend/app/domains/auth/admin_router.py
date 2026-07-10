@@ -134,6 +134,22 @@ def get_courses_admin(db: DbSession):
         )
     return results
 
+def _ensure_section_for_course_grant(db: Session, course_id: int) -> int:
+    """Return an active section id for course grants; create a placeholder if needed."""
+    section = db.scalar(
+        select(Section)
+        .where(Section.course_id == course_id, Section.is_active.is_(True))
+        .order_by(Section.id)
+    )
+    if section is not None:
+        return section.id
+
+    section = Section(course_id=course_id, crn="00000", is_active=True)
+    db.add(section)
+    db.flush()
+    return section.id
+
+
 def _get_or_create_user_and_grant_access(
     db: Session,
     email: str,
@@ -162,6 +178,8 @@ def _get_or_create_user_and_grant_access(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Role '{role_name}' does not exist.",
         )
+
+    section_id = _ensure_section_for_course_grant(db, course_id)
         
     existing = db.scalar(
         select(StaffAccess)
@@ -169,6 +187,7 @@ def _get_or_create_user_and_grant_access(
             StaffAccess.user_id == user.id,
             StaffAccess.role_id == role.id,
             StaffAccess.course_id == course_id,
+            StaffAccess.section_id == section_id,
         )
     )
     if not existing:
@@ -176,6 +195,7 @@ def _get_or_create_user_and_grant_access(
             user_id=user.id,
             role_id=role.id,
             course_id=course_id,
+            section_id=section_id,
             is_active=True,
         )
         db.add(access)
@@ -468,6 +488,19 @@ def grant_access_admin(payload: StaffAccessCreate, db: DbSession):
          raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Staff access must be granted to @uvu.edu addresses.",
+        )
+
+    if payload.section_id is None or payload.course_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="course_id and section_id are required for staff access grants.",
+        )
+
+    section = db.get(Section, payload.section_id)
+    if section is None or section.course_id != payload.course_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="section_id must belong to the given course_id.",
         )
         
     user = db.scalar(select(User).where(User.email == email))

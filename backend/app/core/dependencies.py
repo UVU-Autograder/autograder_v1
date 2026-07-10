@@ -59,6 +59,18 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    db: DbSession,
+    response: Response,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(security)
+    ] = None,
+) -> User | None:
+    """Return the authenticated user when a Bearer token is present, else None."""
+    if not credentials:
+        return None
+    return get_current_user(db, response, credentials)
+
 def require_role(allowed_roles: list[str]):
     """Standardized guard to enforce specific user roles."""
 
@@ -88,3 +100,95 @@ def require_staff(user: User = Depends(get_current_user)) -> User:
             detail="Staff access required.",
         )
     return user
+
+
+def user_is_admin(user: User) -> bool:
+    return any(
+        access.is_active and access.role.name == "admin" for access in user.staff_access
+    )
+
+
+def assert_course_section_access(
+    db: Session,
+    user: User,
+    *,
+    course_code: str,
+    section_id: int,
+) -> None:
+    """Require admin or active StaffAccess for course_code + section_id."""
+    if user_is_admin(user):
+        return
+
+    from sqlalchemy import select
+    from app.domains.courses.models import Course, Section
+
+    course = db.scalar(select(Course).where(Course.code == course_code))
+    if course is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found.")
+
+    section = db.scalar(
+        select(Section).where(
+            Section.id == section_id,
+            Section.course_id == course.id,
+            Section.is_active.is_(True),
+        )
+    )
+    if section is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Section not found for this course.",
+        )
+
+    has_grant = any(
+        access.is_active
+        and access.course_id == course.id
+        and access.section_id == section_id
+        and access.role.name in {"admin", "instructor", "IA"}
+        for access in user.staff_access
+    )
+    if not has_grant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No staff access for this course section.",
+        )
+
+
+def accessible_section_ids_for_course(db: Session, user: User, course_code: str) -> list[int] | None:
+    """Return section IDs the user may access, or None if admin (all sections)."""
+    from sqlalchemy import select
+    from app.domains.courses.models import Course
+
+    course = db.scalar(select(Course).where(Course.code == course_code))
+    if course is None:
+        return []
+
+    if user_is_admin(user):
+        return None  # all sections
+
+    return [
+        access.section_id
+        for access in user.staff_access
+        if access.is_active
+        and access.course_id == course.id
+        and access.role.name in {"admin", "instructor", "IA"}
+    ]
+
+
+def assert_run_section_access(
+    db: Session,
+    user: User,
+    *,
+    course_code: str,
+    section_id: int | None,
+) -> None:
+    """Enforce section grants for an official run. Legacy null section_id = admin only."""
+    if section_id is None:
+        if not user_is_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Legacy run without section; admin access required.",
+            )
+        return
+    assert_course_section_access(
+        db, user, course_code=course_code, section_id=section_id
+    )

@@ -5,6 +5,14 @@ from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
 
 from app.core.settings import get_settings
+from app.domains.runs.queue_admission import (
+    QueueFullError,
+    backpressure_snapshot,
+    eta_band_for_position,
+    release_execution_slots,
+    reserve_execution_slots,
+    waiting_count,
+)
 from app.domains.runs.schemas import (
     QueueBackpressure,
     RunCounters,
@@ -29,9 +37,6 @@ from app.domains.sandbox.schemas import (
 )
 
 SESSION_TTL = timedelta(hours=1)
-HIGH_LOAD_THRESHOLD = 40
-FULL_QUEUE_THRESHOLD = 50
-
 
 @dataclass
 class SandboxRunRecord:
@@ -48,6 +53,7 @@ class SandboxRunRecord:
     queue_position: int = 1
     warnings: int = 1
     max_score: int = 100
+    celery_task_id: str | None = None
 
 
 class SandboxService:
@@ -94,7 +100,9 @@ class SandboxService:
         if quota.remaining <= 0:
             return None, session, 429
 
-        if self._queued_count() >= FULL_QUEUE_THRESHOLD:
+        try:
+            waiting = reserve_execution_slots(1)
+        except QueueFullError:
             return None, session, 503
 
         now = datetime.now(UTC)
@@ -113,7 +121,7 @@ class SandboxService:
             session_id=session,
             course_id=course_id,
             assignment_id=assignment_id,
-            queue_position=self._queued_count() + 1,
+            queue_position=max(1, waiting),
             max_score=max_score,
         )
         self._runs[run_id] = record
@@ -124,14 +132,25 @@ class SandboxService:
             from app.domains.runs.tasks import grade_sandbox_run, set_run_state
 
             zip_b64 = base64.b64encode(zip_data).decode("ascii")
-            set_run_state(run_id, "queue", {"queue_position": record.queue_position})
-            grade_sandbox_run.delay(
+            try:
+                set_run_state(
+                    run_id,
+                    "queue",
+                    {
+                        "queue_position": record.queue_position,
+                        "eta_band": eta_band_for_position(record.queue_position),
+                    },
+                )
+            except Exception:
+                pass
+            grade_result = grade_sandbox_run.delay(
                 run_id=run_id,
                 zip_data_b64=zip_b64,
                 config_json=config_json,
                 artifact_refs=artifact_refs or {},
                 allowed_concepts=allowed_concepts or [],
             )
+            record.celery_task_id = grade_result.id
 
         status = self._status_for(record)
         return (
@@ -158,13 +177,14 @@ class SandboxService:
                 redis_state = get_run_state(run_id)
                 if redis_state is not None:
                     state = redis_state.get("state", "queue")
-                    record = self._runs.get(run_id)
                     queue_pos = redis_state.get("queue_position")
                     return RunStatusResponse(
                         run_id=run_id,
                         state=state,
                         queue_position=queue_pos if state == "queue" else None,
-                        eta_band="1_to_3_min" if state == "queue" else None,
+                        eta_band=eta_band_for_position(queue_pos)
+                        if state == "queue"
+                        else None,
                         counters=self._counters(),
                         backpressure=self._backpressure(),
                         message=self._message_for(state),
@@ -189,15 +209,32 @@ class SandboxService:
             return None
         if record.state != "queue":
             return "not_cancelable"
-        record.state = "failure"
 
-        # Also update Redis if in Celery mode
         if self._use_celery:
             try:
-                from app.domains.runs.tasks import set_run_state
-                set_run_state(run_id, "failure", {"failure_category": "cancelled"})
+                from app.domains.runs.tasks import get_run_state
+
+                redis_state = get_run_state(run_id)
+                if redis_state and redis_state.get("state") not in (None, "queue"):
+                    return "not_cancelable"
             except Exception:
                 pass
+
+        record.state = "failure"
+
+        if self._use_celery:
+            try:
+                from app.domains.runs.tasks import mark_run_cancelled, set_run_state
+                from app.integrations.celery.app import celery_app
+
+                mark_run_cancelled(run_id)
+                set_run_state(run_id, "failure", {"failure_category": "cancelled"})
+                if record.celery_task_id:
+                    celery_app.control.revoke(record.celery_task_id, terminate=False)
+            except Exception:
+                pass
+
+        release_execution_slots(1)
 
         return SandboxCancelResponse(
             run_id=run_id,
@@ -424,18 +461,26 @@ class SandboxService:
             run_id=record.run_id,
             state=record.state,
             queue_position=record.queue_position if record.state == "queue" else None,
-            eta_band="1_to_3_min" if record.state == "queue" else None,
+            eta_band=eta_band_for_position(record.queue_position)
+            if record.state == "queue"
+            else None,
             counters=self._counters(),
             backpressure=self._backpressure(),
             message=self._message_for(record.state),
         )
 
     def _advance(self, record: SandboxRunRecord) -> None:
+        previous = record.state
         record.status_reads += 1
         if record.state == "queue" and record.status_reads >= 1:
             record.state = "run"
         elif record.state == "run" and record.status_reads >= 2:
             record.state = "complete"
+        if previous not in {"complete", "failure"} and record.state in {
+            "complete",
+            "failure",
+        }:
+            release_execution_slots(1)
 
     def _message_for(self, state: RunState) -> str:
         return {
@@ -454,22 +499,8 @@ class SandboxService:
                     redis_state = get_run_state(item.run_id)
                     if redis_state:
                         item.state = redis_state.get("state", "queue")
-                r = self._redis_conn()
-                sandbox_len = r.llen("sandbox") or 0
-                official_len = r.llen("official") or 0
-                queued = sandbox_len + official_len
             except Exception:
-                queued = sum(1 for item in values if item.state == "queue")
-            
-            return RunCounters(
-                total=len(values),
-                queued=queued,
-                running=sum(1 for item in values if item.state == "run"),
-                completed=sum(1 for item in values if item.state == "complete"),
-                failed=sum(1 for item in values if item.state == "failure"),
-                warnings=sum(item.warnings for item in values if item.state == "complete"),
-            )
-
+                pass
         return RunCounters(
             total=len(values),
             queued=sum(1 for item in values if item.state == "queue"),
@@ -480,23 +511,10 @@ class SandboxService:
         )
 
     def _backpressure(self) -> QueueBackpressure:
-        waiting = self._queued_count()
-        return QueueBackpressure(
-            current_waiting=waiting,
-            high_load=waiting >= HIGH_LOAD_THRESHOLD,
-            accepting_runs=waiting < FULL_QUEUE_THRESHOLD,
-        )
+        return backpressure_snapshot()
 
     def _queued_count(self) -> int:
-        if not self._use_celery:
-            return sum(1 for item in self._runs.values() if item.state == "queue")
-        try:
-            r = self._redis_conn()
-            sandbox_len = r.llen("sandbox") or 0
-            official_len = r.llen("official") or 0
-            return sandbox_len + official_len
-        except Exception:
-            return sum(1 for item in self._runs.values() if item.state == "queue")
+        return waiting_count()
 
     def _assignment_max_score(self, record: SandboxRunRecord) -> int:
         return record.max_score

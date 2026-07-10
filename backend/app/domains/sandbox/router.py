@@ -2,7 +2,11 @@ from fastapi import APIRouter, File, Header, HTTPException, Response, UploadFile
 
 from app.core.dependencies import DbSession
 from app.core.settings import get_settings
-from app.domains.assignments.service import get_assignment_for_course
+from app.domains.assignments.service import (
+    effective_allowed_concepts,
+    get_assignment_for_course,
+)
+from app.domains.assignments.validation import run_preflight_validation
 from app.domains.sandbox.catalog import (
     get_sandbox_assignment,
     list_sandbox_assignments,
@@ -98,16 +102,19 @@ async def create_run(
     if db_assignment is None or db_assignment.config is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
 
+    preflight_errors = run_preflight_validation(db, course_id, assignment_id)
+    if preflight_errors:
+        raise HTTPException(
+            status_code=400,
+            detail="Assignment is not ready for grading. Contact your instructor.",
+        )
+
     artifact_refs: dict[str, str] = {}
     for art in db_assignment.artifacts:
         if art.storage_ref:
             artifact_refs[art.artifact_key] = art.storage_ref
 
-    allowed_concepts = list(db_assignment.course.default_concepts or [])
-    if db_assignment.module:
-        allowed_concepts.extend(db_assignment.module.concepts or [])
-    if db_assignment.concept_additions:
-        allowed_concepts.extend(db_assignment.concept_additions.added_concepts or [])
+    allowed_concepts = effective_allowed_concepts(db_assignment)
 
     run, session, error_status = sandbox_service.create_run(
         course_id=course_id,

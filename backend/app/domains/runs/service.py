@@ -125,7 +125,12 @@ def require_official_run_for_assignment(
     course_id: str,
     assignment_id: str,
     run_id: int,
+    *,
+    user=None,
 ) -> RunSummary:
+    from fastapi import HTTPException
+
+    from app.core.dependencies import assert_run_section_access
     from app.domains.assignments.service import get_assignment_for_course
 
     assignment = get_assignment_for_course(db, course_id, assignment_id)
@@ -140,4 +145,9 @@ def require_official_run_for_assignment(
     )
     if not run:
         raise HTTPException(status_code=404, detail="Run not found.")
+
+    if user is not None:
+        assert_run_section_access(
+            db, user, course_code=course_id, section_id=run.section_id
+        )
     return run

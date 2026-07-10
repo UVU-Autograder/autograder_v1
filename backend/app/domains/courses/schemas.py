@@ -44,3 +44,14 @@ class CourseConceptsResponse(BaseModel):
     default_concepts: list[str]
     modules: list[ModuleConfig] = Field(default_factory=list)
 
+
+class StaffSectionSummary(BaseModel):
+    id: int
+    crn: str
+    is_active: bool
+
+
+class StaffSectionListResponse(BaseModel):
+    course_id: str
+    sections: list[StaffSectionSummary]
+

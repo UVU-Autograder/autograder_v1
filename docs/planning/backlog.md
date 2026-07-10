@@ -66,11 +66,98 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 Documented policy vs current code — these are intentional fix items:
 
-- [ ] **Section-scoped staff authorization** — enforce course/section grants on official ingest and run routes (today many routes only check `require_staff`).
-- [ ] **Queue admission** — implement global waiting-job warn-at-`40` / reject-at-`50`, plus fair official/sandbox scheduling into the execution-slot cap (today official ingest has no admission gate).
-- [ ] **Preflight before student grading** — run strict config/artifact/`ag_<key>` preflight for sandbox and official student pipelines (today only model-solution validation calls it).
-- [ ] **Unify effective Concepts Covered** — course defaults + assignment additions only for **both** sandbox and official (today sandbox also merges module concepts).
-- [ ] **Official run status** — return real sanitized counters, queue position, and ETA band for official runs (today numeric official status is largely Postgres zeros).
+- [x] **Section-scoped staff authorization** — enforce course/section grants on official ingest and run routes (today many routes only check `require_staff`).
+- [x] **Queue admission** — implement global waiting-job warn-at-`40` / reject-at-`50`, plus fair official/sandbox scheduling into the execution-slot cap (today official ingest has no admission gate).
+- [x] **Preflight before student grading** — run strict config/artifact/`ag_<key>` preflight for sandbox and official student pipelines (today only model-solution validation calls it).
+- [x] **Unify effective Concepts Covered** — shipped as course defaults + assignment additions; **superseded for product rule** — see CS1410 prerequisite (course ∪ module).
+- [x] **Official run status** — return real sanitized counters, queue position, and ETA band for official runs (today numeric official status is largely Postgres zeros).
+
+---
+
+## Active — CS1410 course modeling
+
+Goal: fully model UVU **CS 1410** in the database from the local (gitignored) source tree [`cs1410/`](../../cs1410/) — modules, assignments, Concepts Covered, pytest, model solutions, support artifacts, and seed. Specs live in `cs1410/m*/overview.md` and `cs1410/m*/**/desc.md`. Real `submissions/` are **local-only** (reference when authoring tests/model solutions; also used later for testing/LLM training). Do **not** commit, seed, or persist student identifiers from that tree.
+
+### Decisions (grill-locked)
+
+- **Phasing:** (1) full course **skeleton**, then (2) pytest + model solution (+ `config_json` / artifacts) **per assignment**.
+- **Submissions:** gitignored; agent/dev reference only for authoring — not DB seed content.
+- **Image / hard-to-check parts:** pytest what is feasible; pixel/visual correctness → **manual rubric for now** (visual-diff later if useful).
+- **Concepts Covered:** map module learning objectives onto the **existing AST concept vocabulary**; store on **`Module.concepts`** (not per-assignment additions). Non-mappable LOs (e.g. “online readiness”) stay out of Concepts Covered.
+- **Enforced whitelist:** `course.default_concepts ∪ assignment.module.concepts` (requires updating `effective_allowed_concepts` + docs; supersedes “course + assignment additions only”).
+- **Skeleton delivery:** expand [`seed.py`](../../backend/app/db/seed.py) (or a dedicated seed module it calls).
+- **Deep-phase order:** Dessert Shop **`ds1`→`ds10` first**, then remaining labs. **`lab-1-image-processing` is already partially seeded** — complete/gap-fill, do not recreate from scratch.
+
+### Inventory (from `cs1410/`)
+
+| Module | Assignments |
+| ------ | ----------- |
+| m1 | lab1 *(partially modeled as `lab-1-image-processing`)* |
+| m2 | lab2, lab3 |
+| m3 | ds1, lab4, lab5 |
+| m4 | ds2 |
+| m5 | ds3 |
+| m6 | ds4 |
+| m7 | ds5 *(note: `ui.py` support file present)* |
+| m8 | ds6, lab6 |
+| m9 | ds7 |
+| m10 | ds8 |
+| m11 | ds9, lab7 |
+| m12 | ds10 |
+
+### Prerequisite — Concepts Covered enforcement
+
+- [ ] Change `effective_allowed_concepts` to **course defaults ∪ module concepts** (assignment additions unused for 1410).
+- [ ] Update sandbox catalog / official paths / tests and sync [decisions.md](../backend_implementation/decisions.md) + [technical_specs.md](../technical_specs.md) + agent memory vocabulary.
+- [ ] Map each `m1`–`m12` overview LO → AST concept ids; document unmapped LOs.
+
+### Phase A — Course skeleton (seed)
+
+- [ ] Replace the stub single-module `cs1410` seed with **12 modules** aligned to `cs1410/m1`–`m12` (names + `Module.concepts` from the LO→AST map).
+- [ ] Set course `default_concepts` to the shared baseline used across early modules (keep progressive detail on modules).
+- [ ] Create **all remaining assignments** (labs + DS) with stable slugs/titles from `desc.md`, linked to the correct module, `sandbox_enabled` as appropriate, language `python`.
+- [ ] Keep / extend existing `lab-1-image-processing` seed + [`docs/backend_implementation/examples/lab_1_image_processing/`](../backend_implementation/examples/lab_1_image_processing/) rather than duplicating.
+- [ ] Ensure section + staff access grants still seed for local/dev.
+- [ ] Skeleton acceptance: every inventory row exists in DB; missing deep artifacts are OK until Phase B.
+
+### Phase B — Deep model per assignment (pytest, model solution, config, artifacts)
+
+For **each** assignment below: author example package under `docs/backend_implementation/examples/`, wire seed artifacts + `config_json`, pass preflight, run model-solution validation, sandbox smoke. Use `desc.md` as spec; peek at local `submissions/` only as authoring reference.
+
+**B0 — Finish lab1 (already partial)**
+
+- [ ] Gap-fill `lab-1-image-processing`: model solution, support images/starter as needed, pytest for auto-checkable behavior.
+- [ ] Encode pixel-correctness / subjective image quality as **manual** rubric items (not hard auto-fail).
+- [ ] Confirm Concepts Covered come from module (not assignment additions).
+
+**B1 — Dessert Shop chain first (`ds1`→`ds10`)**
+
+- [ ] `ds1` (m3) — inheritance skeleton / class hierarchy.
+- [ ] `ds2` (m4)
+- [ ] `ds3` (m5)
+- [ ] `ds4` (m6)
+- [ ] `ds5` (m7) — include support artifact from `cs1410/m7/ds5/ui.py` if still required by the spec.
+- [ ] `ds6` (m8)
+- [ ] `ds7` (m9)
+- [ ] `ds8` (m10)
+- [ ] `ds9` (m11)
+- [ ] `ds10` (m12)
+- [ ] Cross-assignment consistency: shared package/module names, progressive APIs, and scoring keys stay coherent across the DS series.
+
+**B2 — Remaining labs**
+
+- [ ] `lab2`, `lab3` (m2)
+- [ ] `lab4`, `lab5` (m3)
+- [ ] `lab6` (m8)
+- [ ] `lab7` (m11)
+- [ ] For any image/visual lab parts: same rule as lab1 — pytest feasible checks; manual for computationally awkward pixel criteria.
+
+### Phase C — Verification (no real student PII in CI)
+
+- [ ] Seed + preflight green for every modeled assignment.
+- [ ] Model-solution validation task passes per deep-modeled assignment.
+- [ ] Sandbox create-run smoke on at least one lab and one DS assignment.
+- [ ] Optional local-only: build **anonymized** Canvas ZIPs from `submissions/` for official-run capacity tests (never commit raw trees).
 
 ---
 

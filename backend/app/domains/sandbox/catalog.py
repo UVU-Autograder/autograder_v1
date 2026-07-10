@@ -88,6 +88,7 @@ def get_sandbox_assignment(
             selectinload(Assignment.config),
             selectinload(Assignment.scoring_items),
             selectinload(Assignment.module),
+            selectinload(Assignment.concept_additions),
         )
     )
     if assignment is None or assignment.config is None:
@@ -95,7 +96,9 @@ def get_sandbox_assignment(
 
     config = validate_config_json(assignment.config.config_json)
     settings = get_settings()
-    allowed_concepts = config.concepts.additions if config.concepts else []
+    from app.domains.assignments.service import effective_allowed_concepts
+
+    allowed_concepts = effective_allowed_concepts(assignment)
     tests_map = {test.key: test for test in config.tests}
     return SandboxAssignmentDetail(
         **_summary_for(assignment, quota).model_dump(),

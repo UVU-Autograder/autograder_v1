@@ -40,6 +40,17 @@ type RunStatusResponse = {
   message: string | null;
 };
 
+type StaffSection = {
+  id: number;
+  crn: string;
+  is_active: boolean;
+};
+
+type StaffSectionListResponse = {
+  course_id: string;
+  sections: StaffSection[];
+};
+
 type PageProps = {
   params: Promise<{ courseId: string; assignmentId: string }>;
 };
@@ -48,6 +59,8 @@ export default function RunsPage({ params }: PageProps) {
   const router = useRouter();
   const { courseId, assignmentId } = use(params);
   const [runs, setRuns] = useState<RunSummary[]>([]);
+  const [sections, setSections] = useState<StaffSection[]>([]);
+  const [sectionId, setSectionId] = useState<string>("");
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeStatus, setActiveStatus] = useState<RunStatusResponse | null>(null);
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -66,19 +79,27 @@ export default function RunsPage({ params }: PageProps) {
       }
     });
 
-    apiClient.get<RunSummaryListResponse>(
-      `/staff/courses/${courseId}/assignments/${assignmentId}/runs`
-    ).then((data) => {
-      if (active) {
-        setRuns(data.runs);
+    Promise.all([
+      apiClient.get<RunSummaryListResponse>(
+        `/staff/courses/${courseId}/assignments/${assignmentId}/runs`
+      ),
+      apiClient.get<StaffSectionListResponse>(`/staff/courses/${courseId}/sections`),
+    ])
+      .then(([runsData, sectionsData]) => {
+        if (!active) return;
+        setRuns(runsData.runs);
+        setSections(sectionsData.sections);
+        if (sectionsData.sections.length === 1) {
+          setSectionId(String(sectionsData.sections[0].id));
+        }
         setIsLoading(false);
-      }
-    }).catch((err) => {
-      if (active) {
-        setError(err instanceof Error ? err.message : "Failed to load runs.");
-        setIsLoading(false);
-      }
-    });
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load runs.");
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       active = false;
@@ -111,10 +132,14 @@ export default function RunsPage({ params }: PageProps) {
 
     timer = setInterval(checkStatus, 2000);
     return () => clearInterval(timer);
-  }, [activeRunId, courseId, assignmentId]);
+  }, [activeRunId, courseId, assignmentId, router]);
 
   const handleIngest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!sectionId) {
+      setError("Please select a course section.");
+      return;
+    }
     if (!zipFile) {
       setError("Please select a Canvas ZIP export file.");
       return;
@@ -126,6 +151,7 @@ export default function RunsPage({ params }: PageProps) {
 
     const formData = new FormData();
     formData.append("file", zipFile);
+    formData.append("section_id", sectionId);
 
     try {
       const res = await apiClient.postForm<IngestionResponse>(
@@ -188,6 +214,27 @@ export default function RunsPage({ params }: PageProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-500" htmlFor="section">
+                    Section
+                  </label>
+                  <select
+                    id="section"
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                    value={sectionId}
+                    required
+                    onChange={(e) => setSectionId(e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Select a section
+                    </option>
+                    {sections.map((section) => (
+                      <option key={section.id} value={section.id}>
+                        CRN {section.crn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500">Submissions ZIP</label>
                   <input
                     type="file"
@@ -199,7 +246,11 @@ export default function RunsPage({ params }: PageProps) {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isUploading || !!activeRunId}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isUploading || !!activeRunId || !sectionId}
+                >
                   <PlayIcon className="mr-2 size-4" />
                   {isUploading ? "Uploading ZIP..." : "Launch grading run"}
                 </Button>

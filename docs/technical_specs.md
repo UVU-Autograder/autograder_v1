@@ -154,6 +154,7 @@ classDiagram
     class RunSummary {
         workflow_type
         status
+        section_id
         total_submissions
         failure_summary
         token_usage_metadata
@@ -289,6 +290,7 @@ classDiagram
   - workflow type: `official` or `sandbox`
   - actor user reference for staff-triggered workflows, or non-identifying sandbox session identifier as needed
   - assignment reference
+  - `section_id` for official runs (required on new ingest; legacy null rows are admin-only)
   - status
   - total submission count
   - success, warning, failure, and timeout counts
@@ -482,13 +484,13 @@ Notes:
 - Queue capacity policy must never raise the active Judge0/Kata execution slot cap.
 - Under high load, sandbox AI feedback may be delayed, skipped, or marked unavailable; grounded test results return first.
 
-**Current reality:** Official ingest persists the ZIP and dispatches without a global 40/50 admission gate. Implementing the policy above is an active backlog item.
+**Current reality:** Shared Redis admission (`reserve_execution_slots` / `release_execution_slots`) enforces warn-at-40 / reject-at-50 for sandbox and official ingest. Workers listen to `-Q sandbox,official,default` for fair consume into `judge0_max_concurrent`.
 
 ### Run status delivery contract
 
 **Target:** Redis-backed transient run state with sanitized counters, queue position, and ETA bands.
 
-**Current reality:** Numeric official run status is largely read from Postgres and may return zeroed counters without queue position/ETA. Closing this gap is an active backlog item.
+**Current reality:** Official numeric status prefers Redis transient state (counters, queue position, ETA band) with Postgres `RunSummary` fallback when complete/expired. Staff auth + section access required for numeric IDs; sandbox IDs remain unauthenticated.
 
 - `GET /runs/{id}/status` should surface `queue`, `run`, `complete`, or `failure` state.
 - The status response should include sanitized counters: `total`, `queued`, `running`, `completed`, `failed`, and `warnings`.

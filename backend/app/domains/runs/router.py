@@ -5,14 +5,24 @@ from pathlib import Path
 import json
 import shutil
 
-from app.core.dependencies import DbSession, require_staff
+from app.core.dependencies import (
+    DbSession,
+    assert_run_section_access,
+    get_optional_user,
+    require_staff,
+    accessible_section_ids_for_course,
+)
+from app.domains.auth.models import User
 from app.domains.runs.schemas import (
     RunStatusResponse,
     RunSummaryResponse,
     RunSummaryListResponse,
     RunCounters,
-    QueueBackpressure,
     UpdateManualGradesRequest,
+)
+from app.domains.runs.queue_admission import (
+    backpressure_snapshot,
+    eta_band_for_position,
 )
 from app.domains.sandbox.service import sandbox_service
 from app.domains.runs.models import RunSummary
@@ -27,6 +37,7 @@ from app.domains.runs.service import (
     write_feedback_zip,
     write_run_grades_csv,
 )
+from app.domains.runs.tasks import get_run_state
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -42,24 +53,115 @@ def _is_file_previewable(path: Path, size_bytes: int) -> bool:
     return path.suffix.lower() not in NON_PREVIEWABLE_SUFFIXES
 
 
-@router.get("/{run_id}/status", response_model=RunStatusResponse)
-def get_run_status(run_id: str, db: DbSession) -> RunStatusResponse:
-    if run_id.isdigit():
-        run = db.scalar(select(RunSummary).where(RunSummary.id == int(run_id)))
-        if run:
-            state_val = run.status
-            if state_val not in ("queue", "run", "complete", "failure"):
-                state_val = "complete"
-            return RunStatusResponse(
-                run_id=run_id,
-                state=state_val,
-                queue_position=None,
-                eta_band=None,
-                counters=RunCounters(total=0, queued=0, running=0, completed=0, failed=0, warnings=0),
-                backpressure=QueueBackpressure(current_waiting=0, high_load=False, accepting_runs=True),
-                message=f"Official run status: {run.status}",
-            )
+def _official_status_from_run(run: RunSummary, redis_state: dict | None) -> RunStatusResponse:
+    bp = backpressure_snapshot()
+    if redis_state is not None:
+        state = redis_state.get("state", run.status)
+        if state not in ("queue", "run", "complete", "failure"):
+            state = "complete"
+        total = int(redis_state.get("total", run.total_submission_count or 0))
+        queued = int(redis_state.get("queued", 0))
+        running = int(redis_state.get("running", 0))
+        completed = int(redis_state.get("completed", 0))
+        failed = int(redis_state.get("failed", 0))
+        warnings = int(redis_state.get("warnings", 0))
+        queue_position = redis_state.get("queue_position")
+        if state != "queue":
+            queue_position = None
+        eta = redis_state.get("eta_band") if state == "queue" else None
+        if state == "queue" and eta is None:
+            eta = eta_band_for_position(queue_position)
+        message = redis_state.get("message") or f"Official run status: {state}"
+        return RunStatusResponse(
+            run_id=str(run.id),
+            state=state,
+            queue_position=queue_position,
+            eta_band=eta,
+            counters=RunCounters(
+                total=total,
+                queued=queued,
+                running=running,
+                completed=completed,
+                failed=failed,
+                warnings=warnings,
+            ),
+            backpressure=bp,
+            message=message,
+        )
 
+    state_val = run.status
+    if state_val not in ("queue", "run", "complete", "failure"):
+        state_val = "complete"
+    completed = run.success_count + run.warning_count
+    failed = run.failure_count + run.timeout_count
+    return RunStatusResponse(
+        run_id=str(run.id),
+        state=state_val,
+        queue_position=None,
+        eta_band=None,
+        counters=RunCounters(
+            total=run.total_submission_count,
+            queued=0 if state_val != "queue" else run.total_submission_count,
+            running=0 if state_val != "run" else max(
+                0, run.total_submission_count - completed - failed
+            ),
+            completed=completed,
+            failed=failed,
+            warnings=run.warning_count,
+        ),
+        backpressure=bp,
+        message=f"Official run status: {run.status}",
+    )
+
+
+@router.get("/{run_id}/status", response_model=RunStatusResponse)
+def get_run_status(
+    run_id: str,
+    db: DbSession,
+    current_user: User | None = Depends(get_optional_user),
+) -> RunStatusResponse:
+    # Official numeric IDs require staff + section access.
+    if run_id.isdigit():
+        if current_user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication credentials were not provided.",
+            )
+        user_roles = {
+            access.role.name for access in current_user.staff_access if access.is_active
+        }
+        if not user_roles.intersection({"admin", "instructor", "IA"}):
+            raise HTTPException(status_code=403, detail="Staff access required.")
+
+        run = db.scalar(select(RunSummary).where(RunSummary.id == int(run_id)))
+        if run is None:
+            raise HTTPException(status_code=404, detail="Run not found.")
+
+        from app.domains.assignments.models import Assignment
+        from sqlalchemy.orm import selectinload
+
+        assignment = db.scalar(
+            select(Assignment)
+            .where(Assignment.id == run.assignment_id)
+            .options(selectinload(Assignment.course))
+        )
+        if assignment is None:
+            raise HTTPException(status_code=404, detail="Run not found.")
+
+        assert_run_section_access(
+            db,
+            current_user,
+            course_code=assignment.course.code,
+            section_id=run.section_id,
+        )
+        redis_state = None
+        try:
+            redis_state = get_run_state(run_id)
+        except Exception:
+            redis_state = None
+        return _official_status_from_run(run, redis_state)
+
+    # Sandbox runs remain unauthenticated (session gate is on result/cancel).
     status = sandbox_service.get_status(run_id)
     if status is None:
         raise HTTPException(status_code=404, detail="Run not found.")
@@ -78,21 +180,27 @@ def list_official_runs(
     course_id: str,
     assignment_id: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ) -> RunSummaryListResponse:
     from app.domains.assignments.service import get_assignment_for_course
+
     assignment = get_assignment_for_course(db, course_id, assignment_id)
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found.")
 
-    runs = db.scalars(
+    query = (
         select(RunSummary)
         .where(
             RunSummary.assignment_id == assignment.id,
             RunSummary.workflow_type == "official",
         )
         .order_by(RunSummary.created_at.desc())
-    ).all()
+    )
+    allowed = accessible_section_ids_for_course(db, current_user, course_id)
+    if allowed is not None:
+        query = query.where(RunSummary.section_id.in_(allowed))
 
+    runs = db.scalars(query).all()
     return RunSummaryListResponse(runs=[RunSummaryResponse.model_validate(r) for r in runs])
 
 
@@ -102,8 +210,11 @@ def get_official_run(
     assignment_id: str,
     run_id: int,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ) -> RunSummaryResponse:
-    run = require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    run = require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     return RunSummaryResponse.model_validate(run)
 
 
@@ -113,8 +224,11 @@ def get_official_run_details(
     assignment_id: str,
     run_id: int,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
-    run = require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    run = require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     details_file = official_run_dir(run_id) / "run_details.json"
 
     if not details_file.exists():
@@ -142,14 +256,17 @@ def export_official_run_csv(
     assignment_id: str,
     run_id: int,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     csv_file = official_run_dir(run_id) / "grades.csv"
 
     if not csv_file.exists():
         raise HTTPException(
             status_code=404,
-            detail="Grades CSV file is not available or has been cleaned up.",
+            detail="Grades CSV file is not available or have been cleaned up.",
         )
 
     return FileResponse(
@@ -165,14 +282,17 @@ def export_official_run_feedback(
     assignment_id: str,
     run_id: int,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     zip_file = official_run_dir(run_id) / "feedback.zip"
 
     if not zip_file.exists():
         raise HTTPException(
             status_code=404,
-            detail="Feedback ZIP file is not available or has been cleaned up.",
+            detail="Feedback ZIP file is not available or have been cleaned up.",
         )
 
     return FileResponse(
@@ -188,8 +308,11 @@ def cleanup_official_run(
     assignment_id: str,
     run_id: int,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     run_dir = official_run_dir(run_id)
     zip_file = official_run_zip_path(run_id)
 
@@ -208,8 +331,11 @@ def list_student_files(
     run_id: int,
     canvas_id: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     student_dir = student_workspace_dir(run_id, canvas_id)
 
     if not student_dir.exists():
@@ -241,8 +367,11 @@ def get_student_file_content(
     canvas_id: str,
     filepath: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     student_dir = student_workspace_dir(run_id, canvas_id).resolve()
 
     if not student_dir.exists():
@@ -291,8 +420,11 @@ def update_student_manual_grades(
     canvas_id: str,
     req: UpdateManualGradesRequest,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(db, course_id, assignment_id, run_id)
+    require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
     run_dir = official_run_dir(run_id)
     details_file = run_dir / "run_details.json"
 

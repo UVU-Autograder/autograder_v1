@@ -126,6 +126,37 @@ def test_course_crud(client, admin_token, db_session):
     c = db_session.get(Course, course_id)
     assert c.is_active is False
 
+
+def test_create_course_with_instructor_grants_section_access(client, admin_token, db_session):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    response = client.post(
+        "/staff/admin/courses",
+        json={
+            "code": "cs2550",
+            "title": "Networks",
+            "term": "Fall 2026",
+            "instructor_email": "new.instructor@uvu.edu",
+            "instructor_name": "New Instructor",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 201
+    course_id = response.json()["id"]
+
+    user = db_session.scalar(select(User).where(User.email == "new.instructor@uvu.edu"))
+    assert user is not None
+    access = db_session.scalar(
+        select(StaffAccess).where(
+            StaffAccess.user_id == user.id,
+            StaffAccess.course_id == course_id,
+        )
+    )
+    assert access is not None
+    assert access.section_id is not None
+    section = db_session.get(Section, access.section_id)
+    assert section is not None
+    assert section.course_id == course_id
+
 # 3. Section CRUD Tests
 
 def test_section_crud(client, admin_token, db_session):

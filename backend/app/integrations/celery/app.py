@@ -45,7 +45,11 @@ def create_celery_app() -> Celery:
         task_default_retry_delay=5,
         task_max_retries=3,
 
-        # Task routing: separate queues for official and sandbox
+        # Task routing: separate queues for official and sandbox.
+        # Fair consume: workers MUST listen to both queues, e.g.
+        #   celery -A app.integrations.celery.app worker -Q sandbox,official,default
+        # Celery round-robins across listed queues so neither starves into
+        # the shared judge0_max_concurrent execution-slot cap.
         task_routes={
             "app.domains.runs.tasks.grade_sandbox_run": {"queue": "sandbox"},
             "app.domains.runs.tasks.grade_official_run": {"queue": "official"},

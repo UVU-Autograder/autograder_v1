@@ -40,6 +40,7 @@ class RunSummaryResponse(BaseModel):
     workflow_type: str
     actor_user_id: int | None = None
     assignment_id: int
+    section_id: int | None = None
     status: str
     total_submission_count: int
     success_count: int

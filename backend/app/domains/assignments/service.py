@@ -121,6 +121,26 @@ def get_assignment_for_course(
     )
 
 
+def effective_allowed_concepts(assignment: Assignment) -> list[str]:
+    """Course defaults + assignment additions, de-duped, stable order.
+
+    Module concepts are intentionally excluded — Concepts Covered is course +
+    assignment only for both sandbox and official grading.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for concept in assignment.course.default_concepts or []:
+        if concept not in seen:
+            seen.add(concept)
+            out.append(concept)
+    if assignment.concept_additions:
+        for concept in assignment.concept_additions.added_concepts or []:
+            if concept not in seen:
+                seen.add(concept)
+                out.append(concept)
+    return out
+
+
 def get_staff_setup(
     db: Session,
     course_code: str,

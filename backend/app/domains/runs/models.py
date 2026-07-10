@@ -14,6 +14,9 @@ class RunSummary(Base):
     actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     sandbox_session_hash: Mapped[str | None] = mapped_column(String(255))
     assignment_id: Mapped[int] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
+    section_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sections.id", ondelete="SET NULL"), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(40))
     total_submission_count: Mapped[int] = mapped_column(Integer, default=0)
     success_count: Mapped[int] = mapped_column(Integer, default=0)
