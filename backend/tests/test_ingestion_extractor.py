@@ -326,6 +326,7 @@ from app.domains.ingestion.extractor import (
     parse_canvas_filename,
     group_canvas_files,
     prepare_student_bundle,
+    count_canvas_submissions,
 )
 
 
@@ -343,6 +344,24 @@ def test_parse_canvas_filename():
         "project.zip",
     )
     assert parse_canvas_filename("invalid_filename.py") is None
+
+
+def test_count_canvas_submissions():
+    zip_data = create_zip_bytes(
+        {
+            "jaxonlarsen_12345_67890_student_functions.py": b"code1",
+            "jaxonlarsen_12345_67890_helper.py": b"code2",
+            "eastonsmith_24680_13579_submission.zip": b"zip",
+            "unmatched_file.txt": b"garbage",
+            "nested/jaxonlarsen_99999_1_skip.py": b"nested",
+        }
+    )
+    assert count_canvas_submissions(zip_data) == 2
+
+    with pytest.raises(ExtractionError, match="Directory traversal"):
+        count_canvas_submissions(create_zip_bytes({"../escaped.txt": b"x"}))
+
+    assert count_canvas_submissions(create_zip_bytes({"main.py": b"x"})) == 0
 
 
 def test_group_canvas_files(tmp_path: Path):

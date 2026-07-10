@@ -8,6 +8,7 @@ from app.integrations.judge0.client import (
     Judge0SubmissionError,
     Judge0TimeoutError,
     create_judge0_client,
+    judge0_failure_for_status,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "Judge0SubmissionError",
     "Judge0TimeoutError",
     "create_judge0_client",
+    "judge0_failure_for_status",
 ]

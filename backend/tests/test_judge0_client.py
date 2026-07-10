@@ -19,6 +19,7 @@ from app.integrations.judge0.client import (  # noqa: E402
     Judge0CleanupError,
     Judge0Client,
     Judge0TimeoutError,
+    judge0_failure_for_status,
 )
 
 
@@ -249,3 +250,17 @@ def test_status_map_covers_key_judge0_codes() -> None:
     valid_categories = {"accepted", "wrong_answer", "timeout", "compile_error", "internal_error"}
     for sid, category in JUDGE0_STATUS_MAP.items():
         assert category in valid_categories, f"unknown category '{category}' for status {sid}"
+
+
+def test_judge0_failure_for_status_parses_accepted_and_wrong_answer() -> None:
+    assert judge0_failure_for_status(3) is None
+    assert judge0_failure_for_status(4) is None
+    assert judge0_failure_for_status(99) is None
+
+
+def test_judge0_failure_for_status_returns_mapped_failures() -> None:
+    assert judge0_failure_for_status(5) == ("timeout", "Execution timed out.")
+    assert judge0_failure_for_status(6)[0] == "compile_error"
+    assert judge0_failure_for_status(11)[0] == "timeout"
+    assert judge0_failure_for_status(13)[0] == "internal_error"
+    assert judge0_failure_for_status(14)[0] == "compile_error"

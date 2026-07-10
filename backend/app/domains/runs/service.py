@@ -19,6 +19,10 @@ def get_workspaces_dir() -> Path:
     return get_settings().artifact_storage_path.parent / "workspaces"
 
 
+def official_run_zip_path(run_id: int) -> Path:
+    return get_workspaces_dir() / f"official_{run_id}.zip"
+
+
 def official_run_dir(run_id: int) -> Path:
     return get_workspaces_dir() / f"official_{run_id}"
 

@@ -17,23 +17,23 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ## Overall Deliverables
 
-| Done | Deliverable                                                             | Completion Evidence                                                                                                                                          |
-| ---- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [x]  | Shared architecture and frontend/backend contracts are confirmed        | Team can explain the backend/frontend boundary, shared routes, API responsibilities, and current diagram set.                                                |
-| [x]  | Local stack and metadata-only persistence foundation is working         | Developers can run the local stack; Postgres stores only approved metadata tables; Redis/Celery/Judge0 integration path and Compose harness are documented.  |
-| [x]  | Judge0/Kata cleanup proof is established                                | The team has evidence that Judge0 submission/result artifacts and Kata execution state are destroyed after result retrieval.                                 |
-| [x]  | Staff `@uvu.edu` authentication and role boundaries are implemented     | Staff sign-in rejects non-UVU accounts; admin, instructor, and IA access rules are enforced. (NextAuth pending, Mock Login complete)                         |
-| [x]  | Admin course, section, staff, and monitoring workflows are usable       | Admins can manage courses, sections, access grants, and admin-only operational monitoring for token usage, upload limits, and worker/capacity status.        |
-| [x]  | Assignment setup and canonical `config_json` are usable                 | Staff can create or open an assignment, edit setup through the wizard, define ZIP/project bundle requirements, define visible scoring items, and persist validated internal config. |
-| [x]  | Assignment artifact management is usable                               | Staff can manage the single assignment pytest file, model solutions, and support files through local filesystem-backed `assignment_artifacts` storage references. |
+| Done | Deliverable                                                             | Completion Evidence                                                                                                                                                                                               |
+| ---- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [x]  | Shared architecture and frontend/backend contracts are confirmed        | Team can explain the backend/frontend boundary, shared routes, API responsibilities, and current diagram set.                                                                                                     |
+| [x]  | Local stack and metadata-only persistence foundation is working         | Developers can run the local stack; Postgres stores only approved metadata tables; Redis/Celery/Judge0 integration path and Compose harness are documented.                                                       |
+| [x]  | Judge0/Kata cleanup proof is established                                | The team has evidence that Judge0 submission/result artifacts and Kata execution state are destroyed after result retrieval.                                                                                      |
+| [x]  | Staff `@uvu.edu` authentication and role boundaries are implemented     | Staff sign-in rejects non-UVU accounts; admin, instructor, and IA access rules are enforced. (NextAuth pending, Mock Login complete)                                                                              |
+| [x]  | Admin course, section, staff, and monitoring workflows are usable       | Admins can manage courses, sections, access grants, and admin-only operational monitoring for token usage, upload limits, and worker/capacity status.                                                             |
+| [x]  | Assignment setup and canonical `config_json` are usable                 | Staff can create or open an assignment, edit setup through the wizard, define ZIP/project bundle requirements, define visible scoring items, and persist validated internal config.                               |
+| [x]  | Assignment artifact management is usable                                | Staff can manage the single assignment pytest file, model solutions, and support files through local filesystem-backed `assignment_artifacts` storage references.                                                 |
 | [x]  | Ephemeral Canvas ZIP ingest is implemented                              | Staff can upload a Canvas ZIP containing single-file or multi-file student bundles; malformed archives, path traversal, and unmatched filenames surface actionable errors without persistent student submissions. |
-| [x]  | Grading chain works with AST checks, Judge0/Kata execution, and cleanup | Official and sandbox grading can run through AST checks, Judge0/Kata execution, structured results, and post-result cleanup.                                 |
-| [x]  | Safe Judge0/Kata worker caps are documented                             | Dell-workstation benchmarking defines approved grading worker caps before grading-pipeline implementation begins.                                            |
-| [x]  | Queue admission and wait UX are usable                                  | The system accepts work asynchronously, warns at high load, rejects full queues cleanly, and shows queue position/ETA without exceeding execution caps.       |
-| [ ]  | Local LLM feedback is available only after privacy confirmation         | Written UVU approval and local model safety verification are complete before live student-code AI feedback is enabled.                                      |
-| [x]  | Public sandbox workflow is usable                                       | A sandbox user can select an enabled course and assignment, upload a ZIP/project bundle, see a sanitized file tree, quota state, read-only preview, and on-screen projected feedback. |
-| [x]  | Official review and export workflow is usable                           | Staff can monitor an official run, inspect derived/ephemeral read-only previews while available, and download separate Canvas-grade CSV and per-student feedback ZIP outputs. |
-| [x]  | Compliance hardening and realistic end-to-end validation are complete   | Access control, cleanup, Local LLM readiness, performance targets, fake/synthetic or completely anonymized validation data handling, and Canvas-shaped format assumptions are validated. |
+| [x]  | Grading chain works with AST checks, Judge0/Kata execution, and cleanup | Official and sandbox grading can run through AST checks, Judge0/Kata execution, structured results, and post-result cleanup.                                                                                      |
+| [x]  | Safe Judge0/Kata worker caps are documented                             | Dell-workstation benchmarking defines approved grading worker caps before grading-pipeline implementation begins.                                                                                                 |
+| [x]  | Queue admission and wait UX are usable                                  | The system accepts work asynchronously, warns at high load, rejects full queues cleanly, and shows queue position/ETA without exceeding execution caps.                                                           |
+| [ ]  | Local LLM feedback is available only after privacy confirmation         | Written UVU approval and local model safety verification are complete before live student-code AI feedback is enabled.                                                                                            |
+| [x]  | Public sandbox workflow is usable                                       | A sandbox user can select an enabled course and assignment, upload a ZIP/project bundle, see a sanitized file tree, quota state, read-only preview, and on-screen projected feedback.                             |
+| [x]  | Official review and export workflow is usable                           | Staff can monitor an official run, inspect derived/ephemeral read-only previews while available, and download separate Canvas-grade CSV and per-student feedback ZIP outputs.                                     |
+| [x]  | Compliance hardening and realistic end-to-end validation are complete   | Access control, cleanup, Local LLM readiness, performance targets, fake/synthetic or completely anonymized validation data handling, and Canvas-shaped format assumptions are validated.                          |
 
 ## Operating Guidelines
 
@@ -80,7 +80,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Document queue and backpressure thresholds for work beyond the approved cap, including `40` queued-job high-load messaging and `50` queued-job rejection.
 - [x] Host Monaco Editor locally in the frontend scaffold for planned editor and review workflows.
 - [x] Document required environment variables in `.env.example`, including Local LLM settings.
--/ [x] Update README so a developer can bring up the local stack.
+      -/ [x] Update README so a developer can bring up the local stack.
 - [x] Add a seed path for one course, course-level `Concepts Covered` defaults, one assignment, assignment concept additions, one app-owned `config_json`, one assignment pytest file, and one model solution.
 
 ### Staff Auth And Access Control
@@ -282,6 +282,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Record a demo walkthrough.
 
 ### Expected Input/Output & Visual Diffing
+
 - [ ] **Expected Input/Output Test Case Extraction (Pytest AST Parser)**:
   - [ ] Implement backend AST parsing of pytest files to extract convention-based expected inputs and outputs (e.g. `test_name.EXPECTED_INPUT` / `EXPECTED_OUTPUT`).
   - [ ] Expose these extracted expected fields in the sandbox run results API.
@@ -292,6 +293,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
   - [ ] Expose parsed expected inputs/outputs next to test items in the Instructor's assignment setup rubric panel.
 
 ### 5-Minute Inactivity Session Timeout
+
 - [ ] **Client-side Activity Listener**:
   - [ ] Build global mouse, keyboard, and scroll event listeners in the frontend to track active interaction.
   - [ ] Auto-redirect the user to the login page and clear local session state after 5 minutes of inactivity.
@@ -300,20 +302,8 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
   - [ ] Enable sliding expiration window refreshed on request activity.
 
 ### Vercel Deployment & Mocking
+
 - [ ] **Local Mock Next.js API Routes**:
   - [ ] Implement mock endpoints (under `app/api/*`) to return static mock datasets for assignments, runs, and grading.
 - [ ] **Vercel Preview Deploy**:
   - [ ] Deploy Next.js frontend workspace to Vercel in static preview mode for rapid testing.
-
-### Codebase Architecture Deepening
-- [ ] **Collapse the Ingestion Pipeline Seam (Candidate A)**:
-  - [ ] Consolidate ZIP validation, safe extraction, Canvas grouping, database record creation, and task triggering from `extractor.py` and `router.py` into a deep `Ingestion` service.
-  - [ ] Abstract filesystem/storage mapping from the router behind a single high-level `ingest` method.
-- [ ] **Consolidate the Pytest Execution Seam (Candidate B)**:
-  - [ ] Unify runner script generation (`runner_gen.py`), Judge0 API communication, and result parsing (`result_parser.py`) under a single `GradingExecutor` interface.
-  - [ ] Hide the script template construction, base64 encoding, delimiter communication, and stdout parsing inside the executor module.
-- [ ] **Deepen the AST Checker Module (Candidate C)**:
-  - [ ] Refactor the AST validator so that it exposes a codebase-level interface accepting directory path and entrypoint directly rather than accepting raw file strings.
-  - [ ] Let the AST validator absorb filesystem read mechanics, character encoding, and I/O error handling.
-
-

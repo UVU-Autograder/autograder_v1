@@ -500,7 +500,6 @@ def generate_pedagogical_feedback_html(
 def grade_official_run(self, run_id: int) -> dict:
     """Execute official batch grading run asynchronously."""
     import shutil
-    import csv
     import zipfile
     from pathlib import Path
     import io
@@ -520,10 +519,15 @@ def grade_official_run(self, run_id: int) -> dict:
     )
     from app.domains.grading.service import run_grading_pipeline, GradingResult
     from app.core.settings import get_settings
-    from app.domains.runs.service import init_manual_results, official_run_dir, write_feedback_zip, write_run_grades_csv
+    from app.domains.runs.service import (
+        init_manual_results,
+        official_run_dir,
+        official_run_zip_path,
+        write_feedback_zip,
+        write_run_grades_csv,
+    )
     settings = get_settings()
-    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
-    zip_path = workspaces_dir / f"official_{run_id}.zip"
+    zip_path = official_run_zip_path(run_id)
 
     with SessionLocal() as db:
         run = db.scalar(select(RunSummary).where(RunSummary.id == run_id))
@@ -835,10 +839,11 @@ def cleanup_expired_workspaces() -> dict:
     from sqlalchemy import select
     from app.db.session import SessionLocal
     from app.domains.runs.models import RunSummary
-    from app.core.settings import get_settings
+    from app.domains.runs.service import (
+        official_run_dir,
+        official_run_zip_path,
+    )
 
-    settings = get_settings()
-    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
     cutoff = datetime.now(UTC) - timedelta(hours=24)
 
     cleaned_count = 0
@@ -853,8 +858,8 @@ def cleanup_expired_workspaces() -> dict:
         old_runs = db.scalars(stmt).all()
 
         for run in old_runs:
-            run_dir = workspaces_dir / f"official_{run.id}"
-            zip_file = workspaces_dir / f"official_{run.id}.zip"
+            run_dir = official_run_dir(run.id)
+            zip_file = official_run_zip_path(run.id)
             deleted_any = False
 
             if run_dir.exists():

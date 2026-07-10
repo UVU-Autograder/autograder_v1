@@ -170,6 +170,43 @@ def parse_canvas_filename(filename: str) -> tuple[str, str, str, str] | None:
     return match.groups()
 
 
+def count_canvas_submissions(
+    zip_data: bytes, max_total_size: int | None = None
+) -> int:
+    """Validate ZIP safety and count top-level Canvas submissions without extracting."""
+    from app.core.settings import get_settings
+
+    if max_total_size is None:
+        max_total_size = get_settings().default_max_zip_size
+
+    canvas_users: set[str] = set()
+    total_size = 0
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+            for info in zf.infolist():
+                path = Path(info.filename)
+                if path.is_absolute() or ".." in path.parts:
+                    raise ExtractionError("Directory traversal detected in ZIP file")
+
+                mode = info.external_attr >> 16
+                if mode & 0o120000 == 0o120000:
+                    raise ExtractionError("Symbolic links are not allowed in ZIP files")
+
+                total_size += info.file_size
+                if total_size > max_total_size:
+                    raise ExtractionError("ZIP extraction size limit exceeded")
+
+                if info.is_dir() or len(path.parts) != 1:
+                    continue
+                parsed = parse_canvas_filename(path.name)
+                if parsed:
+                    canvas_users.add(parsed[1])
+    except zipfile.BadZipFile as e:
+        raise ExtractionError("Malformed or corrupted ZIP file") from e
+
+    return len(canvas_users)
+
+
 def group_canvas_files(extract_dir: Path) -> tuple[dict[str, list[Path]], list[Path]]:
     """Scan extract_dir and group files by canvas_user_id.
 

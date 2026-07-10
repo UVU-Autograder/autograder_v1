@@ -17,10 +17,10 @@ from app.domains.runs.schemas import (
 from app.domains.sandbox.service import sandbox_service
 from app.domains.runs.models import RunSummary
 from app.domains.runs.service import (
-    get_workspaces_dir,
     is_listable_student_file,
     load_run_details_json,
     official_run_dir,
+    official_run_zip_path,
     require_official_run_for_assignment,
     student_detail_from_result,
     student_workspace_dir,
@@ -191,7 +191,7 @@ def cleanup_official_run(
 ):
     require_official_run_for_assignment(db, course_id, assignment_id, run_id)
     run_dir = official_run_dir(run_id)
-    zip_file = get_workspaces_dir() / f"official_{run_id}.zip"
+    zip_file = official_run_zip_path(run_id)
 
     if run_dir.exists():
         shutil.rmtree(run_dir, ignore_errors=True)

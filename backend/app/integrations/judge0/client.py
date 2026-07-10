@@ -52,6 +52,26 @@ JUDGE0_STATUS_MAP: dict[int, str] = {
     14: "compile_error",  # Exec Format Error
 }
 
+_JUDGE0_FAILURE_MESSAGES: dict[str, str] = {
+    "timeout": "Execution timed out.",
+    "compile_error": "Code could not be compiled or imported.",
+    "internal_error": "Execution engine internal error.",
+}
+
+
+def judge0_failure_for_status(status_id: int) -> tuple[str, str] | None:
+    """Return ``(category, message)`` for a Judge0-level failure, else ``None``.
+
+    ``accepted`` / ``wrong_answer`` (and unknown IDs) return ``None`` so callers
+    parse runner stdout — pytest remains the scoring ground truth.
+    """
+    category = JUDGE0_STATUS_MAP.get(status_id)
+    if category is None or category in ("accepted", "wrong_answer"):
+        return None
+    return category, _JUDGE0_FAILURE_MESSAGES.get(
+        category, f"Judge0 execution failed with status {status_id}."
+    )
+
 
 # ---------------------------------------------------------------------------
 # Client

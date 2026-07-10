@@ -75,7 +75,6 @@ def generate_runner_script(
 
             def __init__(self):
                 self.results = []
-                self._call_outcomes = {{}}
 
             def pytest_generate_tests(self, metafunc):
                 marker_key = None
@@ -132,14 +131,6 @@ def generate_runner_script(
                         raise e
                     
                 return _run
-
-            # We only care about the "call" phase (not setup/teardown).
-            def pytest_runtest_makereport(self, item, call):
-                if call.when == "call":
-                    self._call_outcomes[item.nodeid] = call
-                elif call.when == "setup" and call.excinfo is not None:
-                    # Setup failure – record so we still report the test.
-                    self._call_outcomes.setdefault(item.nodeid, call)
 
             def pytest_runtest_logreport(self, report):
                 if report.when != "call" and not (
