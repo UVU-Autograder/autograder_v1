@@ -27,7 +27,7 @@ This file is the canonical plan for assignment config storage, grading assets, p
 - Assignments that require "complete at least X of these Y objectives" use an optional `completion_requirements` section that names existing scoring-item keys and a `minimum_passed` count. Completion requirements report whether the objective threshold is met; they do not replace scoring-item points.
 - All scoring entries are visible in staff and sandbox result surfaces.
 - `scoring_items` rows are derived projections used for UI, validation, and query convenience. They are regenerated from canonical config and are never editable grading truth.
-- Manual rubric items (non-executed) are supported; completing that staff workflow is an active backlog item.
+- Manual rubric items (non-executed) are supported; backend persist + export regeneration exist; completing the in-app staff grader workflow is an active backlog item (see [backlog.md](../planning/backlog.md)).
 
 Example optional completion requirement:
 
@@ -47,7 +47,7 @@ Example optional completion requirement:
 1. Staff create or edit assignment grading setup through the wizard.
 2. The backend validates and stores the canonical grading definition in `assignment_configs.config_json`.
 3. Staff upload or edit the assignment pytest files, model solution files, and support files through assignment artifact storage.
-4. Strict preflight validation verifies config-to-artifact-to-marker consistency before model-solution validation. Extending the same preflight to sandbox/official student grading is an active backlog item. Preflight checks include:
+4. Strict preflight validation verifies config-to-artifact-to-marker consistency before model-solution validation, and the same preflight runs for sandbox and official student grading pipelines. Preflight checks include:
    - supported `schema_version`
    - duplicate config keys
    - missing `ag_<key>` markers in the pytest files

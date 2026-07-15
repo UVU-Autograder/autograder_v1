@@ -2,9 +2,6 @@
 
 This document is the single source of truth for modeling all 17 CS 1410 assignments in the autograder. It maps every assignment's class structures, required files, grading criteria, and autograding strategy. Use this spec when authoring `config_json`, `tests.py`, and model solutions during Phase B implementation.
 
-> [!NOTE]
-> **Lab 1 (Image Processing)** is already fully modeled and is omitted from this document. See [lab_1_image_processing/](../backend_implementation/examples/lab_1_image_processing/).
-
 ---
 
 ## Table of Contents
@@ -21,7 +18,8 @@ This document is the single source of truth for modeling all 17 CS 1410 assignme
   - [DS8: Payment Method](#ds8-payment-method-module-10)
   - [DS9: Sort Receipt Items](#ds9-sort-receipt-items-module-11)
   - [DS10: Combine Like Items](#ds10-combine-like-items-module-12)
-- [Standalone Labs (lab2–lab7)](#standalone-labs-lab2lab7)
+- [Standalone Labs (lab1–lab7)](#standalone-labs-lab1lab7)
+  - [Lab 1: Image Processing](#lab-1-image-processing-module-1)
   - [Lab 2: Bank Account Class](#lab-2-bank-account-class-module-2)
   - [Lab 3: Type Hinting and Encapsulation](#lab-3-type-hinting-and-encapsulation-module-2)
   - [Lab 4: Properties and Validation](#lab-4-properties-and-validation-module-3)
@@ -139,6 +137,14 @@ DessertItem
 | `ag_cookie` | Cookie class | 20 |
 | `ag_icecream` | IceCream class | 20 |
 | `ag_sundae` | Sundae class (inherits IceCream) | 20 |
+
+#### Testing Student Submissions
+To test and verify student submissions locally or via automated sandbox test scripts:
+1. Bundle the student's `dessert.py` file into a ZIP archive (e.g. `submission.zip`).
+2. Run a grading run using the `ds1` configuration and `tests.py` as the test suite.
+3. Verify that:
+   - A correct implementation (matching `backend/app/db/seeds/ds1/dessert.py`) passes all tests (100/100 points, 0 warnings/failures).
+   - Incorrect implementations (e.g. missing `super().__init__()` calls, incorrect inheritance, incorrect attribute defaults, or incorrect types) trigger the corresponding test failures and reduce the score accordingly.
 
 ---
 
@@ -399,7 +405,39 @@ class Combinable(Protocol):
 
 ---
 
-## Standalone Labs (lab2–lab7)
+## Standalone Labs (lab1–lab7)
+
+### Lab 1: Image Processing (Module 1)
+
+**Slug:** `lab-1-image-processing` · **Required files:** `bears2.py`, `bears3.py`, `bears2.jpg`, `bears3.jpg` · **Points:** 100
+
+#### Autograding Strategy
+**Fully automated with manual grading.**
+
+| Marker | Label | Points |
+|--------|-------|--------|
+| `ag_part1_files` | Part 1 required files are present | 15 |
+| `ag_part1_output` | Part 1 output image opens and contains non-trivial pixels (execution check) | 15 |
+| `ag_part2_files` | Part 2 required files are present | 15 |
+| `ag_part2_output` | Part 2 output image opens and contains non-trivial pixels (execution check) | 15 |
+| (manual) | Part 1: Subjective filter visual quality & color conversion | 20 |
+| (manual) | Part 2: Subjective balloon composite quality & placement | 20 |
+
+#### Testing Student Submissions
+To test and verify student submissions locally or via automated sandbox test scripts:
+1. Bundle the student's submission files (`bears2.py`, `bears3.py`, `bears2.jpg`, `bears3.jpg`) into a ZIP archive (e.g. `submission.zip`).
+2. Run a grading run using the `lab-1-image-processing` configuration and `tests.py` as the test suite.
+3. Verify that:
+   - A correct implementation passes all tests (60/60 automated points, 0 warnings/failures).
+   - The student files `bears2.py` and `bears3.py` are executed during the test run to produce `bears2.jpg` and `bears3.jpg` from `bears_copy.jpg` and `balloon.png`.
+   - Incorrect implementations or missing files trigger test failures or blocked concepts (e.g. if they attempt to import blocked packages).
+4. Run verification tests against a representative set of actual student submissions (e.g. using `scratch/run_lab1_submissions.py`) to confirm that:
+   - The allowed concepts list includes the course default concepts (`["variables", "conditionals", "loops", "functions"]`) in addition to module-level concepts, preventing false positive warnings.
+   - Student submissions wrapping logic in `if __name__ == "__main__":` execute correctly by using `run_name="__main__"` in `runpy.run_path`.
+   - Student submissions with security-restricted imports (e.g., `os`) are correctly blocked.
+   - Path-based discrepancies (e.g., hardcoded subdirectories or missing assets not part of the zipped files) are caught as test failures.
+
+---
 
 ### Lab 2: Bank Account Class (Module 2)
 

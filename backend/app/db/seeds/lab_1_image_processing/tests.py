@@ -41,7 +41,7 @@ def test_part1_output_image_is_valid_and_nontrivial():
             os.remove("bears2.jpg")
         except OSError:
             pass
-    runpy.run_path("bears2.py")
+    runpy.run_path("bears2.py", run_name="__main__")
     assert_valid_nontrivial_image("bears2.jpg")
 
 
@@ -58,6 +58,6 @@ def test_part2_output_image_is_valid_and_nontrivial():
             os.remove("bears3.jpg")
         except OSError:
             pass
-    runpy.run_path("bears3.py")
+    runpy.run_path("bears3.py", run_name="__main__")
     assert_valid_nontrivial_image("bears3.jpg")
 

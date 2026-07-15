@@ -10,20 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-def _repo_root() -> Path:
-    configured = os.environ.get("REPO_ROOT")
-    if configured:
-        return Path(configured).resolve()
-
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "docs" / "backend_implementation" / "examples").exists():
-            return parent
-    return Path.cwd().resolve()
-
-
-REPO_ROOT = _repo_root()
-EXAMPLES_DIR = REPO_ROOT / "docs" / "backend_implementation" / "examples"
+SEEDS_DIR = Path(__file__).resolve().parents[2] / "db" / "seeds"
 
 
 def resolve_storage_ref(storage_ref: str) -> Path:
@@ -50,7 +37,7 @@ def resolve_storage_ref(storage_ref: str) -> Path:
     """
     if storage_ref.startswith("seed://"):
         relative = storage_ref[len("seed://"):]
-        path = EXAMPLES_DIR / relative
+        path = SEEDS_DIR / relative
     elif storage_ref.startswith("file://"):
         raw_path = storage_ref[len("file://"):]
         path = Path(raw_path)

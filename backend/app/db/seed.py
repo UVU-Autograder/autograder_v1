@@ -15,20 +15,8 @@ from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Section, Module
 
 
-def _repo_root() -> Path:
-    configured = os.environ.get("REPO_ROOT")
-    if configured:
-        return Path(configured).resolve()
-
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "docs" / "backend_implementation" / "examples").exists():
-            return parent
-    return Path.cwd().resolve()
-
-
-REPO_ROOT = _repo_root()
-EXAMPLE_DIR = REPO_ROOT / "docs" / "backend_implementation" / "examples" / "simple_python_functions"
+SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
+EXAMPLE_DIR = SEEDS_DIR / "simple_python_functions"
 EXAMPLE_CONFIG = EXAMPLE_DIR / "config_json.example.json"
 
 
@@ -141,20 +129,20 @@ def seed_development_data(db: Session) -> None:
         db.add(course_cs1410)
         db.flush()
 
-        # Define the 12 modules for CS 1410
+        # Define the 12 modules for CS 1410 with cumulative concepts
         modules_data = {
             "m1": {"name": "Module 1: Warmup", "concepts": ["image-processing"]},
             "m2": {"name": "Module 2: Object-Oriented Intro", "concepts": ["classes", "type-hints"]},
-            "m3": {"name": "Module 3: Inheritance, Polymorphism, and Properties", "concepts": ["inheritance", "properties", "operator-overloading"]},
-            "m4": {"name": "Module 4: Generators and Iterators", "concepts": ["generators"]},
-            "m5": {"name": "Module 5: Unit Tests with pytest", "concepts": ["testing"]},
-            "m6": {"name": "Module 6: Abstract Classes", "concepts": ["abstract-classes", "operator-overloading"]},
-            "m7": {"name": "Module 7: Exceptions and Protocols", "concepts": ["exceptions", "protocols"]},
-            "m8": {"name": "Module 8: Introduction to Pygame", "concepts": ["pygame"]},
-            "m9": {"name": "Module 9: Object-Oriented Pygame", "concepts": ["classes"]},
-            "m10": {"name": "Module 10: Pygame GUI Widgets", "concepts": []},
-            "m11": {"name": "Module 11: Named tuples, Dataclasses, and Sorting lists", "concepts": ["dataclasses", "file-io"]},
-            "m12": {"name": "Module 12: CS Degrees at UVU", "concepts": []},
+            "m3": {"name": "Module 3: Inheritance, Polymorphism, and Properties", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading"]},
+            "m4": {"name": "Module 4: Generators and Iterators", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators"]},
+            "m5": {"name": "Module 5: Unit Tests with pytest", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing"]},
+            "m6": {"name": "Module 6: Abstract Classes", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes"]},
+            "m7": {"name": "Module 7: Exceptions and Protocols", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols"]},
+            "m8": {"name": "Module 8: Introduction to Pygame", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]},
+            "m9": {"name": "Module 9: Object-Oriented Pygame", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]},
+            "m10": {"name": "Module 10: Pygame GUI Widgets", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]},
+            "m11": {"name": "Module 11: Named tuples, Dataclasses, and Sorting lists", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]},
+            "m12": {"name": "Module 12: CS Degrees at UVU", "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]},
         }
 
         mods = {}
@@ -326,6 +314,29 @@ def seed_development_data(db: Session) -> None:
                         artifact_type=artifact["type"],
                         storage_ref=_seed_storage_ref(
                             "lab_1_image_processing",
+                            artifact_key,
+                            artifact["display_filename"],
+                        ),
+                        display_filename=artifact.get("display_filename"),
+                        content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
+                    )
+                    for artifact_key, artifact in artifacts.items()
+                )
+
+            # For ds1, seed its detailed config and artifacts
+            elif adata["slug"] == "ds1":
+                ds1_config_path = EXAMPLE_DIR.parent / "ds1" / "config_json.example.json"
+                config_json_ds1 = json.loads(ds1_config_path.read_text(encoding="utf-8"))
+                upsert_assignment_config(db, assignment, config_json_ds1)
+
+                artifacts = config_json_ds1["artifacts"]
+                db.add_all(
+                    AssignmentArtifact(
+                        assignment=assignment,
+                        artifact_key=artifact_key,
+                        artifact_type=artifact["type"],
+                        storage_ref=_seed_storage_ref(
+                            "ds1",
                             artifact_key,
                             artifact["display_filename"],
                         ),

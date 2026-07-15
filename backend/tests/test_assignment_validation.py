@@ -147,3 +147,9 @@ def test_vowels():
 
     errors = run_preflight_validation(db_session, "cs1400", "simple-python-functions")
     assert errors == []
+
+
+def test_run_preflight_validation_ds1_passes(db_session):
+    errors = run_preflight_validation(db_session, "cs1410", "ds1")
+    assert errors == []
+

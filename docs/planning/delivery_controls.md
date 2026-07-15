@@ -37,7 +37,7 @@ A checklist item is complete when:
 - Judge0 deletion must be enabled and verifiable before live official or live student-derived workflows are allowed.
 - Capacity-sensitive work must respect the approved cap of `2` concurrent Judge0/Kata execution slots unless stability-first benchmark evidence approves a higher cap.
 - Benchmark evidence must use mixed synthetic workloads and pass cleanup, no-crash, queue/backpressure, and service-target checks before a cap of `3` or `4` is approved.
-- The intended global waiting execution queue rejects new intake at `50` queued jobs, warns at `40`, and preserves the approved execution-slot cap (implementation is an active backlog item).
+- The intended global waiting execution queue rejects new intake at `50` queued jobs, warns at `40`, and preserves the approved execution-slot cap (implemented via shared queue admission).
 - Do not approve `8` concurrent Judge0/Kata execution slots from RAM estimates alone.
 - Sandbox Local LLM may process student **code** only when the payload is not personally traceable (no student PII/identifiers). Official-run AI is deferred.
 - Prefer fake/synthetic or completely anonymized validation data until institutional live-data posture is confirmed for a given workflow.

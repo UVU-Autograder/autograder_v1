@@ -2,8 +2,9 @@
 
 > [!NOTE]
 > **Schema References**:
-> - Assignment configuration schema is defined in [config_v1.schema.json](file:///c:/Users/Jaxon/coding/autograder_v1/docs/schemas/config_v1.schema.json).
-> - API specification is defined in [openapi.json](file:///c:/Users/Jaxon/coding/autograder_v1/docs/schemas/openapi.json).
+> - Assignment configuration schema is defined in [config_v1.schema.json](./schemas/config_v1.schema.json).
+> - API specification is defined in [openapi.json](./schemas/openapi.json).
+> - Those JSON snapshots may lag Pydantic models after schema cleanups; regenerate before treating them as authoritative.
 
 ## 1. System Architecture
 
@@ -13,21 +14,21 @@
 - Backend: FastAPI in the current local/on-prem stack for routing, orchestration, and API contracts.
 - Backend language: Python `3.11+`.
 - Execution engine: Judge0 CE for sandboxed code execution with strict resource limits and network-disabled student runs.
-- Runtime isolation: Kata Containers is the planned VM-based isolation layer for Judge0 executions.
+- Runtime isolation: Kata Containers remains the planned VM-based isolation layer for Judge0 executions (Dell validation pending).
 - Database: PostgreSQL in the current local/on-prem stack for non-sensitive metadata only.
 - ORM and migrations: SQLAlchemy plus Alembic.
 - Queue and broker: Celery with Redis for official and sandbox grading jobs.
-- AI inference: Local LLM for pedagogical explanations grounded in pytest and AST results.
+- AI inference (planned): Local LLM for pedagogical explanations grounded in pytest and AST results (sandbox wiring still active backlog).
 - HTTP client: `httpx` for FastAPI-to-Judge0 async REST calls.
 
 ## 2. Core Features
 
 - Staff authentication: mock JWT login restricted to `@uvu.edu` (NextAuth + Microsoft OAuth deferred).
 - Student sandbox access through globally visible sandbox-enabled assignments without student-specific authentication.
-- Progressive `Concepts Covered` enforcement using AST validation plus LLM prompt context.
+- Progressive `Concepts Covered` enforcement using AST validation (LLM prompt context when sandbox Local LLM is enabled).
 - Retention-aware grading: sandbox wipe after results; official identifiable review/export artifacts ≤24h or until staff cleanup; Judge0/Kata artifacts deleted immediately after retrieval.
 - Multi-file support uses ZIP/project bundle uploads for both official staff runs and student sandbox runs.
-- Hallucination guardrails that treat pytest and tracebacks as ground truth and limit the Local LLM to explanation rather than re-grading (sandbox only for now).
+- Hallucination guardrails (when Local LLM is enabled): treat pytest and tracebacks as ground truth; LLM explains, does not re-grade (sandbox only).
 - Prefer fake/synthetic or completely anonymized validation data until live-data posture is confirmed for a workflow.
 
 ## 3. Open-Source Patterns Reused
@@ -75,11 +76,11 @@
 - `users`
 - `roles`
 - `courses`
+- `modules`
 - `sections`
 - `staff_access`
 - `assignments`
 - `assignment_configs`
-- `assignment_concepts`
 - `assignment_artifacts`
 - `scoring_items`
 - `run_summaries`
@@ -106,6 +107,11 @@ classDiagram
         ia_id
     }
 
+    class Module {
+        name
+        concepts
+    }
+
     class Section {
         crn
     }
@@ -119,6 +125,7 @@ classDiagram
         title
         canvas_ref
         sandbox_enabled
+        module_id
     }
 
     class AssignmentConfig {
@@ -129,10 +136,6 @@ classDiagram
     class AssignmentConfigHistory {
         config_json
         version
-    }
-
-    class AssignmentConcept {
-        added_concepts
     }
 
     class AssignmentArtifact {
@@ -163,14 +166,15 @@ classDiagram
     Role "1" --> "many" StaffAccess : assigned_in
     User "1" --> "many" StaffAccess : granted
     Course "1" *-- "many" Section : contains
+    Course "1" *-- "many" Module : contains
     Course "1" --> "many" StaffAccess : scopes_staff_access
     Section "1" --> "many" StaffAccess : narrows_run_scope
     User "0..1" --> "many" Course : instructs
     User "0..1" --> "many" Course : assists_as_ia
     Course "1" *-- "many" Assignment : owns
+    Module "1" --> "many" Assignment : groups
     Assignment "1" *-- "1" AssignmentConfig : stores_app_owned_config
     Assignment "1" *-- "many" AssignmentConfigHistory : archives_old_configs
-    Assignment "1" *-- "0..1" AssignmentConcept : stores_concept_additions
     Assignment "1" *-- "many" AssignmentArtifact : stores_file_body_refs
     Assignment "1" *-- "many" ScoringItem : exposes_derived_projection
     Assignment "1" *-- "many" RunSummary : tracks_workflows
@@ -184,7 +188,7 @@ classDiagram
 - `assignments` are course-linked, while section-level edit authority is enforced through staff access rules.
 - `assignment_configs` store the app-owned `config_json`, which is the canonical internal grading configuration; the frontend wizard is the authoring surface for that config.
 - `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
-- `modules` store module-specific learning concepts; the target runtime-effective whitelist is course defaults ∪ module concepts. Per-assignment additions are unused.
+- `modules` store module-specific learning concepts; runtime-effective whitelist is course defaults ∪ module concepts. Per-assignment concept additions were removed.
 - `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
 - `scoring_items` are derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
 - `scoring_items` are derived projections of both automated test keys and manual rubric items, used for grading display and configuration checking.
@@ -247,7 +251,7 @@ classDiagram
 - Completion requirements report whether an objective threshold is met; they do not replace scoring-item points.
 - All scoring entries are visible in staff and sandbox result surfaces.
 - `TestCase` and `ScoringItem` rows, UI previews, and execution plans are derived from the app-owned config. If derived rows disagree with the config, the config wins and derived rows must be regenerated or reconciled.
-- Strict preflight validation must catch at least: duplicate stable keys, missing `ag_<key>` markers in the pytest files, missing assignment pytest artifacts, invalid point values, missing or invalid `extra_credit` booleans, invalid `completion_requirements` references or thresholds, missing bundle entrypoint rules, unsupported artifact types, and fields outside the supported v1 contract where strict validation applies. This preflight must pass before model-solution validation. Extending the same preflight to sandbox/official student grading is an active backlog item.
+- Strict preflight validation must catch at least: duplicate stable keys, missing `ag_<key>` markers in the pytest files, missing assignment pytest artifacts, invalid point values, missing or invalid `extra_credit` booleans, invalid `completion_requirements` references or thresholds, missing bundle entrypoint rules, unsupported artifact types, and fields outside the supported v1 contract where strict validation applies. This preflight must pass before model-solution validation and before sandbox/official student grading.
 
 ### TestCase and artifact contract
 
@@ -392,7 +396,7 @@ flowchart TD
 
 - Monaco Editor is locally hosted with the app rather than fetched from a third-party CDN.
 - Monaco is a read-only preview and review surface.
-- Sandbox Local LLM feedback (in development) is surfaced as a student-sandbox textbox adjacent to test results; it is explanation-only, sandbox-only, and must not receive personally traceable payloads.
+- Sandbox Local LLM feedback (planned / active backlog) would surface as a student-sandbox textbox adjacent to test results; explanation-only, sandbox-only, and must not receive personally traceable payloads.
 - Monaco does not change the persistent data model; it is a frontend/editor dependency and a review surface backed by structured app data rather than raw submission downloads.
 
 ## 6. Permissions Matrix
@@ -413,7 +417,7 @@ Notes:
 - Instructors can see what other teachers are doing in assigned courses but may not modify grading setup outside their own assigned sections.
 - IAs are section-limited validators, with read-only access to assignment configuration in assigned sections.
 - Official batch execution is section-scoped even though assignments are course-owned.
-- Target policy: instructors/IAs are limited by assigned course/section. Current gap: many official routes only enforce `require_staff` (any staff role); section-scoped enforcement is an active backlog item.
+- Target policy: instructors/IAs are limited by assigned course/section. Section-scoped enforcement is implemented on official ingest, run, and status routes (legacy null-`section_id` runs remain admin-only).
 - All app endpoints require a valid session token except auth entrypoints, public sandbox entrypoints, and health checks.
 
 ## 7. Canvas ZIP Format and Filename Mapping
@@ -440,7 +444,7 @@ Notes:
 
 ## 8. Celery Grading Pipeline
 
-- Both official and sandbox grading evaluate the merged effective concept list derived from current course defaults plus assignment additions before execution.
+- Both official and sandbox grading evaluate the merged effective concept list derived from current course defaults ∪ module concepts before execution.
 
 ### Official run
 
@@ -517,7 +521,7 @@ Notes:
 ### Staff-facing export artifacts
 
 - Official runs expose two separate staff download actions: one Canvas-grade CSV and one ZIP of per-student HTML feedback artifacts.
-- Official review supports exports and manual grading (in progress); feedback preview / Monaco / filtering remain active backlog items (keep preview wording broad).
+- Official review supports exports; backend manual-grade persist/export regen exists; **in-app manual grading workflow** and feedback preview / Monaco / filtering remain active backlog (keep preview wording broad).
 - The product does not expose a raw student-submission tarball download path; teachers already have the Canvas ZIP they uploaded.
 - Structured review data and read-only Monaco previews may be shown while ephemeral official data exists (<=24h or until staff cleanup).
 - Automated Canvas feedback upload or distribution is deferred.

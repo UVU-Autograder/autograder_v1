@@ -1,3 +1,4 @@
+from typing import Any
 import sys
 import os
 import zipfile
@@ -190,12 +191,12 @@ def test_cleanup_expired_workspaces(db_session, temp_workspaces):
 
 
 @pytest.fixture
-def anyio_backend():
+def anyio_backend() -> str:
     return "asyncio"
 
 
 @pytest.mark.anyio
-async def test_run_grading_pipeline_multi_file_ast_block(db_session, temp_workspaces):
+async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_workspaces: Any) -> None:
     from app.domains.grading.service import run_grading_pipeline
     from app.domains.assignments.schemas import AssignmentConfigV1
 
@@ -256,5 +257,78 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session, temp_worksp
     assert result.failure_category == "concept_blocked"
     assert "[helper.py]" in result.failure_message
     assert "subprocess" in result.failure_message
+
+
+@pytest.mark.anyio
+async def test_run_grading_pipeline_ds1_success(db_session, temp_workspaces):
+    from app.domains.grading.service import run_grading_pipeline
+    from app.domains.assignments.service import get_assignment_for_course
+    from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.grading.executor import ExecutionOutcome
+    from app.domains.grading.result_parser import PytestRunResult, PytestTestResult
+
+    # 1. Retrieve the seeded ds1 assignment
+    assignment = get_assignment_for_course(db_session, "cs1410", "ds1")
+    assert assignment is not None
+    assert assignment.config is not None
+
+    # Load configuration
+    config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+
+    # 2. Get artifact refs
+    artifact_refs = {}
+    for artifact in assignment.artifacts:
+        artifact_refs[artifact.artifact_key] = artifact.storage_ref
+
+    # 3. Create student submission ZIP with dessert.py solution
+    repo_root = Path(__file__).resolve().parents[2]
+    model_solution_path = repo_root / "backend" / "app" / "db" / "seeds" / "ds1" / "dessert.py"
+    dessert_content = model_solution_path.read_bytes()
+
+    zip_bytes = create_zip_bytes({
+        "dessert.py": dessert_content
+    })
+
+    # 4. Mock the Judge0 execution to return 5 passed tests
+    simulated_result = PytestRunResult(
+        tests=[
+            PytestTestResult(nodeid="test_dessert_item_class", outcome="passed", markers=["ag_dessert_item"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_candy_class", outcome="passed", markers=["ag_candy"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_cookie_class", outcome="passed", markers=["ag_cookie"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_icecream_class", outcome="passed", markers=["ag_icecream"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_sundae_class", outcome="passed", markers=["ag_sundae"], duration=0.01, message=None),
+        ],
+        total=5,
+        passed=5,
+        failed=0,
+        errors=0,
+        duration=0.1,
+        exit_code=0,
+    )
+    mock_outcome = ExecutionOutcome(success=True, pytest_result=simulated_result)
+
+    from app.domains.assignments.service import effective_allowed_concepts
+    allowed = effective_allowed_concepts(assignment)
+
+    with patch("app.domains.grading.service.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = mock_outcome
+
+        result = await run_grading_pipeline(
+            zip_data=zip_bytes,
+            config=config,
+            artifact_refs=artifact_refs,
+            allowed_concepts=allowed
+        )
+
+    # 5. Assert it graded perfectly!
+    assert result.success
+    assert result.score == 100
+    assert result.max_score == 100
+    assert len(result.warnings) == 0
+    assert result.pytest_result is not None
+    assert result.pytest_result.total == 5
+    assert result.pytest_result.passed == 5
+    assert result.pytest_result.failed == 0
+
 
 

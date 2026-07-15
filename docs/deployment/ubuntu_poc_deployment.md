@@ -80,7 +80,7 @@ When `SEED_DATABASE=true`, it also runs:
 python -m app.db.seed
 ```
 
-The seeded data uses `docs/backend_implementation/examples` through `seed://...` artifact references. Those example artifacts are copied into the backend image and resolved with `REPO_ROOT=/app`.
+The seeded data uses `backend/app/db/seeds` through `seed://...` artifact references. Those seed packages ship inside the backend image and resolve relative to `app/db/seeds`.
 
 ## Judge0 And Kata
 

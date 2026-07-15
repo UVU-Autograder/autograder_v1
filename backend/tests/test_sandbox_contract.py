@@ -70,8 +70,8 @@ def test_lists_visible_courses_and_assignments(client):
     assert assignments_1410.status_code == 200
     body_1410 = assignments_1410.json()
     assert body_1410["course_id"] == "cs1410"
-    assert body_1410["assignments"][0]["id"] == "lab-1-image-processing"
-    assert body_1410["assignments"][0]["sandbox_enabled"] is True
+    assert {a["id"] for a in body_1410["assignments"]} == {"lab-1-image-processing", "ds1"}
+    assert all(a["sandbox_enabled"] for a in body_1410["assignments"])
 
 
 def test_assignment_detail_returns_contract_metadata(client):

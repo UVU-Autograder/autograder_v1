@@ -17,7 +17,7 @@
 * **[decisions.md](./backend_implementation/decisions.md):** Product and implementation decisions.
 * **[storage_and_test_plan.md](./backend_implementation/storage_and_test_plan.md):** Assignment config, artifacts, pytest scoring, and retention cleanup.
 * **[pygame_grading_guidelines.md](./backend_implementation/pygame_grading_guidelines.md):** Headless execution, event mocking, and manual grading strategy for Pygame coursework.
-* **[examples/simple_python_functions/README.md](./backend_implementation/examples/simple_python_functions/README.md):** Seed/example assignment materials.
+* **Seed packages:** Built-in assignment fixtures live under [`backend/app/db/seeds/`](../backend/app/db/seeds/) (`seed://` resolution).
 
 ## Frontend Specifications (`docs/frontend_implementation/`)
 * **[frontend_implementation.md](./frontend_implementation/frontend_implementation.md):** Next.js route maps, components, and Monaco Editor integration constraints. Mockup: https://autograder-frontend-mockup.vercel.app/

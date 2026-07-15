@@ -24,11 +24,30 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ## Active — Product
 
-### Manual grading (in progress)
+### Manual grading (in-app grader workflow)
 
-- [ ] Complete staff official-review manual rubric scoring and comments end to end.
-- [ ] Ensure regenerated Canvas-grade CSV and feedback ZIP reflect manual scores.
-- [ ] Document and harden the boundary between auto test results (ground truth) and manual rubric items.
+**Done (do not reopen as the Active goal):**
+- [x] Backend `POST …/manual-grades` persists rubric scores/comments for a student in an official run.
+- [x] Saving regenerates Canvas-grade CSV and per-student feedback ZIP from current `manual_results`.
+
+**Active goal:** a staff grader can complete manual rubric grading entirely inside the official-run UI (find student → see auto results + manual items → enter scores/comments → save → see updated totals and exports). Sheet/tab UI stubs exist but are **not yet a shippable grader workflow**.
+
+#### Backend implementation plan
+
+- [ ] Confirm run-details payload always exposes `manual_results` keys from `config_json.manual_rubric_items` (including zero-score / unscored state) after official grading and on run-details fetch.
+- [ ] Ensure saved scores update the staff-facing student detail totals (auto + manual) consistently with CSV export math (`manual_score_sum`).
+- [ ] Harden validation: unknown keys, over-max scores, missing run workspace, section-scoped auth (already required) with clear 4xx messages for the UI.
+- [ ] Add/extend API tests for: save → CSV row reflects new total; save → feedback HTML includes manual scores/comments; empty-manual-item assignments remain no-ops.
+- [ ] Document auto vs manual ground truth: pytest/`test_results` are never overwritten by manual edits; manual items only contribute via `manual_results`.
+
+#### Frontend implementation plan
+
+- [ ] Official run page: discoverable path to grade (student list → student detail → manual rubric entry) without relying on dead-end chrome.
+- [ ] Show auto test summary beside editable manual rubric items for the selected student.
+- [ ] Score + comment controls bound to existing `manual-grades` API; disable save while in flight; surface errors.
+- [ ] After save, refresh selected student + list totals so the grader sees updated score without a full page reload / re-export dance.
+- [ ] Empty state when the assignment has no `manual_rubric_items` (“nothing to grade manually”).
+- [ ] Smoke the flow against a seeded assignment that defines manual rubric items (e.g. lab1).
 
 ### Official review UX
 
@@ -57,20 +76,24 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 ### Session / auth hardening
 
 - [x] Client-side 5-minute inactivity logout for staff (mouse/keyboard/scroll).
-- [ ] Align JWT token lifespan with the 5-minute inactivity window.
-- [ ] Enable sliding JWT expiration refreshed on request activity.
+- [x] Align JWT token lifespan with the 5-minute inactivity window (`JWT_EXPIRATION_MINUTES` default `5`).
+- [x] Sliding JWT expiration refreshed on request activity (`x-refresh-token` + frontend store update).
 
 ---
 
 ## Active — Correctness / platform gaps
 
-Documented policy vs current code — these are intentional fix items:
+Completed platform fixes (kept for history; do not reopen without a regression):
 
-- [x] **Section-scoped staff authorization** — enforce course/section grants on official ingest and run routes (today many routes only check `require_staff`).
-- [x] **Queue admission** — implement global waiting-job warn-at-`40` / reject-at-`50`, plus fair official/sandbox scheduling into the execution-slot cap (today official ingest has no admission gate).
-- [x] **Preflight before student grading** — run strict config/artifact/`ag_<key>` preflight for sandbox and official student pipelines (today only model-solution validation calls it).
-- [x] **Unify effective Concepts Covered** — shipped as course defaults + assignment additions; **superseded for product rule** — see CS1410 prerequisite (course ∪ module).
-- [x] **Official run status** — return real sanitized counters, queue position, and ETA band for official runs (today numeric official status is largely Postgres zeros).
+- [x] **Section-scoped staff authorization** — course/section grants on official ingest and run routes.
+- [x] **Queue admission** — global waiting-job warn-at-`40` / reject-at-`50`, plus fair official/sandbox scheduling into the execution-slot cap.
+- [x] **Preflight before student grading** — strict config/artifact/`ag_<key>` preflight for sandbox and official student pipelines.
+- [x] **Unify effective Concepts Covered** — `course.default_concepts ∪ assignment.module.concepts` (per-assignment additions removed).
+- [x] **Official run status** — sanitized counters, queue position, and ETA band for official runs.
+
+Follow-up (docs/schemas only; not a runtime gap):
+
+- [ ] Regenerate `docs/schemas/config_v1.schema.json` and `docs/schemas/openapi.json` so they match current Pydantic models (dropped `support_artifacts` / `output_artifacts` / config-level `concepts`).
 
 ---
 
@@ -84,8 +107,8 @@ Goal: fully model UVU **CS 1410** in the database from the local (gitignored) so
 - **Submissions:** gitignored; agent/dev reference only for authoring — not DB seed content.
 - **Image / hard-to-check parts:** pytest what is feasible; pixel/visual correctness → **manual rubric for now** (visual-diff later if useful).
 - **Concepts Covered:** map module learning objectives onto the **existing AST concept vocabulary**; store on **`Module.concepts`** (not per-assignment additions). Non-mappable LOs (e.g. “online readiness”) stay out of Concepts Covered.
-- **Enforced whitelist:** `course.default_concepts ∪ assignment.module.concepts` (requires updating `effective_allowed_concepts` + docs; supersedes “course + assignment additions only”).
-- **Skeleton delivery:** expand [`seed.py`](../../backend/app/db/seed.py) (or a dedicated seed module it calls).
+- **Enforced whitelist:** `course.default_concepts ∪ assignment.module.concepts` (shipped; supersedes “course + assignment additions only”).
+- **Skeleton delivery:** expand [`seed.py`](../../backend/app/db/seed.py) (or a dedicated seed module it calls); seed artifact files live under [`backend/app/db/seeds/`](../../backend/app/db/seeds/).
 - **Deep-phase order:** Dessert Shop **`ds1`→`ds10` first**, then remaining labs. **`lab-1-image-processing` is already partially seeded** — complete/gap-fill, do not recreate from scratch.
 
 ### Inventory (from `cs1410/`)
@@ -117,13 +140,13 @@ Goal: fully model UVU **CS 1410** in the database from the local (gitignored) so
 - [x] Replace the stub single-module `cs1410` seed with **12 modules** aligned to `cs1410/m1`–`m12` (names + `Module.concepts` from the LO→AST map).
 - [x] Set course `default_concepts` to the shared baseline used across early modules (keep progressive detail on modules).
 - [x] Create **all remaining assignments** (labs + DS) with stable slugs/titles from `desc.md`, linked to the correct module, `sandbox_enabled` as appropriate, language `python`.
-- [x] Keep / extend existing `lab-1-image-processing` seed + [`docs/backend_implementation/examples/lab_1_image_processing/`](../backend_implementation/examples/lab_1_image_processing/) rather than duplicating.
+- [x] Keep / extend existing `lab-1-image-processing` seed under [`backend/app/db/seeds/lab_1_image_processing/`](../../backend/app/db/seeds/lab_1_image_processing/) rather than duplicating.
 - [x] Ensure section + staff access grants still seed for local/dev.
 - [x] Skeleton acceptance: every inventory row exists in DB; missing deep artifacts are OK until Phase B.
 
 ### Phase B — Deep model per assignment (pytest, model solution, config, artifacts)
 
-For **each** assignment below: author example package under `docs/backend_implementation/examples/`, wire seed artifacts + `config_json`, pass preflight, run model-solution validation, sandbox smoke. Use `desc.md` as spec; peek at local `submissions/` only as authoring reference.
+For **each** assignment below: author the package under `backend/app/db/seeds/<slug>/`, wire seed artifacts + `config_json`, pass preflight, run model-solution validation, sandbox smoke. Use `desc.md` as spec; peek at local `submissions/` only as authoring reference.
 
 **B0 — Finish lab1 (already partial)**
 
@@ -147,11 +170,11 @@ For **each** assignment below: author example package under `docs/backend_implem
 
 **B1 — Dessert Shop chain first (`ds1`→`ds10`)**
 
-- [ ] `ds1` (m3) — inheritance skeleton / class hierarchy.
+- [x] `ds1` (m3) — inheritance skeleton / class hierarchy.
 - [ ] `ds2` (m4)
 - [ ] `ds3` (m5)
 - [ ] `ds4` (m6)
-- [ ] `ds5` (m7) — include support artifact from `cs1410/m7/ds5/ui.py` if still required by the spec.
+- [ ] `ds5` (m7) — console application prompt methods (no `ui.py` support artifact required by the spec).
 - [ ] `ds6` (m8)
 - [ ] `ds7` (m9)
 - [ ] `ds8` (m10)
@@ -197,11 +220,13 @@ Present-tense capabilities of the shipped initial delivery (non-exhaustive):
 
 - Local stack: FastAPI, Next.js, Postgres, Redis/Celery path, Judge0 integration, Compose harness.
 - Staff mock JWT login (`@uvu.edu`); role model admin / instructor / IA; public sandbox.
-- Assignment wizard + app-owned `config_json`; artifacts (pytest / model solution / support); Concepts Covered.
+- Staff session: 5-minute JWT lifespan + sliding `x-refresh-token` refresh; client 5-minute inactivity logout.
+- Assignment wizard + app-owned `config_json`; artifacts (pytest / model solution / support); Concepts Covered via course ∪ module.
 - Canvas ZIP ingest via thin router + `ingest_official_canvas_zip`; grading via `run_grading_pipeline` + `execute_pytest_in_judge0`.
 - Official exports: Canvas-grade CSV + per-student feedback ZIP; ephemeral official workspaces ≤24h or until staff cleanup.
+- Official manual-grade API can persist scores and regenerate exports (in-app grader UX still Active).
 - Sandbox ZIP upload, quota, preview, grounded results, zero-retention messaging.
-- Client 5-minute staff inactivity logout.
+- Seed packages under `backend/app/db/seeds/` resolved via `seed://`.
 - Frontend mockup on Vercel: https://autograder-frontend-mockup.vercel.app/
 
 Judge0 default CPU time limit in settings is **30s** (256MB memory; network-disabled student execution). Execution-slot cap remains `2` until Dell benchmarks approve otherwise.

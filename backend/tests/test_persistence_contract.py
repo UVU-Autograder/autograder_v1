@@ -156,6 +156,47 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
             None,
         ]
 
+        # Check ds1
+        assignment_ds1 = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "ds1"
+            )
+        )
+        assert assignment_ds1 is not None
+        assert assignment_ds1.config is not None
+        assert {artifact.artifact_type for artifact in assignment_ds1.artifacts} == {
+            "pytest_file",
+            "model_solution",
+        }
+
+        scoring_items_ds1 = db.scalars(
+            select(assignment_models.ScoringItem)
+            .where(assignment_models.ScoringItem.assignment_id == assignment_ds1.id)
+            .order_by(assignment_models.ScoringItem.display_order)
+        ).all()
+        assert len(scoring_items_ds1) == 5
+        assert [item.config_item_key for item in scoring_items_ds1] == [
+            "dessert_item",
+            "candy",
+            "cookie",
+            "icecream",
+            "sundae",
+        ]
+        assert [item.item_type for item in scoring_items_ds1] == [
+            "pytest",
+            "pytest",
+            "pytest",
+            "pytest",
+            "pytest",
+        ]
+        assert [item.pytest_marker for item in scoring_items_ds1] == [
+            "ag_dessert_item",
+            "ag_candy",
+            "ag_cookie",
+            "ag_icecream",
+            "ag_sundae",
+        ]
+
 
 def test_seed_is_idempotent():
     from sqlalchemy import func
