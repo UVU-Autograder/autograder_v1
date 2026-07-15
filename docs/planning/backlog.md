@@ -107,18 +107,18 @@ Goal: fully model UVU **CS 1410** in the database from the local (gitignored) so
 
 ### Prerequisite — Concepts Covered enforcement
 
-- [ ] Change `effective_allowed_concepts` to **course defaults ∪ module concepts** (assignment additions unused for 1410).
-- [ ] Update sandbox catalog / official paths / tests and sync [decisions.md](../backend_implementation/decisions.md) + [technical_specs.md](../technical_specs.md) + agent memory vocabulary.
-- [ ] Map each `m1`–`m12` overview LO → AST concept ids; document unmapped LOs.
+- [x] Change `effective_allowed_concepts` to **course defaults ∪ module concepts** (assignment additions unused for 1410).
+- [x] Update sandbox catalog / official paths / tests and sync [decisions.md](../backend_implementation/decisions.md) + [technical_specs.md](../technical_specs.md) + agent memory vocabulary.
+- [x] Map each `m1`–`m12` overview LO → AST concept ids; document unmapped LOs.
 
 ### Phase A — Course skeleton (seed)
 
-- [ ] Replace the stub single-module `cs1410` seed with **12 modules** aligned to `cs1410/m1`–`m12` (names + `Module.concepts` from the LO→AST map).
-- [ ] Set course `default_concepts` to the shared baseline used across early modules (keep progressive detail on modules).
-- [ ] Create **all remaining assignments** (labs + DS) with stable slugs/titles from `desc.md`, linked to the correct module, `sandbox_enabled` as appropriate, language `python`.
-- [ ] Keep / extend existing `lab-1-image-processing` seed + [`docs/backend_implementation/examples/lab_1_image_processing/`](../backend_implementation/examples/lab_1_image_processing/) rather than duplicating.
-- [ ] Ensure section + staff access grants still seed for local/dev.
-- [ ] Skeleton acceptance: every inventory row exists in DB; missing deep artifacts are OK until Phase B.
+- [x] Replace the stub single-module `cs1410` seed with **12 modules** aligned to `cs1410/m1`–`m12` (names + `Module.concepts` from the LO→AST map).
+- [x] Set course `default_concepts` to the shared baseline used across early modules (keep progressive detail on modules).
+- [x] Create **all remaining assignments** (labs + DS) with stable slugs/titles from `desc.md`, linked to the correct module, `sandbox_enabled` as appropriate, language `python`.
+- [x] Keep / extend existing `lab-1-image-processing` seed + [`docs/backend_implementation/examples/lab_1_image_processing/`](../backend_implementation/examples/lab_1_image_processing/) rather than duplicating.
+- [x] Ensure section + staff access grants still seed for local/dev.
+- [x] Skeleton acceptance: every inventory row exists in DB; missing deep artifacts are OK until Phase B.
 
 ### Phase B — Deep model per assignment (pytest, model solution, config, artifacts)
 

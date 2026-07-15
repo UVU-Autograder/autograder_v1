@@ -64,7 +64,7 @@
 1. Instructor creates an assignment linked to a course.
 2. Authorized staff configure grading data through a comprehensive instructor-facing wizard that writes the app-owned `assignment_configs.config_json`; the wizard is the authoring surface for that config.
 3. Assignment metadata (for example name, due date, and points context) is entered manually; Canvas assignment-metadata import is not required.
-4. `Concepts Covered` defaults are maintained at the course level, and each assignment stores additive concept entries only.
+4. `Concepts Covered` defaults are maintained at the course level, and module learning concepts are merged into the effective whitelist at runtime. Per-assignment additions are not supported.
 5. One assignment-owned pytest file, model solution content, support files, ZIP/project bundle requirements, and test metadata derived from the app-owned config are maintained as assignment-owned grading assets.
 6. Model solution validation runs through the same Judge0 + Kata execution path used for student code.
 
@@ -184,7 +184,7 @@ classDiagram
 - `assignments` are course-linked, while section-level edit authority is enforced through staff access rules.
 - `assignment_configs` store the app-owned `config_json`, which is the canonical internal grading configuration; the frontend wizard is the authoring surface for that config.
 - `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
-- `assignment_concepts` store assignment-specific additive concept entries only; the target runtime-effective allow-list is course defaults + assignment additions. Today sandbox may also merge module concepts; unifying both workflows on course+assignment only is an active backlog item.
+- `modules` store module-specific learning concepts; the target runtime-effective whitelist is course defaults ∪ module concepts. Per-assignment additions are unused.
 - `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
 - `scoring_items` are derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
 - `scoring_items` are derived projections of both automated test keys and manual rubric items, used for grading display and configuration checking.
@@ -194,17 +194,16 @@ classDiagram
 
 ### Concepts Covered contract
 
-- The course-level baseline is teacher-authored and stored with the course or course settings payload.
-- Assignment concepts are additive only and represent assignment-specific concepts beyond the course baseline.
-- The effective concept allow-list is computed at runtime as `course defaults + assignment additions`.
+- The course-level baseline is teacher-authored and stored with the course settings.
+- Module concepts represent additional learning concepts defined on the module.
+- The effective concept allow-list is computed at runtime as `course defaults ∪ module concepts`.
 - Runtime merge rules:
   - course defaults appear first
-  - assignment additions appear after course defaults
+  - module concepts appear after course defaults
   - duplicate concepts are removed automatically
 - AST enforcement and any UI display of allowed concepts must use the same merged effective list.
-- Existing assignments always reflect the current course defaults at runtime; the product does not snapshot course defaults into assignment config.
-- Assignment `config_json` stores assignment-owned concept additions only and does not duplicate course-owned defaults.
-- Reusing the same assignment config shape in a different course may produce a different effective concept list because course defaults are course-owned.
+- Existing assignments always reflect the current course defaults and module concepts at runtime.
+- Reusing the same assignment config shape in a different course/module may produce a different effective concept list because course defaults and module concepts are owned by the course and module.
 
 - **AST Node Mapping**: To support automated concept whitelisting, the backend AST parser maps human-readable concepts to Python AST nodes as follows:
 

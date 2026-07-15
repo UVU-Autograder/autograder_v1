@@ -146,7 +146,7 @@ def test_run_creation_returns_session_quota_urls_and_queue_state(client):
     assert body["upload_quota"]["remaining"] == 4
     assert body["initial_status"]["state"] == "queue"
     assert body["initial_status"]["queue_position"] == 1
-    assert body["initial_status"]["eta_band"] == "1_to_3_min"
+    assert body["initial_status"]["eta_band"] == "under_1_min"
     assert body["initial_status"]["backpressure"]["high_load_threshold"] == 40
     assert body["initial_status"]["backpressure"]["full_queue_threshold"] == 50
     assert body["file_preview"]["preview_kind"] == "metadata_only"

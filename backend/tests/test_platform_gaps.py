@@ -270,7 +270,7 @@ def test_preflight_blocks_sandbox_create(client, db_session):
     assert "not ready for grading" in response.json()["detail"]
 
 
-def test_effective_allowed_concepts_excludes_module(db_session):
+def test_effective_allowed_concepts_includes_module(db_session):
     assignment = get_assignment_for_course(db_session, "cs1400", "simple-python-functions")
     assert assignment is not None
     assert assignment.module is not None
@@ -280,7 +280,8 @@ def test_effective_allowed_concepts_excludes_module(db_session):
     concepts = effective_allowed_concepts(assignment)
     assert "variables" in concepts
     assert "conditionals" in concepts
-    assert "module-only-loops" not in concepts
+    assert "module-only-loops" in concepts
+
 
     from app.domains.sandbox.catalog import get_sandbox_assignment
     from app.domains.sandbox.schemas import UploadQuota
