@@ -16,6 +16,7 @@
 ## Backend Specifications (`docs/backend_implementation/`)
 * **[decisions.md](./backend_implementation/decisions.md):** Product and implementation decisions.
 * **[storage_and_test_plan.md](./backend_implementation/storage_and_test_plan.md):** Assignment config, artifacts, pytest scoring, and retention cleanup.
+* **[pygame_grading_guidelines.md](./backend_implementation/pygame_grading_guidelines.md):** Headless execution, event mocking, and manual grading strategy for Pygame coursework.
 * **[examples/simple_python_functions/README.md](./backend_implementation/examples/simple_python_functions/README.md):** Seed/example assignment materials.
 
 ## Frontend Specifications (`docs/frontend_implementation/`)
@@ -23,6 +24,7 @@
 * **[figma_prototype.md](./frontend_implementation/figma_prototype.md):** Prototype layouts and flow states.
 
 ## Planning & Backlog (`docs/planning/`)
+* **[cs1410_assignments_spec.md](./planning/cs1410_assignments_spec.md):** Complete class structures, required files, grading rubrics, and autograding strategies for all 17 CS 1410 assignments.
 * **[backlog.md](./planning/backlog.md):** Active development backlog (product, platform gaps, ops/validation, deferred).
 * **[delivery_controls.md](./planning/delivery_controls.md):** Definition of Done and acceptance gates.
 * **Meeting minutes (historical):** [05_28_meeting.md](./planning/meetings_minutes/05_28_meeting.md), [06_04_meeting.md](./planning/meetings_minutes/06_04_meeting.md)

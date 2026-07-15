@@ -44,11 +44,7 @@
     ]
   },
   "concepts": {
-    "additions": [
-      "image-processing",
-      "file-io",
-      "loops"
-    ]
+    "additions": []
   },
   "execution": {
     "dependencies": [
@@ -67,6 +63,14 @@
     "model_solution_bears3": {
       "type": "model_solution",
       "display_filename": "bears3.py"
+    },
+    "bears_copy": {
+      "type": "support_file",
+      "display_filename": "bears_copy.jpg"
+    },
+    "balloon": {
+      "type": "support_file",
+      "display_filename": "balloon.png"
     }
   },
   "output_artifacts": [
@@ -89,7 +93,8 @@
       "label": "Part 1: Apply a Photo Filter",
       "item_keys": [
         "part1_files",
-        "part1_output"
+        "part1_output",
+        "part1_visual"
       ]
     },
     {
@@ -97,7 +102,8 @@
       "label": "Part 2: Image Compositing",
       "item_keys": [
         "part2_files",
-        "part2_output"
+        "part2_output",
+        "part2_visual"
       ]
     }
   ],
@@ -105,34 +111,58 @@
     {
       "key": "part1_files",
       "label": "Part 1 required files are present",
-      "points": 25,
+      "points": 15,
       "extra_credit": false,
       "rubric_group_key": "part1"
     },
     {
       "key": "part1_output",
       "label": "Part 1 output image opens and contains non-trivial pixels",
-      "points": 25,
+      "points": 15,
       "extra_credit": false,
       "rubric_group_key": "part1"
     },
     {
       "key": "part2_files",
       "label": "Part 2 required files are present",
-      "points": 25,
+      "points": 15,
       "extra_credit": false,
       "rubric_group_key": "part2"
     },
     {
       "key": "part2_output",
       "label": "Part 2 output image opens and contains non-trivial pixels",
-      "points": 25,
+      "points": 15,
       "extra_credit": false,
       "rubric_group_key": "part2"
     }
   ],
-  "manual_rubric_items": [],
+  "manual_rubric_items": [
+    {
+      "key": "part1_visual",
+      "label": "Subjective filter visual quality & color conversion",
+      "points": 20,
+      "extra_credit": false,
+      "rubric_group_key": "part1"
+    },
+    {
+      "key": "part2_visual",
+      "label": "Subjective balloon composite quality & placement",
+      "points": 20,
+      "extra_credit": false,
+      "rubric_group_key": "part2"
+    }
+  ],
   "completion_requirements": [],
-  "support_artifacts": [],
+  "support_artifacts": [
+    {
+      "artifact_key": "bears_copy",
+      "workspace_path": "bears_copy.jpg"
+    },
+    {
+      "artifact_key": "balloon",
+      "workspace_path": "balloon.png"
+    }
+  ],
   "stdin_scenarios": []
 }

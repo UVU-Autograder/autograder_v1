@@ -123,6 +123,7 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
         assert {artifact.artifact_type for artifact in assignment_cs1410.artifacts} == {
             "pytest_file",
             "model_solution",
+            "support_file",
         }
         
         scoring_items = db.scalars(
@@ -130,19 +131,30 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
             .where(assignment_models.ScoringItem.assignment_id == assignment_cs1410.id)
             .order_by(assignment_models.ScoringItem.display_order)
         ).all()
-        assert len(scoring_items) == 4
+        assert len(scoring_items) == 6
         assert [item.config_item_key for item in scoring_items] == [
             "part1_files",
             "part1_output",
             "part2_files",
             "part2_output",
+            "part1_visual",
+            "part2_visual",
         ]
-        assert all(item.item_type == "pytest" for item in scoring_items)
+        assert [item.item_type for item in scoring_items] == [
+            "pytest",
+            "pytest",
+            "pytest",
+            "pytest",
+            "manual",
+            "manual",
+        ]
         assert [item.pytest_marker for item in scoring_items] == [
             "ag_part1_files",
             "ag_part1_output",
             "ag_part2_files",
             "ag_part2_output",
+            None,
+            None,
         ]
 
 

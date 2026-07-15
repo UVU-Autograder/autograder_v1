@@ -110,6 +110,7 @@ Goal: fully model UVU **CS 1410** in the database from the local (gitignored) so
 - [x] Change `effective_allowed_concepts` to **course defaults ∪ module concepts** (assignment additions unused for 1410).
 - [x] Update sandbox catalog / official paths / tests and sync [decisions.md](../backend_implementation/decisions.md) + [technical_specs.md](../technical_specs.md) + agent memory vocabulary.
 - [x] Map each `m1`–`m12` overview LO → AST concept ids; document unmapped LOs.
+- [x] Draft global CS1410 Assignments Specification (cs1410_assignments_spec.md) mapping all 17 assignments.
 
 ### Phase A — Course skeleton (seed)
 
@@ -126,9 +127,9 @@ For **each** assignment below: author example package under `docs/backend_implem
 
 **B0 — Finish lab1 (already partial)**
 
-- [ ] Gap-fill `lab-1-image-processing`: model solution, support images/starter as needed, pytest for auto-checkable behavior.
-- [ ] Encode pixel-correctness / subjective image quality as **manual** rubric items (not hard auto-fail).
-- [ ] Confirm Concepts Covered come from module (not assignment additions).
+- [x] Gap-fill `lab-1-image-processing`: model solution, support images/starter as needed, pytest for auto-checkable behavior.
+- [x] Encode pixel-correctness / subjective image quality as **manual** rubric items (not hard auto-fail).
+- [x] Confirm Concepts Covered come from module (not assignment additions).
 
 **B1 — Dessert Shop chain first (`ds1`→`ds10`)**
 

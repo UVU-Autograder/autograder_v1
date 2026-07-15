@@ -147,16 +147,16 @@ def seed_development_data(db: Session) -> None:
         # Define the 12 modules for CS 1410
         modules_data = {
             "m1": {"name": "Module 1: Warmup", "concepts": ["image-processing"]},
-            "m2": {"name": "Module 2: Object-Oriented Intro", "concepts": []},
-            "m3": {"name": "Module 3: Inheritance, Polymorphism, and Properties", "concepts": []},
-            "m4": {"name": "Module 4: Generators and Iterators", "concepts": []},
-            "m5": {"name": "Module 5: Unit Tests with pytest", "concepts": []},
-            "m6": {"name": "Module 6: Abstract Classes", "concepts": []},
-            "m7": {"name": "Module 7: Exceptions and Protocols", "concepts": []},
-            "m8": {"name": "Module 8: Introduction to Pygame", "concepts": []},
-            "m9": {"name": "Module 9: Object-Oriented Pygame", "concepts": []},
-            "m10": {"name": "Module 10: Pygame GUI Widgets", "concepts": []},
-            "m11": {"name": "Module 11: Named tuples, Dataclasses, and Sorting lists", "concepts": ["file-io"]},
+            "m2": {"name": "Module 2: Object-Oriented Intro", "concepts": ["classes", "type-hints"]},
+            "m3": {"name": "Module 3: Inheritance, Polymorphism, and Properties", "concepts": ["inheritance", "properties", "operator-overloading"]},
+            "m4": {"name": "Module 4: Generators and Iterators", "concepts": ["generators"]},
+            "m5": {"name": "Module 5: Unit Tests with pytest", "concepts": ["testing"]},
+            "m6": {"name": "Module 6: Abstract Classes", "concepts": ["abstract-classes", "operator-overloading"]},
+            "m7": {"name": "Module 7: Exceptions and Protocols", "concepts": ["exceptions", "protocols"]},
+            "m8": {"name": "Module 8: Introduction to Pygame", "concepts": ["pygame"]},
+            "m9": {"name": "Module 9: Object-Oriented Pygame", "concepts": ["pygame", "classes"]},
+            "m10": {"name": "Module 10: Pygame GUI Widgets", "concepts": ["pygame"]},
+            "m11": {"name": "Module 11: Named tuples, Dataclasses, and Sorting lists", "concepts": ["dataclasses", "file-io"]},
             "m12": {"name": "Module 12: CS Degrees at UVU", "concepts": []},
         }
 

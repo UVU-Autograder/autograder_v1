@@ -95,7 +95,7 @@ def test_assignment_detail_returns_contract_metadata(client):
     assert body_1410["rubric_groups"]
     assert len(body_1410["rubric_groups"]) == 2
     assert body_1410["rubric_groups"][0]["key"] == "part1"
-    assert len(body_1410["rubric"]) == 4
+    assert len(body_1410["rubric"]) == 6
     assert body_1410["rubric"][0]["key"] == "part1_files"
     assert body_1410["rubric"][0]["pytest_marker"] == "ag_part1_files"
     assert body_1410["rubric"][0]["item_type"] == "pytest"
