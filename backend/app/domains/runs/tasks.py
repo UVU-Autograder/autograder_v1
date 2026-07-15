@@ -612,7 +612,6 @@ def grade_official_run(self, run_id: int) -> dict:
                 selectinload(Assignment.course),
                 selectinload(Assignment.config),
                 selectinload(Assignment.artifacts),
-                selectinload(Assignment.concept_additions),
             )
         )
         if not assignment or not assignment.config:

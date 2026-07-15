@@ -90,7 +90,6 @@ def test_initial_metadata_tables_exist():
         "staff_access",
         "assignments",
         "assignment_configs",
-        "assignment_concepts",
         "assignment_artifacts",
         "scoring_items",
         "run_summaries",

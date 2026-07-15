@@ -88,7 +88,6 @@ def get_sandbox_assignment(
             selectinload(Assignment.config),
             selectinload(Assignment.scoring_items),
             selectinload(Assignment.module),
-            selectinload(Assignment.concept_additions),
         )
     )
     if assignment is None or assignment.config is None:

@@ -188,3 +188,73 @@ def test_cleanup_expired_workspaces(db_session, temp_workspaces):
     assert recent_run_dir.exists()
     assert recent_zip.exists()
 
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
+
+
+@pytest.mark.anyio
+async def test_run_grading_pipeline_multi_file_ast_block(db_session, temp_workspaces):
+    from app.domains.grading.service import run_grading_pipeline
+    from app.domains.assignments.schemas import AssignmentConfigV1
+
+    # Create configuration for an assignment
+    config_dict = {
+        "schema_version": 1,
+        "bundle": {
+            "required_files": ["main.py", "helper.py"],
+            "entrypoint": "main.py",
+            "file_requirements": [
+                {"key": "main_py", "label": "Main file", "requirement_type": "exact", "paths": ["main.py"]},
+                {"key": "helper_py", "label": "Helper file", "requirement_type": "exact", "paths": ["helper.py"]}
+            ]
+        },
+        "artifacts": {
+            "assignment_tests": {
+                "type": "pytest_file",
+                "display_filename": "tests.py"
+            }
+        },
+        "tests": [
+            {
+                "key": "t1",
+                "label": "Test 1",
+                "points": 10,
+                "extra_credit": False
+            }
+        ],
+        "rubric_groups": [],
+        "completion_requirements": []
+    }
+    config = AssignmentConfigV1.model_validate(config_dict)
+
+    # ZIP contains student files: helper.py contains unsafe import (subprocess)
+    # but main.py is clean.
+    zip_bytes = create_zip_bytes({
+        "main.py": b"print('clean main')",
+        "helper.py": b"import subprocess\nsubprocess.run('echo hello')"
+    })
+
+    # Create test artifact file on disk
+    tests_file = temp_workspaces / "tests.py"
+    tests_file.write_text("def test_ok(): pass", encoding="utf-8")
+
+    artifact_refs = {
+        "assignment_tests": f"file://{tests_file.as_posix()}"
+    }
+
+    result = await run_grading_pipeline(
+        zip_data=zip_bytes,
+        config=config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=["variables", "functions"]
+    )
+
+    # Check that it got blocked by helper.py, not main.py!
+    assert not result.success
+    assert result.failure_category == "concept_blocked"
+    assert "[helper.py]" in result.failure_message
+    assert "subprocess" in result.failure_message
+
+

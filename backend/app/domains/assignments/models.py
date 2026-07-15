@@ -35,11 +35,6 @@ class Assignment(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
-    concept_additions: Mapped["AssignmentConcept | None"] = relationship(
-        back_populates="assignment",
-        cascade="all, delete-orphan",
-        uselist=False,
-    )
     artifacts: Mapped[list["AssignmentArtifact"]] = relationship(
         back_populates="assignment",
         cascade="all, delete-orphan",
@@ -81,17 +76,7 @@ class AssignmentConfigHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class AssignmentConcept(Base):
-    __tablename__ = "assignment_concepts"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    assignment_id: Mapped[int] = mapped_column(
-        ForeignKey("assignments.id", ondelete="CASCADE"),
-        unique=True,
-    )
-    added_concepts: Mapped[list[str]] = mapped_column(MutableList.as_mutable(JSON), default=list)
-
-    assignment: Mapped[Assignment] = relationship(back_populates="concept_additions")
 
 
 

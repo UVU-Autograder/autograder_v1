@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import mimetypes
 import os
 
 from sqlalchemy import select
@@ -36,10 +37,6 @@ def load_example_config() -> dict:
 
 
 def _seed_storage_ref(example_slug: str, artifact_key: str, display_filename: str) -> str:
-    # Model solutions are stored under their instructor-owned filename, then
-    # materialized at the student-facing display filename during execution.
-    if artifact_key == "model_solution":
-        return f"seed://{example_slug}/model_solution.py"
     return f"seed://{example_slug}/{display_filename}"
 
 
@@ -127,7 +124,7 @@ def seed_development_data(db: Session) -> None:
                     artifact["display_filename"],
                 ),
                 display_filename=artifact.get("display_filename"),
-                content_type="text/plain",
+                content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
             )
             for artifact_key, artifact in artifacts.items()
         )
@@ -154,8 +151,8 @@ def seed_development_data(db: Session) -> None:
             "m6": {"name": "Module 6: Abstract Classes", "concepts": ["abstract-classes", "operator-overloading"]},
             "m7": {"name": "Module 7: Exceptions and Protocols", "concepts": ["exceptions", "protocols"]},
             "m8": {"name": "Module 8: Introduction to Pygame", "concepts": ["pygame"]},
-            "m9": {"name": "Module 9: Object-Oriented Pygame", "concepts": ["pygame", "classes"]},
-            "m10": {"name": "Module 10: Pygame GUI Widgets", "concepts": ["pygame"]},
+            "m9": {"name": "Module 9: Object-Oriented Pygame", "concepts": ["classes"]},
+            "m10": {"name": "Module 10: Pygame GUI Widgets", "concepts": []},
             "m11": {"name": "Module 11: Named tuples, Dataclasses, and Sorting lists", "concepts": ["dataclasses", "file-io"]},
             "m12": {"name": "Module 12: CS Degrees at UVU", "concepts": []},
         }
@@ -333,7 +330,7 @@ def seed_development_data(db: Session) -> None:
                             artifact["display_filename"],
                         ),
                         display_filename=artifact.get("display_filename"),
-                        content_type="text/plain",
+                        content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
                     )
                     for artifact_key, artifact in artifacts.items()
                 )

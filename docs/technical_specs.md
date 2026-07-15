@@ -219,7 +219,7 @@ classDiagram
 ### Assignment `config_json` v1 contract
 
 - The product uses a strict app-owned `assignment_configs.config_json` v1 contract for wizard generation, bundle validation, test projection, model-solution validation, and execution planning.
-- `config_json` v1 is Python-focused and pytest-focused. It models multiple pytest files, file requirements, dependencies, support artifacts, output artifacts, rubric groups, manual rubric items, and stdin scenarios.
+- `config_json` v1 is Python-focused and pytest-focused. It models multiple pytest files, file requirements, dependencies, rubric groups, manual rubric items, and stdin scenarios.
 - The stored config must include `schema_version: 1`. Missing versions, unknown major versions, or configs that cannot be validated against the v1 schema must be rejected with actionable setup errors.
 - The v1 schema should be expressed as JSON Schema 2020-12 for portable validation. Backend and frontend validators may use implementation-native tools, but they must enforce the same schema and error paths.
 - Config entries that need durable identity use stable human-readable keys, not database IDs. Stable keys are required for tests and artifact references.
@@ -228,20 +228,16 @@ classDiagram
   - `schema_version`
   - `assignment`
   - `bundle`
-  - `concepts`
   - `artifacts`
   - `tests`
 - Optional top-level v1 sections:
   - `completion_requirements`
   - `execution`
-  - `support_artifacts`
-  - `output_artifacts`
   - `rubric_groups`
   - `manual_rubric_items`
   - `stdin_scenarios`
 - `assignment` stores assignment-owned display metadata needed by the config surface, such as title or points context. Canvas remains the course/grade source of truth.
 - `bundle` stores ZIP/project bundle requirements, including required files, entrypoint rules, file requirements (exact, one_of, optional, pattern), max files, and supported layout expectations.
-- `concepts` stores assignment-owned concept additions only. Course defaults are not duplicated in assignment config.
 - `artifacts` maps stable artifact keys to required artifact type and optional display filename metadata. File bodies are stored through the assignment artifact storage layer, not embedded in config JSON.
 - `tests` stores stable test keys, display names, point values, explicit `extra_credit` booleans, and any safe test metadata needed for UI and execution planning.
 - The product supports multiple `pytest_file` artifacts per assignment. Each `tests[].key` must be a stable slug, and the pytest marker is derived as `ag_<key>` rather than stored separately.

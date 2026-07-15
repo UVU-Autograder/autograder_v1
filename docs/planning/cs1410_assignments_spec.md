@@ -43,6 +43,25 @@ This document is the single source of truth for modeling all 17 CS 1410 assignme
 | Language | `python` |
 | Tax rate (Dessert Shop) | `7.25%` (used in DS4+) |
 
+### Module Concept Mappings
+
+The effective allowed concepts for any assignment are the union of the course-level **Default concepts** and the assignment's **Module concepts**:
+
+| Module | Concepts |
+|--------|----------|
+| **Module 1: Warmup** | `["image-processing"]` |
+| **Module 2: Object-Oriented Intro** | `["classes", "type-hints"]` |
+| **Module 3: Inheritance, Polymorphism, and Properties** | `["inheritance", "properties", "operator-overloading"]` |
+| **Module 4: Generators and Iterators** | `["generators"]` |
+| **Module 5: Unit Tests with pytest** | `["testing"]` |
+| **Module 6: Abstract Classes** | `["abstract-classes", "operator-overloading"]` |
+| **Module 7: Exceptions and Protocols** | `["exceptions", "protocols"]` |
+| **Module 8: Introduction to Pygame** | `["pygame"]` |
+| **Module 9: Object-Oriented Pygame** | `["classes"]` |
+| **Module 10: Pygame GUI Widgets** | `[]` |
+| **Module 11: Named tuples, Dataclasses, and Sorting lists** | `["dataclasses", "file-io"]` |
+| **Module 12: CS Degrees at UVU** | `[]` |
+
 ---
 
 ## Dessert Shop Chain (ds1–ds10)

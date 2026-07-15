@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session, selectinload
 from app.domains.artifacts.models import AssignmentArtifact
 from app.domains.assignments.models import (
     Assignment,
-    AssignmentConcept,
     AssignmentConfig,
     AssignmentConfigHistory,
     ScoringItem as ScoringItemProjection,
@@ -86,12 +85,7 @@ def upsert_assignment_config(
         assignment.config.config_json = config.model_dump(mode="json")
         assignment.config.version += 1
 
-    if assignment.concept_additions is None:
-        assignment.concept_additions = AssignmentConcept(
-            added_concepts=config.concepts.additions,
-        )
-    else:
-        assignment.concept_additions.added_concepts = config.concepts.additions
+
 
     regenerate_scoring_items(db, assignment, config)
     return config
@@ -113,7 +107,6 @@ def get_assignment_for_course(
         .options(
             selectinload(Assignment.course),
             selectinload(Assignment.config),
-            selectinload(Assignment.concept_additions),
             selectinload(Assignment.artifacts),
             selectinload(Assignment.scoring_items),
             selectinload(Assignment.module),
@@ -211,7 +204,6 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
         extra_credit_points=config.extra_credit_points,
         required_files=config.bundle.required_files,
         entrypoint_path=config.bundle.entrypoint,
-        concept_additions=config.concepts.additions,
         scoring_items=build_scoring_items(assignment.scoring_items),
         rubric_groups=[
             RubricGroup(
@@ -445,8 +437,6 @@ def get_default_config_json() -> dict:
         "execution": {
             "dependencies": [],
         },
-        "support_artifacts": [],
-        "output_artifacts": [],
         "rubric_groups": [],
         "manual_rubric_items": [],
         "stdin_scenarios": [],

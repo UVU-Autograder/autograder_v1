@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+import runpy
 
 import pytest
 from PIL import Image
@@ -34,6 +36,12 @@ def test_part1_required_files_present():
 
 @pytest.mark.ag_part1_output
 def test_part1_output_image_is_valid_and_nontrivial():
+    if os.path.exists("bears2.jpg"):
+        try:
+            os.remove("bears2.jpg")
+        except OSError:
+            pass
+    runpy.run_path("bears2.py")
     assert_valid_nontrivial_image("bears2.jpg")
 
 
@@ -45,4 +53,11 @@ def test_part2_required_files_present():
 
 @pytest.mark.ag_part2_output
 def test_part2_output_image_is_valid_and_nontrivial():
+    if os.path.exists("bears3.jpg"):
+        try:
+            os.remove("bears3.jpg")
+        except OSError:
+            pass
+    runpy.run_path("bears3.py")
     assert_valid_nontrivial_image("bears3.jpg")
+

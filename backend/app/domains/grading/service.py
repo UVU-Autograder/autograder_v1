@@ -22,7 +22,7 @@ from app.domains.ingestion.extractor import (
     validate_submission_bundle,
 )
 from app.integrations.artifacts.resolver import load_artifact_content
-from app.integrations.ast_checker.validator import ASTCheckResult, check_student_code
+from app.integrations.ast_checker.validator import ASTCheckResult, ASTFinding, check_student_code
 
 logger = logging.getLogger(__name__)
 
@@ -84,15 +84,50 @@ async def run_grading_pipeline(
             result.failure_message = msg
             return result
 
-        entrypoint_path = exec_dir / config.bundle.entrypoint
-        try:
-            source_code = entrypoint_path.read_text(encoding="utf-8")
-        except Exception as exc:
-            result.failure_category = "validation_error"
-            result.failure_message = f"Could not read entrypoint: {exc}"
-            return result
+        # Collect and scan all student Python files in the submission
+        student_py_files = sorted([
+            f for f in exec_dir.rglob("*.py")
+            if f.is_file()
+        ])
 
-        ast_result = check_student_code(source_code, allowed_concepts)
+        combined_detected = set()
+        combined_warnings = []
+        combined_blocked = []
+
+        for py_file in student_py_files:
+            rel_path = py_file.relative_to(exec_dir)
+            try:
+                source_code = py_file.read_text(encoding="utf-8")
+            except Exception as exc:
+                result.failure_category = "validation_error"
+                result.failure_message = f"Could not read file {rel_path}: {exc}"
+                return result
+
+            ast_res = check_student_code(source_code, allowed_concepts)
+            combined_detected.update(ast_res.detected_concepts)
+
+            for warning in ast_res.warnings:
+                combined_warnings.append(
+                    ASTFinding(
+                        code=warning.code,
+                        message=f"[{rel_path.as_posix()}] {warning.message}",
+                        line=warning.line,
+                    )
+                )
+            for blocked_item in ast_res.blocked:
+                combined_blocked.append(
+                    ASTFinding(
+                        code=blocked_item.code,
+                        message=f"[{rel_path.as_posix()}] {blocked_item.message}",
+                        line=blocked_item.line,
+                    )
+                )
+
+        ast_result = ASTCheckResult(
+            detected_concepts=combined_detected,
+            warnings=combined_warnings,
+            blocked=combined_blocked,
+        )
         result.ast_result = ast_result
 
         for finding in ast_result.warnings:

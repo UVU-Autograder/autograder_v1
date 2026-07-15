@@ -43,9 +43,7 @@
       }
     ]
   },
-  "concepts": {
-    "additions": []
-  },
+
   "execution": {
     "dependencies": [
       "pillow"
@@ -73,20 +71,7 @@
       "display_filename": "balloon.png"
     }
   },
-  "output_artifacts": [
-    {
-      "key": "bears2_output",
-      "path": "bears2.jpg",
-      "required": true,
-      "artifact_type": "generated_file"
-    },
-    {
-      "key": "bears3_output",
-      "path": "bears3.jpg",
-      "required": true,
-      "artifact_type": "generated_file"
-    }
-  ],
+
   "rubric_groups": [
     {
       "key": "part1",
@@ -154,15 +139,6 @@
     }
   ],
   "completion_requirements": [],
-  "support_artifacts": [
-    {
-      "artifact_key": "bears_copy",
-      "workspace_path": "bears_copy.jpg"
-    },
-    {
-      "artifact_key": "balloon",
-      "workspace_path": "balloon.png"
-    }
-  ],
+
   "stdin_scenarios": []
 }

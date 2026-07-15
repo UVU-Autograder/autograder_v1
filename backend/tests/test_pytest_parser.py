@@ -180,13 +180,15 @@ def test_runner_execution_failing(tmp_path):
     _, _, json_part = result.stdout.partition("---AUTOGRADER_RESULTS---")
 
     outcomes = json.loads(json_part.strip())
-    assert outcomes["summary"]["total"] == 1
+    assert outcomes["summary"]["total"] == 2
     assert outcomes["summary"]["passed"] == 0
-    assert outcomes["summary"]["failed"] == 1
+    assert outcomes["summary"]["failed"] == 2
     
     tests = outcomes["tests"]
-    assert len(tests) == 1
+    assert len(tests) == 2
     assert tests[0]["outcome"] == "failed"
     assert "AssertionError" in tests[0]["message"]
+    assert tests[1]["outcome"] == "failed"
+    assert "AssertionError" in tests[1]["message"]
     assert tests[0]["actual"].strip() == "2"
     assert tests[0]["expected"].strip() == "8"

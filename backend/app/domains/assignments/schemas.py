@@ -47,8 +47,7 @@ class BundleConfig(BaseModel):
         return self
 
 
-class ConceptsConfig(BaseModel):
-    additions: list[str] = Field(default_factory=list)
+
 
 
 class ArtifactConfig(BaseModel):
@@ -103,16 +102,7 @@ class ExecutionConfig(BaseModel):
         return self
 
 
-class SupportArtifactRefConfig(BaseModel):
-    artifact_key: str = Field(pattern=TEST_KEY_RE.pattern)
-    workspace_path: str = Field(min_length=1)
 
-
-class OutputArtifactConfig(BaseModel):
-    key: str = Field(pattern=TEST_KEY_RE.pattern)
-    path: str = Field(min_length=1)
-    required: bool = True
-    artifact_type: Literal["generated_file"] = "generated_file"
 
 
 class StdinScenarioConfig(BaseModel):
@@ -131,13 +121,10 @@ class CompletionRequirementConfig(BaseModel):
 class AssignmentConfigV1(BaseModel):
     schema_version: Literal[1]
     bundle: BundleConfig
-    concepts: ConceptsConfig = Field(default_factory=ConceptsConfig)
     artifacts: dict[str, ArtifactConfig] = Field(min_length=1)
     tests: list[TestItemConfig] = Field(min_length=1)
     completion_requirements: list[CompletionRequirementConfig] = Field(default_factory=list)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
-    support_artifacts: list[SupportArtifactRefConfig] = Field(default_factory=list)
-    output_artifacts: list[OutputArtifactConfig] = Field(default_factory=list)
     rubric_groups: list[RubricGroupConfig] = Field(default_factory=list)
     manual_rubric_items: list[ManualRubricItemConfig] = Field(default_factory=list)
     stdin_scenarios: list[StdinScenarioConfig] = Field(default_factory=list)
@@ -203,30 +190,7 @@ class AssignmentConfigV1(BaseModel):
                     f"completion requirement {requirement.key} minimum_passed exceeds referenced tests"
                 )
 
-        support_keys = [support.artifact_key for support in self.support_artifacts]
-        duplicate_support_keys = sorted({key for key in support_keys if support_keys.count(key) > 1})
-        if duplicate_support_keys:
-            raise ValueError(f"duplicate support artifact references: {', '.join(duplicate_support_keys)}")
-        for support in self.support_artifacts:
-            artifact = self.artifacts.get(support.artifact_key)
-            if artifact is None:
-                raise ValueError(f"support artifact references unknown artifact: {support.artifact_key}")
-            if artifact.type != "support_file":
-                raise ValueError(f"support artifact {support.artifact_key} must reference a support_file artifact")
 
-        file_requirement_paths = set(self.bundle.required_files)
-        for requirement in self.bundle.file_requirements:
-            if requirement.requirement_type in {"exact", "optional", "one_of"}:
-                file_requirement_paths.update(requirement.paths)
-        output_keys = [artifact.key for artifact in self.output_artifacts]
-        duplicate_output_keys = sorted({key for key in output_keys if output_keys.count(key) > 1})
-        if duplicate_output_keys:
-            raise ValueError(f"duplicate output artifact keys: {', '.join(duplicate_output_keys)}")
-        for output_artifact in self.output_artifacts:
-            if output_artifact.path not in file_requirement_paths:
-                raise ValueError(
-                    f"output artifact {output_artifact.key} references a path not present in submitted/generated files"
-                )
 
         scenario_keys = [scenario.key for scenario in self.stdin_scenarios]
         duplicate_scenario_keys = sorted({key for key in scenario_keys if scenario_keys.count(key) > 1})
@@ -286,7 +250,6 @@ class StaffAssignmentSetup(BaseModel):
     extra_credit_points: int
     required_files: list[str]
     entrypoint_path: str
-    concept_additions: list[str]
     scoring_items: list[ScoringItem]
     rubric_groups: list[RubricGroup]
     completion_requirements: list[CompletionRequirement]

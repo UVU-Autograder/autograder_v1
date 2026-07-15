@@ -131,6 +131,20 @@ For **each** assignment below: author example package under `docs/backend_implem
 - [x] Encode pixel-correctness / subjective image quality as **manual** rubric items (not hard auto-fail).
 - [x] Confirm Concepts Covered come from module (not assignment additions).
 
+**B0.1 — Autograding Pipeline Repairs**
+
+- [x] Implement multi-file AST validation checking all student `.py` files inside the ZIP submission.
+- [x] Remove the `-x` stop-on-first-failure flag from dynamic pytest execution.
+- [x] Configure dummy SDL drivers for headless Pygame support inside the Judge0 sandbox.
+- [x] Add dynamic execution verification for Lab 1 scripts inside `tests.py`.
+
+**B0.2 — Schema Cleanup & AST Hardening**
+
+- [x] Delete `support_artifacts` configuration properties from config schemas and seeding logic.
+- [x] Delete `output_artifacts` configuration properties from config schemas and seeding logic.
+- [x] Delete `concepts` additions and drop the unused `AssignmentConcept` database table.
+- [x] Harden AST preflight decorator matcher to support alternate import patterns.
+
 **B1 — Dessert Shop chain first (`ds1`→`ds10`)**
 
 - [ ] `ds1` (m3) — inheritance skeleton / class hierarchy.

@@ -51,6 +51,7 @@ def generate_runner_script(
 
         import io
         import json
+        import os
         import sys
         import time
 
@@ -177,6 +178,9 @@ def generate_runner_script(
         # ------------------------------------------------------------------ #
 
         def main():
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+            os.environ["SDL_AUDIODRIVER"] = "dummy"
+
             plugin = AutograderPlugin()
 
             # Redirect stdout so student prints don't corrupt our JSON output.
@@ -186,7 +190,7 @@ def generate_runner_script(
 
             start = time.monotonic()
             exit_code = pytest.main(
-                ["-x", "--tb=short", "-q", "--no-header"] + TEST_FILENAMES,
+                ["--tb=short", "-q", "--no-header"] + TEST_FILENAMES,
                 plugins=[plugin],
             )
             elapsed = round(time.monotonic() - start, 6)

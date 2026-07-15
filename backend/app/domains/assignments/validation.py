@@ -20,15 +20,21 @@ def extract_ag_markers(source_code: str) -> set[str]:
             func_node = node.func
 
         if isinstance(func_node, ast.Attribute):
-            # Resolve attribute path. For `@pytest.mark.ag_xxx`, we check
-            # if func_node.attr is our ag_ marker and the parent path resolves
-            # to pytest.mark
             val = func_node.value
+            # Case 1: @pytest.mark.ag_xxx
             if isinstance(val, ast.Attribute) and val.attr == "mark":
                 val_val = val.value
                 if isinstance(val_val, ast.Name) and val_val.id == "pytest":
                     if func_node.attr.startswith("ag_"):
                         markers.add(func_node.attr)
+            # Case 2: @mark.ag_xxx
+            elif isinstance(val, ast.Name) and val.id == "mark":
+                if func_node.attr.startswith("ag_"):
+                    markers.add(func_node.attr)
+        # Case 3: @ag_xxx
+        elif isinstance(func_node, ast.Name):
+            if func_node.id.startswith("ag_"):
+                markers.add(func_node.id)
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):

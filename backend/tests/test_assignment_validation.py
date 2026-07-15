@@ -35,16 +35,18 @@ def temp_artifact_storage(tmp_path, monkeypatch):
 def test_extract_ag_markers():
     code = """
 import pytest
+from pytest import mark
+from pytest.mark import ag_count_vowels
 
 @pytest.mark.ag_add_numbers
 def test_add():
     pass
 
-@pytest.mark.ag_reverse_words()
+@mark.ag_reverse_words()
 async def test_reverse():
     pass
 
-@pytest.mark.ag_count_vowels(123)
+@ag_count_vowels(123)
 def test_vowels():
     pass
 
