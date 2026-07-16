@@ -408,6 +408,17 @@ class TestNewConcepts:
         assert "exceptions" in result.detected_concepts
         assert result.warnings == []
 
+    def test_raise_stop_iteration_not_exceptions(self):
+        code = "raise StopIteration\n"
+        result = check_student_code(code, [])
+        assert "exceptions" not in result.detected_concepts
+        assert result.warnings == []
+
+        code2 = "raise StopIteration()\n"
+        result2 = check_student_code(code2, [])
+        assert "exceptions" not in result2.detected_concepts
+        assert result2.warnings == []
+
     def test_pygame(self):
         code = "import pygame\npygame.init()\n"
         result = check_student_code(code, ["pygame"])
@@ -455,4 +466,22 @@ class TestNewConcepts:
         assert "functions" in result.detected_concepts
         # __init__ should not trigger operator-overloading
         assert result.warnings == []
+
+    def test_blocked_security_features(self):
+        # 1. importlib is blocked
+        code1 = "import importlib\n"
+        result1 = check_student_code(code1, [])
+        assert result1.is_blocked
+        assert any("Blocked import: 'importlib'" in b.message for b in result1.blocked)
+
+        code2 = "from importlib.machinery import SourceFileLoader\n"
+        result2 = check_student_code(code2, [])
+        assert result2.is_blocked
+        assert any("Blocked import: 'importlib'" in b.message for b in result2.blocked)
+
+        # 2. getattr/eval/exec are blocked calls
+        code3 = "getattr(obj, 'attribute')\n"
+        result3 = check_student_code(code3, [])
+        assert result3.is_blocked
+        assert any("Blocked call: 'getattr()'" in b.message for b in result3.blocked)
 

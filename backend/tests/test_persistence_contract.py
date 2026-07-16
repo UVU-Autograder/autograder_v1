@@ -197,6 +197,76 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
             "ag_sundae",
         ]
 
+        # Check ds2
+        assignment_ds2 = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "ds2"
+            )
+        )
+        assert assignment_ds2 is not None
+        assert assignment_ds2.config is not None
+        assert {artifact.artifact_type for artifact in assignment_ds2.artifacts} == {
+            "pytest_file",
+            "model_solution",
+        }
+
+        scoring_items_ds2 = db.scalars(
+            select(assignment_models.ScoringItem)
+            .where(assignment_models.ScoringItem.assignment_id == assignment_ds2.id)
+            .order_by(assignment_models.ScoringItem.display_order)
+        ).all()
+        assert len(scoring_items_ds2) == 3
+        assert [item.config_item_key for item in scoring_items_ds2] == [
+            "ds1_regression",
+            "order_class",
+            "main_output",
+        ]
+        assert [item.item_type for item in scoring_items_ds2] == [
+            "pytest",
+            "pytest",
+            "pytest",
+        ]
+        assert [item.pytest_marker for item in scoring_items_ds2] == [
+            "ag_ds1_regression",
+            "ag_order_class",
+            "ag_main_output",
+        ]
+
+        # Check ds3
+        assignment_ds3 = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "ds3"
+            )
+        )
+        assert assignment_ds3 is not None
+        assert assignment_ds3.config is not None
+        assert {artifact.artifact_type for artifact in assignment_ds3.artifacts} == {
+            "pytest_file",
+            "model_solution",
+        }
+
+        scoring_items_ds3 = db.scalars(
+            select(assignment_models.ScoringItem)
+            .where(assignment_models.ScoringItem.assignment_id == assignment_ds3.id)
+            .order_by(assignment_models.ScoringItem.display_order)
+        ).all()
+        assert len(scoring_items_ds3) == 3
+        assert [item.config_item_key for item in scoring_items_ds3] == [
+            "ds2_regression",
+            "test_file_exists",
+            "student_tests_pass",
+        ]
+        assert [item.item_type for item in scoring_items_ds3] == [
+            "pytest",
+            "pytest",
+            "pytest",
+        ]
+        assert [item.pytest_marker for item in scoring_items_ds3] == [
+            "ag_ds2_regression",
+            "ag_test_file_exists",
+            "ag_student_tests_pass",
+        ]
+
 
 def test_seed_is_idempotent():
     from sqlalchemy import func

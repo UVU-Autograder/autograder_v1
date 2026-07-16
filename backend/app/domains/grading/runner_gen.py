@@ -54,17 +54,24 @@ def generate_runner_script(
         import os
         import sys
         import time
+        import signal
 
         import pytest
 
         # ------------------------------------------------------------------ #
-        # Constants                                                          #
+        # Constants & Signal Setup                                           #
         # ------------------------------------------------------------------ #
 
         RESULTS_DELIMITER = "---AUTOGRADER_RESULTS---"
         TEST_FILENAMES = {filenames_literal}
         TEST_CASES = {test_cases_literal}
         ENTRYPOINT_MODULE = {entrypoint_literal}
+
+        class TimeoutException(Exception):
+            pass
+
+        def timeout_handler(signum, frame):
+            raise TimeoutException("Test case execution timed out (5s limit).")
 
 
         # ------------------------------------------------------------------ #
@@ -76,6 +83,15 @@ def generate_runner_script(
 
             def __init__(self):
                 self.results = []
+
+            def pytest_runtest_setup(self, item):
+                if hasattr(signal, "alarm"):
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(5)
+
+            def pytest_runtest_teardown(self, item):
+                if hasattr(signal, "alarm"):
+                    signal.alarm(0)
 
             def pytest_generate_tests(self, metafunc):
                 marker_key = None

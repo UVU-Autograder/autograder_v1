@@ -431,7 +431,7 @@ To test and verify student submissions locally or via automated sandbox test scr
    - A correct implementation passes all tests (60/60 automated points, 0 warnings/failures).
    - The student files `bears2.py` and `bears3.py` are executed during the test run to produce `bears2.jpg` and `bears3.jpg` from `bears_copy.jpg` and `balloon.png`.
    - Incorrect implementations or missing files trigger test failures or blocked concepts (e.g. if they attempt to import blocked packages).
-4. Run verification tests against a representative set of actual student submissions (e.g. using `scratch/run_lab1_submissions.py`) to confirm that:
+4. Run verification tests against a representative set of actual student submissions (e.g. using `.agents/scratch/run_lab1_submissions.py`) to confirm that:
    - The allowed concepts list includes the course default concepts (`["variables", "conditionals", "loops", "functions"]`) in addition to module-level concepts, preventing false positive warnings.
    - Student submissions wrapping logic in `if __name__ == "__main__":` execute correctly by using `run_name="__main__"` in `runpy.run_path`.
    - Student submissions with security-restricted imports (e.g., `os`) are correctly blocked.

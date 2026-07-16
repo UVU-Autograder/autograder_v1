@@ -145,6 +145,9 @@ async def run_grading_pipeline(
             if artifact_config is None:
                 continue
 
+            if artifact_config.type == "model_solution":
+                continue
+
             try:
                 content = load_artifact_content(storage_ref)
             except (FileNotFoundError, ValueError) as exc:

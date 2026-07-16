@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "required_files": [
+      "dessert.py",
+      "dessertshop.py"
+    ],
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "key": "dessert_py",
+        "label": "Dessert Shop classes definition file",
+        "requirement_type": "exact",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "key": "dessertshop_py",
+        "label": "Dessert Shop main entrypoint file",
+        "requirement_type": "exact",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "execution": {
+    "dependencies": []
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    }
+  },
+  "rubric_groups": [],
+  "tests": [
+    {
+      "key": "ds1_regression",
+      "label": "DS1 class hierarchy intact",
+      "points": 20,
+      "extra_credit": false
+    },
+    {
+      "key": "order_class",
+      "label": "Order class structure & methods",
+      "points": 40,
+      "extra_credit": false
+    },
+    {
+      "key": "main_output",
+      "label": "main() produces correct output",
+      "points": 40,
+      "extra_credit": false
+    }
+  ],
+  "manual_rubric_items": [],
+  "completion_requirements": [],
+  "stdin_scenarios": []
+}

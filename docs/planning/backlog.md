@@ -95,6 +95,15 @@ Follow-up (docs/schemas only; not a runtime gap):
 
 - [ ] Regenerate `docs/schemas/config_v1.schema.json` and `docs/schemas/openapi.json` so they match current Pydantic models (dropped `support_artifacts` / `output_artifacts` / config-level `concepts`).
 
+Future Platform Hardening & Scalability:
+
+- [x] **Isolate Student Pytest Execution (Sandbox Security)** — Move student pytest execution into a separate subprocess/process rather than running in-process via `pytest.main()` inside the instructor's test suite, preventing namespace pollution, global state poisoning, or hook-hijacking.
+- [ ] **Fine-Grained AST Whitelisting & Custom Constraints** — Extend the AST validator to support restricting specific method calls (e.g., blocking built-in `.sort()` or `sorted()`) and specific keywords on a per-assignment configuration basis.
+- [ ] **Configuration Schema Versioning & Migration Pipeline** — Establish strict JSON schema validation for `config_json` and an automatic DB sync/migration pathway to safely handle schema changes without breaking existing assignment records.
+- [x] **Test-Level Timeout Enforcement** — Inject `pytest-timeout` or a similar timeout mechanism inside the student execution runner to prevent single test infinite loops from hanging the entire Judge0 pipeline execution.
+- [x] **Close AST Validator Import Bypasses** — Block `importlib` and other dynamic namespace/attribute traversal methods (`getattr`, etc.) to prevent evasion of the import security blacklist.
+- [ ] **Headless Event Mocking for Pygame Tests** — Design testing patterns or helper fixtures for Pygame grading that programmatically inject mock events into Pygame's queue to validate interactive game states under headless drivers.
+
 ---
 
 ## Active — CS1410 course modeling

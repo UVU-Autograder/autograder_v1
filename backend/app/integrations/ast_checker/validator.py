@@ -145,6 +145,7 @@ BLOCKED_IMPORTS: frozenset[str] = frozenset(
         "urllib",
         "ctypes",
         "multiprocessing",
+        "importlib",
     }
 )
 
@@ -265,6 +266,17 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
         # ---- simple concept nodes (loops, conditionals, functions, vars) --
         for concept, node_types in CONCEPT_NODE_MAP.items():
             if isinstance(node, node_types):
+                # Special check: raise StopIteration is allowed for iterators (Module 4)
+                # and should not trigger the 'exceptions' concept.
+                if concept == "exceptions" and isinstance(node, ast.Raise):
+                    is_stop_iteration = False
+                    if node.exc:
+                        if isinstance(node.exc, ast.Name) and node.exc.id == "StopIteration":
+                            is_stop_iteration = True
+                        elif isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name) and node.exc.func.id == "StopIteration":
+                            is_stop_iteration = True
+                    if is_stop_iteration:
+                        continue
                 detected.add(concept)
 
         # ---- imports -------------------------------------------------

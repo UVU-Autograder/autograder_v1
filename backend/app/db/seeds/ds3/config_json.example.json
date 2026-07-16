@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "required_files": [
+      "dessert.py",
+      "dessertshop.py",
+      "test_dessert.py"
+    ],
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "key": "dessert_py",
+        "label": "Dessert Shop classes definition file",
+        "requirement_type": "exact",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "key": "dessertshop_py",
+        "label": "Dessert Shop main entrypoint file",
+        "requirement_type": "exact",
+        "paths": [
+          "dessertshop.py"
+        ]
+      },
+      {
+        "key": "test_dessert_py",
+        "label": "Dessert Shop pytest test file",
+        "requirement_type": "exact",
+        "paths": [
+          "test_dessert.py"
+        ]
+      }
+    ]
+  },
+  "execution": {
+    "dependencies": []
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    }
+  },
+  "rubric_groups": [],
+  "tests": [
+    {
+      "key": "ds2_regression",
+      "label": "DS2 class hierarchy + Order intact",
+      "points": 30,
+      "extra_credit": false
+    },
+    {
+      "key": "test_file_exists",
+      "label": "test_dessert.py present with >=15 test functions",
+      "points": 30,
+      "extra_credit": false
+    },
+    {
+      "key": "student_tests_pass",
+      "label": "Student's own tests pass",
+      "points": 40,
+      "extra_credit": false
+    }
+  ],
+  "manual_rubric_items": [],
+  "completion_requirements": [],
+  "stdin_scenarios": []
+}
