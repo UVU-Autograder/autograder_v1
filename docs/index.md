@@ -16,6 +16,7 @@
 ## Backend Specifications (`docs/backend_implementation/`)
 * **[decisions.md](./backend_implementation/decisions.md):** Product and implementation decisions.
 * **[storage_and_test_plan.md](./backend_implementation/storage_and_test_plan.md):** Assignment config, artifacts, pytest scoring, and retention cleanup.
+* **[modeling_guide.md](./backend_implementation/modeling_guide.md):** Standards and recommendations for modeling JSON configurations and test scripts.
 * **[pygame_grading_guidelines.md](./backend_implementation/pygame_grading_guidelines.md):** Headless execution, event mocking, and manual grading strategy for Pygame coursework.
 * **Seed packages:** Built-in assignment fixtures live under [`backend/app/db/seeds/`](../backend/app/db/seeds/) (`seed://` resolution).
 

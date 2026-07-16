@@ -70,7 +70,7 @@ def generate_runner_script(
         class TimeoutException(Exception):
             pass
 
-        def timeout_handler(signum, frame):
+        def timeout_handler(signum: int, frame: object) -> None:
             raise TimeoutException("Test case execution timed out (5s limit).")
 
 
@@ -84,12 +84,12 @@ def generate_runner_script(
             def __init__(self):
                 self.results = []
 
-            def pytest_runtest_setup(self, item):
+            def pytest_runtest_setup(self, item: pytest.Item) -> None:
                 if hasattr(signal, "alarm"):
                     signal.signal(signal.SIGALRM, timeout_handler)
                     signal.alarm(5)
 
-            def pytest_runtest_teardown(self, item):
+            def pytest_runtest_teardown(self, item: pytest.Item) -> None:
                 if hasattr(signal, "alarm"):
                     signal.alarm(0)
 

@@ -7,6 +7,7 @@ import csv
 from pathlib import Path
 from unittest.mock import patch, AsyncMock
 import pytest
+from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
@@ -33,14 +34,14 @@ def db_session():
 
 
 @pytest.fixture()
-def temp_workspaces(tmp_path, monkeypatch):
+def temp_workspaces(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     from app.core.settings import get_settings
     settings = get_settings()
     monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path / "artifacts"))
     return tmp_path
 
 
-def test_run_mock_official_run_success(db_session, temp_workspaces):
+def test_run_mock_official_run_success(db_session: Session, temp_workspaces: Path) -> None:
     # 1. Create a RunSummary record
     run = RunSummary(
         workflow_type="official",
@@ -78,7 +79,7 @@ def test_run_mock_official_run_success(db_session, temp_workspaces):
         assert len(rows) == 4  # Header + 3 students
 
 
-def test_grade_official_run_pipeline_success(db_session, temp_workspaces):
+def test_grade_official_run_pipeline_success(db_session: Session, temp_workspaces: Path) -> None:
     # 1. Create a RunSummary record
     run = RunSummary(
         workflow_type="official",
@@ -132,7 +133,7 @@ def test_grade_official_run_pipeline_success(db_session, temp_workspaces):
     assert (run_dir / "feedback.zip").exists()
 
 
-def test_cleanup_expired_workspaces(db_session, temp_workspaces):
+def test_cleanup_expired_workspaces(db_session: Session, temp_workspaces: Path) -> None:
     from datetime import datetime, timedelta, UTC
     from app.domains.runs.tasks import cleanup_expired_workspaces
 
@@ -260,7 +261,7 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
 
 
 @pytest.mark.anyio
-async def test_run_grading_pipeline_ds1_success(db_session, temp_workspaces):
+async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_workspaces: Path) -> None:
     from app.domains.grading.service import run_grading_pipeline
     from app.domains.assignments.service import get_assignment_for_course
     from app.domains.assignments.schemas import AssignmentConfigV1

@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "required_files": [
+      "dessert.py",
+      "dessertshop.py",
+      "test_dessert.py",
+      "test_candy.py",
+      "test_cookie.py",
+      "test_icecream.py",
+      "test_sundae.py"
+    ],
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "key": "dessert_py",
+        "label": "Dessert Shop classes definition file",
+        "requirement_type": "exact",
+        "paths": ["dessert.py"]
+      },
+      {
+        "key": "dessertshop_py",
+        "label": "Dessert Shop main entrypoint file",
+        "requirement_type": "exact",
+        "paths": ["dessertshop.py"]
+      }
+    ]
+  },
+  "execution": {
+    "dependencies": [
+      "tabulate"
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    }
+  },
+  "rubric_groups": [],
+  "tests": [
+    {
+      "key": "abstract_class",
+      "label": "DessertItem is ABC with abstract calculate_cost",
+      "points": 15,
+      "extra_credit": false
+    },
+    {
+      "key": "tax_percent",
+      "label": "tax_percent attribute defaults to 7.25",
+      "points": 10,
+      "extra_credit": false
+    },
+    {
+      "key": "calculate_cost",
+      "label": "calculate_cost() correct for all subclasses",
+      "points": 30,
+      "extra_credit": false
+    },
+    {
+      "key": "calculate_tax",
+      "label": "calculate_tax() correct for all subclasses",
+      "points": 20,
+      "extra_credit": false
+    },
+    {
+      "key": "order_totals",
+      "label": "order_cost() and order_tax() correct",
+      "points": 25,
+      "extra_credit": false
+    }
+  ],
+  "manual_rubric_items": [],
+  "completion_requirements": [],
+  "stdin_scenarios": []
+}

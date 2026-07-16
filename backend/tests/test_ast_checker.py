@@ -358,14 +358,14 @@ def test_concepts_metadata():
 # ---------------------------------------------------------------------------
 
 class TestNewConcepts:
-    def test_classes_and_inheritance(self):
+    def test_classes_and_inheritance(self) -> None:
         code = "class Base:\n    pass\nclass Derived(Base):\n    pass\n"
         result = check_student_code(code, ["classes", "inheritance"])
         assert "classes" in result.detected_concepts
         assert "inheritance" in result.detected_concepts
         assert result.warnings == []
 
-    def test_abstract_classes(self):
+    def test_abstract_classes(self) -> None:
         code = (
             "from abc import ABC, abstractmethod\n"
             "class MyAbstract(ABC):\n"
@@ -377,7 +377,7 @@ class TestNewConcepts:
         assert "abstract-classes" in result.detected_concepts
         assert result.warnings == []
 
-    def test_properties(self):
+    def test_properties(self) -> None:
         code = (
             "class Book:\n"
             "    @property\n"
@@ -390,25 +390,25 @@ class TestNewConcepts:
         assert "properties" in result.detected_concepts
         assert result.warnings == []
 
-    def test_generators(self):
+    def test_generators(self) -> None:
         code = "def my_gen():\n    yield 1\n    yield from [2, 3]\n"
         result = check_student_code(code, ["functions", "generators"])
         assert "generators" in result.detected_concepts
         assert result.warnings == []
 
-    def test_testing(self):
+    def test_testing(self) -> None:
         code = "import pytest\ndef test_something():\n    assert True\n"
         result = check_student_code(code, ["testing", "functions", "conditionals"])
         assert "testing" in result.detected_concepts
         assert result.warnings == []
 
-    def test_exceptions(self):
+    def test_exceptions(self) -> None:
         code = "try:\n    raise ValueError()\nexcept Exception:\n    pass\n"
         result = check_student_code(code, ["exceptions"])
         assert "exceptions" in result.detected_concepts
         assert result.warnings == []
 
-    def test_raise_stop_iteration_not_exceptions(self):
+    def test_raise_stop_iteration_not_exceptions(self) -> None:
         code = "raise StopIteration\n"
         result = check_student_code(code, [])
         assert "exceptions" not in result.detected_concepts
@@ -419,19 +419,19 @@ class TestNewConcepts:
         assert "exceptions" not in result2.detected_concepts
         assert result2.warnings == []
 
-    def test_pygame(self):
+    def test_pygame(self) -> None:
         code = "import pygame\npygame.init()\n"
         result = check_student_code(code, ["pygame"])
         assert "pygame" in result.detected_concepts
         assert result.warnings == []
 
-    def test_dataclasses(self):
+    def test_dataclasses(self) -> None:
         code = "from dataclasses import dataclass\n@dataclass\nclass Point:\n    x: int\n"
         result = check_student_code(code, ["dataclasses", "classes", "type-hints", "variables"])
         assert "dataclasses" in result.detected_concepts
         assert result.warnings == []
 
-    def test_protocols(self):
+    def test_protocols(self) -> None:
         code = (
             "from typing import Protocol, runtime_checkable\n"
             "@runtime_checkable\n"
@@ -442,7 +442,7 @@ class TestNewConcepts:
         assert "protocols" in result.detected_concepts
         assert result.warnings == []
 
-    def test_type_hints(self):
+    def test_type_hints(self) -> None:
         code = (
             "from typing import List\n"
             "x: int = 5\n"
@@ -453,7 +453,7 @@ class TestNewConcepts:
         assert "type-hints" in result.detected_concepts
         assert result.warnings == []
 
-    def test_operator_overloading(self):
+    def test_operator_overloading(self) -> None:
         code = (
             "class Vector:\n"
             "    def __add__(self, other):\n"
@@ -467,7 +467,7 @@ class TestNewConcepts:
         # __init__ should not trigger operator-overloading
         assert result.warnings == []
 
-    def test_blocked_security_features(self):
+    def test_blocked_security_features(self) -> None:
         # 1. importlib is blocked
         code1 = "import importlib\n"
         result1 = check_student_code(code1, [])

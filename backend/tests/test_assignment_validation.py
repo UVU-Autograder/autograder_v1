@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import pytest
+from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
@@ -149,7 +150,7 @@ def test_vowels():
     assert errors == []
 
 
-def test_run_preflight_validation_ds1_passes(db_session):
+def test_run_preflight_validation_ds1_passes(db_session: Session) -> None:
     errors = run_preflight_validation(db_session, "cs1410", "ds1")
     assert errors == []
 

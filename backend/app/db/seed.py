@@ -28,6 +28,33 @@ def _seed_storage_ref(example_slug: str, artifact_key: str, display_filename: st
     return f"seed://{example_slug}/{display_filename}"
 
 
+def _seed_assignment_artifacts(db: Session, assignment: Assignment, slug: str) -> None:
+    folder = slug.replace("-", "_")
+    config_path = SEEDS_DIR / folder / "config_json.example.json"
+    if not config_path.exists():
+        return
+
+    config_json = json.loads(config_path.read_text(encoding="utf-8"))
+    upsert_assignment_config(db, assignment, config_json)
+
+    artifacts = config_json.get("artifacts") or {}
+    db.add_all(
+        AssignmentArtifact(
+            assignment=assignment,
+            artifact_key=artifact_key,
+            artifact_type=artifact["type"],
+            storage_ref=_seed_storage_ref(
+                folder,
+                artifact_key,
+                artifact["display_filename"],
+            ),
+            display_filename=artifact.get("display_filename"),
+            content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
+        )
+        for artifact_key, artifact in artifacts.items()
+    )
+
+
 def initialize_database(seed: bool = True) -> None:
     import_domain_models()
     Base.metadata.create_all(bind=engine)
@@ -300,97 +327,8 @@ def seed_development_data(db: Session) -> None:
             db.add(assignment)
             db.flush()
 
-            # For lab-1-image-processing, seed its detailed config and artifacts
-            if adata["slug"] == "lab-1-image-processing":
-                cs1410_config_path = EXAMPLE_DIR.parent / "lab_1_image_processing" / "config_json.example.json"
-                config_json_cs1410 = json.loads(cs1410_config_path.read_text(encoding="utf-8"))
-                upsert_assignment_config(db, assignment, config_json_cs1410)
-
-                artifacts = config_json_cs1410["artifacts"]
-                db.add_all(
-                    AssignmentArtifact(
-                        assignment=assignment,
-                        artifact_key=artifact_key,
-                        artifact_type=artifact["type"],
-                        storage_ref=_seed_storage_ref(
-                            "lab_1_image_processing",
-                            artifact_key,
-                            artifact["display_filename"],
-                        ),
-                        display_filename=artifact.get("display_filename"),
-                        content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
-                    )
-                    for artifact_key, artifact in artifacts.items()
-                )
-
-            # For ds1, seed its detailed config and artifacts
-            elif adata["slug"] == "ds1":
-                ds1_config_path = SEEDS_DIR / "ds1" / "config_json.example.json"
-                config_json_ds1 = json.loads(ds1_config_path.read_text(encoding="utf-8"))
-                upsert_assignment_config(db, assignment, config_json_ds1)
-
-                artifacts = config_json_ds1["artifacts"]
-                db.add_all(
-                    AssignmentArtifact(
-                        assignment=assignment,
-                        artifact_key=artifact_key,
-                        artifact_type=artifact["type"],
-                        storage_ref=_seed_storage_ref(
-                            "ds1",
-                            artifact_key,
-                            artifact["display_filename"],
-                        ),
-                        display_filename=artifact.get("display_filename"),
-                        content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
-                    )
-                    for artifact_key, artifact in artifacts.items()
-                )
-
-            # For ds2, seed its detailed config and artifacts
-            elif adata["slug"] == "ds2":
-                ds2_config_path = SEEDS_DIR / "ds2" / "config_json.example.json"
-                config_json_ds2 = json.loads(ds2_config_path.read_text(encoding="utf-8"))
-                upsert_assignment_config(db, assignment, config_json_ds2)
-
-                artifacts = config_json_ds2["artifacts"]
-                db.add_all(
-                    AssignmentArtifact(
-                        assignment=assignment,
-                        artifact_key=artifact_key,
-                        artifact_type=artifact["type"],
-                        storage_ref=_seed_storage_ref(
-                            "ds2",
-                            artifact_key,
-                            artifact["display_filename"],
-                        ),
-                        display_filename=artifact.get("display_filename"),
-                        content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
-                    )
-                    for artifact_key, artifact in artifacts.items()
-                )
-
-            # For ds3, seed its detailed config and artifacts
-            elif adata["slug"] == "ds3":
-                ds3_config_path = SEEDS_DIR / "ds3" / "config_json.example.json"
-                config_json_ds3 = json.loads(ds3_config_path.read_text(encoding="utf-8"))
-                upsert_assignment_config(db, assignment, config_json_ds3)
-
-                artifacts = config_json_ds3["artifacts"]
-                db.add_all(
-                    AssignmentArtifact(
-                        assignment=assignment,
-                        artifact_key=artifact_key,
-                        artifact_type=artifact["type"],
-                        storage_ref=_seed_storage_ref(
-                            "ds3",
-                            artifact_key,
-                            artifact["display_filename"],
-                        ),
-                        display_filename=artifact.get("display_filename"),
-                        content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
-                    )
-                    for artifact_key, artifact in artifacts.items()
-                )
+            # Seed detailed config and artifacts if they exist
+            _seed_assignment_artifacts(db, assignment, adata["slug"])
     db.commit()
 
 

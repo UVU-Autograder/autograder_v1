@@ -267,6 +267,85 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
             "ag_student_tests_pass",
         ]
 
+        # Check ds4
+        assignment_ds4 = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "ds4"
+            )
+        )
+        assert assignment_ds4 is not None
+        assert assignment_ds4.config is not None
+        assert {artifact.artifact_type for artifact in assignment_ds4.artifacts} == {
+            "pytest_file",
+            "model_solution",
+        }
+
+        scoring_items_ds4 = db.scalars(
+            select(assignment_models.ScoringItem)
+            .where(assignment_models.ScoringItem.assignment_id == assignment_ds4.id)
+            .order_by(assignment_models.ScoringItem.display_order)
+        ).all()
+        assert len(scoring_items_ds4) == 5
+        assert [item.config_item_key for item in scoring_items_ds4] == [
+            "abstract_class",
+            "tax_percent",
+            "calculate_cost",
+            "calculate_tax",
+            "order_totals",
+        ]
+        assert [item.item_type for item in scoring_items_ds4] == [
+            "pytest",
+            "pytest",
+            "pytest",
+            "pytest",
+            "pytest",
+        ]
+        assert [item.pytest_marker for item in scoring_items_ds4] == [
+            "ag_abstract_class",
+            "ag_tax_percent",
+            "ag_calculate_cost",
+            "ag_calculate_tax",
+            "ag_order_totals",
+        ]
+
+        # Check ds5
+        assignment_ds5 = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "ds5"
+            )
+        )
+        assert assignment_ds5 is not None
+        assert assignment_ds5.config is not None
+        assert {artifact.artifact_type for artifact in assignment_ds5.artifacts} == {
+            "pytest_file",
+            "model_solution",
+        }
+
+        scoring_items_ds5 = db.scalars(
+            select(assignment_models.ScoringItem)
+            .where(assignment_models.ScoringItem.assignment_id == assignment_ds5.id)
+            .order_by(assignment_models.ScoringItem.display_order)
+        ).all()
+        assert len(scoring_items_ds5) == 4
+        assert [item.config_item_key for item in scoring_items_ds5] == [
+            "dessertshop_class",
+            "ds4_regression",
+            "input_validation",
+            "receipt_output",
+        ]
+        assert [item.item_type for item in scoring_items_ds5] == [
+            "pytest",
+            "pytest",
+            "manual",
+            "manual",
+        ]
+        assert [item.pytest_marker for item in scoring_items_ds5] == [
+            "ag_dessertshop_class",
+            "ag_ds4_regression",
+            None,
+            None,
+        ]
+
 
 def test_seed_is_idempotent():
     from sqlalchemy import func

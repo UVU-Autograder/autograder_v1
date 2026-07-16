@@ -180,10 +180,10 @@ For **each** assignment below: author the package under `backend/app/db/seeds/<s
 **B1 — Dessert Shop chain first (`ds1`→`ds10`)**
 
 - [x] `ds1` (m3) — inheritance skeleton / class hierarchy.
-- [ ] `ds2` (m4)
-- [ ] `ds3` (m5)
-- [ ] `ds4` (m6)
-- [ ] `ds5` (m7) — console application prompt methods (no `ui.py` support artifact required by the spec).
+- [x] `ds2` (m4) — using classes in main.
+- [x] `ds3` (m5) — test cases with pytest.
+- [x] `ds4` (m6) — abstraction, abstract base classes, tax attributes, and subclass cost formulas.
+- [x] `ds5` (m7) — console application prompt methods and input validation retries.
 - [ ] `ds6` (m8)
 - [ ] `ds7` (m9)
 - [ ] `ds8` (m10)
@@ -205,6 +205,17 @@ For **each** assignment below: author the package under `backend/app/db/seeds/<s
 - [ ] Model-solution validation task passes per deep-modeled assignment.
 - [ ] Sandbox create-run smoke on at least one lab and one DS assignment.
 - [ ] Optional local-only: build **anonymized** Canvas ZIPs from `submissions/` for official-run capacity tests (never commit raw trees).
+
+### Phase D — Remaining Autograder Risks & Mitigations
+
+We will address the remaining modeling challenges with the following strategies:
+1. **PytestCollectionWarning for TestItemConfig:** Rename the Pydantic schema model `TestItemConfig` to `ScoringItemConfig` or set `__test__ = False` to prevent pytest from attempting to collect it as a test class.
+2. **DS6 `__str__` format fragility:** Ensure tests do not assert exact string formats. Test assertions should verify structure only (e.g. check string length > 0 and presence of subclass name).
+3. **Lab 6 (Pygame) unpredictability:** Allow student-provided assets to load by preserving and extracting all files in the submission ZIP. Use `SDL_VIDEODRIVER=dummy` and signal-based timeouts for headless runs, and implement AST checks for `pygame.Rect` usage.
+4. **DS7 `packaging.py` name collision:** Ensure the sandbox adds the student workspace directory to `sys.path` first (`sys.path.insert(0, "")`) so it overrides any system-wide packages.
+5. **DS8 `PayType` enum vs literal divergence:** Design all unit test assertions to interact via the string signatures of `get_pay_type()` and `set_pay_type()`, avoiding direct imports of `PayType` itself.
+6. **DS10 regression depth:** Break down regression checks into distinct pytest function definitions with targeted marks instead of a single brittle assertion pipeline.
+7. **Judge0 python version requirement:** Ensure sandbox nodes execute under Python 3.10+ to support `match/case` syntax.
 
 ---
 
