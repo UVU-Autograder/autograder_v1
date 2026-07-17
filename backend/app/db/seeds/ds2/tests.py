@@ -4,82 +4,19 @@ import io
 import sys
 import runpy
 
-# Import student classes
-try:
-    from dessert import DessertItem, Candy, Cookie, IceCream, Sundae, Order
-except ImportError as exc:
-    raise AssertionError(f"Could not import classes from dessert.py: {exc}")
+from ds_test_helpers import safe_import_dessert, assert_ds1_hierarchy, assert_ds2_order
+
+DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
 
 
 @pytest.mark.ag_ds1_regression
 def test_ds1_regression():
-    # Verify DessertItem
-    assert inspect.isclass(DessertItem), "DessertItem must be a class"
-    item = DessertItem("Cookie")
-    assert item.name == "Cookie"
-
-    # Verify Candy
-    assert inspect.isclass(Candy)
-    assert issubclass(Candy, DessertItem)
-    candy = Candy("Gummy Bears", 1.5, 5.99)
-    assert candy.name == "Gummy Bears"
-    assert candy.candy_weight == 1.5
-    assert candy.price_per_pound == 5.99
-
-    # Verify Cookie
-    assert inspect.isclass(Cookie)
-    assert issubclass(Cookie, DessertItem)
-    cookie = Cookie("Chocolate Chip", 12, 12.99)
-    assert cookie.name == "Chocolate Chip"
-    assert cookie.cookie_quantity == 12
-    assert cookie.price_per_dozen == 12.99
-
-    # Verify IceCream
-    assert inspect.isclass(IceCream)
-    assert issubclass(IceCream, DessertItem)
-    ic = IceCream("Vanilla", 2, 2.50)
-    assert ic.name == "Vanilla"
-    assert ic.scoop_count == 2
-    assert ic.price_per_scoop == 2.50
-
-    # Verify Sundae
-    assert inspect.isclass(Sundae)
-    assert issubclass(Sundae, IceCream)
-    sundae = Sundae("Fudge Sundae", 2, 3.50, "Hot Fudge", 0.99)
-    assert sundae.name == "Fudge Sundae"
-    assert sundae.topping_name == "Hot Fudge"
-    assert sundae.topping_price == 0.99
+    assert_ds1_hierarchy(DessertItem, Candy, Cookie, IceCream, Sundae)
 
 
 @pytest.mark.ag_order_class
 def test_order_class():
-    # 1. Verification of class and methods
-    assert inspect.isclass(Order), "Order must be a class"
-    
-    order = Order()
-    assert hasattr(order, "order"), "Order must have an 'order' attribute"
-    assert isinstance(order.order, list), "order attribute must be a list"
-    assert len(order) == 0, "Initial order length must be 0"
-
-    # 2. Test add and len
-    item1 = DessertItem("Test Item 1")
-    item2 = DessertItem("Test Item 2")
-    order.add(item1)
-    assert len(order) == 1, "Order length must be 1 after adding an item"
-    order.add(item2)
-    assert len(order) == 2, "Order length must be 2 after adding two items"
-
-    # 3. Test iteration protocol (iter/next)
-    iter_obj = iter(order)
-    assert iter_obj is order or hasattr(iter_obj, "__next__"), "__iter__ must return an iterator"
-    
-    first = next(iter_obj)
-    assert first is item1, "First item in iteration must be the first item added"
-    second = next(iter_obj)
-    assert second is item2, "Second item in iteration must be the second item added"
-    
-    with pytest.raises(StopIteration):
-        next(iter_obj)
+    assert_ds2_order(Order, DessertItem)
 
 
 @pytest.mark.ag_main_output

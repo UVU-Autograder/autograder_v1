@@ -38,21 +38,30 @@ def _seed_assignment_artifacts(db: Session, assignment: Assignment, slug: str) -
     upsert_assignment_config(db, assignment, config_json)
 
     artifacts = config_json.get("artifacts") or {}
-    db.add_all(
-        AssignmentArtifact(
-            assignment=assignment,
-            artifact_key=artifact_key,
-            artifact_type=artifact["type"],
-            storage_ref=_seed_storage_ref(
-                folder,
-                artifact_key,
-                artifact["display_filename"],
-            ),
-            display_filename=artifact.get("display_filename"),
-            content_type=mimetypes.guess_type(artifact.get("display_filename") or "")[0] or "application/octet-stream",
+    for artifact_key, artifact in artifacts.items():
+        display_fn = artifact.get("display_filename")
+        if not display_fn:
+            continue
+
+        if (SEEDS_DIR / folder / display_fn).exists():
+            artifact_folder = folder
+        else:
+            artifact_folder = "shared"
+
+        db.add(
+            AssignmentArtifact(
+                assignment=assignment,
+                artifact_key=artifact_key,
+                artifact_type=artifact["type"],
+                storage_ref=_seed_storage_ref(
+                    artifact_folder,
+                    artifact_key,
+                    display_fn,
+                ),
+                display_filename=display_fn,
+                content_type=mimetypes.guess_type(display_fn or "")[0] or "application/octet-stream",
+            )
         )
-        for artifact_key, artifact in artifacts.items()
-    )
 
 
 def initialize_database(seed: bool = True) -> None:

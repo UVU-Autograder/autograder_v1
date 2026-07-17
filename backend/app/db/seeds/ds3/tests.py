@@ -6,29 +6,15 @@ import runpy
 import ast
 from pathlib import Path
 
-# Import student classes
-try:
-    from dessert import DessertItem, Candy, Cookie, IceCream, Sundae, Order
-except ImportError as exc:
-    raise AssertionError(f"Could not import classes from dessert.py: {exc}")
+from ds_test_helpers import safe_import_dessert, assert_ds1_hierarchy, assert_ds2_order
+
+DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
 
 
 @pytest.mark.ag_ds2_regression
 def test_ds2_regression():
-    # Verify class definitions
-    assert inspect.isclass(DessertItem)
-    assert inspect.isclass(Candy)
-    assert inspect.isclass(Cookie)
-    assert inspect.isclass(IceCream)
-    assert inspect.isclass(Sundae)
-    assert inspect.isclass(Order)
-
-    # Verify Order methods
-    order = Order()
-    item = DessertItem("Test")
-    order.add(item)
-    assert len(order) == 1
-    assert next(iter(order)) is item
+    assert_ds1_hierarchy(DessertItem, Candy, Cookie, IceCream, Sundae)
+    assert_ds2_order(Order, DessertItem)
 
     # Verify main output in dessertshop.py
     stdout_buf = io.StringIO()

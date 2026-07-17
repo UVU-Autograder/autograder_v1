@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "required_files": [
+      "lab6_part1.py",
+      "lab6_part2.py"
+    ],
+    "entrypoint": "lab6_part1.py",
+    "file_requirements": [
+      {
+        "key": "part1",
+        "label": "Lab 6 Part 1 animation script",
+        "requirement_type": "exact",
+        "paths": [
+          "lab6_part1.py"
+        ]
+      },
+      {
+        "key": "part2",
+        "label": "Lab 6 Part 2 animation script",
+        "requirement_type": "exact",
+        "paths": [
+          "lab6_part2.py"
+        ]
+      }
+    ]
+  },
+  "execution": {
+    "dependencies": [
+      "pygame"
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    }
+  },
+  "rubric_groups": [],
+  "tests": [
+    {
+      "key": "part1_ast_execution",
+      "label": "Part 1 headless execution & uses x/y variables (no Rect)",
+      "points": 30,
+      "extra_credit": false
+    },
+    {
+      "key": "part2_ast_execution",
+      "label": "Part 2 headless execution & uses pygame.Rect",
+      "points": 30,
+      "extra_credit": false
+    }
+  ],
+  "manual_rubric_items": [
+    {
+      "key": "visual_movement",
+      "label": "Animal bounces off borders smoothly & loops correctly",
+      "points": 40,
+      "extra_credit": false
+    }
+  ],
+  "completion_requirements": [],
+  "stdin_scenarios": []
+}

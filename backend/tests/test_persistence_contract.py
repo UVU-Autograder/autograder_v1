@@ -208,6 +208,7 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
         assert {artifact.artifact_type for artifact in assignment_ds2.artifacts} == {
             "pytest_file",
             "model_solution",
+            "support_file",
         }
 
         scoring_items_ds2 = db.scalars(
@@ -243,6 +244,7 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
         assert {artifact.artifact_type for artifact in assignment_ds3.artifacts} == {
             "pytest_file",
             "model_solution",
+            "support_file",
         }
 
         scoring_items_ds3 = db.scalars(
@@ -278,6 +280,7 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
         assert {artifact.artifact_type for artifact in assignment_ds4.artifacts} == {
             "pytest_file",
             "model_solution",
+            "support_file",
         }
 
         scoring_items_ds4 = db.scalars(
@@ -319,6 +322,7 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
         assert {artifact.artifact_type for artifact in assignment_ds5.artifacts} == {
             "pytest_file",
             "model_solution",
+            "support_file",
         }
 
         scoring_items_ds5 = db.scalars(
@@ -343,6 +347,79 @@ def test_seed_creates_assignment_artifacts_and_derived_test_cases():
             "ag_dessertshop_class",
             "ag_ds4_regression",
             None,
+            None,
+        ]
+
+        # Check ds6
+        assignment_ds6 = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "ds6"
+            )
+        )
+        assert assignment_ds6 is not None
+        assert assignment_ds6.config is not None
+        assert {artifact.artifact_type for artifact in assignment_ds6.artifacts} == {
+            "pytest_file",
+            "model_solution",
+            "support_file",
+        }
+
+        scoring_items_ds6 = db.scalars(
+            select(assignment_models.ScoringItem)
+            .where(assignment_models.ScoringItem.assignment_id == assignment_ds6.id)
+            .order_by(assignment_models.ScoringItem.display_order)
+        ).all()
+        assert len(scoring_items_ds6) == 4
+        assert [item.config_item_key for item in scoring_items_ds6] == [
+            "ds5_regression",
+            "str_methods",
+            "to_list",
+            "output_format",
+        ]
+        assert [item.item_type for item in scoring_items_ds6] == [
+            "pytest",
+            "pytest",
+            "pytest",
+            "manual",
+        ]
+        assert [item.pytest_marker for item in scoring_items_ds6] == [
+            "ag_ds5_regression",
+            "ag_str_methods",
+            "ag_to_list",
+            None,
+        ]
+
+        # Check lab6
+        assignment_lab6 = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "lab6"
+            )
+        )
+        assert assignment_lab6 is not None
+        assert assignment_lab6.config is not None
+        assert {artifact.artifact_type for artifact in assignment_lab6.artifacts} == {
+            "pytest_file",
+        }
+
+        scoring_items_lab6 = db.scalars(
+            select(assignment_models.ScoringItem)
+            .where(assignment_models.ScoringItem.assignment_id == assignment_lab6.id)
+            .order_by(assignment_models.ScoringItem.display_order)
+        ).all()
+        assert len(scoring_items_lab6) == 3
+        assert [item.config_item_key for item in scoring_items_lab6] == [
+            "part1_ast_execution",
+            "part2_ast_execution",
+            "visual_movement",
+        ]
+        assert [item.item_type for item in scoring_items_lab6] == [
+            "pytest",
+            "pytest",
+            "manual",
+        ]
+        assert [item.pytest_marker for item in scoring_items_lab6] == [
+            "ag_part1_ast_execution",
+            "ag_part2_ast_execution",
             None,
         ]
 

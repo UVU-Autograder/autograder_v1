@@ -139,7 +139,6 @@ BLOCKED_IMPORTS: frozenset[str] = frozenset(
         "subprocess",
         "os",
         "shutil",
-        "sys",
         "socket",
         "http",
         "urllib",

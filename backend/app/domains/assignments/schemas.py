@@ -56,6 +56,8 @@ class ArtifactConfig(BaseModel):
 
 
 class TestItemConfig(BaseModel):
+    __test__: bool = False
+
     key: str = Field(pattern=TEST_KEY_RE.pattern)
     label: str = Field(min_length=1)
     points: int = Field(ge=0)

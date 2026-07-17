@@ -22,6 +22,13 @@ class Candy(DessertItem):
     def calculate_cost(self) -> float:
         return round(self.candy_weight * self.price_per_pound, 2)
 
+    def __str__(self) -> str:
+        return (
+            f"{self.name}\n"
+            f"-    {self.candy_weight} lbs. @ ${self.price_per_pound}/lb:, "
+            f"${self.calculate_cost():.2f}, [Tax: ${self.calculate_tax():.2f}]"
+        )
+
 
 class Cookie(DessertItem):
     def __init__(self, name: str = "", cookie_quantity: int = 0, price_per_dozen: float = 0.0):
@@ -31,6 +38,13 @@ class Cookie(DessertItem):
 
     def calculate_cost(self) -> float:
         return round((self.cookie_quantity / 12) * self.price_per_dozen, 2)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.name} Cookies\n"
+            f"-    {self.cookie_quantity} cookies. @ ${self.price_per_dozen}/dozen:, "
+            f"${self.calculate_cost():.2f}, [Tax: ${self.calculate_tax():.2f}]"
+        )
 
 
 class IceCream(DessertItem):
@@ -42,6 +56,13 @@ class IceCream(DessertItem):
     def calculate_cost(self) -> float:
         return round(self.scoop_count * self.price_per_scoop, 2)
 
+    def __str__(self) -> str:
+        return (
+            f"{self.name} Ice Cream\n"
+            f"-    {self.scoop_count} scoops. @ ${self.price_per_scoop}/scoop:, "
+            f"${self.calculate_cost():.2f}, [Tax: ${self.calculate_tax():.2f}]"
+        )
+
 
 class Sundae(IceCream):
     def __init__(self, name: str = "", scoop_count: int = 0, price_per_scoop: float = 0.0, topping_name: str = "", topping_price: float = 0.0):
@@ -52,6 +73,14 @@ class Sundae(IceCream):
     def calculate_cost(self) -> float:
         base_cost = super().calculate_cost()
         return round(base_cost + self.topping_price, 2)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.topping_name} {self.name} Sundae\n"
+            f"-    {self.scoop_count} scoops. @ ${self.price_per_scoop}/scoop\n"
+            f"-    {self.topping_name} topping @ ${self.topping_price}:, "
+            f"${self.calculate_cost():.2f}, [Tax: ${self.calculate_tax():.2f}]"
+        )
 
 
 class Order:
@@ -81,3 +110,36 @@ class Order:
 
     def order_tax(self) -> float:
         return round(sum(item.calculate_tax() for item in self.order), 2)
+
+    def __str__(self) -> str:
+        return "\n".join(str(item) for item in self.order)
+
+    def to_list(self) -> list[list[str]]:
+        rows = []
+        for item in self.order:
+            lines = str(item).split("\n")
+            rows.append([
+                lines[0],
+                f"${item.calculate_cost():.2f}",
+                f"[Tax: ${item.calculate_tax():.2f}]"
+            ])
+            for detail in lines[1:]:
+                rows.append([detail, "", ""])
+
+        rows.append(["----------", "----------", "----------"])
+        rows.append([
+            "Total number of items in order:",
+            str(len(self)),
+            ""
+        ])
+        rows.append([
+            "Order Subtotals:",
+            f"${self.order_cost():.2f}",
+            f"[Tax: ${self.order_tax():.2f}]"
+        ])
+        rows.append([
+            "Order Total:",
+            "",
+            f"${self.order_cost() + self.order_tax():.2f}"
+        ])
+        return rows

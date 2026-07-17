@@ -4,7 +4,11 @@
     "required_files": [
       "dessert.py",
       "dessertshop.py",
-      "test_dessert.py"
+      "test_dessert.py",
+      "test_candy.py",
+      "test_cookie.py",
+      "test_icecream.py",
+      "test_sundae.py"
     ],
     "entrypoint": "dessertshop.py",
     "file_requirements": [
@@ -23,19 +27,13 @@
         "paths": [
           "dessertshop.py"
         ]
-      },
-      {
-        "key": "test_dessert_py",
-        "label": "Dessert Shop pytest test file",
-        "requirement_type": "exact",
-        "paths": [
-          "test_dessert.py"
-        ]
       }
     ]
   },
   "execution": {
-    "dependencies": []
+    "dependencies": [
+      "tabulate"
+    ]
   },
   "artifacts": {
     "assignment_tests": {
@@ -54,25 +52,32 @@
   "rubric_groups": [],
   "tests": [
     {
-      "key": "ds2_regression",
-      "label": "DS2 class hierarchy + Order intact",
-      "points": 30,
+      "key": "ds5_regression",
+      "label": "DS5 classes + DessertShop intact",
+      "points": 20,
       "extra_credit": false
     },
     {
-      "key": "test_file_exists",
-      "label": "test_dessert.py present with >=15 test functions",
-      "points": 30,
+      "key": "str_methods",
+      "label": "__str__ defined on all dessert classes",
+      "points": 25,
       "extra_credit": false
     },
     {
-      "key": "student_tests_pass",
-      "label": "Student's own tests pass",
-      "points": 40,
+      "key": "to_list",
+      "label": "Order.to_list() returns correct 2D list",
+      "points": 25,
       "extra_credit": false
     }
   ],
-  "manual_rubric_items": [],
+  "manual_rubric_items": [
+    {
+      "key": "output_format",
+      "label": "Receipt formatting matches spec",
+      "points": 30,
+      "extra_credit": false
+    }
+  ],
   "completion_requirements": [],
   "stdin_scenarios": []
 }

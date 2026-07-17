@@ -2,11 +2,9 @@ import pytest
 import inspect
 import abc
 
-# Import student classes
-try:
-    from dessert import DessertItem, Candy, Cookie, IceCream, Sundae, Order
-except ImportError as exc:
-    raise AssertionError(f"Could not import classes from dessert.py: {exc}")
+from ds_test_helpers import safe_import_dessert
+
+DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
 
 
 @pytest.mark.ag_abstract_class

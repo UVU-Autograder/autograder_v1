@@ -184,7 +184,7 @@ For **each** assignment below: author the package under `backend/app/db/seeds/<s
 - [x] `ds3` (m5) — test cases with pytest.
 - [x] `ds4` (m6) — abstraction, abstract base classes, tax attributes, and subclass cost formulas.
 - [x] `ds5` (m7) — console application prompt methods and input validation retries.
-- [ ] `ds6` (m8)
+- [x] `ds6` (m8)
 - [ ] `ds7` (m9)
 - [ ] `ds8` (m10)
 - [ ] `ds9` (m11)
@@ -195,7 +195,7 @@ For **each** assignment below: author the package under `backend/app/db/seeds/<s
 
 - [ ] `lab2`, `lab3` (m2)
 - [ ] `lab4`, `lab5` (m3)
-- [ ] `lab6` (m8)
+- [x] `lab6` (m8)
 - [ ] `lab7` (m11)
 - [ ] For any image/visual lab parts: same rule as lab1 — pytest feasible checks; manual for computationally awkward pixel criteria.
 

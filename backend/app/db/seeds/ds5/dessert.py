@@ -65,7 +65,7 @@ class Order:
     def __len__(self) -> int:
         return len(self.order)
 
-    def __iter__(self) -> Order:
+    def __iter__(self) -> "Order":
         self._index = 0
         return self
 
