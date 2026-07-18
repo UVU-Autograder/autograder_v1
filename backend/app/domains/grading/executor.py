@@ -53,6 +53,7 @@ async def execute_pytest_in_judge0(
     entrypoint_module: str,
     language_id: int,
     cpu_time_limit: float,
+    dependencies: list[str] | None = None,
     memory_limit: int = 262144,
 ) -> ExecutionOutcome:
     """Generate runner, submit to Judge0, parse stdout, enforce cleanup.
@@ -62,7 +63,10 @@ async def execute_pytest_in_judge0(
     """
     outcome = ExecutionOutcome()
     runner_source = generate_runner_script(
-        test_filenames, test_cases, entrypoint_module
+        test_filenames,
+        test_cases,
+        entrypoint_module,
+        dependencies,
     )
     # runner.py is Judge0 source_code only; exclude it from additional_files.
     additional_files_b64 = _build_additional_files_b64(exec_dir)

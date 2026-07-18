@@ -8,20 +8,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from app.main import create_app
 from app.domains.auth.models import User
-from app.db.base import Base, import_domain_models
-from app.db.seed import initialize_database
-from app.db.session import SessionLocal, engine
+from app.db.session import SessionLocal
 from app.core.auth_utils import create_access_token
 from app.core.settings import get_settings
 
 @pytest.fixture(autouse=True)
-def initialized_database():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def initialized_database(reset_database):
     yield
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 @pytest.fixture
 def client():

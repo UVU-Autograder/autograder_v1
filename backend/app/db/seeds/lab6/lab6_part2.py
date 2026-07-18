@@ -9,7 +9,7 @@ pygame.display.set_caption("Animal Animation - Part 2")
 
 try:
     animal = pygame.image.load("animal.png")
-except Exception:
+except (FileNotFoundError, OSError, pygame.error):
     animal = pygame.Surface((100, 100))
     animal.fill((255, 0, 0))
 

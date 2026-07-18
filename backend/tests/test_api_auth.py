@@ -10,19 +10,12 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from app.main import create_app
 from app.core.dependencies import get_current_user
 from app.domains.auth.models import User, Role, StaffAccess
-from app.db.base import Base, import_domain_models
-from app.db.seed import initialize_database
-from app.db.session import SessionLocal, engine, get_db
+from app.db.session import SessionLocal, get_db
 
 
 @pytest.fixture(autouse=True)
-def initialized_database():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def initialized_database(reset_database):
     yield
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture

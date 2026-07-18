@@ -10,8 +10,7 @@ pygame.display.set_caption("Animal Animation - Part 1")
 # Create a blank white surface if animal.png does not exist to avoid crashing
 try:
     animal = pygame.image.load("animal.png")
-except Exception:
-    # Fallback to a small red square surface
+except (FileNotFoundError, OSError, pygame.error):
     animal = pygame.Surface((100, 100))
     animal.fill((255, 0, 0))
 

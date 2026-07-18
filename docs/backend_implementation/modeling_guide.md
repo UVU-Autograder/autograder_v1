@@ -1,177 +1,116 @@
 # UVU Autograder — Assignment Modeling Guide
 
-This guide establishes the standard patterns, structures, and guidelines for modeling and seeding CS 1410 course assignments. Follow these specifications to maintain consistency across the entire course modeling cycle.
+This guide defines the repository and staff-UI workflow for modeling CS 1410
+assignments.
 
----
+## Seed package layout
 
-## 1. Directory Structure of a Seed Package
+Each modeled assignment has a directory under `backend/app/db/seeds/`.
+Directory names are derived from the assignment slug by replacing hyphens with
+underscores: `lab-1-image-processing` becomes `lab_1_image_processing`; `ds7`
+stays `ds7`.
 
-Every assignment is modeled as a package directory under `backend/app/db/seeds/<assignment_slug>/`. 
-
-A complete seed directory must contain the following files:
-
-```
-backend/app/db/seeds/<assignment_slug>/
-├── config_json.example.json   # Assignment configuration (schema v1)
-├── tests.py                   # Pytest suite run by the instructor against student code
-├── <model_solution_file>.py   # Instructor's reference solution (e.g. dessert.py)
-└── [additional files]         # Entrypoints (e.g. dessertshop.py) or resources (data files)
-```
-
----
-
-## 2. Anatomy of `config_json.example.json`
-
-The configuration file defines the execution boundary, scoring rubric, and file expectations.
-
-```json
-{
-  "schema_version": 1,
-  "bundle": {
-    "required_files": [
-      "dessert.py",
-      "dessertshop.py"
-    ],
-    "entrypoint": "dessertshop.py",
-    "file_requirements": [
-      {
-        "key": "dessert_py",
-        "label": "Dessert Shop classes definition file",
-        "requirement_type": "exact",
-        "paths": ["dessert.py"]
-      }
-    ]
-  },
-  "execution": {
-    "dependencies": []
-  },
-  "artifacts": {
-    "assignment_tests": {
-      "type": "pytest_file",
-      "display_filename": "tests.py"
-    },
-    "model_solution": {
-      "type": "model_solution",
-      "display_filename": "dessert.py"
-    },
-    "data_file": {
-      "type": "input_file",
-      "display_filename": "data.txt"
-    }
-  },
-  "tests": [
-    {
-      "key": "ds1_regression",
-      "label": "DS1 class hierarchy intact",
-      "points": 20,
-      "extra_credit": false
-    }
-  ],
-  "manual_rubric_items": [],
-  "completion_requirements": [],
-  "stdin_scenarios": []
-}
+```text
+backend/app/db/seeds/<folder>/
+├── config_json.example.json
+├── tests.py
+├── <model solution source>
+└── <assignment-specific support files>
 ```
 
-### Key Sections:
+Shared **test plumbing** belongs in `backend/app/db/seeds/shared/` and must be
+declared as a `support_file` artifact. Current examples:
 
-*   **`bundle`**:
-    *   `required_files`: List of files that *must* exist in the student's submission.
-    *   `entrypoint`: The python file executed by the sandbox runner.
-    *   `file_requirements`: Rules applied by the preflight check. `requirement_type` can be `"exact"` or `"glob"`.
-*   **`artifacts`**:
-    *   `pytest_file`: The instructor's tests file. Display filename *must* be `"tests.py"`.
-    *   `model_solution`: The instructor's model solution. Display filename *must* match the student's expected source file (e.g., `"dessert.py"`). *Note: The grading service automatically skips copying this file to the student execution workspace to avoid overwriting student code.*
-    *   `input_file`: Static asset files (e.g., CSV/TXT data files) injected into the sandbox CWD prior to execution.
-*   **`tests`**:
-    *   An array of scoring items. Each scoring item maps directly to a pytest marker `@pytest.mark.ag_<key>`.
+- `ds_test_helpers.py`: safe imports and cumulative DS regression plumbing
+- `student_test_helpers.py`: isolated execution of student-authored pytest files
+- `pygame_test_helpers.py`: headless Pygame execution and AST plumbing
 
----
+Do not put assignment-specific expected values or rubric decisions in shared
+helpers.
 
-## 3. Instructor Pytest (`tests.py`) Standards
+## Teacher UI versus repository-owned modeling
 
-The instructor test file is run inside the Judge0 sandbox using a custom runner. Follow these guidelines:
+Staff can edit different layers through these surfaces:
 
-### A. Marker Decoration
-Every test function must be decorated with a marker matching the `key` defined in `config_json.example.json`:
+- The assignment setup wizard edits scoring keys, labels, points, rubric groups,
+  manual rubric items, and stdin scenarios.
+- **Edit pytest** opens the primary `pytest_file` (`tests.py`) in Monaco.
+- The Artifacts page can edit any pytest, model-solution, or support artifact.
+- `cs1410_catalog.json` and seed package creation remain repository-owned.
+
+Keep expected values, assertion bodies, cost/tax vectors, coordinate rules, and
+other scoring decisions in the assignment's `tests.py`. This keeps the test
+meaning visible in the primary teacher editor. Shared support files should only
+hide mechanical details such as import guards, subprocess setup, or Pygame
+mocking.
+
+Later assignments may call a shared regression composer for earlier work (for
+example, DS5 checks the DS4 contract). The assignment that introduces the
+contract keeps its own marker tests explicit in `tests.py`.
+
+## Configuration contract
+
+`config_json.example.json` is schema v1. Its key sections are:
+
+- `bundle.required_files`, `bundle.entrypoint`, and `bundle.file_requirements`
+  define the student ZIP contract.
+- `execution.dependencies` lists runtime packages.
+- `artifacts` contains `pytest_file`, `model_solution`, or `support_file`
+  records. Each record names the file injected into grading.
+- `tests` defines autograded scoring items.
+- `manual_rubric_items` defines staff-scored items.
+
+Every `tests[].key` maps to exactly one marker in `tests.py`:
+
 ```python
-import pytest
-
-@pytest.mark.ag_ds1_regression
-def test_something():
-    assert True
+@pytest.mark.ag_calculate_cost
+def test_calculate_cost():
+    candy = Candy("Candy Corn", 1.5, 0.25)
+    assert candy.calculate_cost() == pytest.approx(0.38)
 ```
 
-### B. Safe Imports
-Wrap imports of student code in `try/except` blocks to provide clear feedback if the student failed to define classes or files:
+Keep thresholds and filenames visible at the call site when using plumbing
+helpers:
+
 ```python
-try:
-    from dessert import DessertItem, Candy, Order
-except ImportError as exc:
-    raise AssertionError(f"Could not import required classes: {exc}")
+@pytest.mark.ag_student_tests_pass
+def test_student_tests_pass():
+    assert_student_pytest_passes(
+        "test_dessert.py",
+        minimum=15,
+        timeout_seconds=10,
+    )
 ```
 
-### C. Execution Verification (stdout capturing)
-If the assignment requires output validation (e.g., checking a printed receipt), redirect `sys.stdout` and run the script using `runpy`:
-```python
-import io
-import sys
-import runpy
+## CS1410 catalog and concepts
 
-def test_main_output():
-    stdout_buf = io.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = stdout_buf
-    try:
-        runpy.run_path("dessertshop.py", run_name="__main__")
-    except Exception as exc:
-        raise AssertionError(f"dessertshop.py execution failed: {exc}")
-    finally:
-        sys.stdout = old_stdout
+`backend/app/db/seeds/cs1410_catalog.json` owns module names, cumulative
+`Module.concepts`, assignment slugs, titles, and module placement. The effective
+AST whitelist remains:
 
-    output = stdout_buf.getvalue()
-    assert "Expected String" in output
+```text
+course.default_concepts ∪ assignment.module.concepts
 ```
 
----
+Module concept arrays are intentionally cumulative. Add a catalog entry for a
+new assignment before adding its deep seed package.
 
-## 4. AST Concept Whitelisting
+## Model solutions
 
-The AST concept checker validates student source code against allowed syntax concepts.
+Dessert Shop assignments are progressive and their model files intentionally
+remain standalone. Copy the previous `dsN` model into the next seed package,
+then implement the new requirements. Do not import a shared model module:
+Judge0 and the student bundle contract expect assignment-local filenames such
+as `dessert.py` and `dessertshop.py`.
 
-*   **Cumulative Whitelist:** The effective concepts whitelisted for a run are `course.default_concepts ∪ assignment.module.concepts`.
-*   **Module Mapping:** Concepts are defined in `seed.py` on the `Module` entity, mimicking the progression of learning objectives.
-*   **Exception handling in AST Checker:** Certain keywords (like `raise StopIteration` in iterators) are exceptions to broad concepts (like `exceptions`) and are explicitly ignored by the validator in [validator.py](../../backend/app/integrations/ast_checker/validator.py) to avoid premature syntax blockers.
+## New assignment checklist
 
----
-
-## 5. Custom Student Test Verification (e.g. DS3)
-
-When assignments require students to author their own unit tests:
-
-1.  **AST Verification:** Parse the student's test file (e.g., `test_dessert.py`) using `ast` in the instructor test suite to ensure they wrote the required number of test functions starting with `test_`:
-    ```python
-    import ast
-    with open("test_dessert.py", "r", encoding="utf-8") as f:
-        tree = ast.parse(f.read())
-    funcs = [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")]
-    assert len(funcs) >= 15
-    ```
-2.  **Execution Verification:** Run the student's pytest file in-process using `pytest.main()`, passing a custom counter plugin to count successful assertions and ensure zero failures:
-    ```python
-    class StudentTestCounter:
-        def __init__(self):
-            self.passed_count = 0
-            self.failed_count = 0
-        def pytest_runtest_logreport(self, report):
-            if report.when == "call":
-                if report.outcome == "passed":
-                    self.passed_count += 1
-                elif report.outcome == "failed":
-                    self.failed_count += 1
-
-    counter = StudentTestCounter()
-    exit_code = pytest.main(["-q", "test_dessert.py"], plugins=[counter])
-    assert exit_code == 0
-    assert counter.passed_count >= 15
-    ```
+1. Confirm the assignment row and module placement in `cs1410_catalog.json`.
+2. Create the slug-derived seed directory.
+3. Add and validate `config_json.example.json`.
+4. Keep rubric assertions in `tests.py`; add only plumbing helpers as
+   `support_file` artifacts.
+5. Ensure every `tests[].key` has a matching `ag_<key>` marker.
+6. Add a standalone model solution and required resources.
+7. Run seed integrity, persistence, preflight, and model-solution validation.
+8. Smoke-test one sandbox run before marking the assignment modeled.

@@ -6,23 +6,16 @@ from sqlalchemy.orm import Session
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.base import Base, import_domain_models  # noqa: E402
-from app.db.seed import initialize_database  # noqa: E402
-from app.db.session import SessionLocal, engine  # noqa: E402
+from app.db.session import SessionLocal  # noqa: E402
 from app.domains.assignments.models import Assignment, AssignmentConfig  # noqa: E402
 from app.domains.assignments.validation import extract_ag_markers, run_preflight_validation  # noqa: E402
 from app.domains.assignments.service import save_artifact, get_assignment_for_course  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture(autouse=True)

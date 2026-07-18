@@ -24,6 +24,7 @@ def generate_runner_script(
     test_filenames: list[str],
     test_cases: dict[str, dict[str, list[str]]],
     entrypoint_module: str,
+    dependencies: list[str] | None = None,
 ) -> str:
     """Generate the ``runner.py`` source code string.
 
@@ -36,6 +37,7 @@ def generate_runner_script(
         test_cases: Dict mapping test marker keys (e.g. "t1") to their inputs
             and outputs.
         entrypoint_module: Stem of the student entrypoint file, e.g. "main".
+        dependencies: Preinstalled packages the assignment requires.
 
     Returns:
         A complete, self-contained Python source string ready for Judge0.
@@ -43,6 +45,7 @@ def generate_runner_script(
     filenames_literal = repr(test_filenames)
     test_cases_literal = repr(test_cases)
     entrypoint_literal = repr(entrypoint_module)
+    dependencies_literal = repr(dependencies or [])
     joiner = '"\\n"'
 
     script = textwrap.dedent(
@@ -50,13 +53,12 @@ def generate_runner_script(
         \"\"\"Auto-generated pytest runner for the autograder sandbox.\"\"\"
 
         import io
+        import importlib
         import json
         import os
         import sys
         import time
         import signal
-
-        import pytest
 
         # ------------------------------------------------------------------ #
         # Constants & Signal Setup                                           #
@@ -66,6 +68,42 @@ def generate_runner_script(
         TEST_FILENAMES = {filenames_literal}
         TEST_CASES = {test_cases_literal}
         ENTRYPOINT_MODULE = {entrypoint_literal}
+        DEPENDENCIES = {dependencies_literal}
+        DEPENDENCY_IMPORTS = {{"pillow": "PIL"}}
+
+        def runtime_failure(message: str) -> None:
+            payload = {{
+                "tests": [],
+                "summary": {{
+                    "total": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "errors": 1,
+                    "duration": 0.0,
+                    "exit_code": 2,
+                }},
+                "infrastructure_error": message,
+            }}
+            print(RESULTS_DELIMITER)
+            print(json.dumps(payload))
+            raise SystemExit(0)
+
+        if sys.version_info < (3, 11):
+            runtime_failure(
+                "Judge0 Python 3.11+ is required; found "
+                + ".".join(str(part) for part in sys.version_info[:3])
+            )
+
+        for dependency in DEPENDENCIES:
+            import_name = DEPENDENCY_IMPORTS.get(dependency.lower(), dependency)
+            try:
+                importlib.import_module(import_name)
+            except ImportError:
+                runtime_failure(
+                    f"Required preinstalled dependency '{{dependency}}' is unavailable."
+                )
+
+        import pytest
 
         class TimeoutException(Exception):
             pass

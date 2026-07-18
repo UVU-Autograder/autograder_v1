@@ -1,6 +1,7 @@
 import ast
 from sqlalchemy.orm import Session
 
+from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.assignments.service import get_assignment_for_course
 from app.integrations.artifacts.resolver import resolve_storage_ref
@@ -76,6 +77,20 @@ def run_preflight_validation(db: Session, course_code: str, assignment_slug: str
             errors.append(f"Invalid configuration format: {e}")
         return errors
 
+    unsupported_dependencies = sorted(
+        {
+            dependency
+            for dependency in config.execution.dependencies
+            if dependency.lower()
+            not in get_settings().preinstalled_dependency_names
+        }
+    )
+    if unsupported_dependencies:
+        errors.append(
+            "Execution dependencies are not preinstalled in Judge0: "
+            + ", ".join(unsupported_dependencies)
+        )
+
     # 2. Check for missing assignment pytest artifacts
     pytest_artifacts = [
         art for art in assignment.artifacts if art.artifact_type == "pytest_file"
@@ -84,7 +99,42 @@ def run_preflight_validation(db: Session, course_code: str, assignment_slug: str
         errors.append("At least one 'pytest_file' artifact is required.")
         return errors
 
-    # 3. Read pytest files and extract all ag_<key> markers using AST
+    # 3. Every required student-bundle path needs a real instructor model file.
+    model_configs = {
+        key: artifact
+        for key, artifact in config.artifacts.items()
+        if artifact.type == "model_solution" and artifact.display_filename
+    }
+    model_filenames = {
+        artifact.display_filename for artifact in model_configs.values()
+    }
+    missing_model_files = [
+        path for path in config.bundle.required_files if path not in model_filenames
+    ]
+    if missing_model_files:
+        errors.append(
+            "Missing model solution artifacts for required files: "
+            + ", ".join(sorted(missing_model_files))
+        )
+
+    artifacts_by_key = {
+        artifact.artifact_key: artifact for artifact in assignment.artifacts
+    }
+    for key, model_config in model_configs.items():
+        stored = artifacts_by_key.get(key)
+        if stored is None or not stored.storage_ref:
+            errors.append(
+                f"Model solution artifact '{key}' is missing physical file reference."
+            )
+            continue
+        try:
+            resolve_storage_ref(stored.storage_ref)
+        except FileNotFoundError:
+            errors.append(
+                f"Model solution artifact file not found for key '{key}'."
+            )
+
+    # 4. Read pytest files and extract all ag_<key> markers using AST
     pytest_markers = set()
     for artifact in pytest_artifacts:
         if not artifact.storage_ref:
@@ -102,7 +152,7 @@ def run_preflight_validation(db: Session, course_code: str, assignment_slug: str
     if errors:
         return errors
 
-    # 4. Require each test key in config to match a pytest marker named ag_<key> in the pytest files
+    # 5. Require each test key to match a pytest marker named ag_<key>.
     for test in config.tests:
         expected_marker = f"ag_{test.key}"
         if expected_marker not in pytest_markers:

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import httpx
 
+
 @pytest.fixture
 def mock_httpx_client():
     """Generic fixture to mock httpx.Client calls in integrations.
@@ -15,6 +16,20 @@ def mock_httpx_client():
         mock_instance = MagicMock(spec=httpx.Client)
         mock_class.return_value = mock_instance
         yield mock_instance
+
+
+@pytest.fixture
+def reset_database():
+    """Recreate seeded tables before a test and leave a clean database after it."""
+    from app.db.base import Base, import_domain_models
+    from app.db.seed import initialize_database
+    from app.db.session import engine
+
+    import_domain_models()
+    Base.metadata.drop_all(bind=engine)
+    initialize_database(seed=True)
+    yield
+    Base.metadata.drop_all(bind=engine)
 
 
 class FakeRedis:

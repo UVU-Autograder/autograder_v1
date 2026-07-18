@@ -40,6 +40,10 @@
     "model_solution": {
       "type": "model_solution",
       "display_filename": "dessert.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
     }
   },
   "rubric_groups": [],

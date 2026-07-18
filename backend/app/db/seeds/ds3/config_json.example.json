@@ -46,9 +46,21 @@
       "type": "support_file",
       "display_filename": "ds_test_helpers.py"
     },
+    "student_test_helpers": {
+      "type": "support_file",
+      "display_filename": "student_test_helpers.py"
+    },
     "model_solution": {
       "type": "model_solution",
       "display_filename": "dessert.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    },
+    "model_solution_test_dessert": {
+      "type": "model_solution",
+      "display_filename": "test_dessert.py"
     }
   },
   "rubric_groups": [],

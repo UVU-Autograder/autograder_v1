@@ -1,4 +1,5 @@
 from typing import Any
+import io
 import sys
 import os
 import zipfile
@@ -12,25 +13,53 @@ from sqlalchemy.orm import Session
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.base import Base, import_domain_models
-from app.db.seed import initialize_database
-from app.db.session import SessionLocal, engine
+from app.db.session import SessionLocal
 from app.domains.runs.models import RunSummary
-from app.domains.runs.tasks import grade_official_run, run_mock_official_run
+from app.domains.runs.tasks import (
+    build_model_solution_zip,
+    failing_automated_items,
+    grade_official_run,
+    run_mock_official_run,
+)
 from app.domains.grading.service import GradingResult
 from app.core.settings import get_settings
 from test_ingestion_extractor import create_zip_bytes
 
 
+def test_build_model_solution_zip_uses_real_files():
+    payload = build_model_solution_zip(
+        ["dessert.py", "dessertshop.py"],
+        {
+            "dessert.py": b"class Dessert: pass\n",
+            "dessertshop.py": b"print('ok')\n",
+        },
+    )
+
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        assert archive.namelist() == ["dessert.py", "dessertshop.py"]
+        assert archive.read("dessertshop.py") == b"print('ok')\n"
+
+
+def test_build_model_solution_zip_rejects_missing_required_file():
+    with pytest.raises(ValueError, match="dessertshop.py"):
+        build_model_solution_zip(
+            ["dessert.py", "dessertshop.py"],
+            {"dessert.py": b"class Dessert: pass\n"},
+        )
+
+
+def test_model_validation_accepts_only_explicitly_passed_items():
+    passed = {"key": "behavior", "passed": True}
+    failed = {"key": "style", "passed": False}
+
+    assert failing_automated_items([passed]) == []
+    assert failing_automated_items([passed, failed]) == [failed]
+
+
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture()

@@ -16,9 +16,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.auth_utils import create_access_token  # noqa: E402
-from app.db.base import Base, import_domain_models  # noqa: E402
-from app.db.seed import initialize_database  # noqa: E402
-from app.db.session import SessionLocal, engine  # noqa: E402
+from app.db.session import SessionLocal  # noqa: E402
 from app.domains.assignments.models import Assignment  # noqa: E402
 from app.domains.assignments.service import (  # noqa: E402
     effective_allowed_concepts,
@@ -42,15 +40,10 @@ from test_ingestion_extractor import create_zip_bytes  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     reset_admission_state_for_tests()
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
     reset_admission_state_for_tests()
 
 

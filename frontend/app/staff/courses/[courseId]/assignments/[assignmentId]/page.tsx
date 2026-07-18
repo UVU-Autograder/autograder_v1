@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState, useEffect, Fragment } from "react";
+import React, { use, useCallback, useEffect, useState, Fragment } from "react";
 import Link from "next/link";
 import {
   SaveIcon,
@@ -70,7 +70,7 @@ type CompletionRequirementConfig = {
   minimum_passed: number;
 };
 
-type TestItemConfig = {
+type ScoringItemConfig = {
   key: string;
   label: string;
   points: number;
@@ -105,7 +105,7 @@ type AssignmentConfigV1 = {
     additions: string[];
   };
   artifacts: Record<string, { type: string; display_filename?: string }>;
-  tests: TestItemConfig[];
+  tests: ScoringItemConfig[];
   rubric_groups?: RubricGroupConfig[];
   completion_requirements?: CompletionRequirementConfig[];
   manual_rubric_items?: ManualRubricItemConfig[];
@@ -120,6 +120,7 @@ type StaffAssignmentSetup = {
   assignment_id: string;
   title: string;
   language: string;
+  module_id: number | null;
   sandbox_enabled: boolean;
   base_points: number;
   extra_credit_points: number;
@@ -140,6 +141,10 @@ type ValidationStatus = {
 
 type PageProps = {
   params: Promise<{ courseId: string; assignmentId: string }>;
+};
+
+type CourseConceptsResponse = {
+  modules: { id: number; name: string }[];
 };
 
 const TEST_KEY_RE = /^[a-z][a-z0-9_]*$/;
@@ -172,10 +177,19 @@ function TagBadgeList({ tags, onRemove, emptyText }: TagBadgeListProps) {
   );
 }
 
+type ScoringTableItem = {
+  key: string;
+  label: string;
+  points: number;
+  extra_credit: boolean;
+  rubric_group_key?: string | null;
+  inputs?: string[] | null;
+};
+
 // Reusable Scoring Items Table component
-type ScoringItemsTableProps<T extends { key: string; label: string; points: number; extra_credit: boolean; rubric_group_key?: string | null }> = {
+type ScoringItemsTableProps<T extends ScoringTableItem> = {
   items: T[];
-  onUpdate: (key: string, field: keyof T, val: any) => void;
+  onUpdate: (key: string, field: keyof T, val: unknown) => void;
   onDelete: (key: string) => void;
   rubricGroups: RubricGroupConfig[];
   title: string;
@@ -186,7 +200,7 @@ type ScoringItemsTableProps<T extends { key: string; label: string; points: numb
   renderDetails?: (item: T) => React.ReactNode;
 };
 
-function ScoringItemsTable<T extends { key: string; label: string; points: number; extra_credit: boolean; rubric_group_key?: string | null }>({
+function ScoringItemsTable<T extends ScoringTableItem>({
   items,
   onUpdate,
   onDelete,
@@ -283,7 +297,7 @@ function ScoringItemsTable<T extends { key: string; label: string; points: numbe
                           onClick={() => setExpandedKeys(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
                           className="text-xs h-7 px-2 font-mono whitespace-nowrap"
                         >
-                          {isExpanded ? "Hide I/O" : `I/O Cases (${(item as any).inputs?.length || 0})`}
+                          {isExpanded ? "Hide I/O" : `I/O Cases (${item.inputs?.length || 0})`}
                         </Button>
                       </td>
                     )}
@@ -334,7 +348,7 @@ export default function SetupWizardPage({ params }: PageProps) {
   const [fileRequirements, setFileRequirements] = useState<FileRequirementConfig[]>([]);
 
   // Step 3
-  const [tests, setTests] = useState<TestItemConfig[]>([]);
+  const [tests, setTests] = useState<ScoringItemConfig[]>([]);
   const [manualRubricItems, setManualRubricItems] = useState<ManualRubricItemConfig[]>([]);
   const [rubricGroups, setRubricGroups] = useState<RubricGroupConfig[]>([]);
 
@@ -384,7 +398,7 @@ export default function SetupWizardPage({ params }: PageProps) {
   };
 
   // Centralized State Initialization Helper
-  const syncSetupState = (data: StaffAssignmentSetup, meta: Record<string, ConceptMetadata> = conceptMeta) => {
+  const syncSetupState = useCallback((data: StaffAssignmentSetup, meta: Record<string, ConceptMetadata>) => {
     const config = data.config_json;
     setSetup(data);
     setTitle(data.title);
@@ -409,7 +423,7 @@ export default function SetupWizardPage({ params }: PageProps) {
 
     // Step 5
     setDependencies(config.execution?.dependencies || []);
-  };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -423,7 +437,7 @@ export default function SetupWizardPage({ params }: PageProps) {
     Promise.all([
       apiClient.get<StaffAssignmentSetup>(`/staff/courses/${courseId}/assignments/${assignmentId}/setup`),
       getConceptsMetadata(),
-      apiClient.get<any>(`/staff/courses/${courseId}/concepts`),
+      apiClient.get<CourseConceptsResponse>(`/staff/courses/${courseId}/concepts`),
     ]).then(([setupData, metaData, courseConcepts]) => {
       if (active) {
         setConceptMeta(metaData);
@@ -441,13 +455,12 @@ export default function SetupWizardPage({ params }: PageProps) {
     return () => {
       active = false;
     };
-  }, [courseId, assignmentId]);
+  }, [courseId, assignmentId, syncSetupState]);
 
   // Poll validation status if queued or running
   useEffect(() => {
     if (validation.status !== "queue" && validation.status !== "run") return;
 
-    let timer: NodeJS.Timeout;
     const checkStatus = async () => {
       try {
         const data = await apiClient.get<ValidationStatus>(
@@ -462,7 +475,7 @@ export default function SetupWizardPage({ params }: PageProps) {
       }
     };
 
-    timer = setInterval(checkStatus, 1500);
+    const timer = setInterval(checkStatus, 1500);
     return () => clearInterval(timer);
   }, [validation.status, courseId, assignmentId]);
 
@@ -655,7 +668,7 @@ export default function SetupWizardPage({ params }: PageProps) {
           config_json: updatedConfig,
         }
       );
-      syncSetupState(data);
+      syncSetupState(data, conceptMeta);
       setSuccessMsg("Configuration saved successfully.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update configuration.");
@@ -798,10 +811,14 @@ export default function SetupWizardPage({ params }: PageProps) {
     setFileRequirements(fileRequirements.filter((_, i) => i !== idx));
   };
 
-  const updateFileRequirement = (idx: number, field: keyof FileRequirementConfig, val: any) => {
+  const updateFileRequirement = <K extends keyof FileRequirementConfig>(
+    idx: number,
+    field: K,
+    val: FileRequirementConfig[K]
+  ) => {
     setFileRequirements(prev => prev.map((req, i) => {
       if (i === idx) {
-        let updated = { ...req, [field]: val };
+        const updated: FileRequirementConfig = { ...req, [field]: val };
         // adjust paths size if requirement_type changes
         if (field === "requirement_type") {
           if (val === "one_of") {
@@ -811,7 +828,7 @@ export default function SetupWizardPage({ params }: PageProps) {
           }
         }
         if (field === "key") {
-          updated.key = sanitizeKey(val);
+          updated.key = sanitizeKey(String(val));
         }
         return updated;
       }
@@ -881,15 +898,15 @@ export default function SetupWizardPage({ params }: PageProps) {
     setter: React.Dispatch<React.SetStateAction<T[]>>,
     key: string,
     field: keyof T,
-    val: any
+    val: unknown
   ) => {
     setter((prev) =>
       prev.map((item) => {
         if (item.key === key) {
           let finalVal = val;
-          if (field === "key") finalVal = sanitizeKey(val);
-          if (field === "points") finalVal = Math.max(0, parseInt(val) || 0);
-          return { ...item, [field]: finalVal };
+          if (field === "key") finalVal = sanitizeKey(String(val));
+          if (field === "points") finalVal = Math.max(0, parseInt(String(val)) || 0);
+          return { ...item, [field]: finalVal } as T;
         }
         return item;
       })
@@ -911,11 +928,11 @@ export default function SetupWizardPage({ params }: PageProps) {
     setTests(tests.filter(t => t.key !== key));
   };
 
-  const updateTestField = (key: string, field: keyof TestItemConfig, val: any) => {
+  const updateTestField = (key: string, field: keyof ScoringItemConfig, val: unknown) => {
     updateListItemField(setTests, key, field, val);
   };
 
-  const renderTestDetails = (test: TestItemConfig) => {
+  const renderTestDetails = (test: ScoringItemConfig) => {
     const inputs = test.inputs || [];
     const outputs = test.outputs || [];
 
@@ -1028,7 +1045,7 @@ export default function SetupWizardPage({ params }: PageProps) {
     setManualRubricItems(manualRubricItems.filter(m => m.key !== key));
   };
 
-  const updateManualItemField = (key: string, field: keyof ManualRubricItemConfig, val: any) => {
+  const updateManualItemField = (key: string, field: keyof ManualRubricItemConfig, val: unknown) => {
     updateListItemField(setManualRubricItems, key, field, val);
   };
 
@@ -1052,12 +1069,16 @@ export default function SetupWizardPage({ params }: PageProps) {
     setStdinScenarios(stdinScenarios.filter(s => s.key !== key));
   };
 
-  const updateStdinScenario = (key: string, field: "key" | "label" | "stdin", val: any) => {
+  const updateStdinScenario = (
+    key: string,
+    field: "key" | "label" | "stdin",
+    val: string | string[]
+  ) => {
     setStdinScenarios(prev => prev.map(s => {
       if (s.key === key) {
         let finalVal = val;
-        if (field === "key") finalVal = sanitizeKey(val);
-        return { ...s, [field]: finalVal };
+        if (field === "key") finalVal = sanitizeKey(String(val));
+        return { ...s, [field]: finalVal } as StdinScenarioConfig;
       }
       return s;
     }));
@@ -1099,7 +1120,7 @@ export default function SetupWizardPage({ params }: PageProps) {
               Back to course details
             </BackLink>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Grading Setup</h1>
-            <p className="text-slate-500">Configure parameters for assignment "{assignmentId}"</p>
+            <p className="text-slate-500">Configure parameters for assignment &quot;{assignmentId}&quot;</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCopyStudentLink} className="flex items-center gap-1.5">
@@ -1217,7 +1238,7 @@ export default function SetupWizardPage({ params }: PageProps) {
               <CardHeader>
                 <CardTitle>Ingestion Files & Layout</CardTitle>
                 <CardDescription>
-                  Configure required files inside the student's submission zip and layout specifications.
+                  Configure required files inside the student&apos;s submission zip and layout specifications.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1319,7 +1340,11 @@ export default function SetupWizardPage({ params }: PageProps) {
                             <label className="text-xs font-semibold text-slate-500 uppercase">Requirement Type</label>
                             <select
                               value={req.requirement_type}
-                              onChange={(e) => updateFileRequirement(idx, "requirement_type", e.target.value)}
+                              onChange={(e) => updateFileRequirement(
+                                idx,
+                                "requirement_type",
+                                e.target.value as FileRequirementConfig["requirement_type"]
+                              )}
                               className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-xs focus:border-indigo-500 focus:outline-none font-mono"
                             >
                               <option value="exact">exact (Exactly 1 matching file)</option>

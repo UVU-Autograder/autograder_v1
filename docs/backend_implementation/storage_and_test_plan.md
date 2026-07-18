@@ -56,10 +56,12 @@ Example optional completion requirement:
    - missing or invalid `extra_credit` booleans
    - invalid `completion_requirements` references or thresholds
    - missing bundle entrypoint or required-file rules
+   - any required bundle path without a real `model_solution` artifact
+   - execution dependencies outside the configured preinstalled allowlist
    - unsupported artifact types
 5. Derived `scoring_items` rows are regenerated from `assignment_configs.config_json` after setup changes.
 6. Official and sandbox grading place the student bundle and assignment artifacts into an ephemeral execution workspace.
-7. Judge0/Kata runs pytest in the isolated workspace via `execute_pytest_in_judge0`.
+7. Judge0/Kata requires Python 3.11+, imports every declared preinstalled dependency, then runs pytest in the isolated workspace via `execute_pytest_in_judge0`.
 8. Pytest results are mapped back to config scoring entries by `ag_<key>` marker.
 9. Staff or sandbox responses are shaped from grounded pytest results and sanitized metadata. Sandbox Local LLM explanations (when enabled) must not re-grade.
 10. Workspaces and execution artifacts are cleaned up per the retention contract (sandbox immediate; official ≤24h or staff cleanup; Judge0/Kata immediate after retrieval).

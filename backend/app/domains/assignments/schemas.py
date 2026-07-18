@@ -55,9 +55,7 @@ class ArtifactConfig(BaseModel):
     display_filename: str | None = None
 
 
-class TestItemConfig(BaseModel):
-    __test__: bool = False
-
+class ScoringItemConfig(BaseModel):
     key: str = Field(pattern=TEST_KEY_RE.pattern)
     label: str = Field(min_length=1)
     points: int = Field(ge=0)
@@ -67,7 +65,7 @@ class TestItemConfig(BaseModel):
     outputs: list[str] | None = Field(default=None)
 
     @model_validator(mode="after")
-    def validate_inputs_outputs(self) -> "TestItemConfig":
+    def validate_inputs_outputs(self) -> "ScoringItemConfig":
         if (self.inputs is None) != (self.outputs is None):
             raise ValueError("Both inputs and outputs must be specified, or both omitted.")
         if self.inputs is not None and self.outputs is not None:
@@ -124,7 +122,7 @@ class AssignmentConfigV1(BaseModel):
     schema_version: Literal[1]
     bundle: BundleConfig
     artifacts: dict[str, ArtifactConfig] = Field(min_length=1)
-    tests: list[TestItemConfig] = Field(min_length=1)
+    tests: list[ScoringItemConfig] = Field(min_length=1)
     completion_requirements: list[CompletionRequirementConfig] = Field(default_factory=list)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     rubric_groups: list[RubricGroupConfig] = Field(default_factory=list)

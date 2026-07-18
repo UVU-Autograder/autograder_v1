@@ -6,8 +6,10 @@ through Judge0, storing transient results in Redis.
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import logging
+import zipfile
 from datetime import UTC, datetime
 
 from app.db.base import import_domain_models
@@ -22,6 +24,32 @@ RUN_STATE_PREFIX = "run:state:"
 RUN_RESULT_PREFIX = "run:result:"
 RUN_CANCELLED_PREFIX = "run:cancelled:"
 RUN_STATE_TTL = 3600  # 1 hour
+
+
+def build_model_solution_zip(
+    required_files: list[str],
+    model_files: dict[str, bytes],
+) -> bytes:
+    """Build a complete model bundle without synthetic placeholder files."""
+    missing = [path for path in required_files if path not in model_files]
+    if missing:
+        raise ValueError(
+            "Missing model solution artifacts for required files: "
+            + ", ".join(sorted(missing))
+        )
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for filename, content in model_files.items():
+            archive.writestr(filename, content)
+    return buffer.getvalue()
+
+
+def failing_automated_items(test_results: list[dict]) -> list[dict]:
+    """Return scored items that did not explicitly pass."""
+    return [
+        result for result in test_results if result.get("passed") is not True
+    ]
 
 
 def _get_redis():
@@ -260,9 +288,6 @@ def validate_assignment_model_solution(
     3. Executes grading pipeline
     4. Records validation outcome (success or failure) in Redis
     """
-    import base64
-    import io
-    import zipfile
     from app.db.session import SessionLocal
     from app.domains.assignments.service import get_assignment_for_course, get_artifact_content
     from app.domains.assignments.validation import run_preflight_validation
@@ -290,20 +315,20 @@ def validate_assignment_model_solution(
             # Get assignment
             assignment = get_assignment_for_course(db, course_code, assignment_slug)
             config = AssignmentConfigV1.model_validate(assignment.config.config_json)
-            max_score = config.base_points
+            max_score = sum(
+                item.points for item in config.tests if not item.extra_credit
+            )
 
-            # 2. Retrieve model solution artifact
-            # Find the model_solution artifact key
-            model_sol_key = None
-            for key, art in config.artifacts.items():
-                if art.type == "model_solution":
-                    model_sol_key = key
-                    break
-
-            if not model_sol_key:
+            # 2. Retrieve every file in the instructor model bundle.
+            model_artifacts = {
+                key: artifact
+                for key, artifact in config.artifacts.items()
+                if artifact.type == "model_solution"
+            }
+            if not model_artifacts:
                 err_payload = {
                     "passed": False,
-                    "errors": ["No 'model_solution' artifact key defined in config."],
+                    "errors": ["No 'model_solution' artifacts defined in config."],
                     "score": 0,
                     "max_score": max_score,
                 }
@@ -311,40 +336,40 @@ def validate_assignment_model_solution(
                 set_run_state(run_id, "failure")
                 return err_payload
 
-            # Load model solution content
-            model_sol_content = get_artifact_content(db, course_code, assignment_slug, model_sol_key)
-            if not model_sol_content:
-                err_payload = {
-                    "passed": False,
-                    "errors": [f"Model solution file content is missing or cannot be read for key '{model_sol_key}'."],
-                    "score": 0,
-                    "max_score": max_score,
-                }
-                set_run_result(run_id, err_payload)
-                set_run_state(run_id, "failure")
-                return err_payload
+            model_files: dict[str, bytes] = {}
+            model_keys: set[str] = set()
+            for key, artifact in model_artifacts.items():
+                if not artifact.display_filename:
+                    raise ValueError(
+                        f"Model solution artifact '{key}' is missing display_filename."
+                    )
+                if artifact.display_filename in model_files:
+                    raise ValueError(
+                        "Duplicate model solution filename: "
+                        f"{artifact.display_filename}"
+                    )
+                content = get_artifact_content(
+                    db, course_code, assignment_slug, key
+                )
+                if not content:
+                    raise ValueError(
+                        "Model solution file content is missing or cannot be read "
+                        f"for key '{key}'."
+                    )
+                model_files[artifact.display_filename] = content[0]
+                model_keys.add(key)
 
-            content_bytes, _ = model_sol_content
-
-            # 3. Package model solution into a student ZIP format matching config entrypoint
-            entrypoint = config.bundle.entrypoint
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                # Add model solution as the entrypoint file
-                zip_file.writestr(entrypoint, content_bytes)
-                # Also add any required files that might be empty/placeholders
-                # to satisfy bundle required_files checks
-                for req_file in config.bundle.required_files:
-                    if req_file != entrypoint:
-                        zip_file.writestr(req_file, b"")
-
-            zip_data = zip_buffer.getvalue()
+            # 3. Package only real instructor files; required paths may not be empty.
+            zip_data = build_model_solution_zip(
+                config.bundle.required_files,
+                model_files,
+            )
 
             # 4. Collect other artifact references
             artifact_refs = {}
             for art in assignment.artifacts:
-                # Skip the model_solution itself, but include tests and support files
-                if art.artifact_key != model_sol_key and art.storage_ref:
+                # Model files are student-bundle inputs, never grading support.
+                if art.artifact_key not in model_keys and art.storage_ref:
                     artifact_refs[art.artifact_key] = art.storage_ref
 
             # Merged concepts covered list
@@ -366,22 +391,22 @@ def validate_assignment_model_solution(
         finally:
             loop.close()
 
-        # 6. Verify success (model solution must score 100% of base points)
+        # 6. Every automated item must pass; manual rubric items are excluded.
         errors = []
         passed = grading_result.success
         if not passed:
             errors.append(f"Grading pipeline failed to run successfully: {grading_result.failure_message}")
-        elif grading_result.score < max_score:
+        failing_tests = failing_automated_items(grading_result.test_results)
+        if passed and failing_tests:
             passed = False
             errors.append(
-                f"Model solution scored {grading_result.score}/{max_score}. Model solution must score 100%."
+                "Model solution must pass every automated scoring item."
             )
-            # Find failing test summaries
-            for test_res in grading_result.test_results:
-                if test_res.get("outcome") != "passed":
-                    errors.append(
-                        f"Test case '{test_res.get('key')}' failed: {test_res.get('message')}"
-                    )
+            for test_res in failing_tests:
+                errors.append(
+                    f"Test case '{test_res.get('key')}' failed: "
+                    f"{test_res.get('message')}"
+                )
 
         result_payload = {
             "passed": passed,
@@ -418,7 +443,8 @@ def validate_assignment_model_solution(
 def generate_pedagogical_feedback_html(
     student_identifier: str,
     result: GradingResult,
-    manual_results: dict | None = None
+    manual_results: dict | None = None,
+    overall_comment: str = "",
 ) -> str:
     """Generate a clean HTML pedagogical feedback page for the student."""
     from html import escape
@@ -514,6 +540,13 @@ def generate_pedagogical_feedback_html(
             """)
         manual_html = "".join(manual_blocks)
 
+    overall_comment_html = ""
+    if overall_comment:
+        overall_comment_html = f"""
+        <h2 style="border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-top: 30px;">Instructor Feedback</h2>
+        <p style="white-space: pre-wrap; color: #374151;">{escape(overall_comment)}</p>
+        """
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -550,6 +583,7 @@ def generate_pedagogical_feedback_html(
             {tests_html}
             
             {manual_html}
+            {overall_comment_html}
         </div>
     </body>
     </html>
@@ -626,6 +660,9 @@ def grade_official_run(self, run_id: int) -> dict:
 
         config = AssignmentConfigV1.model_validate(assignment.config.config_json)
         max_score = config.base_points
+        automated_max_score = sum(
+            item.points for item in config.tests if not item.extra_credit
+        )
         total_submissions = run.total_submission_count
 
         # Build artifact references
@@ -730,12 +767,14 @@ def grade_official_run(self, run_id: int) -> dict:
                 "success": False,
                 "score": 0,
                 "max_score": max_score,
+                "automated_max_score": automated_max_score,
                 "test_results": [],
                 "warnings": [],
                 "failure_category": "preparation_error",
                 "failure_message": f"Failed to prepare submission bundle: {str(e)}",
                 "feedback_html": f"<html><body><p>Error preparing submission: {str(e)}</p></body></html>",
-                "manual_results": manual_results
+                "manual_results": manual_results,
+                "overall_comment": "",
             }
             shutil.rmtree(student_temp_dir, ignore_errors=True)
             from app.domains.runs.queue_admission import release_execution_slots
@@ -803,12 +842,14 @@ def grade_official_run(self, run_id: int) -> dict:
             "success": grading_result.success,
             "score": grading_result.score,
             "max_score": grading_result.max_score,
+            "automated_max_score": automated_max_score,
             "test_results": grading_result.test_results,
             "warnings": [dict(w) for w in grading_result.warnings],
             "failure_category": grading_result.failure_category,
             "failure_message": grading_result.failure_message,
             "feedback_html": feedback_html,
-            "manual_results": manual_results
+            "manual_results": manual_results,
+            "overall_comment": "",
         }
 
         # Keep student_temp_dir on disk so staff can browse submission files after grading.
@@ -921,6 +962,11 @@ def run_mock_official_run(run_id: int) -> None:
                 pass
 
         mock_manual_results = init_manual_results(config.manual_rubric_items) if config else {}
+        automated_max_score = (
+            sum(item.points for item in config.tests if not item.extra_credit)
+            if config
+            else max_score
+        )
 
         # Generate simulated results for 3 mock students
         mock_students = [
@@ -950,6 +996,7 @@ def run_mock_official_run(run_id: int) -> None:
                 "success": success,
                 "score": score,
                 "max_score": max_score,
+                "automated_max_score": automated_max_score,
                 "test_results": [
                     {"label": "Public behavior checks", "outcome": "passed" if success else "failed", "points_awarded": score, "points": max_score, "passed": success}
                 ],
@@ -958,6 +1005,7 @@ def run_mock_official_run(run_id: int) -> None:
                 "failure_message": None if success else "Required file 'entrypoint.py' is missing.",
                 "feedback_html": f"<html><body><h1>Mock Feedback for {name}</h1><p>Score: {score}/{max_score}</p></body></html>",
                 "manual_results": {key: dict(item) for key, item in mock_manual_results.items()},
+                "overall_comment": "",
             }
 
         run_dir = official_run_dir(run_id)

@@ -9,14 +9,15 @@ from pydantic import ValidationError
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.domains.assignments.schemas import TestItemConfig
+from app.domains.assignments.schemas import ScoringItemConfig
 from app.domains.sandbox.schemas import SandboxRubricItem
+from app.domains.grading.result_parser import parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
 
 
 def test_test_item_config_validation():
     # 1. Valid config with inputs/outputs
-    config = TestItemConfig(
+    config = ScoringItemConfig(
         key="t1",
         label="Test 1",
         points=10,
@@ -28,7 +29,7 @@ def test_test_item_config_validation():
 
     # 2. Invalid config with mismatched lengths
     with pytest.raises(ValidationError):
-        TestItemConfig(
+        ScoringItemConfig(
             key="t2",
             label="Test 2",
             points=10,
@@ -39,7 +40,7 @@ def test_test_item_config_validation():
 
     # 3. Invalid config with missing outputs
     with pytest.raises(ValidationError):
-        TestItemConfig(
+        ScoringItemConfig(
             key="t3",
             label="Test 3",
             points=10,
@@ -74,6 +75,28 @@ def test_runner_generation_syntax():
     assert "ENTRYPOINT_MODULE = " in script
     assert "pytest_generate_tests" in script
     assert "run_case" in script
+
+
+def test_runner_reports_missing_preinstalled_dependency(tmp_path):
+    runner_code = generate_runner_script(
+        ["test_main.py"],
+        {},
+        "main",
+        ["definitely-not-installed-autograder-package"],
+    )
+    runner_file = tmp_path / "runner.py"
+    runner_file.write_text(runner_code, encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(runner_file)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    parsed = parse_pytest_json(result.stdout)
+    assert parsed.error_message is not None
+    assert "preinstalled dependency" in parsed.error_message
 
 
 def test_runner_execution_passing(tmp_path):

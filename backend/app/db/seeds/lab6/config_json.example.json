@@ -34,6 +34,18 @@
     "assignment_tests": {
       "type": "pytest_file",
       "display_filename": "tests.py"
+    },
+    "pygame_test_helpers": {
+      "type": "support_file",
+      "display_filename": "pygame_test_helpers.py"
+    },
+    "model_solution_part1": {
+      "type": "model_solution",
+      "display_filename": "lab6_part1.py"
+    },
+    "model_solution_part2": {
+      "type": "model_solution",
+      "display_filename": "lab6_part2.py"
     }
   },
   "rubric_groups": [],

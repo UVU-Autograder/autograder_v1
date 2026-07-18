@@ -180,6 +180,7 @@ async def run_grading_pipeline(
             entrypoint_module=Path(config.bundle.entrypoint).stem,
             language_id=settings.judge0_language_id,
             cpu_time_limit=float(settings.test_execution_timeout_seconds),
+            dependencies=config.execution.dependencies,
         )
 
         result.pytest_result = outcome.pytest_result

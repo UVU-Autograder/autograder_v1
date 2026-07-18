@@ -1,5 +1,4 @@
 import pytest
-import inspect
 import abc
 
 from ds_test_helpers import safe_import_dessert

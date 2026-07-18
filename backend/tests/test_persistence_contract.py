@@ -1,34 +1,33 @@
+import json
 import sys
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import inspect, select
+from sqlalchemy import func, inspect, select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = BACKEND_ROOT.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.base import Base, import_domain_models  # noqa: E402
-from app.db.seed import initialize_database, load_example_config  # noqa: E402
-from app.db.session import SessionLocal, engine  # noqa: E402
 import app.domains.assignments.models as assignment_models  # noqa: E402
+from app.db.seed import (  # noqa: E402
+    SEEDS_DIR,
+    initialize_database,
+    load_example_config,
+)
+from app.db.session import SessionLocal, engine  # noqa: E402
 from app.domains.assignments.schemas import (  # noqa: E402
     AssignmentConfigV1,
     StaffAssignmentSetupUpdate,
     pytest_marker_for_key,
 )
 from app.domains.assignments.service import update_staff_setup  # noqa: E402
+from app.domains.courses.models import Course  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def initialized_database():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def initialized_database(reset_database):
     yield
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 def test_assignment_config_accepts_simple_python_example():
@@ -96,352 +95,72 @@ def test_initial_metadata_tables_exist():
     }.issubset(table_names)
 
 
-def test_seed_creates_assignment_artifacts_and_derived_test_cases():
+@pytest.mark.parametrize(
+    "seed_dir",
+    [
+        path
+        for path in SEEDS_DIR.iterdir()
+        if path.is_dir()
+        and path.name != "shared"
+        and (path / "config_json.example.json").exists()
+    ],
+    ids=lambda path: path.name,
+)
+def test_seed_creates_artifacts_and_scoring_items_from_config(seed_dir: Path):
+    raw = json.loads(
+        (seed_dir / "config_json.example.json").read_text(encoding="utf-8")
+    )
+    config = AssignmentConfigV1.model_validate(raw)
+    slug = seed_dir.name.replace("_", "-")
+
     with SessionLocal() as db:
-        # Check cs1400
         assignment = db.scalar(
             select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "simple-python-functions"
+                assignment_models.Assignment.slug == slug
             )
         )
         assert assignment is not None
         assert assignment.config is not None
         assert {artifact.artifact_type for artifact in assignment.artifacts} == {
-            "pytest_file",
-            "model_solution",
-            "support_file",
+            artifact.type for artifact in config.artifacts.values()
         }
-        # Check cs1410
-        assignment_cs1410 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "lab-1-image-processing"
-            )
-        )
-        assert assignment_cs1410 is not None
-        assert assignment_cs1410.config is not None
-        assert {artifact.artifact_type for artifact in assignment_cs1410.artifacts} == {
-            "pytest_file",
-            "model_solution",
-            "support_file",
-        }
-        
+
         scoring_items = db.scalars(
             select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_cs1410.id)
+            .where(assignment_models.ScoringItem.assignment_id == assignment.id)
             .order_by(assignment_models.ScoringItem.display_order)
         ).all()
-        assert len(scoring_items) == 6
-        assert [item.config_item_key for item in scoring_items] == [
-            "part1_files",
-            "part1_output",
-            "part2_files",
-            "part2_output",
-            "part1_visual",
-            "part2_visual",
+
+        expected_keys = [item.key for item in config.tests] + [
+            item.key for item in config.manual_rubric_items
         ]
+        assert [item.config_item_key for item in scoring_items] == expected_keys
         assert [item.item_type for item in scoring_items] == [
-            "pytest",
-            "pytest",
-            "pytest",
-            "pytest",
-            "manual",
-            "manual",
+            *(["pytest"] * len(config.tests)),
+            *(["manual"] * len(config.manual_rubric_items)),
         ]
         assert [item.pytest_marker for item in scoring_items] == [
-            "ag_part1_files",
-            "ag_part1_output",
-            "ag_part2_files",
-            "ag_part2_output",
-            None,
-            None,
-        ]
-
-        # Check ds1
-        assignment_ds1 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "ds1"
-            )
-        )
-        assert assignment_ds1 is not None
-        assert assignment_ds1.config is not None
-        assert {artifact.artifact_type for artifact in assignment_ds1.artifacts} == {
-            "pytest_file",
-            "model_solution",
-        }
-
-        scoring_items_ds1 = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_ds1.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-        assert len(scoring_items_ds1) == 5
-        assert [item.config_item_key for item in scoring_items_ds1] == [
-            "dessert_item",
-            "candy",
-            "cookie",
-            "icecream",
-            "sundae",
-        ]
-        assert [item.item_type for item in scoring_items_ds1] == [
-            "pytest",
-            "pytest",
-            "pytest",
-            "pytest",
-            "pytest",
-        ]
-        assert [item.pytest_marker for item in scoring_items_ds1] == [
-            "ag_dessert_item",
-            "ag_candy",
-            "ag_cookie",
-            "ag_icecream",
-            "ag_sundae",
-        ]
-
-        # Check ds2
-        assignment_ds2 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "ds2"
-            )
-        )
-        assert assignment_ds2 is not None
-        assert assignment_ds2.config is not None
-        assert {artifact.artifact_type for artifact in assignment_ds2.artifacts} == {
-            "pytest_file",
-            "model_solution",
-            "support_file",
-        }
-
-        scoring_items_ds2 = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_ds2.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-        assert len(scoring_items_ds2) == 3
-        assert [item.config_item_key for item in scoring_items_ds2] == [
-            "ds1_regression",
-            "order_class",
-            "main_output",
-        ]
-        assert [item.item_type for item in scoring_items_ds2] == [
-            "pytest",
-            "pytest",
-            "pytest",
-        ]
-        assert [item.pytest_marker for item in scoring_items_ds2] == [
-            "ag_ds1_regression",
-            "ag_order_class",
-            "ag_main_output",
-        ]
-
-        # Check ds3
-        assignment_ds3 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "ds3"
-            )
-        )
-        assert assignment_ds3 is not None
-        assert assignment_ds3.config is not None
-        assert {artifact.artifact_type for artifact in assignment_ds3.artifacts} == {
-            "pytest_file",
-            "model_solution",
-            "support_file",
-        }
-
-        scoring_items_ds3 = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_ds3.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-        assert len(scoring_items_ds3) == 3
-        assert [item.config_item_key for item in scoring_items_ds3] == [
-            "ds2_regression",
-            "test_file_exists",
-            "student_tests_pass",
-        ]
-        assert [item.item_type for item in scoring_items_ds3] == [
-            "pytest",
-            "pytest",
-            "pytest",
-        ]
-        assert [item.pytest_marker for item in scoring_items_ds3] == [
-            "ag_ds2_regression",
-            "ag_test_file_exists",
-            "ag_student_tests_pass",
-        ]
-
-        # Check ds4
-        assignment_ds4 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "ds4"
-            )
-        )
-        assert assignment_ds4 is not None
-        assert assignment_ds4.config is not None
-        assert {artifact.artifact_type for artifact in assignment_ds4.artifacts} == {
-            "pytest_file",
-            "model_solution",
-            "support_file",
-        }
-
-        scoring_items_ds4 = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_ds4.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-        assert len(scoring_items_ds4) == 5
-        assert [item.config_item_key for item in scoring_items_ds4] == [
-            "abstract_class",
-            "tax_percent",
-            "calculate_cost",
-            "calculate_tax",
-            "order_totals",
-        ]
-        assert [item.item_type for item in scoring_items_ds4] == [
-            "pytest",
-            "pytest",
-            "pytest",
-            "pytest",
-            "pytest",
-        ]
-        assert [item.pytest_marker for item in scoring_items_ds4] == [
-            "ag_abstract_class",
-            "ag_tax_percent",
-            "ag_calculate_cost",
-            "ag_calculate_tax",
-            "ag_order_totals",
-        ]
-
-        # Check ds5
-        assignment_ds5 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "ds5"
-            )
-        )
-        assert assignment_ds5 is not None
-        assert assignment_ds5.config is not None
-        assert {artifact.artifact_type for artifact in assignment_ds5.artifacts} == {
-            "pytest_file",
-            "model_solution",
-            "support_file",
-        }
-
-        scoring_items_ds5 = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_ds5.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-        assert len(scoring_items_ds5) == 4
-        assert [item.config_item_key for item in scoring_items_ds5] == [
-            "dessertshop_class",
-            "ds4_regression",
-            "input_validation",
-            "receipt_output",
-        ]
-        assert [item.item_type for item in scoring_items_ds5] == [
-            "pytest",
-            "pytest",
-            "manual",
-            "manual",
-        ]
-        assert [item.pytest_marker for item in scoring_items_ds5] == [
-            "ag_dessertshop_class",
-            "ag_ds4_regression",
-            None,
-            None,
-        ]
-
-        # Check ds6
-        assignment_ds6 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "ds6"
-            )
-        )
-        assert assignment_ds6 is not None
-        assert assignment_ds6.config is not None
-        assert {artifact.artifact_type for artifact in assignment_ds6.artifacts} == {
-            "pytest_file",
-            "model_solution",
-            "support_file",
-        }
-
-        scoring_items_ds6 = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_ds6.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-        assert len(scoring_items_ds6) == 4
-        assert [item.config_item_key for item in scoring_items_ds6] == [
-            "ds5_regression",
-            "str_methods",
-            "to_list",
-            "output_format",
-        ]
-        assert [item.item_type for item in scoring_items_ds6] == [
-            "pytest",
-            "pytest",
-            "pytest",
-            "manual",
-        ]
-        assert [item.pytest_marker for item in scoring_items_ds6] == [
-            "ag_ds5_regression",
-            "ag_str_methods",
-            "ag_to_list",
-            None,
-        ]
-
-        # Check lab6
-        assignment_lab6 = db.scalar(
-            select(assignment_models.Assignment).where(
-                assignment_models.Assignment.slug == "lab6"
-            )
-        )
-        assert assignment_lab6 is not None
-        assert assignment_lab6.config is not None
-        assert {artifact.artifact_type for artifact in assignment_lab6.artifacts} == {
-            "pytest_file",
-        }
-
-        scoring_items_lab6 = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment_lab6.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-        assert len(scoring_items_lab6) == 3
-        assert [item.config_item_key for item in scoring_items_lab6] == [
-            "part1_ast_execution",
-            "part2_ast_execution",
-            "visual_movement",
-        ]
-        assert [item.item_type for item in scoring_items_lab6] == [
-            "pytest",
-            "pytest",
-            "manual",
-        ]
-        assert [item.pytest_marker for item in scoring_items_lab6] == [
-            "ag_part1_ast_execution",
-            "ag_part2_ast_execution",
-            None,
+            *[pytest_marker_for_key(item.key) for item in config.tests],
+            *([None] * len(config.manual_rubric_items)),
         ]
 
 
 def test_seed_is_idempotent():
-    from sqlalchemy import func
-    from app.domains.courses.models import Course
-
     with SessionLocal() as db:
         num_courses_before = db.scalar(select(func.count(Course.id)))
-        num_assignments_before = db.scalar(select(func.count(assignment_models.Assignment.id)))
+        num_assignments_before = db.scalar(
+            select(func.count(assignment_models.Assignment.id))
+        )
 
-    # Re-run initialization/seeding
     initialize_database(seed=True)
 
     with SessionLocal() as db:
         num_courses_after = db.scalar(select(func.count(Course.id)))
-        num_assignments_after = db.scalar(select(func.count(assignment_models.Assignment.id)))
+        num_assignments_after = db.scalar(
+            select(func.count(assignment_models.Assignment.id))
+        )
         assert num_courses_before == num_courses_after
         assert num_assignments_before == num_assignments_after
-
-
 
 
 def test_manual_rubric_items_derive_non_pytest_scoring_projections():
@@ -471,11 +190,12 @@ def test_manual_rubric_items_derive_non_pytest_scoring_projections():
         items = db.scalars(
             select(assignment_models.ScoringItem)
             .join(assignment_models.ScoringItem.assignment)
-            .where(assignment_models.Assignment.slug == "simple-python-functions")
+            .where(
+                assignment_models.Assignment.slug == "simple-python-functions"
+            )
             .order_by(assignment_models.ScoringItem.display_order)
         ).all()
-        
-        # Should have the 3 pytest tests plus the 1 manual rubric item
+
         assert len(items) == 4
         manual_item = items[-1]
         assert manual_item.config_item_key == "reflection_quality"

@@ -95,19 +95,6 @@
       "title": "CompletionRequirementConfig",
       "type": "object"
     },
-    "ConceptsConfig": {
-      "properties": {
-        "additions": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Additions",
-          "type": "array"
-        }
-      },
-      "title": "ConceptsConfig",
-      "type": "object"
-    },
     "ExecutionConfig": {
       "properties": {
         "dependencies": {
@@ -211,37 +198,6 @@
       "title": "ManualRubricItemConfig",
       "type": "object"
     },
-    "OutputArtifactConfig": {
-      "properties": {
-        "key": {
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "title": "Key",
-          "type": "string"
-        },
-        "path": {
-          "minLength": 1,
-          "title": "Path",
-          "type": "string"
-        },
-        "required": {
-          "default": true,
-          "title": "Required",
-          "type": "boolean"
-        },
-        "artifact_type": {
-          "const": "generated_file",
-          "default": "generated_file",
-          "title": "Artifact Type",
-          "type": "string"
-        }
-      },
-      "required": [
-        "key",
-        "path"
-      ],
-      "title": "OutputArtifactConfig",
-      "type": "object"
-    },
     "RubricGroupConfig": {
       "properties": {
         "key": {
@@ -271,54 +227,7 @@
       "title": "RubricGroupConfig",
       "type": "object"
     },
-    "StdinScenarioConfig": {
-      "properties": {
-        "key": {
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "title": "Key",
-          "type": "string"
-        },
-        "label": {
-          "minLength": 1,
-          "title": "Label",
-          "type": "string"
-        },
-        "stdin": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Stdin",
-          "type": "array"
-        }
-      },
-      "required": [
-        "key",
-        "label"
-      ],
-      "title": "StdinScenarioConfig",
-      "type": "object"
-    },
-    "SupportArtifactRefConfig": {
-      "properties": {
-        "artifact_key": {
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "title": "Artifact Key",
-          "type": "string"
-        },
-        "workspace_path": {
-          "minLength": 1,
-          "title": "Workspace Path",
-          "type": "string"
-        }
-      },
-      "required": [
-        "artifact_key",
-        "workspace_path"
-      ],
-      "title": "SupportArtifactRefConfig",
-      "type": "object"
-    },
-    "TestItemConfig": {
+    "ScoringItemConfig": {
       "properties": {
         "key": {
           "pattern": "^[a-z][a-z0-9_]*$",
@@ -351,6 +260,36 @@
           ],
           "default": null,
           "title": "Rubric Group Key"
+        },
+        "inputs": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inputs"
+        },
+        "outputs": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outputs"
         }
       },
       "required": [
@@ -359,7 +298,34 @@
         "points",
         "extra_credit"
       ],
-      "title": "TestItemConfig",
+      "title": "ScoringItemConfig",
+      "type": "object"
+    },
+    "StdinScenarioConfig": {
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "stdin": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Stdin",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "label"
+      ],
+      "title": "StdinScenarioConfig",
       "type": "object"
     }
   },
@@ -372,9 +338,6 @@
     "bundle": {
       "$ref": "#/$defs/BundleConfig"
     },
-    "concepts": {
-      "$ref": "#/$defs/ConceptsConfig"
-    },
     "artifacts": {
       "additionalProperties": {
         "$ref": "#/$defs/ArtifactConfig"
@@ -385,7 +348,7 @@
     },
     "tests": {
       "items": {
-        "$ref": "#/$defs/TestItemConfig"
+        "$ref": "#/$defs/ScoringItemConfig"
       },
       "minItems": 1,
       "title": "Tests",
@@ -400,20 +363,6 @@
     },
     "execution": {
       "$ref": "#/$defs/ExecutionConfig"
-    },
-    "support_artifacts": {
-      "items": {
-        "$ref": "#/$defs/SupportArtifactRefConfig"
-      },
-      "title": "Support Artifacts",
-      "type": "array"
-    },
-    "output_artifacts": {
-      "items": {
-        "$ref": "#/$defs/OutputArtifactConfig"
-      },
-      "title": "Output Artifacts",
-      "type": "array"
     },
     "rubric_groups": {
       "items": {

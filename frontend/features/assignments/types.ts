@@ -15,6 +15,13 @@ type RubricItem = {
     outputs?: string[] | null;
 }
 
+type StaffArtifact = {
+    artifact_key: string;
+    artifact_type: string;
+    display_filename: string | null;
+    size_bytes: number | null;
+}
+
 type UploadQuota = {
     limit: number;
     window_seconds: number;
@@ -119,9 +126,9 @@ export type StaffAssignmentSetup = {
     required_files: string[];
     entrypoint_path: string;
     concept_additions: string[];
-    scoring_items: any[];
-    artifacts: any[];
-    config_json: any;
+    scoring_items: RubricItem[];
+    artifacts: StaffArtifact[];
+    config_json: Record<string, unknown>;
     module_id?: number | null;
 };
 

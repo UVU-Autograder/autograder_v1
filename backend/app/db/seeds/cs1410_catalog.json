@@ -1,0 +1,139 @@
+{
+  "modules": {
+    "m1": {
+      "name": "Module 1: Warmup",
+      "concepts": ["image-processing"]
+    },
+    "m2": {
+      "name": "Module 2: Object-Oriented Intro",
+      "concepts": ["classes", "type-hints"]
+    },
+    "m3": {
+      "name": "Module 3: Inheritance, Polymorphism, and Properties",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading"]
+    },
+    "m4": {
+      "name": "Module 4: Generators and Iterators",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators"]
+    },
+    "m5": {
+      "name": "Module 5: Unit Tests with pytest",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing"]
+    },
+    "m6": {
+      "name": "Module 6: Abstract Classes",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes"]
+    },
+    "m7": {
+      "name": "Module 7: Exceptions and Protocols",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols"]
+    },
+    "m8": {
+      "name": "Module 8: Introduction to Pygame",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
+    },
+    "m9": {
+      "name": "Module 9: Object-Oriented Pygame",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
+    },
+    "m10": {
+      "name": "Module 10: Pygame GUI Widgets",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
+    },
+    "m11": {
+      "name": "Module 11: Named tuples, Dataclasses, and Sorting lists",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]
+    },
+    "m12": {
+      "name": "Module 12: CS Degrees at UVU",
+      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]
+    }
+  },
+  "assignments": [
+    {
+      "module": "m1",
+      "slug": "lab-1-image-processing",
+      "title": "Lab 1: Image Processing"
+    },
+    {
+      "module": "m2",
+      "slug": "lab2",
+      "title": "Lab 2: Bank Account Class"
+    },
+    {
+      "module": "m2",
+      "slug": "lab3",
+      "title": "Lab 3: Type Hinting and Encapsulation"
+    },
+    {
+      "module": "m3",
+      "slug": "ds1",
+      "title": "Dessert Shop 1: Inheritance Superclass"
+    },
+    {
+      "module": "m3",
+      "slug": "lab4",
+      "title": "Lab 4: Properties and Validation"
+    },
+    {
+      "module": "m3",
+      "slug": "lab5",
+      "title": "Lab 5: Operator Overloading"
+    },
+    {
+      "module": "m4",
+      "slug": "ds2",
+      "title": "Dessert Shop 2: Using Classes in main"
+    },
+    {
+      "module": "m5",
+      "slug": "ds3",
+      "title": "Dessert Shop 3: Test Cases with pytest"
+    },
+    {
+      "module": "m6",
+      "slug": "ds4",
+      "title": "Dessert Shop 4: Abstraction"
+    },
+    {
+      "module": "m7",
+      "slug": "ds5",
+      "title": "Dessert Shop 5: Console Application"
+    },
+    {
+      "module": "m8",
+      "slug": "ds6",
+      "title": "Dessert Shop 6: Overriding Methods"
+    },
+    {
+      "module": "m8",
+      "slug": "lab6",
+      "title": "Lab 6: Moving an Animal Image Left and Right"
+    },
+    {
+      "module": "m9",
+      "slug": "ds7",
+      "title": "Dessert Shop 7: Mixin Interface"
+    },
+    {
+      "module": "m10",
+      "slug": "ds8",
+      "title": "Dessert Shop 8: Payment Method"
+    },
+    {
+      "module": "m11",
+      "slug": "ds9",
+      "title": "Dessert Shop 9: Sort Receipt Items"
+    },
+    {
+      "module": "m11",
+      "slug": "lab7",
+      "title": "Lab 7: Modeling College Students with Data Classes"
+    },
+    {
+      "module": "m12",
+      "slug": "ds10",
+      "title": "Dessert Shop 10: Combine Like Items"
+    }
+  ]
+}

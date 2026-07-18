@@ -70,6 +70,546 @@
         }
       }
     },
+    "/staff/admin/courses": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Get Courses Admin",
+        "operationId": "get_courses_admin_staff_admin_courses_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CourseAdminDetail"
+                  },
+                  "type": "array",
+                  "title": "Response Get Courses Admin Staff Admin Courses Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Create Course Admin",
+        "operationId": "create_course_admin_staff_admin_courses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseAdminDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/staff/admin/courses/{course_id}": {
+      "put": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Update Course Admin",
+        "operationId": "update_course_admin_staff_admin_courses__course_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseAdminDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Deactivate Course Admin",
+        "operationId": "deactivate_course_admin_staff_admin_courses__course_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/admin/courses/{course_id}/sections": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Get Sections Admin",
+        "operationId": "get_sections_admin_staff_admin_courses__course_id__sections_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SectionAdminDetail"
+                  },
+                  "title": "Response Get Sections Admin Staff Admin Courses  Course Id  Sections Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Create Section Admin",
+        "operationId": "create_section_admin_staff_admin_courses__course_id__sections_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionAdminDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/admin/sections/{section_id}": {
+      "put": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Update Section Admin",
+        "operationId": "update_section_admin_staff_admin_sections__section_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "section_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Section Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionAdminDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Deactivate Section Admin",
+        "operationId": "deactivate_section_admin_staff_admin_sections__section_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "section_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Section Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/admin/users": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Get Users Admin",
+        "operationId": "get_users_admin_staff_admin_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserAdminDetail"
+                  },
+                  "type": "array",
+                  "title": "Response Get Users Admin Staff Admin Users Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/staff/admin/access": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Get Access Admin",
+        "operationId": "get_access_admin_staff_admin_access_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAccessResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Access Admin Staff Admin Access Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Grant Access Admin",
+        "operationId": "grant_access_admin_staff_admin_access_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffAccessCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/staff/admin/access/{access_id}": {
+      "delete": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Revoke Access Admin",
+        "operationId": "revoke_access_admin_staff_admin_access__access_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "access_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Access Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/admin/monitoring": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Get Monitoring Admin",
+        "operationId": "get_monitoring_admin_staff_admin_monitoring_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitoringResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/sandbox/courses": {
       "get": {
         "tags": [
@@ -409,6 +949,31 @@
         }
       }
     },
+    "/sandbox/concepts/metadata": {
+      "get": {
+        "tags": [
+          "sandbox"
+        ],
+        "summary": "Get Concepts Metadata Endpoint",
+        "operationId": "get_concepts_metadata_endpoint_sandbox_concepts_metadata_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/ConceptMetadata"
+                  },
+                  "type": "object",
+                  "title": "Response Get Concepts Metadata Endpoint Sandbox Concepts Metadata Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/runs/{run_id}/status": {
       "get": {
         "tags": [
@@ -416,6 +981,11 @@
         ],
         "summary": "Get Run Status",
         "operationId": "get_run_status_runs__run_id__status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -824,6 +1394,241 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/students/{canvas_id}/files": {
+      "get": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "List Student Files",
+        "operationId": "list_student_files_staff_courses__course_id__assignments__assignment_id__runs__run_id__students__canvas_id__files_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "canvas_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Canvas Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/students/{canvas_id}/files/content": {
+      "get": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Get Student File Content",
+        "operationId": "get_student_file_content_staff_courses__course_id__assignments__assignment_id__runs__run_id__students__canvas_id__files_content_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "canvas_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Canvas Id"
+            }
+          },
+          {
+            "name": "filepath",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filepath"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/students/{canvas_id}/manual-grades": {
+      "post": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Update Student Manual Grades",
+        "operationId": "update_student_manual_grades_staff_courses__course_id__assignments__assignment_id__runs__run_id__students__canvas_id__manual_grades_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "canvas_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Canvas Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateManualGradesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses": {
       "get": {
         "tags": [
@@ -880,6 +1685,108 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StaffAssignmentListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Create New Assignment",
+        "operationId": "create_new_assignment_staff_courses__course_id__assignments_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAssignmentSetup"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/sections": {
+      "get": {
+        "tags": [
+          "staff-courses"
+        ],
+        "summary": "Get Staff Sections",
+        "operationId": "get_staff_sections_staff_courses__course_id__sections_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffSectionListResponse"
                 }
               }
             }
@@ -985,6 +1892,55 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/courses/{course_id}/assignments/{assignment_id}": {
+      "delete": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Delete Assignment",
+        "operationId": "delete_assignment_staff_courses__course_id__assignments__assignment_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -1711,9 +2667,6 @@
           "bundle": {
             "$ref": "#/components/schemas/BundleConfig"
           },
-          "concepts": {
-            "$ref": "#/components/schemas/ConceptsConfig"
-          },
           "artifacts": {
             "additionalProperties": {
               "$ref": "#/components/schemas/ArtifactConfig"
@@ -1724,7 +2677,7 @@
           },
           "tests": {
             "items": {
-              "$ref": "#/components/schemas/TestItemConfig"
+              "$ref": "#/components/schemas/ScoringItemConfig"
             },
             "type": "array",
             "minItems": 1,
@@ -1739,20 +2692,6 @@
           },
           "execution": {
             "$ref": "#/components/schemas/ExecutionConfig"
-          },
-          "support_artifacts": {
-            "items": {
-              "$ref": "#/components/schemas/SupportArtifactRefConfig"
-            },
-            "type": "array",
-            "title": "Support Artifacts"
-          },
-          "output_artifacts": {
-            "items": {
-              "$ref": "#/components/schemas/OutputArtifactConfig"
-            },
-            "type": "array",
-            "title": "Output Artifacts"
           },
           "rubric_groups": {
             "items": {
@@ -1785,6 +2724,58 @@
         ],
         "title": "AssignmentConfigV1"
       },
+      "AssignmentCreate": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Title"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "python"
+          },
+          "canvas_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canvas Ref"
+          },
+          "sandbox_enabled": {
+            "type": "boolean",
+            "title": "Sandbox Enabled",
+            "default": true
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "title"
+        ],
+        "title": "AssignmentCreate"
+      },
       "Body_create_run_sandbox_courses__course_id__assignments__assignment_id__runs_post": {
         "properties": {
           "bundle": {
@@ -1805,11 +2796,16 @@
             "type": "string",
             "contentMediaType": "application/octet-stream",
             "title": "File"
+          },
+          "section_id": {
+            "type": "integer",
+            "title": "Section Id"
           }
         },
         "type": "object",
         "required": [
-          "file"
+          "file",
+          "section_id"
         ],
         "title": "Body_ingest_canvas_submissions_staff_courses__course_id__assignments__assignment_id__submissions_ingest_post"
       },
@@ -1933,18 +2929,134 @@
         ],
         "title": "CompletionRequirementConfig"
       },
-      "ConceptsConfig": {
+      "ConceptMetadata": {
         "properties": {
-          "additions": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "syntax_patterns": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Additions"
+            "title": "Syntax Patterns"
+          },
+          "nodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nodes"
           }
         },
         "type": "object",
-        "title": "ConceptsConfig"
+        "required": [
+          "key",
+          "title",
+          "syntax_patterns",
+          "nodes"
+        ],
+        "title": "ConceptMetadata"
+      },
+      "CourseAdminDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "term": {
+            "type": "string",
+            "title": "Term"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "instructor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Id"
+          },
+          "instructor_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Email"
+          },
+          "ia_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ia Id"
+          },
+          "ia_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ia Email"
+          },
+          "default_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Default Concepts"
+          },
+          "section_count": {
+            "type": "integer",
+            "title": "Section Count"
+          },
+          "assignment_count": {
+            "type": "integer",
+            "title": "Assignment Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "title",
+          "term",
+          "is_active",
+          "default_concepts",
+          "section_count",
+          "assignment_count"
+        ],
+        "title": "CourseAdminDetail"
       },
       "CourseConceptsResponse": {
         "properties": {
@@ -1958,6 +3070,13 @@
             },
             "type": "array",
             "title": "Default Concepts"
+          },
+          "modules": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleConfig"
+            },
+            "type": "array",
+            "title": "Modules"
           }
         },
         "type": "object",
@@ -1975,6 +3094,13 @@
             },
             "type": "array",
             "title": "Default Concepts"
+          },
+          "modules": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleConfig"
+            },
+            "type": "array",
+            "title": "Modules"
           }
         },
         "type": "object",
@@ -1982,6 +3108,211 @@
           "default_concepts"
         ],
         "title": "CourseConceptsUpdate"
+      },
+      "CourseCreate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "term": {
+            "type": "string",
+            "title": "Term"
+          },
+          "default_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Default Concepts",
+            "default": []
+          },
+          "instructor_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Email"
+          },
+          "instructor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Name"
+          },
+          "ia_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ia Email"
+          },
+          "ia_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ia Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "term"
+        ],
+        "title": "CourseCreate"
+      },
+      "CourseUpdate": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "term": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Term"
+          },
+          "default_concepts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Concepts"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "instructor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Id"
+          },
+          "ia_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ia Id"
+          },
+          "instructor_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Email"
+          },
+          "instructor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructor Name"
+          },
+          "ia_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ia Email"
+          },
+          "ia_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ia Name"
+          }
+        },
+        "type": "object",
+        "title": "CourseUpdate"
       },
       "ExecutionConfig": {
         "properties": {
@@ -2081,6 +3412,36 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ManualGradeInput": {
+        "properties": {
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ManualGradeInput"
+      },
       "ManualRubricItemConfig": {
         "properties": {
           "key": {
@@ -2148,6 +3509,65 @@
         ],
         "title": "MockLoginRequest"
       },
+      "ModuleConfig": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Concepts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ModuleConfig"
+      },
+      "MonitoringResponse": {
+        "properties": {
+          "active_runs_count": {
+            "type": "integer",
+            "title": "Active Runs Count"
+          },
+          "queued_runs_count": {
+            "type": "integer",
+            "title": "Queued Runs Count"
+          },
+          "sandbox_runs_last_hour": {
+            "type": "integer",
+            "title": "Sandbox Runs Last Hour"
+          },
+          "total_token_usage": {
+            "type": "integer",
+            "title": "Total Token Usage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "active_runs_count",
+          "queued_runs_count",
+          "sandbox_runs_last_hour",
+          "total_token_usage"
+        ],
+        "title": "MonitoringResponse"
+      },
       "OfficialRunResponse": {
         "properties": {
           "run_id": {
@@ -2181,37 +3601,6 @@
           "created_at"
         ],
         "title": "OfficialRunResponse"
-      },
-      "OutputArtifactConfig": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$",
-            "title": "Key"
-          },
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Path"
-          },
-          "required": {
-            "type": "boolean",
-            "title": "Required",
-            "default": true
-          },
-          "artifact_type": {
-            "type": "string",
-            "const": "generated_file",
-            "title": "Artifact Type",
-            "default": "generated_file"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "path"
-        ],
-        "title": "OutputArtifactConfig"
       },
       "QueueBackpressure": {
         "properties": {
@@ -2461,6 +3850,17 @@
             "type": "integer",
             "title": "Assignment Id"
           },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -2542,6 +3942,17 @@
           "upload_quota": {
             "$ref": "#/components/schemas/UploadQuota"
           },
+          "module_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Name"
+          },
           "description": {
             "type": "string",
             "title": "Description"
@@ -2564,6 +3975,13 @@
             },
             "type": "array",
             "title": "Constraints"
+          },
+          "allowed_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowed Concepts"
           },
           "rubric": {
             "items": {
@@ -2655,6 +4073,17 @@
           },
           "upload_quota": {
             "$ref": "#/components/schemas/UploadQuota"
+          },
+          "module_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Name"
           }
         },
         "type": "object",
@@ -2847,6 +4276,34 @@
               }
             ],
             "title": "Rubric Group Key"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputs"
+          },
+          "outputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputs"
           }
         },
         "type": "object",
@@ -3037,6 +4494,295 @@
         ],
         "title": "ScoringItem"
       },
+      "ScoringItemConfig": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          },
+          "points": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Points"
+          },
+          "extra_credit": {
+            "type": "boolean",
+            "title": "Extra Credit"
+          },
+          "rubric_group_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric Group Key"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputs"
+          },
+          "outputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "points",
+          "extra_credit"
+        ],
+        "title": "ScoringItemConfig"
+      },
+      "SectionAdminDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "course_id": {
+            "type": "integer",
+            "title": "Course Id"
+          },
+          "crn": {
+            "type": "string",
+            "title": "Crn"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "course_id",
+          "crn",
+          "is_active"
+        ],
+        "title": "SectionAdminDetail"
+      },
+      "SectionCreate": {
+        "properties": {
+          "crn": {
+            "type": "string",
+            "title": "Crn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "crn"
+        ],
+        "title": "SectionCreate"
+      },
+      "SectionUpdate": {
+        "properties": {
+          "crn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crn"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "SectionUpdate"
+      },
+      "StaffAccessCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "role_name": {
+            "type": "string",
+            "title": "Role Name"
+          },
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "role_name"
+        ],
+        "title": "StaffAccessCreate"
+      },
+      "StaffAccessResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "user_email": {
+            "type": "string",
+            "title": "User Email"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          },
+          "role_id": {
+            "type": "integer",
+            "title": "Role Id"
+          },
+          "role_name": {
+            "type": "string",
+            "title": "Role Name"
+          },
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "course_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Code"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          },
+          "section_crn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Crn"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "user_email",
+          "user_name",
+          "role_id",
+          "role_name",
+          "course_id",
+          "course_code",
+          "section_id",
+          "section_crn",
+          "is_active"
+        ],
+        "title": "StaffAccessResponse"
+      },
       "StaffAssignmentListResponse": {
         "properties": {
           "course_id": {
@@ -3099,13 +4845,6 @@
             "type": "string",
             "title": "Entrypoint Path"
           },
-          "concept_additions": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Concept Additions"
-          },
           "scoring_items": {
             "items": {
               "$ref": "#/components/schemas/ScoringItem"
@@ -3127,6 +4866,17 @@
             "type": "array",
             "title": "Completion Requirements"
           },
+          "canvas_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canvas Ref"
+          },
           "artifacts": {
             "items": {
               "$ref": "#/components/schemas/ArtifactMetadata"
@@ -3136,6 +4886,17 @@
           },
           "config_json": {
             "$ref": "#/components/schemas/AssignmentConfigV1"
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
           }
         },
         "type": "object",
@@ -3149,7 +4910,6 @@
           "extra_credit_points",
           "required_files",
           "entrypoint_path",
-          "concept_additions",
           "scoring_items",
           "rubric_groups",
           "completion_requirements",
@@ -3182,8 +4942,41 @@
             ],
             "title": "Sandbox Enabled"
           },
+          "canvas_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canvas Ref"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
           "config_json": {
             "$ref": "#/components/schemas/AssignmentConfigV1"
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
           }
         },
         "type": "object",
@@ -3223,6 +5016,17 @@
             "type": "integer",
             "minimum": 0.0,
             "title": "Extra Credit Points"
+          },
+          "module_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Name"
           }
         },
         "type": "object",
@@ -3282,6 +5086,50 @@
         ],
         "title": "StaffCourseSummary"
       },
+      "StaffSectionListResponse": {
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "title": "Course Id"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/StaffSectionSummary"
+            },
+            "type": "array",
+            "title": "Sections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course_id",
+          "sections"
+        ],
+        "title": "StaffSectionListResponse"
+      },
+      "StaffSectionSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "crn": {
+            "type": "string",
+            "title": "Crn"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "crn",
+          "is_active"
+        ],
+        "title": "StaffSectionSummary"
+      },
       "StdinScenarioConfig": {
         "properties": {
           "key": {
@@ -3308,69 +5156,6 @@
           "label"
         ],
         "title": "StdinScenarioConfig"
-      },
-      "SupportArtifactRefConfig": {
-        "properties": {
-          "artifact_key": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$",
-            "title": "Artifact Key"
-          },
-          "workspace_path": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Workspace Path"
-          }
-        },
-        "type": "object",
-        "required": [
-          "artifact_key",
-          "workspace_path"
-        ],
-        "title": "SupportArtifactRefConfig"
-      },
-      "TestItemConfig": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$",
-            "title": "Key"
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Label"
-          },
-          "points": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Points"
-          },
-          "extra_credit": {
-            "type": "boolean",
-            "title": "Extra Credit"
-          },
-          "rubric_group_key": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rubric Group Key"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "label",
-          "points",
-          "extra_credit"
-        ],
-        "title": "TestItemConfig"
       },
       "TestSummary": {
         "properties": {
@@ -3401,6 +5186,28 @@
           "message": {
             "type": "string",
             "title": "Message"
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
           }
         },
         "type": "object",
@@ -3412,6 +5219,33 @@
           "message"
         ],
         "title": "TestSummary"
+      },
+      "UpdateManualGradesRequest": {
+        "properties": {
+          "grades": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ManualGradeInput"
+            },
+            "type": "object",
+            "title": "Grades"
+          },
+          "overall_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grades"
+        ],
+        "title": "UpdateManualGradesRequest"
       },
       "UploadQuota": {
         "properties": {
@@ -3443,6 +5277,41 @@
           "reset_at"
         ],
         "title": "UploadQuota"
+      },
+      "UserAdminDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "is_active"
+        ],
+        "title": "UserAdminDetail"
       },
       "ValidationError": {
         "properties": {

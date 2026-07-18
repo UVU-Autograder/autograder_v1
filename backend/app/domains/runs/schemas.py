@@ -58,10 +58,11 @@ class RunSummaryListResponse(BaseModel):
 
 
 class ManualGradeInput(BaseModel):
-    score: int | None = Field(default=None, ge=0)
+    score: int | None = Field(default=None, ge=0, strict=True)
     comments: str | None = Field(default="")
 
 
 class UpdateManualGradesRequest(BaseModel):
     grades: dict[str, ManualGradeInput]
+    overall_comment: str | None = None
 

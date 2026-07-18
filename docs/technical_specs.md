@@ -262,7 +262,7 @@ classDiagram
   - `support_file`
 - Expectations by artifact class:
   - `pytest_file`: one or more per assignment; editable, validated through strict marker preflight and test execution, stored as metadata plus storage-backed file body
-  - `model_solution`: editable, executable through Judge0, stored as metadata plus storage-backed file body
+  - `model_solution`: one real instructor artifact per required bundle path, editable and executable through Judge0; model validation never synthesizes placeholder files
   - `support_file`: assignment-owned file content available to grading and test execution as needed
 - `AssignmentArtifact` metadata should stay lightweight: assignment linkage, stable artifact key, artifact type, storage reference, and optional filename are sufficient unless later implementation work proves otherwise.
 - Artifact file bodies use the local on-prem filesystem behind a storage interface.
@@ -521,7 +521,8 @@ Notes:
 ### Staff-facing export artifacts
 
 - Official runs expose two separate staff download actions: one Canvas-grade CSV and one ZIP of per-student HTML feedback artifacts.
-- Official review supports exports; backend manual-grade persist/export regen exists; **in-app manual grading workflow** and feedback preview / Monaco / filtering remain active backlog (keep preview wording broad).
+- Official review includes ephemeral feedback preview, read-only Monaco, and an alphabetical manual-grading queue. Exports are blocked until all snapshotted manual items have whole-number scores; assignments without manual items bypass the gate.
+- Manual comments are optional student-facing HTML feedback only. Automated pytest results are immutable, and manual grades affect only snapshotted manual rubric items.
 - The product does not expose a raw student-submission tarball download path; teachers already have the Canvas ZIP they uploaded.
 - Structured review data and read-only Monaco previews may be shown while ephemeral official data exists (<=24h or until staff cleanup).
 - Automated Canvas feedback upload or distribution is deferred.

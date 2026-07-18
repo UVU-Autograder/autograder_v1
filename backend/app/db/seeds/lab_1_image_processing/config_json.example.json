@@ -62,6 +62,14 @@
       "type": "model_solution",
       "display_filename": "bears3.py"
     },
+    "model_solution_bears2_jpg": {
+      "type": "model_solution",
+      "display_filename": "bears2.jpg"
+    },
+    "model_solution_bears3_jpg": {
+      "type": "model_solution",
+      "display_filename": "bears3.jpg"
+    },
     "bears_copy": {
       "type": "support_file",
       "display_filename": "bears_copy.jpg"
