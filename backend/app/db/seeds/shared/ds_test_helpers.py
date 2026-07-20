@@ -3,6 +3,7 @@ import builtins
 import importlib
 import inspect
 import io
+import os
 import runpy
 import sys
 from collections.abc import Callable
@@ -17,20 +18,29 @@ _MISSING_MODULE = object()
 
 def import_student_modules(*module_names: str):
     """Import local student modules while temporarily shadowing name collisions."""
-    original_path = list(sys.path)
     saved_modules = {
         name: sys.modules.get(name, _MISSING_MODULE) for name in module_names
     }
+    original_path = list(sys.path)
     try:
-        sys.path.insert(0, str(Path.cwd()))
+        target_dir = os.getenv("STUDENT_SUBMISSION_DIR") or str(Path.cwd())
+        sys.path.insert(0, target_dir)
         importlib.invalidate_caches()
         for name in module_names:
             sys.modules.pop(name, None)
-        imported = tuple(importlib.import_module(name) for name in module_names)
-        return imported
+        imported = []
+        for name in module_names:
+            try:
+                mod = importlib.import_module(name)
+                imported.append(mod)
+            except ModuleNotFoundError:
+                imported.append(None)
+        return tuple(imported)
     finally:
         sys.path[:] = original_path
         for name, module in saved_modules.items():
+            if name == "packaging" and "packaging" in sys.modules and hasattr(sys.modules["packaging"], "Packaging"):
+                continue
             if module is _MISSING_MODULE:
                 sys.modules.pop(name, None)
             else:
@@ -72,9 +82,18 @@ def sequential_input_mock(responses: list[str]):
 
 def safe_import_dessert():
     def _import():
-        from dessert import DessertItem, Candy, Cookie, IceCream, Sundae, Order
-
-        return DessertItem, Candy, Cookie, IceCream, Sundae, Order
+        modules = import_student_modules("packaging", "payment", "combine", "dessert")
+        des_mod = modules[3]
+        if des_mod is None:
+            raise ImportError("Could not find dessert.py")
+        return (
+            getattr(des_mod, "DessertItem"),
+            getattr(des_mod, "Candy"),
+            getattr(des_mod, "Cookie"),
+            getattr(des_mod, "IceCream"),
+            getattr(des_mod, "Sundae"),
+            getattr(des_mod, "Order"),
+        )
 
     try:
         return _with_input_blocked(_import)
@@ -114,9 +133,8 @@ def safe_import_dessertshop():
     builtins.input = mock_input
     mod = None
     try:
-        import dessertshop
-
-        mod = dessertshop
+        mods = import_student_modules("packaging", "payment", "combine", "dessert", "dessertshop")
+        mod = mods[4]
     except ImportError as exc:
         raise AssertionError(f"Could not import dessertshop.py: {exc}") from exc
     except ImportTimeExit:

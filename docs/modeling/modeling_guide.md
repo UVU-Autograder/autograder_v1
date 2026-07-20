@@ -114,3 +114,10 @@ as `dessert.py` and `dessertshop.py`.
 6. Add a standalone model solution and required resources.
 7. Run seed integrity, persistence, preflight, and model-solution validation.
 8. Smoke-test one sandbox run before marking the assignment modeled.
+
+## Modeling cautions and assignment patterns
+
+- **Package/Module Name Collisions (DS7 / Packaging):** When a student assignment includes a file with the same name as a PyPI library (e.g. `packaging.py`), pytest CLI imports can shadow PyPI standard libraries. Use `ds_test_helpers.import_student_modules` to dynamically isolate and manage student module imports during autograding test execution without breaking pytest initialization.
+- **Enum vs String Parameter Handling (DS8 / Payment Methods):** In assignments introducing custom Enum types (e.g. `PayType`), student code may strictly validate inputs (`isinstance(method, PayType)` vs `"CARD"` string literals). Tests for payment method getters/setters should handle both `Enum` instances (`PayType.CARD`) and string literals (`"CARD"`) to accommodate student implementation variations without false negatives.
+- **Structural Duck-Typing Protocols (DS10 / Combinable):** When testing Python `Protocol` interfaces (e.g. `@runtime_checkable` `Combinable`), verify duck-typing behavior (`can_combine` and `combine` methods) structurally rather than requiring explicit class inheritance on student classes (`Candy`, `Cookie`). Split regression checks into focused marked pytest functions for isolated scoring.
+

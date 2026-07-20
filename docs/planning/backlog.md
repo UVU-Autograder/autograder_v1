@@ -47,7 +47,6 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
   - seed and test the language mapping against a disposable Judge0 database before migrating the deployed instance;
   - smoke-test `sys.version`, every allowlisted import, multi-file execution, and submission deletion. Until then, the runner intentionally fails fast on the incompatible image.
 - [ ] **Fine-Grained AST Whitelisting & Custom Constraints** — Extend the AST validator to support restricting specific method calls (e.g., blocking built-in `.sort()` or `sorted()`) and specific keywords on a per-assignment configuration basis.
-- [ ] **Configuration Schema Versioning & Migration Pipeline** — Establish strict JSON schema validation for `config_json` and an automatic DB sync/migration pathway to safely handle schema changes without breaking existing assignment records.
 
 ---
 
@@ -55,7 +54,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 Goal: fully model UVU **CS 1410** in the database from the local (gitignored) source tree [`cs1410/`](../../cs1410/) — modules, assignments, Concepts Covered, pytest, model solutions, support artifacts, and seed. Specs live in `cs1410/m*/overview.md` and `cs1410/m*/**/desc.md`. Real `submissions/` are **local-only** (reference when authoring tests/model solutions; also used later for testing/LLM training). Do **not** commit, seed, or persist student identifiers from that tree.
 
-The course skeleton and deep models for lab1, DS1–DS6, and lab6 are complete.
+The course skeleton and deep models for lab1, DS1–DS10, and lab6 are complete.
 
 ### Modeling constraints
 
@@ -63,33 +62,12 @@ The course skeleton and deep models for lab1, DS1–DS6, and lab6 are complete.
 - **Concepts Covered:** map module learning objectives onto the **existing AST concept vocabulary**; store on **`Module.concepts`** (not per-assignment additions). Non-mappable LOs (e.g. “online readiness”) stay out of Concepts Covered.
 For each remaining assignment, author `backend/app/db/seeds/<slug>/`, wire config/artifacts, pass preflight and model validation, and smoke the sandbox.
 
-### Dessert Shop chain
-
-- [ ] `ds7` (m9)
-- [ ] `ds8` (m10)
-- [ ] `ds9` (m11)
-- [ ] `ds10` (m12)
-- [ ] Cross-assignment consistency: shared package/module names, progressive APIs, and scoring keys stay coherent across the DS series.
-
-**B2 — Remaining labs**
+### Remaining labs
 
 - [ ] `lab2`, `lab3` (m2)
 - [ ] `lab4`, `lab5` (m3)
 - [ ] `lab7` (m11)
 - [ ] For any image/visual lab parts: same rule as lab1 — pytest feasible checks; manual for computationally awkward pixel criteria.
-
-### Verification (no real student PII in CI)
-
-- [ ] Seed + preflight green for every modeled assignment.
-- [ ] Model-solution validation task passes per deep-modeled assignment.
-- [ ] Sandbox create-run smoke on at least one lab and one DS assignment.
-- [ ] Optional local-only: build **anonymized** Canvas ZIPs from `submissions/` for official-run capacity tests (never commit raw trees).
-
-### Remaining modeling cautions
-
-- **DS7:** use the scoped student-module loader for the `packaging.py` collision.
-- **DS8:** test `PayType` through public string-based getter/setter behavior rather than importing the enum directly.
-- **DS10:** split regression checks into focused marked pytest functions instead of one brittle pipeline.
 
 ---
 
@@ -110,6 +88,7 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
 
 ## Deferred (not active — ask before starting)
 
+- [ ] Configuration Schema Versioning & Migration Pipeline (Deferred while in testing stage without active live assignments).
 - [ ] Staff Microsoft OAuth through NextAuth (mock JWT remains current).
 - [ ] Sandbox Local LLM feedback. (Deferred)
   - Send submission source (+ grounded test/AST context) only when payload is not personally traceable.
