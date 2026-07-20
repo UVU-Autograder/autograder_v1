@@ -1,6 +1,6 @@
 # UVU Autograder — Delivery Controls
 
-This file defines acceptance gates for active development. Product decisions live in [decisions.md](../backend_implementation/decisions.md), runtime contracts in [technical_specs.md](../technical_specs.md), frontend contracts in [frontend_implementation.md](../frontend_implementation/frontend_implementation.md), and the living backlog in [backlog.md](backlog.md).
+This file defines acceptance gates for active development. Product decisions live in [decisions.md](../core/decisions.md), runtime contracts in [technical_specs.md](../core/technical_specs.md), frontend contracts in [frontend_implementation.md](../implementation/frontend_implementation.md), and the living backlog in [backlog.md](backlog.md).
 
 ## Definition of Done
 

@@ -49,6 +49,7 @@ class PytestTestResult:
 
     actual: str | None = None
     expected: str | None = None
+    expected_input: str | None = None
 
 
 @dataclass
@@ -117,6 +118,7 @@ def _parse_test_entry(entry: dict) -> PytestTestResult:
         message=_truncate(entry.get("message")),
         actual=entry.get("actual"),
         expected=entry.get("expected"),
+        expected_input=entry.get("expected_input"),
     )
 
 
@@ -251,6 +253,7 @@ def calculate_scores(
                 "message": t.message,
                 "actual": t.actual,
                 "expected": t.expected,
+                "expected_input": t.expected_input,
             }
             for t in matching_tests
         ]

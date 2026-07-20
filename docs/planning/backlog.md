@@ -5,10 +5,10 @@
 
 ## Source Of Truth
 
-- [decisions.md](../backend_implementation/decisions.md) — product and policy decisions
-- [storage_and_test_plan.md](../backend_implementation/storage_and_test_plan.md) — assignment config, artifacts, pytest scoring
-- [technical_specs.md](../technical_specs.md) — runtime contracts and system behavior
-- [frontend_implementation.md](../frontend_implementation/frontend_implementation.md) — routes and UI contracts
+- [decisions.md](../core/decisions.md) — product and policy decisions
+- [storage_and_test_plan.md](../implementation/storage_and_test_plan.md) — assignment config, artifacts, pytest scoring
+- [technical_specs.md](../core/technical_specs.md) — runtime contracts and system behavior
+- [frontend_implementation.md](../implementation/frontend_implementation.md) — routes and UI contracts
 - [delivery_controls.md](delivery_controls.md) — Definition of Done and acceptance gates
 
 When a checklist item repeats a policy or runtime rule, treat the linked canonical document as authoritative and update that document first.
@@ -29,22 +29,11 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [ ] Add coarse status/manual-completion filters and queue polish without introducing a bulk grading grid.
 - [ ] Add explicit same-student edit conflict detection if multiple API processes or simultaneous graders become a requirement (current v1 is last-write-wins).
 
-### Sandbox Local LLM (in development)
-
-- [ ] Wire Local LLM for **sandbox** runs only.
-- [ ] Send submission source (+ grounded test/AST context) only when the payload is **not personally traceable** (no student PII/identifiers).
-- [ ] Inject allowed-concepts context into the prompt.
-- [ ] Generate rubric-context explanations without re-grading correctness (hallucination guard: tests remain ground truth).
-- [ ] Degrade under high load: grounded test results first; delay/skip/mark AI unavailable as needed.
-- [ ] Show auto-populated LLM feedback beside sandbox test results.
-- [ ] Log Local LLM token usage in non-sensitive run metadata.
-- [ ] Rotate/purge any temporary sensitive debug traces within 24h if enabled.
-
 ### Expected I/O extraction and visual diff
 
-- [ ] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`).
-- [ ] Expose extracted expected fields in the sandbox run results API.
-- [ ] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` already exists; do not require `react-diff-viewer`).
+- [x] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`).
+- [x] Expose extracted expected fields in the sandbox run results API.
+- [x] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` already exists; do not require `react-diff-viewer`).
 - [ ] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel.
 
 ---
@@ -122,6 +111,10 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
 ## Deferred (not active — ask before starting)
 
 - [ ] Staff Microsoft OAuth through NextAuth (mock JWT remains current).
+- [ ] Sandbox Local LLM feedback. (Deferred)
+  - Send submission source (+ grounded test/AST context) only when payload is not personally traceable.
+  - Generate rubric-context explanations without re-grading (hallucination guard).
+  - Degrade under high load; log token usage in non-sensitive run metadata.
 - [ ] Canvas automated feedback upload / distribution (manual Canvas grade CSV import remains assumed).
 - [ ] Multi-language or compiled-language execution pipelines beyond current Python Judge0 path.
 - [ ] Official-run Local LLM feedback. Before approval:

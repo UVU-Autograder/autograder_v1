@@ -4,9 +4,9 @@ On-prem autograder for retention-aware Python grading with a public student sand
 
 ## Documentation
 
-- [Technical specs](docs/technical_specs.md) — system contracts, data model, runtime limits
+- [Technical specs](docs/core/technical_specs.md) — system contracts, data model, runtime limits
 - [Active backlog](docs/planning/backlog.md) — living implementation checklist
-- [Frontend routes](docs/frontend_implementation/frontend_implementation.md)
+- [Frontend routes](docs/implementation/frontend_implementation.md)
 - [OpenAPI schema](docs/schemas/openapi.json)
 - [Ubuntu 24.x local POC deployment](docs/deployment/ubuntu_poc_deployment.md)
 

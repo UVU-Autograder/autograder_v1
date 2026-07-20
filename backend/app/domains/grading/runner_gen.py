@@ -126,6 +126,25 @@ def generate_runner_script(
                 if hasattr(signal, "alarm"):
                     signal.signal(signal.SIGALRM, timeout_handler)
                     signal.alarm(5)
+                
+                # Check for EXPECTED_OUTPUT / EXPECTED_INPUT on item.obj or item.module
+                obj = getattr(item, "obj", None)
+                mod = getattr(item, "module", None)
+                exp = getattr(obj, "EXPECTED_OUTPUT", None)
+                if exp is None and mod is not None:
+                    exp = getattr(mod, "EXPECTED_OUTPUT", None)
+                if exp is None:
+                    exp = getattr(obj, "EXPECTED", None)
+                if exp is not None:
+                    item.user_properties.append(("expected", str(exp)))
+
+                inp = getattr(obj, "EXPECTED_INPUT", None)
+                if inp is None and mod is not None:
+                    inp = getattr(mod, "EXPECTED_INPUT", None)
+                if inp is None:
+                    inp = getattr(obj, "INPUT", None)
+                if inp is not None:
+                    item.user_properties.append(("expected_input", str(inp)))
 
             def pytest_runtest_teardown(self, item: pytest.Item) -> None:
                 if hasattr(signal, "alarm"):
@@ -194,9 +213,6 @@ def generate_runner_script(
                     return
 
                 markers = []
-                # item.iter_markers is available on the report's node id,
-                # but the simplest approach is to parse own_markers from the
-                # item stored on the report.
                 if hasattr(report, "keywords"):
                     for key in report.keywords:
                         if isinstance(key, str) and key.startswith("ag_"):
@@ -204,10 +220,18 @@ def generate_runner_script(
 
                 actual = None
                 expected = None
+                expected_input = None
                 if hasattr(report, "user_properties"):
                     props = dict(report.user_properties)
                     actual = props.get("actual")
                     expected = props.get("expected")
+                    expected_input = props.get("expected_input")
+
+                if actual is None and hasattr(report, "sections"):
+                    for sec_name, sec_text in report.sections:
+                        if "stdout" in sec_name.lower():
+                            actual = sec_text
+                            break
 
                 message = None
                 if report.failed:
@@ -224,6 +248,7 @@ def generate_runner_script(
                     "message": message,
                     "actual": actual,
                     "expected": expected,
+                    "expected_input": expected_input,
                 }})
 
 

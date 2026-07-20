@@ -19,7 +19,7 @@ def resolve_storage_ref(storage_ref: str) -> Path:
     Supported URI schemes:
 
     ``seed://<example_dir>/<filename>``
-        Maps to ``docs/backend_implementation/examples/<example_dir>/<filename>``
+        Maps to ``backend/app/db/seeds/<example_dir>/<filename>``
         inside the repository root.  Used for built-in seed/example artifacts.
 
     ``file://<absolute_path>``

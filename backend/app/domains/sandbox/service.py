@@ -289,18 +289,30 @@ class SandboxService:
                 test_summaries = []
                 for tr in redis_result.get("test_results", []):
                     failed_sub = None
+                    actual_val = None
+                    expected_val = None
+                    expected_input_val = None
+
                     for sub in tr.get("test_results", []):
+                        if sub.get("actual") is not None and actual_val is None:
+                            actual_val = sub.get("actual")
+                        if sub.get("expected") is not None and expected_val is None:
+                            expected_val = sub.get("expected")
+                        if sub.get("expected_input") is not None and expected_input_val is None:
+                            expected_input_val = sub.get("expected_input")
                         if sub.get("outcome") != "passed":
                             failed_sub = sub
                             break
-                    
+
                     msg = tr.get("label", "")
-                    actual_val = None
-                    expected_val = None
                     if failed_sub:
                         msg = failed_sub.get("message") or ""
-                        actual_val = failed_sub.get("actual")
-                        expected_val = failed_sub.get("expected")
+                        if failed_sub.get("actual") is not None:
+                            actual_val = failed_sub.get("actual")
+                        if failed_sub.get("expected") is not None:
+                            expected_val = failed_sub.get("expected")
+                        if failed_sub.get("expected_input") is not None:
+                            expected_input_val = failed_sub.get("expected_input")
 
                     test_summaries.append(
                         TestSummary(
@@ -311,6 +323,7 @@ class SandboxService:
                             message=msg,
                             actual=actual_val,
                             expected=expected_val,
+                            expected_input=expected_input_val,
                         )
                     )
 

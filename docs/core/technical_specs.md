@@ -2,8 +2,8 @@
 
 > [!NOTE]
 > **Schema References**:
-> - Assignment configuration schema is defined in [config_v1.schema.json](./schemas/config_v1.schema.json).
-> - API specification is defined in [openapi.json](./schemas/openapi.json).
+> - Assignment configuration schema is defined in [config_v1.schema.json](../schemas/config_v1.schema.json).
+> - API specification is defined in [openapi.json](../schemas/openapi.json).
 > - Those JSON snapshots may lag Pydantic models after schema cleanups; regenerate before treating them as authoritative.
 
 ## 1. System Architecture

@@ -4,7 +4,7 @@ This document is an internal engineering analysis of the current FERPA posture o
 
 It complements:
 
-- [decisions.md](backend_implementation/decisions.md)
+- [decisions.md](decisions.md)
 - [technical_specs.md](technical_specs.md)
 
 ## Current Posture

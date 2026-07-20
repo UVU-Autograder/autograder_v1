@@ -379,7 +379,15 @@ export default function CodeResults({
                         <div className="mt-2 space-y-2">
                           <span className="font-medium text-slate-700">Details:</span>
                           {test.expected != null && test.actual != null ? (
-                            <VisualDiffViewer expected={test.expected} actual={test.actual} />
+                            <div className="space-y-2 mt-1">
+                              <VisualDiffViewer expected={test.expected} actual={test.actual} />
+                              <details className="text-xs text-slate-500">
+                                <summary className="cursor-pointer font-medium hover:text-slate-700">View Full Traceback</summary>
+                                <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
+                                  {cleanTestMessage(test.message)}
+                                </pre>
+                              </details>
+                            </div>
                           ) : (
                             <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
                               {cleanTestMessage(test.message)}

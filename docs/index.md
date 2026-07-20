@@ -1,31 +1,43 @@
 # Documentation Index
 
 > [!NOTE]
-> **Purpose:** Table of contents and quick-reference index for specifications, compliance logs, schemas, and implementation guides.
+> **Purpose:** Central navigation hub and table of contents for specifications, compliance analyses, implementation guides, deployment procedures, schemas, and course modeling.
 
 ---
 
-## High-Level Specs & Compliance
-* **[technical_specs.md](./technical_specs.md):** System architecture, stack definitions (FastAPI, Next.js, Celery, Postgres, Judge0, Kata), and core features.
-* **[ferpa_analysis.md](./ferpa_analysis.md):** Privacy and compliance analysis for retention-aware sandboxing and official runs.
+## 🏛️ Core Architecture & Governance (`docs/core/`)
+* **[technical_specs.md](./core/technical_specs.md):** System architecture, technology stack (FastAPI, Next.js, Celery, Postgres, Judge0, Kata), data model, and execution contracts.
+* **[decisions.md](./core/decisions.md):** Architectural, product, and implementation decision log with rationale.
+* **[ferpa_analysis.md](./core/ferpa_analysis.md):** Privacy posture, compliance analysis, and institutional data governance for student sandboxing and official runs.
 
-## Deployment Guides (`docs/deployment/`)
-* **[ubuntu_poc_deployment.md](./deployment/ubuntu_poc_deployment.md):** Step-by-step local POC setup on Ubuntu 24.x for hypervisors and runners.
-* **[kata_optimization.md](./deployment/kata_optimization.md):** Low-latency tuning strategies (Hugepages, CPU pinning, microVMs) for Kata Containers backing Judge0.
+---
 
-## Backend Specifications (`docs/backend_implementation/`)
-* **[decisions.md](./backend_implementation/decisions.md):** Product and implementation decisions.
-* **[storage_and_test_plan.md](./backend_implementation/storage_and_test_plan.md):** Assignment config, artifacts, pytest scoring, and retention cleanup.
-* **[modeling_guide.md](./backend_implementation/modeling_guide.md):** Standards and recommendations for modeling JSON configurations and test scripts.
-* **[pygame_grading_guidelines.md](./backend_implementation/pygame_grading_guidelines.md):** Headless execution, event mocking, and manual grading strategy for Pygame coursework.
+## 🛠️ Subsystem Specifications (`docs/implementation/`)
+* **[frontend_implementation.md](./implementation/frontend_implementation.md):** Next.js route maps, information architecture, UI responsibilities, and Monaco Editor integration.
+* **[storage_and_test_plan.md](./implementation/storage_and_test_plan.md):** Assignment configuration contracts, pytest scoring markers (`ag_<key>`), artifact storage abstractions, and retention lifecycles.
+
+---
+
+## 📐 Course & Assignment Modeling (`docs/modeling/`)
+* **[cs1410_assignments_spec.md](./modeling/cs1410_assignments_spec.md):** Class structures, required files, grading rubrics, and autograding strategies for all 17 CS 1410 assignments.
+* **[modeling_guide.md](./modeling/modeling_guide.md):** Authoring guidelines and best practices for modeling JSON configurations and test scripts.
+* **[pygame_grading_guidelines.md](./modeling/pygame_grading_guidelines.md):** Headless execution, event/sys mocking, and manual grading strategy for Pygame coursework.
+
+---
+
+## 🚀 DevOps & Host Deployment (`docs/deployment/`)
+* **[ubuntu_poc_deployment.md](./deployment/ubuntu_poc_deployment.md):** Step-by-step local POC deployment on Ubuntu 24.x for hypervisors, Docker Compose, and Celery workers.
+* **[kata_optimization.md](./deployment/kata_optimization.md):** Low-latency host tuning strategies (Hugepages, CPU pinning, microVMs) for Kata Containers backing Judge0.
+
+---
+
+## 📋 Planning & Backlog (`docs/planning/`)
+* **[backlog.md](./planning/backlog.md):** Active development backlog (product features, platform gaps, ops/validation checklist, deferred items).
+* **[delivery_controls.md](./planning/delivery_controls.md):** Definition of Done, verification standards, and release acceptance gates.
+
+---
+
+## 📄 Schemas & Artifacts (`docs/schemas/`)
+* **[config_v1.schema.json](./schemas/config_v1.schema.json):** Canonical JSON Schema 2020-12 specification for app-owned assignment configurations (`config_json`).
+* **[openapi.json](./schemas/openapi.json):** OpenAPI 3.0 specification for backend REST endpoints.
 * **Seed packages:** Built-in assignment fixtures live under [`backend/app/db/seeds/`](../backend/app/db/seeds/) (`seed://` resolution).
-
-## Frontend Specifications (`docs/frontend_implementation/`)
-* **[frontend_implementation.md](./frontend_implementation/frontend_implementation.md):** Next.js route maps, components, and Monaco Editor integration constraints. Mockup: https://autograder-frontend-mockup.vercel.app/
-* **[figma_prototype.md](./frontend_implementation/figma_prototype.md):** Prototype layouts and flow states.
-
-## Planning & Backlog (`docs/planning/`)
-* **[cs1410_assignments_spec.md](./planning/cs1410_assignments_spec.md):** Complete class structures, required files, grading rubrics, and autograding strategies for all 17 CS 1410 assignments.
-* **[backlog.md](./planning/backlog.md):** Active development backlog (product, platform gaps, ops/validation, deferred).
-* **[delivery_controls.md](./planning/delivery_controls.md):** Definition of Done and acceptance gates.
-* **Meeting minutes (historical):** [05_28_meeting.md](./planning/meetings_minutes/05_28_meeting.md), [06_04_meeting.md](./planning/meetings_minutes/06_04_meeting.md)

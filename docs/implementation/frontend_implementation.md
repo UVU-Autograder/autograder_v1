@@ -1,6 +1,6 @@
 # Frontend Implementation
 
-This file captures the frontend contract, route structure, and UI-surface responsibilities only. [figma_prototype.md](figma_prototype.md) is reference material.
+This file captures the frontend contract, route structure, and UI-surface responsibilities only.
 
 Frontend mockup preview: https://autograder-frontend-mockup.vercel.app/
 

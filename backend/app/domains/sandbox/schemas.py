@@ -97,6 +97,7 @@ class TestSummary(BaseModel):
     message: str
     actual: str | None = None
     expected: str | None = None
+    expected_input: str | None = None
 
 
 class SandboxWarning(BaseModel):

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.assignments.service import get_assignment_for_course
+from app.domains.assignments.io_parser import extract_expected_io
 from app.integrations.artifacts.resolver import resolve_storage_ref
 
 
