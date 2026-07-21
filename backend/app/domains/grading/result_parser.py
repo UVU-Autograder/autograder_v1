@@ -191,6 +191,32 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
 # ---------------------------------------------------------------------------
 
 
+import re
+
+
+def _extract_assertion_values(message: str | None, actual: str | None = None, expected: str | None = None) -> tuple[str | None, str | None]:
+    """Extract your_value (actual) and expected_value (expected) from failure message or result attributes."""
+    if actual is not None or expected is not None:
+        return actual, expected
+
+    if not message:
+        return None, None
+
+    for line in message.splitlines():
+        line_str = line.strip()
+        if "AssertionError:" in line_str or "assert " in line_str:
+            match = re.search(r"assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
+            if match:
+                act_str = match.group(1).strip().strip("'\"")
+                exp_str = match.group(3).strip().strip("'\"")
+                return act_str, exp_str
+
+            if "assert False" in line_str or "assert false" in line_str:
+                return "false", "true"
+
+    return None, None
+
+
 def calculate_scores(
     run_result: PytestRunResult,
     test_configs: list[ScoringItemConfig],
@@ -213,16 +239,7 @@ def calculate_scores(
 
     Returns:
         A ``(total_score, details)`` tuple where *details* is a list of
-        per-item result dicts with keys:
-
-        * ``key`` – the test config key
-        * ``label`` – the human-readable label
-        * ``points`` – max points available
-        * ``points_awarded`` – points actually earned (0 or *points*)
-        * ``passed`` – boolean
-        * ``extra_credit`` – whether this item is extra credit
-        * ``marker`` – the ``ag_*`` marker string
-        * ``test_results`` – list of per-pytest-function result dicts
+        per-item result dicts.
     """
     # Build a lookup: marker -> list of PytestTestResult.
     marker_index: dict[str, list[PytestTestResult]] = {}
@@ -245,18 +262,31 @@ def calculate_scores(
         points_awarded = config.points if passed else 0
         total_score += points_awarded
 
-        test_result_details = [
-            {
-                "nodeid": t.nodeid,
-                "outcome": t.outcome,
-                "duration": t.duration,
-                "message": t.message,
-                "actual": t.actual,
-                "expected": t.expected,
-                "expected_input": t.expected_input,
-            }
-            for t in matching_tests
-        ]
+        test_result_details = []
+        for t in matching_tests:
+            your_val, exp_val = _extract_assertion_values(t.message, t.actual, t.expected)
+            test_result_details.append(
+                {
+                    "nodeid": t.nodeid,
+                    "outcome": t.outcome,
+                    "duration": t.duration,
+                    "message": t.message,
+                    "actual": t.actual,
+                    "expected": t.expected,
+                    "your_value": your_val,
+                    "expected_value": exp_val,
+                    "expected_input": t.expected_input,
+                }
+            )
+
+        item_your_val = None
+        item_exp_val = None
+        if not passed:
+            for tr in test_result_details:
+                if tr.get("your_value") is not None or tr.get("expected_value") is not None:
+                    item_your_val = tr.get("your_value")
+                    item_exp_val = tr.get("expected_value")
+                    break
 
         details.append(
             {
@@ -267,6 +297,8 @@ def calculate_scores(
                 "passed": passed,
                 "extra_credit": config.extra_credit,
                 "marker": marker,
+                "your_value": item_your_val,
+                "expected_value": item_exp_val,
                 "test_results": test_result_details,
             }
         )

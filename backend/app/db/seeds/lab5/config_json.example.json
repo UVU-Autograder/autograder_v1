@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "required_files": [
+      "money.py"
+    ],
+    "entrypoint": "money.py",
+    "file_requirements": [
+      {
+        "key": "money_py",
+        "label": "Money class definition file",
+        "requirement_type": "exact",
+        "paths": [
+          "money.py"
+        ]
+      }
+    ]
+  },
+  "execution": {
+    "dependencies": []
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "money.py"
+    }
+  },
+  "rubric_groups": [],
+  "tests": [
+    {
+      "key": "normalize",
+      "label": "normalize method carries cents >= 100 to dollars",
+      "points": 10,
+      "extra_credit": false
+    },
+    {
+      "key": "str",
+      "label": "__str__ string formatting $dollars.cents",
+      "points": 10,
+      "extra_credit": false
+    },
+    {
+      "key": "add",
+      "label": "__add__ operator overload",
+      "points": 25,
+      "extra_credit": false
+    },
+    {
+      "key": "mul",
+      "label": "__mul__ and __rmul__ operator overloads",
+      "points": 30,
+      "extra_credit": false
+    },
+    {
+      "key": "eq",
+      "label": "__eq__ operator overload with normalized equality",
+      "points": 25,
+      "extra_credit": false
+    }
+  ],
+  "manual_rubric_items": [],
+  "completion_requirements": [],
+  "stdin_scenarios": []
+}

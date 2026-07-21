@@ -83,6 +83,18 @@ export type SandboxTestSummary = {
     message: string;
     actual?: string;
     expected?: string;
+    your_value?: string | null;
+    expected_value?: string | null;
+    expected_input?: string | null;
+    group_key?: string | null;
+};
+
+export type RubricGroupResultResponse = {
+    group_key: string;
+    label: string;
+    points_earned: number;
+    points_possible: number;
+    items: SandboxTestSummary[];
 };
 
 export type SandboxWarning = {
@@ -97,8 +109,10 @@ export type SandboxRunResultResponse = {
     max_score: number;
     warnings: SandboxWarning[];
     test_summaries: SandboxTestSummary[];
+    rubric_groups?: RubricGroupResultResponse[];
     sanitized_feedback: string;
     retention_notice: string;
+    raw_output?: string | null;
 };
 
 export type SandboxCancelResponse = {

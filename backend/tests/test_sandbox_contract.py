@@ -64,6 +64,12 @@ def test_lists_visible_courses_and_assignments(client):
     assert body_1410["course_id"] == "cs1410"
     assert {a["id"] for a in body_1410["assignments"]} == {
         "lab-1-image-processing",
+        "lab2",
+        "lab3",
+        "lab4",
+        "lab5",
+        "lab6",
+        "lab7",
         "ds1",
         "ds2",
         "ds3",
@@ -74,7 +80,6 @@ def test_lists_visible_courses_and_assignments(client):
         "ds8",
         "ds9",
         "ds10",
-        "lab6",
     }
     assert all(a["sandbox_enabled"] for a in body_1410["assignments"])
 

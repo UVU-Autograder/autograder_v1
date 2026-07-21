@@ -6,47 +6,47 @@
     },
     "m2": {
       "name": "Module 2: Object-Oriented Intro",
-      "concepts": ["classes", "type-hints"]
+      "concepts": ["image-processing", "classes", "type-hints"]
     },
     "m3": {
       "name": "Module 3: Inheritance, Polymorphism, and Properties",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading"]
     },
     "m4": {
       "name": "Module 4: Generators and Iterators",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators"]
     },
     "m5": {
       "name": "Module 5: Unit Tests with pytest",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing"]
     },
     "m6": {
       "name": "Module 6: Abstract Classes",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes"]
     },
     "m7": {
       "name": "Module 7: Exceptions and Protocols",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols"]
     },
     "m8": {
       "name": "Module 8: Introduction to Pygame",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
     },
     "m9": {
       "name": "Module 9: Object-Oriented Pygame",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
     },
     "m10": {
       "name": "Module 10: Pygame GUI Widgets",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame"]
     },
     "m11": {
       "name": "Module 11: Named tuples, Dataclasses, and Sorting lists",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]
     },
     "m12": {
       "name": "Module 12: CS Degrees at UVU",
-      "concepts": ["classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions", "protocols", "pygame", "dataclasses", "file-io"]
     }
   },
   "assignments": [

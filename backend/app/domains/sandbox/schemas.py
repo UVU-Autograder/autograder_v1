@@ -97,7 +97,18 @@ class TestSummary(BaseModel):
     message: str
     actual: str | None = None
     expected: str | None = None
+    your_value: str | None = None
+    expected_value: str | None = None
     expected_input: str | None = None
+    group_key: str | None = None
+
+
+class RubricGroupResultResponse(BaseModel):
+    group_key: str
+    label: str
+    points_earned: int = Field(ge=0)
+    points_possible: int = Field(ge=0)
+    items: list[TestSummary] = Field(default_factory=list)
 
 
 class SandboxWarning(BaseModel):
@@ -112,9 +123,11 @@ class SandboxRunResultResponse(BaseModel):
     max_score: int = Field(ge=0)
     warnings: list[SandboxWarning]
     test_summaries: list[TestSummary]
+    rubric_groups: list[RubricGroupResultResponse] = Field(default_factory=list)
     sanitized_feedback: str
     file_preview: FilePreviewMetadata
     retention_notice: str
+    raw_output: str | None = None
 
 
 class SandboxCancelResponse(BaseModel):

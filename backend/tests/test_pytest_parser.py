@@ -215,3 +215,28 @@ def test_runner_execution_failing(tmp_path):
     assert "AssertionError" in tests[1]["message"]
     assert tests[0]["actual"].strip() == "2"
     assert tests[0]["expected"].strip() == "8"
+
+
+def test_extract_assertion_values():
+    from app.domains.grading.result_parser import _extract_assertion_values
+
+    # Exact equality string
+    act, exp = _extract_assertion_values("E AssertionError: assert 'Box' == 'Bag'")
+    assert act == "Box"
+    assert exp == "Bag"
+
+    # Number comparison
+    act, exp = _extract_assertion_values("E AssertionError: assert 5 == 10")
+    assert act == "5"
+    assert exp == "10"
+
+    # In comparison
+    act, exp = _extract_assertion_values("E AssertionError: assert 'foo' in 'bar'")
+    assert act == "foo"
+    assert exp == "bar"
+
+    # Boolean false fallback
+    act, exp = _extract_assertion_values("E AssertionError: assert False")
+    assert act == "false"
+    assert exp == "true"
+

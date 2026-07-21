@@ -177,11 +177,14 @@ def _seed_cs1410(
     db.flush()
 
     modules = {}
+    accumulated_concepts: set[str] = set(course.default_concepts or [])
     for code, module_data in catalog["modules"].items():
+        for c in module_data.get("concepts", []):
+            accumulated_concepts.add(c)
         module = Module(
             course=course,
             name=module_data["name"],
-            concepts=module_data["concepts"],
+            concepts=list(accumulated_concepts),
         )
         db.add(module)
         modules[code] = module

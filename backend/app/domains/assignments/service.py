@@ -115,21 +115,22 @@ def get_assignment_for_course(
 
 
 def effective_allowed_concepts(assignment: Assignment) -> list[str]:
-    """Course defaults ∪ module concepts, de-duped, stable order.
-
-    Per-assignment concept additions are ignored (unused).
-    """
+    """Course defaults ∪ cumulative module concepts up to assignment.module in sequence order, de-duped."""
     seen: set[str] = set()
     out: list[str] = []
     for concept in assignment.course.default_concepts or []:
         if concept not in seen:
             seen.add(concept)
             out.append(concept)
-    if assignment.module and assignment.module.concepts:
-        for concept in assignment.module.concepts:
-            if concept not in seen:
-                seen.add(concept)
-                out.append(concept)
+    if assignment.module and assignment.course.modules:
+        course_modules = sorted(assignment.course.modules, key=lambda m: m.id)
+        for m in course_modules:
+            for concept in m.concepts or []:
+                if concept not in seen:
+                    seen.add(concept)
+                    out.append(concept)
+            if m.id == assignment.module_id:
+                break
     return out
 
 

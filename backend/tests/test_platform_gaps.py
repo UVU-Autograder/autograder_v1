@@ -316,3 +316,26 @@ def test_official_ingest_rejects_when_queue_full(
     workspaces = temp_workspace_storage / "workspaces"
     if workspaces.exists():
         assert list(workspaces.glob("official_*.zip")) == []
+
+
+def test_cumulative_module_concept_inheritance(db_session):
+    from app.domains.courses.service import get_course_concepts
+
+    res = get_course_concepts(db_session, "cs1410")
+    assert res is not None
+    m1 = next(m for m in res.modules if "Module 1" in m.name)
+    m2 = next(m for m in res.modules if "Module 2" in m.name)
+
+    # Base course concepts are inherited by all modules
+    assert "variables" in m1.concepts
+    assert "variables" in m2.concepts
+    assert "image-processing" in m1.concepts
+    assert "image-processing" in m2.concepts
+    assert "classes" in m2.concepts
+
+    lab2_assignment = get_assignment_for_course(db_session, "cs1410", "lab2")
+    assert lab2_assignment is not None
+    concepts = effective_allowed_concepts(lab2_assignment)
+    assert "variables" in concepts
+    assert "image-processing" in concepts
+    assert "classes" in concepts

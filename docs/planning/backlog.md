@@ -36,6 +36,13 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` already exists; do not require `react-diff-viewer`).
 - [ ] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel.
 
+### Autograding results UI & test feedback polish
+
+- [x] **Per-test assertion diff display:** Extract `Your value` / `Expected value` diff blocks from traceback assertions (`result_parser.py`) and render inline under failing test items.
+- [x] **Results filtering:** Added "Only show failing tests" filter toggle checkbox in results UI (`code-results.tsx`).
+- [x] **Rubric section grouping & subtotals:** Group test items into collapsible rubric sections displaying per-section point subtotals (e.g. `15 / 15`) in the results view.
+- [x] **Instructor-Only Raw Log View:** Full raw pytest terminal output toggle restricted to instructor / staff roles. (Cascading "test aborted" short-circuiting omitted to preserve independent student feedback).
+
 ---
 
 ## Active — Correctness / platform gaps
@@ -46,7 +53,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
   - register a new, non-`71` language ID whose run command targets that interpreter, then update `JUDGE0_LANGUAGE_ID`;
   - seed and test the language mapping against a disposable Judge0 database before migrating the deployed instance;
   - smoke-test `sys.version`, every allowlisted import, multi-file execution, and submission deletion. Until then, the runner intentionally fails fast on the incompatible image.
-- [ ] **Fine-Grained AST Whitelisting & Custom Constraints** — Extend the AST validator to support restricting specific method calls (e.g., blocking built-in `.sort()` or `sorted()`) and specific keywords on a per-assignment configuration basis.
+- [ ] **Per-Assignment Concept & Function Blacklisting (Fine-Grained AST Constraints)** — Extend `config_json` schema v1 and the AST validator (`ast_validator.py`) to support per-assignment concept and function blacklisting. Allow instructors to explicitly forbid specific built-in functions, method calls, or syntax constructs (e.g., prohibiting `.sort()`, `sorted()`, `min()`, or `max()` when testing student algorithm implementations).
 
 ---
 
@@ -64,10 +71,10 @@ For each remaining assignment, author `backend/app/db/seeds/<slug>/`, wire confi
 
 ### Remaining labs
 
-- [ ] `lab2`, `lab3` (m2)
-- [ ] `lab4`, `lab5` (m3)
-- [ ] `lab7` (m11)
-- [ ] For any image/visual lab parts: same rule as lab1 — pytest feasible checks; manual for computationally awkward pixel criteria.
+- [x] `lab2`, `lab3` (m2) — `lab2` Bank Account Class (8/10 real student submissions pass rate) and `lab3` Type Hinting & Encapsulation (9/10 real student submissions pass rate).
+- [x] `lab4`, `lab5` (m3) — `lab4` Properties & Validation (10/10 real student submissions pass rate) and `lab5` Operator Overloading (10/10 real student submissions pass rate).
+- [x] `lab7` (m11) — Data Classes & ID Ordering (10/10 real student submissions pass rate).
+- [x] All 17 CS 1410 assignments (`ds1`–`ds10`, `lab1`–`lab7`) are 100% modeled, seeded, and verified.
 
 ---
 

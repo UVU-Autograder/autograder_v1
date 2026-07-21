@@ -1,5 +1,10 @@
+import sys
+from pathlib import Path
 import time
 from concurrent.futures import ThreadPoolExecutor
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
 
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker

@@ -68,6 +68,22 @@ def list_staff_assignments(db: Session, course_code: str) -> StaffAssignmentList
     return StaffAssignmentListResponse(course_id=course.code, assignments=assignments)
 
 
+def _build_cumulative_module_configs(default_concepts: list[str], modules: list[Module]) -> list[ModuleConfig]:
+    ordered_modules = sorted(modules, key=lambda m: m.id if m.id is not None else 0)
+    seen: set[str] = set()
+    for c in default_concepts or []:
+        if c not in seen:
+            seen.add(c)
+
+    out: list[ModuleConfig] = []
+    for m in ordered_modules:
+        for c in (m.concepts or []):
+            if c not in seen:
+                seen.add(c)
+        out.append(ModuleConfig(id=m.id, name=m.name, concepts=list(seen)))
+    return out
+
+
 def get_course_concepts(db: Session, course_code: str) -> CourseConceptsResponse | None:
     course = db.scalar(
         select(Course)
@@ -79,10 +95,7 @@ def get_course_concepts(db: Session, course_code: str) -> CourseConceptsResponse
     return CourseConceptsResponse(
         course_id=course.code,
         default_concepts=course.default_concepts or [],
-        modules=[
-            ModuleConfig(id=m.id, name=m.name, concepts=m.concepts)
-            for m in course.modules
-        ]
+        modules=_build_cumulative_module_configs(course.default_concepts or [], course.modules),
     )
 
 
@@ -133,9 +146,6 @@ def update_course_concepts(
     return CourseConceptsResponse(
         course_id=course.code,
         default_concepts=course.default_concepts or [],
-        modules=[
-            ModuleConfig(id=m.id, name=m.name, concepts=m.concepts)
-            for m in course.modules
-        ]
+        modules=_build_cumulative_module_configs(course.default_concepts or [], course.modules),
     )
 

@@ -314,6 +314,9 @@ class SandboxService:
                         if failed_sub.get("expected_input") is not None:
                             expected_input_val = failed_sub.get("expected_input")
 
+                    your_val = tr.get("your_value") or actual_val
+                    exp_val = tr.get("expected_value") or expected_val
+
                     test_summaries.append(
                         TestSummary(
                             label=tr.get("label", tr.get("key", "Unknown")),
@@ -323,6 +326,8 @@ class SandboxService:
                             message=msg,
                             actual=actual_val,
                             expected=expected_val,
+                            your_value=your_val,
+                            expected_value=exp_val,
                             expected_input=expected_input_val,
                         )
                     )
@@ -332,6 +337,18 @@ class SandboxService:
                     for w in redis_result.get("warnings", [])
                 ]
 
+                # Group test summaries into rubric groups if available
+                rubric_groups = []
+                default_group = RubricGroupResultResponse(
+                    group_key="default",
+                    label="Autograded Tests",
+                    points_earned=sum(ts.points_awarded for ts in test_summaries),
+                    points_possible=sum(ts.points_possible for ts in test_summaries),
+                    items=test_summaries,
+                )
+                if test_summaries:
+                    rubric_groups.append(default_group)
+
                 return SandboxRunResultResponse(
                     run_id=run_id,
                     state="complete",
@@ -339,9 +356,11 @@ class SandboxService:
                     max_score=redis_result.get("max_score", record.max_score),
                     warnings=warnings,
                     test_summaries=test_summaries,
+                    rubric_groups=rubric_groups,
                     sanitized_feedback="Review your results above.",
                     file_preview=self._file_preview(),
                     retention_notice="Sandbox results are session-only and are not retained as student submissions.",
+                    raw_output=redis_result.get("raw_output"),
                 )
             except Exception:
                 pass
