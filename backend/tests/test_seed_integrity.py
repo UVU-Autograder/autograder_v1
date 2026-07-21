@@ -11,7 +11,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db.seed import SEEDS_DIR, resolve_seed_artifact_path
-from app.db.seeds.shared.ds_test_helpers import import_student_modules
+from app.db.seeds.shared.python_autograder_helpers import import_student_modules
 from app.domains.assignments.schemas import AssignmentConfigV1
 
 TYPED_ASSIGNMENTS = frozenset(

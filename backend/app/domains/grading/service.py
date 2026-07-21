@@ -160,6 +160,13 @@ async def run_grading_pipeline(
             if artifact_config.type == "pytest_file":
                 test_filenames.append(filename)
 
+        # Auto-inject universal python_autograder_helpers.py if not present
+        helpers_target = exec_dir / "python_autograder_helpers.py"
+        if not helpers_target.exists():
+            shared_helpers = Path(__file__).resolve().parents[2] / "db" / "seeds" / "shared" / "python_autograder_helpers.py"
+            if shared_helpers.exists():
+                helpers_target.write_bytes(shared_helpers.read_bytes())
+
         if not test_filenames:
             result.failure_category = "validation_error"
             result.failure_message = "No pytest file artifacts found for this assignment."

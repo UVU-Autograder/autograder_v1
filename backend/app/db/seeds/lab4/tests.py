@@ -1,7 +1,7 @@
 """Autograding test suite for Lab 4: Properties and Validation."""
 
 import pytest
-from ds_test_helpers import import_student_modules
+from python_autograder_helpers import import_student_modules
 
 
 @pytest.mark.ag_title_property

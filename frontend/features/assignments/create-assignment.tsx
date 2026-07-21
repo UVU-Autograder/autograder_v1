@@ -262,7 +262,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
               <Link href={`/staff/courses/${courseId}/assignments`}>Cancel</Link>
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create assignment"}
+              {isSubmitting ? "Creating..." : "Create assignment and move to grading setup"}
             </Button>
           </CardFooter>
         </form>

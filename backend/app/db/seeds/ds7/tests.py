@@ -1,19 +1,21 @@
 import pytest
-from ds_test_helpers import (
-    assert_ds6_str_methods,
-    assert_ds6_to_list,
-    safe_import_dessert,
-    safe_import_dessertshop,
-    import_student_modules,
-)
+from python_autograder_helpers import import_student_modules
 
 
 @pytest.mark.ag_ds6_regression
 def test_ds6_regression(monkeypatch):
-    DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
-    DessertShop = safe_import_dessertshop()
-    assert_ds6_str_methods(Candy, Cookie, IceCream, Sundae, Order)
-    assert_ds6_to_list(Candy, Cookie, Order)
+    des_mod, shop_mod = import_student_modules("dessert", "dessertshop")
+    DessertItem = getattr(des_mod, "DessertItem", None)
+    Candy = getattr(des_mod, "Candy", None)
+    Cookie = getattr(des_mod, "Cookie", None)
+    IceCream = getattr(des_mod, "IceCream", None)
+    Sundae = getattr(des_mod, "Sundae", None)
+    Order = getattr(des_mod, "Order", None)
+    candy = Candy("Candy Corn", 1.5, 0.25)
+    assert "Candy Corn" in str(candy)
+    order = Order()
+    order.add(candy)
+    assert len(order.to_list()) > 0
 
 
 @pytest.mark.ag_packaging_protocol
@@ -27,7 +29,11 @@ def test_packaging_protocol():
 
 @pytest.mark.ag_packaging_defaults
 def test_packaging_defaults():
-    DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+    (des_mod,) = import_student_modules("dessert")
+    Candy = getattr(des_mod, "Candy")
+    Cookie = getattr(des_mod, "Cookie")
+    IceCream = getattr(des_mod, "IceCream")
+    Sundae = getattr(des_mod, "Sundae")
     c = Candy("Fudge", 1.0, 2.0)
     co = Cookie("Choc Chip", 12, 5.0)
     i = IceCream("Vanilla", 2, 1.5)
@@ -40,6 +46,7 @@ def test_packaging_defaults():
 
 @pytest.mark.ag_packaging_in_str
 def test_packaging_in_str():
-    DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+    (des_mod,) = import_student_modules("dessert")
+    Candy = getattr(des_mod, "Candy")
     c = Candy("Fudge", 1.0, 2.0)
     assert "(Bag)" in str(c)

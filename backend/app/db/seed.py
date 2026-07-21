@@ -69,6 +69,8 @@ def _seed_assignment_artifacts(
     config_json = json.loads(config_path.read_text(encoding="utf-8"))
     upsert_assignment_config(db, assignment, config_json)
 
+    db.query(AssignmentArtifact).filter(AssignmentArtifact.assignment_id == assignment.id).delete()
+
     for artifact_key, artifact in (config_json.get("artifacts") or {}).items():
         display_filename = artifact.get("display_filename")
         if not display_filename:

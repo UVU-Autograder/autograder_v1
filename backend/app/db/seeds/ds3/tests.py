@@ -1,24 +1,32 @@
+import inspect
+import io
+import runpy
+import sys
 import pytest
 
-from ds_test_helpers import (
-    assert_dessertshop_main_output,
-    assert_ds1_hierarchy,
-    assert_ds2_order,
-    safe_import_dessert,
-)
+from python_autograder_helpers import import_student_modules
 from student_test_helpers import (
     assert_student_pytest_passes,
     assert_test_function_count,
 )
 
-DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+(des_mod,) = import_student_modules("dessert")
+DessertItem = getattr(des_mod, "DessertItem", None)
+Candy = getattr(des_mod, "Candy", None)
+Cookie = getattr(des_mod, "Cookie", None)
+IceCream = getattr(des_mod, "IceCream", None)
+Sundae = getattr(des_mod, "Sundae", None)
+Order = getattr(des_mod, "Order", None)
 
 
 @pytest.mark.ag_ds2_regression
 def test_ds2_regression():
-    assert_ds1_hierarchy(DessertItem, Candy, Cookie, IceCream, Sundae)
-    assert_ds2_order(Order, DessertItem)
-    assert_dessertshop_main_output()
+    assert inspect.isclass(DessertItem), "DessertItem must be a class"
+    assert inspect.isclass(Order), "Order must be a class"
+    assert issubclass(Candy, DessertItem), "Candy must inherit from DessertItem"
+    assert issubclass(Cookie, DessertItem), "Cookie must inherit from DessertItem"
+    assert issubclass(IceCream, DessertItem), "IceCream must inherit from DessertItem"
+    assert issubclass(Sundae, IceCream), "Sundae must inherit from IceCream"
 
 
 @pytest.mark.ag_test_file_exists

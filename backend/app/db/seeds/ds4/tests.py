@@ -1,9 +1,15 @@
 import pytest
 import abc
 
-from ds_test_helpers import safe_import_dessert
+from python_autograder_helpers import import_student_modules
 
-DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+(des_mod,) = import_student_modules("dessert")
+DessertItem = getattr(des_mod, "DessertItem", None)
+Candy = getattr(des_mod, "Candy", None)
+Cookie = getattr(des_mod, "Cookie", None)
+IceCream = getattr(des_mod, "IceCream", None)
+Sundae = getattr(des_mod, "Sundae", None)
+Order = getattr(des_mod, "Order", None)
 
 
 @pytest.mark.ag_abstract_class

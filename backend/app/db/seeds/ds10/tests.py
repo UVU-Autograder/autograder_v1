@@ -1,13 +1,11 @@
 import pytest
-from ds_test_helpers import (
-    safe_import_dessert,
-    import_student_modules,
-)
+from python_autograder_helpers import import_student_modules
 
 
 @pytest.mark.ag_ds9_regression
 def test_ds9_regression():
-    DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+    (des_mod,) = import_student_modules("dessert")
+    Candy = getattr(des_mod, "Candy")
     c1 = Candy("Cheap Candy", 1.0, 2.0)
     c2 = Candy("Expensive Candy", 2.0, 2.0)
     assert c1 < c2
@@ -24,7 +22,8 @@ def test_combinable_protocol():
 
 @pytest.mark.ag_candy_combinable
 def test_candy_combinable():
-    DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+    (des_mod,) = import_student_modules("dessert")
+    Candy = getattr(des_mod, "Candy")
     c1 = Candy("Fudge", 1.0, 2.0)
     c2 = Candy("Fudge", 2.0, 2.0)
     c3 = Candy("Toffee", 1.0, 2.0)
@@ -38,7 +37,8 @@ def test_candy_combinable():
 
 @pytest.mark.ag_cookie_combinable
 def test_cookie_combinable():
-    DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+    (des_mod,) = import_student_modules("dessert")
+    Cookie = getattr(des_mod, "Cookie")
     co1 = Cookie("Choc Chip", 12, 5.0)
     co2 = Cookie("Choc Chip", 6, 5.0)
     co3 = Cookie("Oatmeal", 12, 5.0)
@@ -52,7 +52,10 @@ def test_cookie_combinable():
 
 @pytest.mark.ag_order_combine
 def test_order_combine():
-    DessertItem, Candy, Cookie, IceCream, Sundae, Order = safe_import_dessert()
+    (des_mod,) = import_student_modules("dessert")
+    Candy = getattr(des_mod, "Candy")
+    Cookie = getattr(des_mod, "Cookie")
+    Order = getattr(des_mod, "Order")
     order = Order()
     c1 = Candy("Fudge", 1.0, 2.0)
     c2 = Candy("Fudge", 2.0, 2.0)
