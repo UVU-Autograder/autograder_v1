@@ -1,32 +1,20 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "student.py",
-      "student_reflection.md"
-    ],
     "entrypoint": "student.py",
     "file_requirements": [
       {
-        "key": "student_py",
         "label": "Student dataclass definition file",
-        "requirement_type": "exact",
         "paths": [
           "student.py"
         ]
       },
       {
-        "key": "student_reflection_md",
         "label": "Student reflection responses",
-        "requirement_type": "exact",
         "paths": [
           "student_reflection.md"
         ]
       }
     ]
-  },
-  "execution": {
-    "dependencies": []
   },
   "artifacts": {
     "assignment_tests": {
@@ -42,41 +30,44 @@
       "display_filename": "student_reflection.md"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "dataclass",
       "label": "@dataclass(order=True) with correct typed fields and default_factory",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "methods",
       "label": "enroll() and total_courses() methods",
       "points": 25,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "ordering",
       "label": "Data class comparison operators and sorting by ID",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "main_output",
       "label": "main() execution creates and tests Student objects",
       "points": 20,
-      "extra_credit": false
-    }
-  ],
-  "manual_rubric_items": [
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
     {
       "key": "reflection",
       "label": "Reflection responses on default_factory and dataclass design",
       "points": 15,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "manual"
     }
   ],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [],
+  "rubric_groups": []
 }

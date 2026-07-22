@@ -121,6 +121,7 @@ def grade_sandbox_run(
     config_json: dict,
     artifact_refs: dict[str, str],
     allowed_concepts: list[str],
+    stdin: str | None = None,
 ) -> dict:
     """Execute a sandbox grading run through the full pipeline.
 
@@ -137,6 +138,7 @@ def grade_sandbox_run(
         config_json: Assignment config as a dict (will be validated).
         artifact_refs: Map of artifact_key -> storage_ref.
         allowed_concepts: Merged effective concept whitelist.
+        stdin: Optional raw stdin text to pass to student execution.
 
     Returns:
         Dict with grading results summary.
@@ -187,6 +189,7 @@ def grade_sandbox_run(
                     config=config,
                     artifact_refs=artifact_refs,
                     allowed_concepts=allowed_concepts,
+                    stdin=stdin,
                 )
             )
         finally:
@@ -661,7 +664,7 @@ def grade_official_run(self, run_id: int) -> dict:
         config = AssignmentConfigV1.model_validate(assignment.config.config_json)
         max_score = config.base_points
         automated_max_score = sum(
-            item.points for item in config.tests if not item.extra_credit
+            item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit
         )
         total_submissions = run.total_submission_count
 
@@ -753,7 +756,7 @@ def grade_official_run(self, run_id: int) -> dict:
 
         student_temp_dir = run_dir / f"student_{canvas_user_id}"
         student_temp_dir.mkdir(parents=True, exist_ok=True)
-        manual_results = init_manual_results(config.manual_rubric_items)
+        manual_results = init_manual_results(config.scoring_items)
 
         try:
             prepare_student_bundle(paths, student_temp_dir)
@@ -961,9 +964,9 @@ def run_mock_official_run(run_id: int) -> None:
             except Exception:
                 pass
 
-        mock_manual_results = init_manual_results(config.manual_rubric_items) if config else {}
+        mock_manual_results = init_manual_results(config.scoring_items) if config else {}
         automated_max_score = (
-            sum(item.points for item in config.tests if not item.extra_credit)
+            sum(item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit)
             if config
             else max_score
         )

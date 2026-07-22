@@ -32,7 +32,8 @@ def validate_config_json(config_json: dict) -> AssignmentConfigV1:
 def regenerate_scoring_items(db: Session, assignment: Assignment, config: AssignmentConfigV1) -> None:
     db.execute(delete(ScoringItemProjection).where(ScoringItemProjection.assignment_id == assignment.id))
     projections: list[ScoringItemProjection] = []
-    for index, item in enumerate(config.tests):
+    for index, item in enumerate(config.scoring_items):
+        is_pytest = (item.item_type == "pytest")
         projections.append(
             ScoringItemProjection(
                 assignment_id=assignment.id,
@@ -40,25 +41,10 @@ def regenerate_scoring_items(db: Session, assignment: Assignment, config: Assign
                 label=item.label,
                 points=item.points,
                 extra_credit=item.extra_credit,
-                item_type="pytest",
-                pytest_marker=pytest_marker_for_key(item.key),
+                item_type=item.item_type,
+                pytest_marker=pytest_marker_for_key(item.key) if is_pytest else None,
                 rubric_group_key=item.rubric_group_key,
                 display_order=index,
-            )
-        )
-    manual_offset = len(projections)
-    for index, item in enumerate(config.manual_rubric_items):
-        projections.append(
-            ScoringItemProjection(
-                assignment_id=assignment.id,
-                config_item_key=item.key,
-                label=item.label,
-                points=item.points,
-                extra_credit=item.extra_credit,
-                item_type="manual",
-                pytest_marker=None,
-                rubric_group_key=item.rubric_group_key,
-                display_order=manual_offset + index,
             )
         )
     db.add_all(projections)
@@ -203,16 +189,15 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
         module_id=assignment.module_id,
         base_points=config.base_points,
         extra_credit_points=config.extra_credit_points,
-        required_files=config.bundle.required_files,
         entrypoint_path=config.bundle.entrypoint,
         scoring_items=build_scoring_items(assignment.scoring_items),
         rubric_groups=[
             RubricGroup(
-                key=item.key,
-                label=item.label,
-                item_keys=item.item_keys,
+                key=group.key,
+                label=group.label,
+                item_keys=[item.config_item_key for item in assignment.scoring_items if item.rubric_group_key == group.key],
             )
-            for item in config.rubric_groups
+            for group in config.rubric_groups
         ],
         completion_requirements=[
             CompletionRequirement(
@@ -234,6 +219,7 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
             for artifact in sorted(assignment.artifacts, key=lambda item: item.artifact_key)
         ],
         config_json=config,
+        effective_allowed_concepts=effective_allowed_concepts(assignment),
     )
 
 
@@ -411,11 +397,14 @@ def get_artifact_content(
 
 def get_default_config_json() -> dict:
     return {
-        "schema_version": 1,
         "bundle": {
-            "required_files": ["main.py"],
             "entrypoint": "main.py",
-            "file_requirements": [],
+            "file_requirements": [
+                {
+                    "label": "Main Entrypoint Script",
+                    "paths": ["main.py"],
+                }
+            ],
         },
         "concepts": {
             "additions": [],
@@ -426,21 +415,18 @@ def get_default_config_json() -> dict:
                 "display_filename": "test_main.py",
             },
         },
-        "tests": [
+        "scoring_items": [
             {
                 "key": "t1",
                 "label": "Test 1",
                 "points": 10,
                 "extra_credit": False,
+                "item_type": "pytest",
             },
         ],
         "completion_requirements": [],
-        "execution": {
-            "dependencies": [],
-        },
+        "dependencies": [],
         "rubric_groups": [],
-        "manual_rubric_items": [],
-        "stdin_scenarios": [],
     }
 
 

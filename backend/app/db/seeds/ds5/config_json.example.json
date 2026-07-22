@@ -1,34 +1,19 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "dessert.py",
-      "dessertshop.py",
-      "test_dessert.py",
-      "test_candy.py",
-      "test_cookie.py",
-      "test_icecream.py",
-      "test_sundae.py"
-    ],
     "entrypoint": "dessertshop.py",
     "file_requirements": [
       {
-        "key": "dessert_py",
         "label": "Dessert Shop classes definition file",
-        "requirement_type": "exact",
-        "paths": ["dessert.py"]
+        "paths": [
+          "dessert.py"
+        ]
       },
       {
-        "key": "dessertshop_py",
         "label": "Dessert Shop main entrypoint file",
-        "requirement_type": "exact",
-        "paths": ["dessertshop.py"]
+        "paths": [
+          "dessertshop.py"
+        ]
       }
-    ]
-  },
-  "execution": {
-    "dependencies": [
-      "tabulate"
     ]
   },
   "artifacts": {
@@ -65,35 +50,39 @@
       "display_filename": "test_sundae.py"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "dessertshop_class",
       "label": "DessertShop class with 4 prompt methods",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "ds4_regression",
       "label": "DS4 ABC + cost/tax intact",
       "points": 30,
-      "extra_credit": false
-    }
-  ],
-  "manual_rubric_items": [
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
     {
       "key": "input_validation",
       "label": "Input validation quality (retries, ValueError, positive values only)",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "manual"
     },
     {
       "key": "receipt_output",
       "label": "Receipt format and correctness in final output",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "manual"
     }
   ],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
 }

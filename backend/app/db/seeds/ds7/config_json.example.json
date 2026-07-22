@@ -1,47 +1,25 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "dessert.py",
-      "dessertshop.py",
-      "packaging.py",
-      "test_dessert.py",
-      "test_candy.py",
-      "test_cookie.py",
-      "test_icecream.py",
-      "test_sundae.py"
-    ],
     "entrypoint": "dessertshop.py",
     "file_requirements": [
       {
-        "key": "dessert_py",
         "label": "Dessert Shop classes definition file",
-        "requirement_type": "exact",
         "paths": [
           "dessert.py"
         ]
       },
       {
-        "key": "packaging_py",
         "label": "Packaging Protocol definition file",
-        "requirement_type": "exact",
         "paths": [
           "packaging.py"
         ]
       },
       {
-        "key": "dessertshop_py",
         "label": "Dessert Shop main entrypoint file",
-        "requirement_type": "exact",
         "paths": [
           "dessertshop.py"
         ]
       }
-    ]
-  },
-  "execution": {
-    "dependencies": [
-      "tabulate"
     ]
   },
   "artifacts": {
@@ -82,34 +60,39 @@
       "display_filename": "test_sundae.py"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "packaging_protocol",
       "label": "Packaging Protocol in packaging.py",
       "points": 15,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "packaging_defaults",
       "label": "Default packaging values correct per class",
       "points": 25,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "packaging_in_str",
       "label": "__str__ includes packaging in output",
       "points": 25,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "ds6_regression",
       "label": "DS6 classes + __str__ + to_list intact",
       "points": 35,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     }
   ],
-  "manual_rubric_items": [],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
 }

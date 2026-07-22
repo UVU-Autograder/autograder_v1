@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, Header, HTTPException, Response, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Response, UploadFile
 
 from app.core.dependencies import DbSession
 from app.core.settings import get_settings
@@ -82,9 +82,13 @@ async def create_run(
     course_id: str,
     assignment_id: str,
     bundle: UploadFile = File(...),
+    stdin: str | None = Form(default=None),
     x_sandbox_session: str | None = Header(default=None),
 ) -> SandboxRunCreateResponse:
+    """Create a new sandbox run for a submission bundle, with optional stdin input."""
     settings = get_settings()
+    if stdin and len(stdin.encode("utf-8")) > 65536:
+        raise HTTPException(status_code=400, detail="Console stdin input exceeds maximum allowed size.")
     zip_data = await bundle.read()
     if len(zip_data) > settings.max_upload_bytes:
         raise HTTPException(status_code=413, detail="Upload exceeds maximum size.")
@@ -126,6 +130,7 @@ async def create_run(
         config_json=db_assignment.config.config_json,
         artifact_refs=artifact_refs,
         allowed_concepts=allowed_concepts,
+        stdin=stdin,
     )
     response.headers["X-Sandbox-Session"] = session
     if error_status == 429:

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
+import { slugifyKey } from "@/lib/slugify";
 import {
   Select,
   SelectContent,
@@ -61,16 +62,27 @@ type ArtifactMetadata = {
 };
 
 type FileRequirementConfig = {
-  key: string;
-  label: string | null;
-  requirement_type: "exact" | "one_of" | "optional" | "pattern";
-  paths: string[];
+  label: string;
+  paths?: string[] | null;
+  pattern?: string | null;
 };
+
+type ScoringItemConfig = {
+  key: string;
+  label: string;
+  points: number;
+  extra_credit: boolean;
+  item_type?: "pytest" | "manual";
+  rubric_group_key?: string | null;
+  inputs?: string[] | null;
+  outputs?: string[] | null;
+};
+
+type ManualRubricItemConfig = ScoringItemConfig;
 
 type RubricGroupConfig = {
   key: string;
   label: string;
-  item_keys: string[];
 };
 
 type CompletionRequirementConfig = {
@@ -80,34 +92,8 @@ type CompletionRequirementConfig = {
   minimum_passed: number;
 };
 
-type ScoringItemConfig = {
-  key: string;
-  label: string;
-  points: number;
-  extra_credit: boolean;
-  rubric_group_key?: string | null;
-  inputs?: string[] | null;
-  outputs?: string[] | null;
-};
-
-type ManualRubricItemConfig = {
-  key: string;
-  label: string;
-  points: number;
-  extra_credit: boolean;
-  rubric_group_key?: string | null;
-};
-
-type StdinScenarioConfig = {
-  key: string;
-  label: string;
-  stdin: string[];
-};
-
 type AssignmentConfigV1 = {
-  schema_version: number;
   bundle: {
-    required_files: string[];
     entrypoint: string;
     file_requirements?: FileRequirementConfig[];
   };
@@ -115,14 +101,10 @@ type AssignmentConfigV1 = {
     additions: string[];
   };
   artifacts: Record<string, { type: string; display_filename?: string }>;
-  tests: ScoringItemConfig[];
+  scoring_items: ScoringItemConfig[];
   rubric_groups?: RubricGroupConfig[];
   completion_requirements?: CompletionRequirementConfig[];
-  manual_rubric_items?: ManualRubricItemConfig[];
-  execution?: {
-    dependencies?: string[];
-  };
-  stdin_scenarios?: StdinScenarioConfig[];
+  dependencies?: string[];
 };
 
 type StaffAssignmentSetup = {
@@ -134,12 +116,12 @@ type StaffAssignmentSetup = {
   sandbox_enabled: boolean;
   base_points: number;
   extra_credit_points: number;
-  required_files: string[];
   entrypoint_path: string;
   concept_additions: string[];
   scoring_items: ScoringItem[];
   artifacts: ArtifactMetadata[];
   config_json: AssignmentConfigV1;
+  effective_allowed_concepts?: string[];
 };
 
 type ValidationStatus = {
@@ -228,7 +210,10 @@ function ScoringItemsTable<T extends ScoringTableItem>({
   renderDetails,
 }: ScoringItemsTableProps<T>) {
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
-  const colSpan = renderDetails ? 7 : 6;
+  const [editingKeyMap, setEditingKeyMap] = useState<Record<string, boolean>>(
+    {},
+  );
+  const colSpan = renderDetails ? 6 : 5;
 
   return (
     <div className="space-y-3">
@@ -246,8 +231,7 @@ function ScoringItemsTable<T extends ScoringTableItem>({
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-slate-200 text-slate-500 font-semibold uppercase">
-              <th className="py-2 pr-2">Key *</th>
-              <th className="py-2 px-2">Student-Facing Description</th>
+              <th className="py-2 pr-2">Student-Facing Description</th>
               <th className="py-2 px-2 w-20">Points</th>
               <th className="py-2 px-2 w-24 text-center">Extra Credit?</th>
               <th className="py-2 px-2">Rubric Group</th>
@@ -260,26 +244,58 @@ function ScoringItemsTable<T extends ScoringTableItem>({
           <tbody className="divide-y divide-slate-100">
             {items.map((item) => {
               const isExpanded = !!expandedKeys[item.key];
+              const isEditingKey = !!editingKeyMap[item.key];
               return (
                 <Fragment key={item.key}>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-2 pr-2">
-                      <Input
-                        value={item.key}
-                        onChange={(e) =>
-                          onUpdate(item.key, "key" as keyof T, e.target.value)
-                        }
-                        className="font-mono text-xs h-8"
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <Input
-                        value={item.label}
-                        onChange={(e) =>
-                          onUpdate(item.key, "label" as keyof T, e.target.value)
-                        }
-                        className="text-xs h-8"
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          value={item.label}
+                          onChange={(e) =>
+                            onUpdate(
+                              item.key,
+                              "label" as keyof T,
+                              e.target.value,
+                            )
+                          }
+                          placeholder="e.g. Candy Class Hierarchy Intact"
+                          className="text-xs h-8"
+                        />
+                        <div className="flex items-center justify-between text-[11px] text-slate-500">
+                          <span className="font-mono text-slate-600">
+                            Key:{" "}
+                            <span className="font-semibold text-indigo-700">
+                              {item.key}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingKeyMap((prev) => ({
+                                ...prev,
+                                [item.key]: !prev[item.key],
+                              }))
+                            }
+                            className="text-slate-400 hover:text-indigo-600 cursor-pointer text-[10px]"
+                          >
+                            {isEditingKey ? "Done" : "✏️ Edit key"}
+                          </button>
+                        </div>
+                        {isEditingKey && (
+                          <Input
+                            value={item.key}
+                            onChange={(e) =>
+                              onUpdate(
+                                item.key,
+                                "key" as keyof T,
+                                e.target.value,
+                              )
+                            }
+                            className="font-mono text-[11px] h-6 border-indigo-300"
+                          />
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 px-2">
                       <Input
@@ -411,9 +427,6 @@ export default function SetupWizardPage({ params }: PageProps) {
 
   // Step 4
   const [concepts, setConcepts] = useState<string[]>([]);
-  const [stdinScenarios, setStdinScenarios] = useState<StdinScenarioConfig[]>(
-    [],
-  );
   const [conceptMeta, setConceptMeta] = useState<
     Record<string, ConceptMetadata>
   >({});
@@ -446,6 +459,18 @@ export default function SetupWizardPage({ params }: PageProps) {
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Auto-derivation custom key tracking states
+  const [customFileReqKeys, setCustomFileReqKeys] = useState<
+    Record<number, boolean>
+  >({});
+  const [customTestKeys, setCustomTestKeys] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [customManualKeys, setCustomManualKeys] = useState<
+    Record<string, boolean>
+  >({});
+  const [editingKeyItem, setEditingKeyItem] = useState<string | null>(null);
+
   const handleCopyStudentLink = () => {
     const studentLink = `${window.location.origin}/sandbox/${courseId}/assignments/${assignmentId}`;
     navigator.clipboard
@@ -469,38 +494,29 @@ export default function SetupWizardPage({ params }: PageProps) {
       setModuleId(data.module_id !== undefined ? data.module_id : null);
 
       // Step 2
-      const reqFiles = config.bundle?.required_files || [];
       const initialEntrypoint = config.bundle?.entrypoint || "";
       const initialReqs = config.bundle?.file_requirements || [];
 
-      setRequiredFiles(reqFiles);
       setEntrypoint(initialEntrypoint);
-
-      if (initialReqs.length === 0 && reqFiles.length > 0) {
-        const derived: FileRequirementConfig[] = reqFiles.map((file, i) => ({
-          key: i === 0 ? "req_main" : `req_file_${i + 1}`,
-          label: i === 0 ? "Main Entrypoint Script" : `Required File ${i + 1}`,
-          requirement_type: "exact",
-          paths: [file],
-        }));
-        setFileRequirements(derived);
-      } else {
-        setFileRequirements(initialReqs);
-      }
+      setFileRequirements(initialReqs);
 
       // Step 3
-      setTests(config.tests || []);
-      setManualRubricItems(config.manual_rubric_items || []);
+      if (config.scoring_items) {
+        setTests(config.scoring_items.filter((item) => (item.item_type || "pytest") === "pytest"));
+        setManualRubricItems(config.scoring_items.filter((item) => item.item_type === "manual"));
+      } else {
+        setTests([]);
+        setManualRubricItems([]);
+      }
       setRubricGroups(config.rubric_groups || []);
 
       // Step 4
       const additions = config.concepts?.additions || [];
       const predefined = Object.keys(meta);
       setConcepts(additions.filter((c) => predefined.includes(c)));
-      setStdinScenarios(config.stdin_scenarios || []);
 
       // Step 5
-      setDependencies(config.execution?.dependencies || []);
+      setDependencies(config.dependencies || []);
     },
     [],
   );
@@ -592,8 +608,6 @@ export default function SetupWizardPage({ params }: PageProps) {
     const allTestKeys = tests.map((t) => t.key);
     const allManualKeys = manualRubricItems.map((m) => m.key);
     const allGroupKeys = rubricGroups.map((g) => g.key);
-    const allReqKeys = fileRequirements.map((f) => f.key);
-    const allScenarioKeys = stdinScenarios.map((s) => s.key);
 
     // Generic list key validation
     const validateKeyList = (keys: string[], listName: string) => {
@@ -610,8 +624,6 @@ export default function SetupWizardPage({ params }: PageProps) {
     validateKeyList(allTestKeys, "Test");
     validateKeyList(allManualKeys, "Manual Rubric Item");
     validateKeyList(allGroupKeys, "Rubric Group");
-    validateKeyList(allReqKeys, "File Requirement");
-    validateKeyList(allScenarioKeys, "Stdin Scenario");
 
     // Duplicates
     const checkDuplicates = (keys: string[], name: string) => {
@@ -626,8 +638,6 @@ export default function SetupWizardPage({ params }: PageProps) {
     checkDuplicates(allTestKeys, "Tests");
     checkDuplicates(allManualKeys, "Manual Rubric Items");
     checkDuplicates(allGroupKeys, "Rubric Groups");
-    checkDuplicates(allReqKeys, "File Requirements");
-    checkDuplicates(allScenarioKeys, "Stdin Scenarios");
 
     // Tests & Manual overlap
     const overlap = allTestKeys.filter((k) => allManualKeys.includes(k));
@@ -637,36 +647,40 @@ export default function SetupWizardPage({ params }: PageProps) {
       );
     }
 
-    // File Requirements paths counts
-    fileRequirements.forEach((req) => {
-      if (req.requirement_type === "one_of") {
-        if (req.paths.length < 2) {
+    // File Requirements validation
+    fileRequirements.forEach((req, idx) => {
+      if (!req.label || !req.label.trim()) {
+        errors.push(`File requirement #${idx + 1} must have a label.`);
+      }
+      if (req.pattern !== undefined && req.pattern !== null) {
+        if (!req.pattern.trim()) {
           errors.push(
-            `File requirement "${req.key}" (one_of) must have at least two paths.`,
+            `File requirement "${req.label || idx + 1}" (glob pattern) cannot be blank.`,
           );
         }
       } else {
-        if (req.paths.length !== 1 || !req.paths[0].trim()) {
+        const validPaths = (req.paths || []).filter((p) => p.trim());
+        if (validPaths.length === 0) {
           errors.push(
-            `File requirement "${req.key}" (${req.requirement_type}) must have exactly one path.`,
+            `File requirement "${req.label || idx + 1}" must have at least one non-empty path.`,
           );
         }
       }
     });
 
-    // Entrypoint verification
-    const knownPaths = new Set(requiredFiles);
+    // Entrypoint verification against paths requirements
+    const knownPaths = new Set<string>();
     fileRequirements.forEach((req) => {
-      if (req.requirement_type !== "pattern") {
+      if (req.paths) {
         req.paths.forEach((p) => {
           if (p.trim()) knownPaths.add(p.trim());
         });
       }
     });
 
-    if (entrypoint && !knownPaths.has(entrypoint)) {
+    if (knownPaths.size > 0 && entrypoint && !knownPaths.has(entrypoint)) {
       errors.push(
-        `Entrypoint "${entrypoint}" is not present in required_files or file requirement paths.`,
+        `Entrypoint "${entrypoint}" is not present in any file requirement paths list.`,
       );
     }
 
@@ -697,26 +711,19 @@ export default function SetupWizardPage({ params }: PageProps) {
       return;
     }
 
-    // Map item keys to rubric groups dynamically on save
-    const updatedRubricGroups = rubricGroups.map((group) => {
-      const matchingItemKeys = [
-        ...tests
-          .filter((t) => t.rubric_group_key === group.key)
-          .map((t) => t.key),
-        ...manualRubricItems
-          .filter((m) => m.rubric_group_key === group.key)
-          .map((m) => m.key),
-      ];
-      return {
-        ...group,
-        item_keys: matchingItemKeys,
-      };
-    });
+    // Rubric groups stored as { key, label }
+    const updatedRubricGroups = rubricGroups.map((group) => ({
+      key: group.key,
+      label: group.label,
+    }));
 
     // Sync renamed test keys in completion requirements
     const keyMap: Record<string, string> = {};
-    if (setup.config_json.tests) {
-      setup.config_json.tests.forEach((origTest, idx) => {
+    if (setup.config_json.scoring_items) {
+      const origPytests = setup.config_json.scoring_items.filter(
+        (item) => (item.item_type || "pytest") === "pytest",
+      );
+      origPytests.forEach((origTest, idx) => {
         const currentTest = tests[idx];
         if (currentTest && origTest.key !== currentTest.key) {
           keyMap[origTest.key] = currentTest.key;
@@ -734,51 +741,39 @@ export default function SetupWizardPage({ params }: PageProps) {
       };
     });
 
-    // Derive final required_files from all paths across fileRequirements
-    const derivedRequiredFiles = Array.from(
-      new Set(
-        fileRequirements
-          .flatMap((req) => req.paths.map((p) => p.trim()))
-          .filter(Boolean),
-      ),
-    );
-    const finalRequiredFiles =
-      derivedRequiredFiles.length > 0 ? derivedRequiredFiles : requiredFiles;
-
     // Reconstruct the config_json reflecting updates
     const updatedConfig: AssignmentConfigV1 = {
       ...setup.config_json,
-      schema_version: setup.config_json.schema_version || 1,
       bundle: {
-        required_files: finalRequiredFiles,
         entrypoint: entrypoint,
         file_requirements: fileRequirements,
       },
       concepts: {
         additions: concepts,
       },
-      tests: tests.map((t) => ({
-        key: t.key,
-        label: t.label,
-        points: Number(t.points),
-        extra_credit: t.extra_credit,
-        rubric_group_key: t.rubric_group_key || null,
-        inputs: t.inputs || null,
-        outputs: t.outputs || null,
-      })),
-      manual_rubric_items: manualRubricItems.map((m) => ({
-        key: m.key,
-        label: m.label,
-        points: Number(m.points),
-        extra_credit: m.extra_credit,
-        rubric_group_key: m.rubric_group_key || null,
-      })),
+      scoring_items: [
+        ...tests.map((t) => ({
+          key: t.key,
+          label: t.label,
+          points: Number(t.points),
+          extra_credit: t.extra_credit,
+          item_type: "pytest" as const,
+          rubric_group_key: t.rubric_group_key || null,
+          inputs: t.inputs || null,
+          outputs: t.outputs || null,
+        })),
+        ...manualRubricItems.map((m) => ({
+          key: m.key,
+          label: m.label,
+          points: Number(m.points),
+          extra_credit: m.extra_credit,
+          item_type: "manual" as const,
+          rubric_group_key: m.rubric_group_key || null,
+        })),
+      ],
       rubric_groups: updatedRubricGroups,
       completion_requirements: updatedCompletionRequirements,
-      stdin_scenarios: stdinScenarios,
-      execution: {
-        dependencies: dependencies,
-      },
+      dependencies: dependencies,
     };
 
     try {
@@ -916,14 +911,17 @@ export default function SetupWizardPage({ params }: PageProps) {
 
   // Helper selectors for entrypoint options
   const getEntrypointOptions = () => {
-    const options = new Set(requiredFiles);
+    const options = new Set<string>();
     fileRequirements.forEach((req) => {
-      if (req.requirement_type !== "pattern") {
+      if (req.paths) {
         req.paths.forEach((p) => {
           if (p.trim()) options.add(p.trim());
         });
       }
     });
+    if (entrypoint && entrypoint.trim()) {
+      options.add(entrypoint.trim());
+    }
     return Array.from(options);
   };
 
@@ -945,9 +943,7 @@ export default function SetupWizardPage({ params }: PageProps) {
   const addFileRequirement = () => {
     const nextId = fileRequirements.length + 1;
     const newReq: FileRequirementConfig = {
-      key: `file_req_${nextId}`,
       label: `Required File Rule ${nextId}`,
-      requirement_type: "exact",
       paths: [""],
     };
     setFileRequirements([...fileRequirements, newReq]);
@@ -963,25 +959,7 @@ export default function SetupWizardPage({ params }: PageProps) {
     val: FileRequirementConfig[K],
   ) => {
     setFileRequirements((prev) =>
-      prev.map((req, i) => {
-        if (i === idx) {
-          const updated: FileRequirementConfig = { ...req, [field]: val };
-          // adjust paths size if requirement_type changes
-          if (field === "requirement_type") {
-            if (val === "one_of") {
-              updated.paths =
-                req.paths.length < 2 ? [...req.paths, ""] : req.paths;
-            } else {
-              updated.paths = [req.paths[0] || ""];
-            }
-          }
-          if (field === "key") {
-            updated.key = sanitizeKey(String(val));
-          }
-          return updated;
-        }
-        return req;
-      }),
+      prev.map((req, i) => (i === idx ? { ...req, [field]: val } : req)),
     );
   };
 
@@ -993,7 +971,8 @@ export default function SetupWizardPage({ params }: PageProps) {
     setFileRequirements((prev) =>
       prev.map((req, i) => {
         if (i === reqIdx) {
-          const newPaths = [...req.paths];
+          const currentPaths = req.paths || [""];
+          const newPaths = [...currentPaths];
           newPaths[pathIdx] = val;
           return { ...req, paths: newPaths };
         }
@@ -1006,14 +985,8 @@ export default function SetupWizardPage({ params }: PageProps) {
     setFileRequirements((prev) =>
       prev.map((req, i) => {
         if (i === reqIdx) {
-          const newPaths = [...req.paths, ""];
-          const reqType =
-            req.requirement_type === "pattern"
-              ? "pattern"
-              : newPaths.length > 1
-                ? "one_of"
-                : "exact";
-          return { ...req, paths: newPaths, requirement_type: reqType };
+          const currentPaths = req.paths || [""];
+          return { ...req, paths: [...currentPaths, ""] };
         }
         return req;
       }),
@@ -1024,30 +997,25 @@ export default function SetupWizardPage({ params }: PageProps) {
     setFileRequirements((prev) =>
       prev.map((req, i) => {
         if (i === reqIdx) {
-          const newPaths = req.paths.filter((_, pIdx) => pIdx !== pathIdx);
-          const reqType =
-            req.requirement_type === "pattern"
-              ? "pattern"
-              : newPaths.length > 1
-                ? "one_of"
-                : "exact";
-          return { ...req, paths: newPaths, requirement_type: reqType };
+          const currentPaths = req.paths || [""];
+          const newPaths = currentPaths.filter((_, pIdx) => pIdx !== pathIdx);
+          return { ...req, paths: newPaths };
         }
         return req;
       }),
     );
   };
 
-  const toggleFileRequirementRegex = (reqIdx: number, isRegex: boolean) => {
+  const toggleFileRequirementGlob = (reqIdx: number, isGlob: boolean) => {
     setFileRequirements((prev) =>
       prev.map((req, i) => {
         if (i === reqIdx) {
-          const reqType = isRegex
-            ? "pattern"
-            : req.paths.length > 1
-              ? "one_of"
-              : "exact";
-          return { ...req, requirement_type: reqType };
+          if (isGlob) {
+            return { label: req.label, pattern: "*.py" };
+          } else {
+            const firstPath = req.paths?.[0] || "";
+            return { label: req.label, paths: [firstPath] };
+          }
         }
         return req;
       }),
@@ -1060,7 +1028,6 @@ export default function SetupWizardPage({ params }: PageProps) {
     const newGroup: RubricGroupConfig = {
       key: `group_${nextId}`,
       label: `Group ${nextId}`,
-      item_keys: [],
     };
     setRubricGroups([...rubricGroups, newGroup]);
   };
@@ -1108,21 +1075,40 @@ export default function SetupWizardPage({ params }: PageProps) {
     }
   };
 
-  // Reusable list item update helper
-  const updateListItemField = <T extends { key: string }>(
+  // Reusable list item update helper with auto-derivation
+  const updateListItemField = <
+    T extends { key: string; label: string; points?: number },
+  >(
     setter: React.Dispatch<React.SetStateAction<T[]>>,
     key: string,
     field: keyof T,
     val: unknown,
+    customKeyMap: Record<string, boolean>,
+    setCustomKeyMap: React.Dispatch<
+      React.SetStateAction<Record<string, boolean>>
+    >,
   ) => {
     setter((prev) =>
       prev.map((item) => {
         if (item.key === key) {
-          let finalVal = val;
-          if (field === "key") finalVal = sanitizeKey(String(val));
-          if (field === "points")
-            finalVal = Math.max(0, parseInt(String(val)) || 0);
-          return { ...item, [field]: finalVal } as T;
+          const updated: T = { ...item, [field]: val };
+          if (field === "label") {
+            if (!customKeyMap[key]) {
+              const derived = slugifyKey(String(val));
+              if (derived) {
+                updated.key = derived;
+              }
+            }
+          }
+          if (field === "key") {
+            const sanitized = sanitizeKey(String(val));
+            updated.key = sanitized;
+            setCustomKeyMap((c) => ({ ...c, [sanitized]: true, [key]: true }));
+          }
+          if (field === "points") {
+            updated.points = Math.max(0, parseInt(String(val)) || 0);
+          }
+          return updated;
         }
         return item;
       }),
@@ -1152,7 +1138,14 @@ export default function SetupWizardPage({ params }: PageProps) {
     field: keyof ScoringItemConfig,
     val: unknown,
   ) => {
-    updateListItemField(setTests, key, field, val);
+    updateListItemField(
+      setTests,
+      key,
+      field,
+      val,
+      customTestKeys,
+      setCustomTestKeys,
+    );
   };
 
   const renderTestDetails = (test: ScoringItemConfig) => {
@@ -1294,7 +1287,14 @@ export default function SetupWizardPage({ params }: PageProps) {
     field: keyof ManualRubricItemConfig,
     val: unknown,
   ) => {
-    updateListItemField(setManualRubricItems, key, field, val);
+    updateListItemField(
+      setManualRubricItems,
+      key,
+      field,
+      val,
+      customManualKeys,
+      setCustomManualKeys,
+    );
   };
 
   // Step 4 functions
@@ -1303,39 +1303,6 @@ export default function SetupWizardPage({ params }: PageProps) {
       prev.includes(concept)
         ? prev.filter((c) => c !== concept)
         : [...prev, concept],
-    );
-  };
-
-  const addStdinScenario = () => {
-    const nextId = stdinScenarios.length + 1;
-    setStdinScenarios([
-      ...stdinScenarios,
-      {
-        key: `scenario_${nextId}`,
-        label: `Scenario ${nextId}`,
-        stdin: [],
-      },
-    ]);
-  };
-
-  const removeStdinScenario = (key: string) => {
-    setStdinScenarios(stdinScenarios.filter((s) => s.key !== key));
-  };
-
-  const updateStdinScenario = (
-    key: string,
-    field: "key" | "label" | "stdin",
-    val: string | string[],
-  ) => {
-    setStdinScenarios((prev) =>
-      prev.map((s) => {
-        if (s.key === key) {
-          let finalVal = val;
-          if (field === "key") finalVal = sanitizeKey(String(val));
-          return { ...s, [field]: finalVal } as StdinScenarioConfig;
-        }
-        return s;
-      }),
     );
   };
 
@@ -1564,7 +1531,7 @@ export default function SetupWizardPage({ params }: PageProps) {
               <CardContent className="space-y-6 pt-4">
                 <div className="space-y-4">
                   {fileRequirements.map((req, idx) => {
-                    const isEntrypoint = req.paths.includes(entrypoint);
+                    const isEntrypoint = Boolean(req.paths?.includes(entrypoint));
                     return (
                       <div
                         key={idx}
@@ -1581,7 +1548,7 @@ export default function SetupWizardPage({ params }: PageProps) {
                               name="entrypoint_selection"
                               checked={isEntrypoint}
                               onChange={() => {
-                                if (req.paths[0]) {
+                                if (req.paths?.[0]) {
                                   setEntrypoint(req.paths[0]);
                                 }
                               }}
@@ -1598,122 +1565,124 @@ export default function SetupWizardPage({ params }: PageProps) {
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">
-                              Slug Key *
-                            </label>
-                            <Input
-                              value={req.key}
-                              onChange={(e) =>
-                                updateFileRequirement(
-                                  idx,
-                                  "key",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g. req_main"
-                              className="font-mono text-xs"
-                            />
-                            {!isValidKey(req.key) && (
-                              <p className="text-[10px] text-red-500">
-                                Must be lowercase snake_case.
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">
-                              Label
-                            </label>
-                            <Input
-                              value={req.label || ""}
-                              onChange={(e) =>
-                                updateFileRequirement(
-                                  idx,
-                                  "label",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g. Main Entrypoint Script"
-                              className="text-xs"
-                            />
-                          </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-500 uppercase">
+                            Label / Rule Name *
+                          </label>
+                          <Input
+                            value={req.label || ""}
+                            onChange={(e) =>
+                              updateFileRequirement(
+                                idx,
+                                "label",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="e.g. Main Entrypoint Script"
+                            className="text-xs"
+                          />
                         </div>
 
-                        {/* Paths management */}
+                        {/* Paths / Pattern management */}
                         <div className="space-y-2 pt-2 border-t border-slate-100">
-                          <label className="text-xs font-semibold text-slate-500 uppercase">
-                            Allowed File Name(s)
-                          </label>
-                          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              checked={req.requirement_type === "pattern"}
-                              onChange={(e) =>
-                                toggleFileRequirementRegex(
-                                  idx,
-                                  e.target.checked,
-                                )
-                              }
-                              className="size-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <span>Treat file names as regex patterns</span>
-                          </label>
-                          <div className="space-y-2">
-                            {req.paths.map((path, pathIdx) => (
-                              <div
-                                key={pathIdx}
-                                className="flex gap-2 items-center"
-                              >
-                                <Input
-                                  value={path}
-                                  onChange={(e) => {
-                                    updateFileRequirementPath(
-                                      idx,
-                                      pathIdx,
-                                      e.target.value,
-                                    );
-                                    if (isEntrypoint && pathIdx === 0) {
-                                      setEntrypoint(e.target.value);
-                                    }
-                                  }}
-                                  placeholder={
-                                    req.requirement_type === "pattern"
-                                      ? "e.g. .*\\.py"
-                                      : pathIdx === 0
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-slate-500 uppercase">
+                              {req.pattern !== undefined && req.pattern !== null
+                                ? "Glob Pattern"
+                                : "Allowed File Name(s)"}
+                            </label>
+                            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  req.pattern !== undefined &&
+                                  req.pattern !== null
+                                }
+                                onChange={(e) =>
+                                  toggleFileRequirementGlob(
+                                    idx,
+                                    e.target.checked,
+                                  )
+                                }
+                                className="size-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <span>Treat as glob pattern (e.g. *.py, lab?.txt)</span>
+                            </label>
+                          </div>
+
+                          {req.pattern !== undefined && req.pattern !== null ? (
+                            <div className="space-y-1">
+                              <Input
+                                value={req.pattern}
+                                onChange={(e) =>
+                                  updateFileRequirement(
+                                    idx,
+                                    "pattern",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="e.g. *.py"
+                                className="font-mono text-xs max-w-md"
+                              />
+                              <p className="text-[11px] text-slate-400">
+                                Evaluated using Python&apos;s <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">Path.glob()</code> syntax (use <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">**/*.py</code> for recursive subfolders).
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {(req.paths || [""]).map((path, pathIdx) => (
+                                <div
+                                  key={pathIdx}
+                                  className="flex gap-2 items-center"
+                                >
+                                  <Input
+                                    value={path}
+                                    onChange={(e) => {
+                                      updateFileRequirementPath(
+                                        idx,
+                                        pathIdx,
+                                        e.target.value,
+                                      );
+                                      if (isEntrypoint && pathIdx === 0) {
+                                        setEntrypoint(e.target.value);
+                                      }
+                                    }}
+                                    placeholder={
+                                      pathIdx === 0
                                         ? "e.g. main.py"
                                         : "e.g. solution.py"
-                                  }
-                                  className="font-mono text-xs max-w-md"
-                                />
-                                {req.paths.length > 1 && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                      removeFileRequirementPath(idx, pathIdx)
                                     }
-                                  >
-                                    <XIcon className="size-3.5 text-slate-400 hover:text-red-500" />
-                                  </Button>
-                                )}
-                              </div>
-                            ))}
+                                    className="font-mono text-xs max-w-md"
+                                  />
+                                  {(req.paths?.length || 0) > 1 && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        removeFileRequirementPath(idx, pathIdx)
+                                      }
+                                    >
+                                      <XIcon className="size-3.5 text-slate-400 hover:text-red-500" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
 
-                            <div className="flex flex-wrap items-center gap-4 pt-1">
-                              <Button
-                                type="button"
-                                onClick={() => addFileRequirementPath(idx)}
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                              >
-                                <PlusIcon className="size-3 mr-1" /> Add
-                                Alternate File Name
-                              </Button>
+                              <div className="flex flex-wrap items-center gap-4 pt-1">
+                                <Button
+                                  type="button"
+                                  onClick={() => addFileRequirementPath(idx)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                >
+                                  <PlusIcon className="size-3 mr-1" /> Add
+                                  Alternate File Name
+                                </Button>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -1889,162 +1858,69 @@ export default function SetupWizardPage({ params }: PageProps) {
           <TabsContent value="whitelist">
             <Card>
               <CardHeader>
-                <CardTitle>Whitelist Concepts & Input Scenarios</CardTitle>
+                <CardTitle>Concepts & Input Scenarios</CardTitle>
                 <CardDescription>
                   Define what syntax structures are whitelisted and keyboard
                   scenarios for interactive CLI tests.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Concepts Whitelist Checkbox grid */}
+                {/* Inherited Course Module Concepts section */}
                 <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-slate-800">
-                    Predefined Whitelisted Concepts
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Select standard programming syntax structures allowed in
-                    student submissions. Missing ones emit warnings.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {allPossibleConcepts.map((item) => (
-                      <div
-                        key={item.key}
-                        className="flex gap-2 items-start border border-slate-200/60 p-3 rounded-lg bg-white shadow-2xs"
-                      >
-                        <input
-                          type="checkbox"
-                          id={`concept-${item.key}`}
-                          checked={concepts.includes(item.key)}
-                          onChange={() => handleConceptChange(item.key)}
-                          className="size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-1 cursor-pointer"
-                        />
-                        <div className="space-y-0.5 flex-1">
-                          <label
-                            htmlFor={`concept-${item.key}`}
-                            className="text-xs font-bold text-slate-700 uppercase cursor-pointer"
-                          >
-                            {item.title}
-                          </label>
-                          <ul className="text-[10px] text-slate-400 leading-relaxed list-disc pl-4 mt-1 space-y-0.5">
-                            {(item.patterns || []).map((p) => (
-                              <li key={p}>{p}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Stdin scenarios list */}
-                <div className="space-y-4 pt-6 border-t border-slate-100">
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-slate-800">
-                        Simulated Keyboard Scenarios (Stdin Scenarios)
+                        Inherited Course Module Concepts
                       </h3>
-                      <p className="text-xs text-slate-400">
-                        Preload text inputs to mimic sequential user keyboard
-                        lines for CLI programs.
+                    </div>
+                    <Link
+                      href={`/staff/courses/${courseId}/settings`}
+                      className="text-xs text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                    >
+                      Manage Course Modules &rarr;
+                    </Link>
+                  </div>
+
+                  {moduleId !== null &&
+                  setup?.effective_allowed_concepts &&
+                  setup.effective_allowed_concepts.length > 0 ? (
+                    <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+                      <div className="text-xs text-indigo-900 font-medium">
+                        Assigned Module ID{" "}
+                        <span className="font-mono font-bold text-indigo-700">
+                          #{moduleId}
+                        </span>{" "}
+                        — Inherited Syntax Concepts (
+                        {setup.effective_allowed_concepts.length}):
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {setup.effective_allowed_concepts.map((key) => (
+                          <span
+                            key={key}
+                            className="inline-flex items-center gap-1 rounded-md bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-800 border border-indigo-200"
+                          >
+                            <CheckCircle2Icon className="size-3.5 text-indigo-600" />
+                            {conceptMeta[key]?.title || key}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <div className="text-xs font-semibold text-slate-700">
+                        {moduleId === null
+                          ? "No Course Module Assigned"
+                          : "No Concepts Configured for Module"}
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Assign a Course Module in Step 1 (General Settings) to
+                        automatically inherit concept syntax boundaries across
+                        assignments.
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      onClick={addStdinScenario}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <PlusCircleIcon className="size-4 mr-1.5" /> Add Scenario
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {stdinScenarios.map((scenario, idx) => (
-                      <div
-                        key={idx}
-                        className="relative rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => removeStdinScenario(scenario.key)}
-                          className="absolute right-4 top-4 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                        >
-                          <Trash2Icon className="size-4" />
-                        </button>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">
-                              Scenario Key *
-                            </label>
-                            <Input
-                              value={scenario.key}
-                              onChange={(e) =>
-                                updateStdinScenario(
-                                  scenario.key,
-                                  "key",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g. run_simple"
-                              className="font-mono text-xs"
-                            />
-                            {!isValidKey(scenario.key) && (
-                              <p className="text-[10px] text-red-500">
-                                Must be lowercase snake_case.
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-500 uppercase">
-                              Scenario Student-Facing Description
-                            </label>
-                            <Input
-                              value={scenario.label}
-                              onChange={(e) =>
-                                updateStdinScenario(
-                                  scenario.key,
-                                  "label",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g. Enter positive numbers"
-                              className="text-xs"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-1">
-                            Input Lines (one entry per line)
-                            <span title="Simulates a user pressing Enter after typing each line.">
-                              <HelpCircleIcon className="size-3 text-slate-400" />
-                            </span>
-                          </label>
-                          <textarea
-                            value={scenario.stdin.join("\n")}
-                            onChange={(e) =>
-                              updateStdinScenario(
-                                scenario.key,
-                                "stdin",
-                                e.target.value.split("\n"),
-                              )
-                            }
-                            placeholder="e.g.&#10;5&#10;10&#10;yes"
-                            rows={3}
-                            className="w-full font-mono text-xs rounded border border-slate-300 p-2 focus:border-indigo-500 focus:outline-none leading-relaxed"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    {stdinScenarios.length === 0 && (
-                      <p className="text-xs text-slate-400 italic">
-                        No simulated CLI keyboard scenarios configured.
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
+
               </CardContent>
             </Card>
           </TabsContent>

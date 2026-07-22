@@ -101,51 +101,25 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
     if len(all_files) > settings.default_max_files:
         raise ValueError(f"Submission exceeds maximum allowed files limit: {settings.default_max_files}")
             
-    # 3. Identify and enforce strictly required files
-    non_mandatory_paths = set()
+    # 3. Process file_requirements
     for req in config.bundle.file_requirements:
-        if req.requirement_type in {"one_of", "optional", "pattern"}:
-            non_mandatory_paths.update(req.paths)
-            
-    strictly_required = [p for p in config.bundle.required_files if p not in non_mandatory_paths]
-    for filename in strictly_required:
-        target_file = extract_dir / filename
-        if not target_file.exists() or not target_file.is_file():
-            raise ValueError(f"Required file '{filename}' is missing.")
-
-    # 4. Process file_requirements
-    for req in config.bundle.file_requirements:
-        satisfied = False
-        if req.requirement_type == "exact":
-            target = extract_dir / req.paths[0]
-            if target.exists() and target.is_file():
-                satisfied = True
-            else:
-                raise ValueError(f"Required file '{req.paths[0]}' is missing.")
-                
-        elif req.requirement_type == "one_of":
+        if req.paths:
+            found = False
             for path in req.paths:
                 target = extract_dir / path
                 if target.exists() and target.is_file():
-                    satisfied = True
+                    found = True
                     break
-            if not satisfied:
-                raise ValueError(f"None of the options for '{req.label or req.key}' were found ({', '.join(req.paths)}).")
-                
-        elif req.requirement_type == "optional":
-            target = extract_dir / req.paths[0]
-            if not target.exists() or target.is_file():
-                satisfied = True
-            else:
-                raise ValueError(f"Optional path '{req.paths[0]}' exists but is not a file.")
-                
-        elif req.requirement_type == "pattern":
-            pattern = req.paths[0]
-            matches = [m for m in extract_dir.glob(pattern) if m.is_file()]
-            if matches:
-                satisfied = True
-            else:
-                raise ValueError(f"No files matching pattern '{pattern}' were found.")
+            if not found:
+                if len(req.paths) == 1:
+                    raise ValueError(f"Required file '{req.paths[0]}' is missing.")
+                else:
+                    raise ValueError(f"None of the options for '{req.label}' were found ({', '.join(req.paths)}).")
+        elif req.pattern:
+            matches = [m for m in extract_dir.glob(req.pattern) if m.is_file()]
+            if not matches:
+                raise ValueError(f"No files matching pattern '{req.pattern}' were found.")
+
 
     # 5. Check entrypoint
     entrypoint_path = extract_dir / config.bundle.entrypoint

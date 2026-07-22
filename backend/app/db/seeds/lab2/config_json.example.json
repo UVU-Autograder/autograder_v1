@@ -1,32 +1,20 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "account.py",
-      "demo.py"
-    ],
     "entrypoint": "account.py",
     "file_requirements": [
       {
-        "key": "account_py",
         "label": "Bank account class definition file",
-        "requirement_type": "exact",
         "paths": [
           "account.py"
         ]
       },
       {
-        "key": "demo_py",
         "label": "Demo testing script",
-        "requirement_type": "exact",
         "paths": [
           "demo.py"
         ]
       }
     ]
-  },
-  "execution": {
-    "dependencies": []
   },
   "artifacts": {
     "assignment_tests": {
@@ -42,28 +30,30 @@
       "display_filename": "demo.py"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "account_init",
       "label": "Account class with default and custom values",
       "points": 40,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "account_str",
       "label": "Account __str__ string representation",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "demo_output",
       "label": "demo.py manual testing module stdout output",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     }
   ],
-  "manual_rubric_items": [],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [],
+  "rubric_groups": []
 }

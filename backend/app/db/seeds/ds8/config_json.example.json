@@ -1,49 +1,25 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "dessert.py",
-      "dessertshop.py",
-      "packaging.py",
-      "payment.py",
-      "test_dessert.py",
-      "test_candy.py",
-      "test_cookie.py",
-      "test_icecream.py",
-      "test_sundae.py",
-      "test_order.py"
-    ],
     "entrypoint": "dessertshop.py",
     "file_requirements": [
       {
-        "key": "dessert_py",
         "label": "Dessert Shop classes definition file",
-        "requirement_type": "exact",
         "paths": [
           "dessert.py"
         ]
       },
       {
-        "key": "payment_py",
         "label": "Payment Protocol definition file",
-        "requirement_type": "exact",
         "paths": [
           "payment.py"
         ]
       },
       {
-        "key": "dessertshop_py",
         "label": "Dessert Shop main entrypoint file",
-        "requirement_type": "exact",
         "paths": [
           "dessertshop.py"
         ]
       }
-    ]
-  },
-  "execution": {
-    "dependencies": [
-      "tabulate"
     ]
   },
   "artifacts": {
@@ -92,34 +68,39 @@
       "display_filename": "test_order.py"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "payment_protocol",
       "label": "PayType + Payable in payment.py",
       "points": 15,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "order_payable",
       "label": "Order implements get/set_pay_type with validation",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "student_order_tests",
       "label": "Student test_order.py exists with >= 5 tests",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "ds7_regression",
       "label": "DS7 packaging + classes intact",
       "points": 35,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     }
   ],
-  "manual_rubric_items": [],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
 }

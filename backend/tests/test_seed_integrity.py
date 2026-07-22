@@ -73,10 +73,16 @@ def test_seed_directory_integrity(seed_dir: Path) -> None:
         for artifact in config.artifacts.values()
         if artifact.type == "model_solution" and artifact.display_filename
     }
-    assert set(config.bundle.required_files) <= model_filenames, (
-        f"{seed_dir.name} is missing model solution artifacts for required files: "
-        f"{sorted(set(config.bundle.required_files) - model_filenames)}"
+    assert config.bundle.entrypoint in model_filenames, (
+        f"{seed_dir.name} is missing model solution artifact for entrypoint '{config.bundle.entrypoint}'"
     )
+
+    for req in config.bundle.file_requirements:
+        if req.paths:
+            assert any(p in model_filenames for p in req.paths), (
+                f"{seed_dir.name} is missing model solution artifact for file requirement '{req.label}' (none of {req.paths} found)"
+            )
+
 
     for art_name, art_config in artifacts.items():
         filename = art_config.get("display_filename")

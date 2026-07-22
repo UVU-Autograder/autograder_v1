@@ -46,8 +46,11 @@ async def run_grading_pipeline(
     config: AssignmentConfigV1,
     artifact_refs: dict[str, str],
     allowed_concepts: list[str],
+    stdin: str | None = None,
 ) -> GradingResult:
     """Execute the full grading pipeline for a single submission.
+
+    :param stdin: Optional raw stdin text string passed to the execution environment.
 
     Steps:
     1. Extract ZIP to ephemeral workspace
@@ -173,7 +176,7 @@ async def run_grading_pipeline(
             return result
 
         test_cases_map: dict[str, dict[str, list[str]]] = {}
-        for test in config.tests:
+        for test in config.scoring_items:
             if test.inputs is not None and test.outputs is not None:
                 test_cases_map[test.key] = {
                     "inputs": test.inputs,
@@ -187,7 +190,8 @@ async def run_grading_pipeline(
             entrypoint_module=Path(config.bundle.entrypoint).stem,
             language_id=settings.judge0_language_id,
             cpu_time_limit=float(settings.test_execution_timeout_seconds),
-            dependencies=config.execution.dependencies,
+            dependencies=config.dependencies,
+            stdin=stdin,
         )
 
         result.pytest_result = outcome.pytest_result
@@ -197,7 +201,7 @@ async def run_grading_pipeline(
             return result
 
         assert outcome.pytest_result is not None
-        score, test_details = calculate_scores(outcome.pytest_result, config.tests)
+        score, test_details = calculate_scores(outcome.pytest_result, config.scoring_items)
         result.score = score
         result.test_results = test_details
         result.success = True

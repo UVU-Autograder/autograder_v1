@@ -1,3 +1,4 @@
+import fnmatch
 import re
 from typing import Literal
 
@@ -13,38 +14,58 @@ def pytest_marker_for_key(key: str) -> str:
 
 
 class FileRequirementConfig(BaseModel):
-    key: str = Field(pattern=TEST_KEY_RE.pattern)
-    label: str | None = None
-    requirement_type: Literal["exact", "one_of", "optional", "pattern"] = "exact"
-    paths: list[str] = Field(min_length=1)
+    label: str = Field(min_length=1)
+    paths: list[str] | None = Field(default=None)
+    pattern: str | None = Field(default=None)
 
     @model_validator(mode="after")
-    def validate_paths(self) -> "FileRequirementConfig":
-        if self.requirement_type in {"exact", "optional", "pattern"} and len(self.paths) != 1:
-            raise ValueError(f"{self.requirement_type} file requirements must have exactly one path")
-        if self.requirement_type == "one_of" and len(set(self.paths)) < 2:
-            raise ValueError("one_of file requirements must have at least two distinct paths")
+    def validate_mode(self) -> "FileRequirementConfig":
+        if (self.paths is None) == (self.pattern is None):
+            raise ValueError("file_requirements entry must specify exactly one of 'paths' or 'pattern'")
+        if self.paths is not None:
+            if len(self.paths) < 1:
+                raise ValueError("file_requirements 'paths' must contain at least one path")
+            if any(not p.strip() for p in self.paths):
+                raise ValueError("file_requirements 'paths' entries cannot be blank")
+        if self.pattern is not None and not self.pattern.strip():
+            raise ValueError("file_requirements 'pattern' cannot be blank")
         return self
 
 
 class BundleConfig(BaseModel):
-    required_files: list[str] = Field(min_length=1)
     entrypoint: str = Field(min_length=1)
     file_requirements: list[FileRequirementConfig] = Field(default_factory=list)
 
+    def derived_required_files(self) -> list[str]:
+        paths: list[str] = []
+        for req in self.file_requirements:
+            if req.paths:
+                paths.extend(req.paths)
+            elif req.pattern:
+                paths.append(req.pattern)
+        paths.append(self.entrypoint)
+        return list(dict.fromkeys(paths))
+
     @model_validator(mode="after")
-    def entrypoint_must_be_required_file(self) -> "BundleConfig":
-        known_paths = set(self.required_files)
+    def entrypoint_must_be_covered(self) -> "BundleConfig":
+        if not self.file_requirements:
+            return self
+
+        covered = False
         for requirement in self.file_requirements:
-            if requirement.requirement_type in {"exact", "optional", "one_of"}:
-                known_paths.update(requirement.paths)
-        if self.entrypoint not in known_paths:
-            raise ValueError("bundle.entrypoint must appear in bundle.required_files")
-        requirement_keys = [requirement.key for requirement in self.file_requirements]
-        duplicate_keys = sorted({key for key in requirement_keys if requirement_keys.count(key) > 1})
-        if duplicate_keys:
-            raise ValueError(f"duplicate file requirement keys: {', '.join(duplicate_keys)}")
+            if requirement.paths and self.entrypoint in requirement.paths:
+                covered = True
+                break
+            if requirement.pattern and fnmatch.fnmatch(self.entrypoint, requirement.pattern):
+                covered = True
+                break
+
+        if not covered:
+            raise ValueError(
+                f"bundle.entrypoint ('{self.entrypoint}') must be covered by at least one file_requirements entry"
+            )
         return self
+
 
 
 
@@ -60,55 +81,28 @@ class ScoringItemConfig(BaseModel):
     label: str = Field(min_length=1)
     points: int = Field(ge=0)
     extra_credit: bool
+    item_type: Literal["pytest", "manual"] = "pytest"
     rubric_group_key: str | None = Field(default=None, pattern=TEST_KEY_RE.pattern)
     inputs: list[str] | None = Field(default=None)
     outputs: list[str] | None = Field(default=None)
 
     @model_validator(mode="after")
     def validate_inputs_outputs(self) -> "ScoringItemConfig":
-        if (self.inputs is None) != (self.outputs is None):
-            raise ValueError("Both inputs and outputs must be specified, or both omitted.")
-        if self.inputs is not None and self.outputs is not None:
-            if len(self.inputs) != len(self.outputs):
-                raise ValueError("The number of inputs and outputs must match.")
+        if self.item_type == "manual":
+            if self.inputs is not None or self.outputs is not None:
+                raise ValueError("Manual rubric items cannot have inputs or outputs.")
+        else:
+            if (self.inputs is None) != (self.outputs is None):
+                raise ValueError("Both inputs and outputs must be specified, or both omitted.")
+            if self.inputs is not None and self.outputs is not None:
+                if len(self.inputs) != len(self.outputs):
+                    raise ValueError("The number of inputs and outputs must match.")
         return self
-
-
-
-class ManualRubricItemConfig(BaseModel):
-    key: str = Field(pattern=TEST_KEY_RE.pattern)
-    label: str = Field(min_length=1)
-    points: int = Field(ge=0)
-    extra_credit: bool
-    rubric_group_key: str | None = Field(default=None, pattern=TEST_KEY_RE.pattern)
 
 
 class RubricGroupConfig(BaseModel):
     key: str = Field(pattern=TEST_KEY_RE.pattern)
     label: str = Field(min_length=1)
-    item_keys: list[str] = Field(min_length=1)
-
-
-class ExecutionConfig(BaseModel):
-    dependencies: list[str] = Field(default_factory=list)
-
-    @model_validator(mode="after")
-    def validate_dependencies(self) -> "ExecutionConfig":
-        invalid = sorted({dependency for dependency in self.dependencies if not DEPENDENCY_RE.match(dependency)})
-        if invalid:
-            raise ValueError(f"invalid execution dependencies: {', '.join(invalid)}")
-        if len(self.dependencies) != len(set(self.dependencies)):
-            raise ValueError("duplicate execution dependencies are not allowed")
-        return self
-
-
-
-
-
-class StdinScenarioConfig(BaseModel):
-    key: str = Field(pattern=TEST_KEY_RE.pattern)
-    label: str = Field(min_length=1)
-    stdin: list[str] = Field(default_factory=list)
 
 
 class CompletionRequirementConfig(BaseModel):
@@ -119,22 +113,28 @@ class CompletionRequirementConfig(BaseModel):
 
 
 class AssignmentConfigV1(BaseModel):
-    schema_version: Literal[1]
     bundle: BundleConfig
     artifacts: dict[str, ArtifactConfig] = Field(min_length=1)
-    tests: list[ScoringItemConfig] = Field(min_length=1)
+    scoring_items: list[ScoringItemConfig] = Field(min_length=1)
     completion_requirements: list[CompletionRequirementConfig] = Field(default_factory=list)
-    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
+    dependencies: list[str] = Field(default_factory=list)
     rubric_groups: list[RubricGroupConfig] = Field(default_factory=list)
-    manual_rubric_items: list[ManualRubricItemConfig] = Field(default_factory=list)
-    stdin_scenarios: list[StdinScenarioConfig] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_dependencies(self) -> "AssignmentConfigV1":
+        invalid = sorted({d for d in self.dependencies if not DEPENDENCY_RE.match(d)})
+        if invalid:
+            raise ValueError(f"invalid execution dependencies: {', '.join(invalid)}")
+        if len(self.dependencies) != len(set(self.dependencies)):
+            raise ValueError("duplicate execution dependencies are not allowed")
+        return self
 
     @model_validator(mode="after")
     def validate_references(self) -> "AssignmentConfigV1":
-        test_keys = [item.key for item in self.tests]
-        duplicate_keys = sorted({key for key in test_keys if test_keys.count(key) > 1})
+        item_keys = [item.key for item in self.scoring_items]
+        duplicate_keys = sorted({key for key in item_keys if item_keys.count(key) > 1})
         if duplicate_keys:
-            raise ValueError(f"duplicate test keys: {', '.join(duplicate_keys)}")
+            raise ValueError(f"duplicate scoring item keys: {', '.join(duplicate_keys)}")
 
         artifact_types = [artifact.type for artifact in self.artifacts.values()]
         if artifact_types.count("pytest_file") < 1:
@@ -145,68 +145,44 @@ class AssignmentConfigV1(BaseModel):
         if duplicate_artifacts:
             raise ValueError(f"duplicate artifact keys: {', '.join(duplicate_artifacts)}")
 
-        known_tests = set(test_keys)
-        manual_keys = [item.key for item in self.manual_rubric_items]
-        duplicate_manual_keys = sorted({key for key in manual_keys if manual_keys.count(key) > 1})
-        if duplicate_manual_keys:
-            raise ValueError(f"duplicate manual rubric item keys: {', '.join(duplicate_manual_keys)}")
-        overlapping_item_keys = sorted(set(test_keys) & set(manual_keys))
-        if overlapping_item_keys:
-            raise ValueError(f"duplicate scoring item keys: {', '.join(overlapping_item_keys)}")
-        known_scoring_items = set(test_keys) | set(manual_keys)
-
         group_keys = [group.key for group in self.rubric_groups]
         duplicate_group_keys = sorted({key for key in group_keys if group_keys.count(key) > 1})
         if duplicate_group_keys:
             raise ValueError(f"duplicate rubric group keys: {', '.join(duplicate_group_keys)}")
         known_groups = set(group_keys)
-        for group in self.rubric_groups:
-            unknown_items = sorted(set(group.item_keys) - known_scoring_items)
-            if unknown_items:
-                raise ValueError(
-                    f"rubric group {group.key} references unknown scoring items: {', '.join(unknown_items)}"
-                )
-        for item in [*self.tests, *self.manual_rubric_items]:
+
+        for item in self.scoring_items:
             if item.rubric_group_key is not None and item.rubric_group_key not in known_groups:
                 raise ValueError(
                     f"scoring item {item.key} references unknown rubric group: {item.rubric_group_key}"
                 )
 
-        requirement_keys = [requirement.key for requirement in self.completion_requirements]
-        duplicate_requirements = sorted(
-            {key for key in requirement_keys if requirement_keys.count(key) > 1}
-        )
+        requirement_keys = [req.key for req in self.completion_requirements]
+        duplicate_requirements = sorted({key for key in requirement_keys if requirement_keys.count(key) > 1})
         if duplicate_requirements:
             raise ValueError(f"duplicate completion requirement keys: {', '.join(duplicate_requirements)}")
 
-        for requirement in self.completion_requirements:
-            unknown = sorted(set(requirement.test_keys) - known_tests)
+        known_pytest_tests = set(item.key for item in self.scoring_items if item.item_type == "pytest")
+        for req in self.completion_requirements:
+            unknown = sorted(set(req.test_keys) - known_pytest_tests)
             if unknown:
                 raise ValueError(
-                    f"completion requirement {requirement.key} references unknown tests: {', '.join(unknown)}"
+                    f"completion requirement {req.key} references unknown tests: {', '.join(unknown)}"
                 )
-            if requirement.minimum_passed > len(set(requirement.test_keys)):
+            if req.minimum_passed > len(set(req.test_keys)):
                 raise ValueError(
-                    f"completion requirement {requirement.key} minimum_passed exceeds referenced tests"
+                    f"completion requirement {req.key} minimum_passed exceeds referenced tests"
                 )
 
-
-
-        scenario_keys = [scenario.key for scenario in self.stdin_scenarios]
-        duplicate_scenario_keys = sorted({key for key in scenario_keys if scenario_keys.count(key) > 1})
-        if duplicate_scenario_keys:
-            raise ValueError(f"duplicate stdin scenario keys: {', '.join(duplicate_scenario_keys)}")
         return self
 
     @property
     def base_points(self) -> int:
-        items = [*self.tests, *self.manual_rubric_items]
-        return sum(item.points for item in items if not item.extra_credit)
+        return sum(item.points for item in self.scoring_items if not item.extra_credit)
 
     @property
     def extra_credit_points(self) -> int:
-        items = [*self.tests, *self.manual_rubric_items]
-        return sum(item.points for item in items if item.extra_credit)
+        return sum(item.points for item in self.scoring_items if item.extra_credit)
 
 
 class ScoringItem(BaseModel):
@@ -248,7 +224,6 @@ class StaffAssignmentSetup(BaseModel):
     sandbox_enabled: bool
     base_points: int
     extra_credit_points: int
-    required_files: list[str]
     entrypoint_path: str
     scoring_items: list[ScoringItem]
     rubric_groups: list[RubricGroup]
@@ -257,6 +232,11 @@ class StaffAssignmentSetup(BaseModel):
     artifacts: list[ArtifactMetadata]
     config_json: AssignmentConfigV1
     module_id: int | None = None
+    effective_allowed_concepts: list[str] = Field(default_factory=list)
+
+
+
+
 
 
 class StaffAssignmentSetupUpdate(BaseModel):

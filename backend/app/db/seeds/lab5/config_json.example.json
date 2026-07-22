@@ -1,23 +1,14 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "money.py"
-    ],
     "entrypoint": "money.py",
     "file_requirements": [
       {
-        "key": "money_py",
         "label": "Money class definition file",
-        "requirement_type": "exact",
         "paths": [
           "money.py"
         ]
       }
     ]
-  },
-  "execution": {
-    "dependencies": []
   },
   "artifacts": {
     "assignment_tests": {
@@ -29,40 +20,44 @@
       "display_filename": "money.py"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "normalize",
       "label": "normalize method carries cents >= 100 to dollars",
       "points": 10,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "str",
       "label": "__str__ string formatting $dollars.cents",
       "points": 10,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "add",
       "label": "__add__ operator overload",
       "points": 25,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "mul",
       "label": "__mul__ and __rmul__ operator overloads",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "eq",
       "label": "__eq__ operator overload with normalized equality",
       "points": 25,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     }
   ],
-  "manual_rubric_items": [],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [],
+  "rubric_groups": []
 }

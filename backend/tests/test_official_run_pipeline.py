@@ -232,13 +232,11 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
 
     # Create configuration for an assignment
     config_dict = {
-        "schema_version": 1,
         "bundle": {
-            "required_files": ["main.py", "helper.py"],
             "entrypoint": "main.py",
             "file_requirements": [
-                {"key": "main_py", "label": "Main file", "requirement_type": "exact", "paths": ["main.py"]},
-                {"key": "helper_py", "label": "Helper file", "requirement_type": "exact", "paths": ["helper.py"]}
+                {"label": "Main file", "paths": ["main.py"]},
+                {"label": "Helper file", "paths": ["helper.py"]}
             ]
         },
         "artifacts": {
@@ -247,16 +245,15 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
                 "display_filename": "tests.py"
             }
         },
-        "tests": [
+        "scoring_items": [
             {
                 "key": "t1",
                 "label": "Test 1",
                 "points": 10,
-                "extra_credit": False
+                "extra_credit": False,
+                "item_type": "pytest",
             }
-        ],
-        "rubric_groups": [],
-        "completion_requirements": []
+        ]
     }
     config = AssignmentConfigV1.model_validate(config_dict)
 

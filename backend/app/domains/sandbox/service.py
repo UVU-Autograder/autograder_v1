@@ -91,7 +91,9 @@ class SandboxService:
         config_json: dict | None = None,
         artifact_refs: dict[str, str] | None = None,
         allowed_concepts: list[str] | None = None,
+        stdin: str | None = None,
     ) -> tuple[SandboxRunCreateResponse | None, str, int | None]:
+        """Create a sandbox run record and optionally dispatch a Celery task with optional stdin."""
         if not assignment_exists:
             return None, session_id or self._new_session(), None
 
@@ -149,6 +151,7 @@ class SandboxService:
                 config_json=config_json,
                 artifact_refs=artifact_refs or {},
                 allowed_concepts=allowed_concepts or [],
+                stdin=stdin,
             )
             record.celery_task_id = grade_result.id
 

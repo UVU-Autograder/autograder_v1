@@ -137,7 +137,6 @@ export type StaffAssignmentSetup = {
     canvas_ref: string | null;
     base_points: number;
     extra_credit_points: number;
-    required_files: string[];
     entrypoint_path: string;
     concept_additions: string[];
     scoring_items: RubricItem[];

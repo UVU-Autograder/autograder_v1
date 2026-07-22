@@ -33,7 +33,7 @@ helpers.
 Staff can edit different layers through these surfaces:
 
 - The assignment setup wizard edits scoring keys, labels, points, rubric groups,
-  manual rubric items, and stdin scenarios.
+  and manual rubric items.
 - **Edit pytest** opens the primary `pytest_file` (`tests.py`) in Monaco.
 - The Artifacts page can edit any pytest, model-solution, or support artifact.
 - `cs1410_catalog.json` and seed package creation remain repository-owned.
@@ -52,7 +52,7 @@ contract keeps its own marker tests explicit in `tests.py`.
 
 `config_json.example.json` is schema v1. Its key sections are:
 
-- `bundle.required_files`, `bundle.entrypoint`, and `bundle.file_requirements`
+- `bundle.entrypoint` and `bundle.file_requirements`
   define the student ZIP contract.
 - `execution.dependencies` lists runtime packages.
 - `artifacts` contains `pytest_file`, `model_solution`, or `support_file`

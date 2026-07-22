@@ -135,6 +135,7 @@ export default function CodeResults({
   const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
   const [onlyFailing, setOnlyFailing] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
+  const [stdinInput, setStdinInput] = useState("");
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
@@ -179,7 +180,7 @@ export default function CodeResults({
 
     try {
       const bundleBlob = await createSubmissionBundle(files);
-      const { run, sessionId } = await createSandboxRun(courseId, assignmentId, bundleBlob);
+      const { run, sessionId } = await createSandboxRun(courseId, assignmentId, bundleBlob, stdinInput || undefined);
 
       setQuota(run.upload_quota);
 
@@ -306,6 +307,22 @@ export default function CodeResults({
 
   return (
     <div className="w-[450px] bg-slate-50 border-l border-slate-200 p-4 flex flex-col h-full overflow-y-auto">
+      <details className="mb-2 rounded border border-slate-200 bg-white text-xs">
+        <summary className="cursor-pointer select-none px-3 py-2 text-slate-400 hover:text-slate-600">
+          Provide stdin <span className="font-mono text-[10px]">(optional)</span>
+        </summary>
+        <div className="border-t border-slate-200 px-3 pb-3 pt-2">
+          <textarea
+            id="sandbox-stdin-input"
+            aria-label="Console input / stdin"
+            value={stdinInput}
+            onChange={(e) => setStdinInput(e.target.value)}
+            placeholder={"Each line will be fed as keyboard input (Enter)\ne.g.\nAlice\n3"}
+            rows={4}
+            className="w-full resize-y rounded border border-slate-300 p-2 font-mono text-xs leading-relaxed focus:border-slate-400 focus:outline-none"
+          />
+        </div>
+      </details>
       <Button
         onClick={handleRunCode}
         disabled={isLoading || isQuotaExceeded}

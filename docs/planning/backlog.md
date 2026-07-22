@@ -24,6 +24,20 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ## Active — Product
 
+### Remove Stdin Scenarios / Add Sandbox Stdin Box
+
+**Decision**: Stdin scenarios (instructor-configured keyboard input presets) are removed from the system entirely. The sandbox's purpose is to check code against assignment specs — not to be an IDE. Instructors should embed any required inputs directly into pytest test cases. Sandbox ad-hoc stdin is retained only as a minimal accessibility affordance for students who cannot run code locally (e.g. Chromebook users).
+
+- [x] **Frontend — remove the "Simulated Keyboard Scenarios (Stdin Scenarios)" section** from the instructor assignment edit view (`app/staff/courses/[courseId]/assignments/[assignmentId]/page.tsx`). This includes the `StdinScenarioConfig` type, `stdinScenarios` state, `addStdinScenario` / `removeStdinScenario` / `updateStdinScenario` handlers, validation logic (lines ~644–678), the `stdin_scenarios` key in the save payload (line ~826), and the full UI block (lines ~2084–2190).
+- [x] **Backend — remove `StdinScenarioConfig` and `stdin_scenarios`** from `AssignmentConfigV1` schema (`schemas.py`), the `validate_references` model validator, `service.py` default config, and the JSON Schema (`docs/schemas/config_v1.schema.json`). Update `technical_specs.md` and `modeling_guide.md` to remove all references.
+- [x] **Seed cleanup** — remove `"stdin_scenarios": []` from all `config_json.example.json` seed files (ds1–ds10, lab1–lab7). Regenerate `docs/schemas/openapi.json`.
+- [x] **Frontend — add unobtrusive sandbox stdin textarea** to the run output panel (`code-results.tsx`). Requirements:
+  - A small, **collapsed by default** "Provide stdin (optional)" disclosure/expander above the Run button.
+  - When expanded: plain `<textarea>` with placeholder `"Each line will be fed as keyboard input…"`.
+  - Contents are sent to the existing `stdin` field of the Judge0 submission payload — no new API surface needed.
+  - Visually **secondary** to the pytest results panel. No label or prominence that implies this is a development environment.
+  - No instructor configuration. No presets. No persistence between runs.
+
 ### Manual grading UX
 
 - [ ] Add coarse status/manual-completion filters and queue polish without introducing a bulk grading grid.

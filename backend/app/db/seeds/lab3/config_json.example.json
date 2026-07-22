@@ -1,32 +1,20 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "youtube_channel.py",
-      "Lab3_reflection.md"
-    ],
     "entrypoint": "youtube_channel.py",
     "file_requirements": [
       {
-        "key": "youtube_channel_py",
         "label": "YouTubeChannel class definition file",
-        "requirement_type": "exact",
         "paths": [
           "youtube_channel.py"
         ]
       },
       {
-        "key": "lab3_reflection_md",
         "label": "Lab 3 reflection responses",
-        "requirement_type": "exact",
         "paths": [
           "Lab3_reflection.md"
         ]
       }
     ]
-  },
-  "execution": {
-    "dependencies": []
   },
   "artifacts": {
     "assignment_tests": {
@@ -42,35 +30,37 @@
       "display_filename": "Lab3_reflection.md"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "encapsulation",
       "label": "_ and __ attribute encapsulation",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "getters_setters",
       "label": "Getter and setter methods with negative guard",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "type_hints",
       "label": "Type hint annotations on constructor and __str__",
       "points": 20,
-      "extra_credit": false
-    }
-  ],
-  "manual_rubric_items": [
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
     {
       "key": "reflection",
       "label": "Reflection responses on encapsulation and name mangling",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "manual"
     }
   ],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [],
+  "rubric_groups": []
 }

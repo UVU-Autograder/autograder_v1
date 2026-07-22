@@ -1,38 +1,19 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "dessert.py",
-      "dessertshop.py",
-      "test_dessert.py",
-      "test_candy.py",
-      "test_cookie.py",
-      "test_icecream.py",
-      "test_sundae.py"
-    ],
     "entrypoint": "dessertshop.py",
     "file_requirements": [
       {
-        "key": "dessert_py",
         "label": "Dessert Shop classes definition file",
-        "requirement_type": "exact",
         "paths": [
           "dessert.py"
         ]
       },
       {
-        "key": "dessertshop_py",
         "label": "Dessert Shop main entrypoint file",
-        "requirement_type": "exact",
         "paths": [
           "dessertshop.py"
         ]
       }
-    ]
-  },
-  "execution": {
-    "dependencies": [
-      "tabulate"
     ]
   },
   "artifacts": {
@@ -69,35 +50,39 @@
       "display_filename": "test_sundae.py"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "ds5_regression",
       "label": "DS5 classes + DessertShop intact",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "str_methods",
       "label": "__str__ defined on all dessert classes",
       "points": 25,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "to_list",
       "label": "Order.to_list() returns correct 2D list",
       "points": 25,
-      "extra_credit": false
-    }
-  ],
-  "manual_rubric_items": [
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
     {
       "key": "output_format",
       "label": "Receipt formatting matches spec",
       "points": 30,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "manual"
     }
   ],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
 }

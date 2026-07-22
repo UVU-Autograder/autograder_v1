@@ -26,7 +26,9 @@ import { ApiError, apiClient } from "@/lib/api-client";
 import { AssignmentCreatePayload } from "./types";
 import { createStaffAssignment } from "./api";
 
-const SLUG_PATTERN = /^[a-z][a-z0-9-]*$/;
+import { slugifySlug } from "@/lib/slugify";
+
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 type ModuleConfig = {
   id: number;
@@ -52,6 +54,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [courseModules, setCourseModules] = useState<ModuleConfig[]>([]);
+  const [isSlugCustomized, setIsSlugCustomized] = useState(false);
 
   useEffect(() => {
     apiClient.get<CourseConceptsResponse>(`/staff/courses/${courseId}/concepts`)
@@ -65,6 +68,8 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateAssignmentFormValues>({
     defaultValues: {
@@ -76,6 +81,14 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
       module_id: "none",
     },
   });
+
+  const titleValue = watch("title");
+
+  useEffect(() => {
+    if (!isSlugCustomized && titleValue) {
+      setValue("slug", slugifySlug(titleValue), { shouldValidate: true });
+    }
+  }, [titleValue, isSlugCustomized, setValue]);
 
   const onSubmit = async (values: CreateAssignmentFormValues) => {
     setSubmitError(null);
@@ -139,9 +152,25 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
             )}
 
             <div className="space-y-1">
-              <label htmlFor="slug" className="text-xs font-semibold text-slate-500 uppercase">
-                Slug
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="slug" className="text-xs font-semibold text-slate-500 uppercase">
+                  Slug
+                </label>
+                {isSlugCustomized && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSlugCustomized(false);
+                      if (titleValue) {
+                        setValue("slug", slugifySlug(titleValue), { shouldValidate: true });
+                      }
+                    }}
+                    className="text-[10px] text-indigo-600 hover:underline cursor-pointer"
+                  >
+                    Reset to auto-slug
+                  </button>
+                )}
+              </div>
               <Input
                 id="slug"
                 placeholder="e.g., lab-2-loops"
@@ -152,6 +181,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
                     value: SLUG_PATTERN,
                     message: "Use lowercase letters, numbers, and hyphens only.",
                   },
+                  onChange: () => setIsSlugCustomized(true),
                 })}
               />
               {errors.slug && (

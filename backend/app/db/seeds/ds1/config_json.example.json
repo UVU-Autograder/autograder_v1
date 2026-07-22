@@ -1,23 +1,14 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "dessert.py"
-    ],
     "entrypoint": "dessert.py",
     "file_requirements": [
       {
-        "key": "dessert_py",
         "label": "Dessert Shop classes definition file",
-        "requirement_type": "exact",
         "paths": [
           "dessert.py"
         ]
       }
     ]
-  },
-  "execution": {
-    "dependencies": []
   },
   "artifacts": {
     "assignment_tests": {
@@ -29,40 +20,44 @@
       "display_filename": "dessert.py"
     }
   },
-  "rubric_groups": [],
-  "tests": [
+  "scoring_items": [
     {
       "key": "dessert_item",
       "label": "DessertItem base class verification",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "candy",
       "label": "Candy subclass verification",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "cookie",
       "label": "Cookie subclass verification",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "icecream",
       "label": "IceCream subclass verification",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     },
     {
       "key": "sundae",
       "label": "Sundae subclass verification (inherits IceCream)",
       "points": 20,
-      "extra_credit": false
+      "extra_credit": false,
+      "item_type": "pytest"
     }
   ],
-  "manual_rubric_items": [],
   "completion_requirements": [],
-  "stdin_scenarios": []
+  "dependencies": [],
+  "rubric_groups": []
 }

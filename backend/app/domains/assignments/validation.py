@@ -81,7 +81,7 @@ def run_preflight_validation(db: Session, course_code: str, assignment_slug: str
     unsupported_dependencies = sorted(
         {
             dependency
-            for dependency in config.execution.dependencies
+            for dependency in config.dependencies
             if dependency.lower()
             not in get_settings().preinstalled_dependency_names
         }
@@ -100,7 +100,7 @@ def run_preflight_validation(db: Session, course_code: str, assignment_slug: str
         errors.append("At least one 'pytest_file' artifact is required.")
         return errors
 
-    # 3. Every required student-bundle path needs a real instructor model file.
+    # 3. Model solution verification:
     model_configs = {
         key: artifact
         for key, artifact in config.artifacts.items()
@@ -109,14 +109,20 @@ def run_preflight_validation(db: Session, course_code: str, assignment_slug: str
     model_filenames = {
         artifact.display_filename for artifact in model_configs.values()
     }
-    missing_model_files = [
-        path for path in config.bundle.required_files if path not in model_filenames
-    ]
-    if missing_model_files:
-        errors.append(
-            "Missing model solution artifacts for required files: "
-            + ", ".join(sorted(missing_model_files))
-        )
+
+    # (a) Entrypoint file must have a model solution artifact
+    if config.bundle.entrypoint not in model_filenames:
+        errors.append(f"Missing model solution artifact for entrypoint '{config.bundle.entrypoint}'.")
+
+    # (b) Every file requirement with paths must have at least one matching model solution artifact
+    for req in config.bundle.file_requirements:
+        if req.paths:
+            if not any(p in model_filenames for p in req.paths):
+                errors.append(
+                    f"Missing model solution artifact for file requirement '{req.label}' (none of {req.paths} found)."
+                )
+
+
 
     artifacts_by_key = {
         artifact.artifact_key: artifact for artifact in assignment.artifacts
@@ -154,11 +160,13 @@ def run_preflight_validation(db: Session, course_code: str, assignment_slug: str
         return errors
 
     # 5. Require each test key to match a pytest marker named ag_<key>.
-    for test in config.tests:
-        expected_marker = f"ag_{test.key}"
+    for item in config.scoring_items:
+        if item.item_type != "pytest":
+            continue
+        expected_marker = f"ag_{item.key}"
         if expected_marker not in pytest_markers:
             errors.append(
-                f"Scoring item key '{test.key}' has no matching '{expected_marker}' marker in pytest files."
+                f"Scoring item key '{item.key}' has no matching '{expected_marker}' marker in pytest files."
             )
 
     return errors

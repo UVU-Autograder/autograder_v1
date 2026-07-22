@@ -32,14 +32,6 @@
     },
     "BundleConfig": {
       "properties": {
-        "required_files": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Required Files",
-          "type": "array"
-        },
         "entrypoint": {
           "minLength": 1,
           "title": "Entrypoint",
@@ -54,7 +46,6 @@
         }
       },
       "required": [
-        "required_files",
         "entrypoint"
       ],
       "title": "BundleConfig",
@@ -95,90 +86,31 @@
       "title": "CompletionRequirementConfig",
       "type": "object"
     },
-    "ExecutionConfig": {
-      "properties": {
-        "dependencies": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Dependencies",
-          "type": "array"
-        }
-      },
-      "title": "ExecutionConfig",
-      "type": "object"
-    },
     "FileRequirementConfig": {
       "properties": {
-        "key": {
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "title": "Key",
-          "type": "string"
-        },
-        "label": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Label"
-        },
-        "requirement_type": {
-          "default": "exact",
-          "enum": [
-            "exact",
-            "one_of",
-            "optional",
-            "pattern"
-          ],
-          "title": "Requirement Type",
-          "type": "string"
-        },
-        "paths": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Paths",
-          "type": "array"
-        }
-      },
-      "required": [
-        "key",
-        "paths"
-      ],
-      "title": "FileRequirementConfig",
-      "type": "object"
-    },
-    "ManualRubricItemConfig": {
-      "properties": {
-        "key": {
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "title": "Key",
-          "type": "string"
-        },
         "label": {
           "minLength": 1,
           "title": "Label",
           "type": "string"
         },
-        "points": {
-          "minimum": 0,
-          "title": "Points",
-          "type": "integer"
-        },
-        "extra_credit": {
-          "title": "Extra Credit",
-          "type": "boolean"
-        },
-        "rubric_group_key": {
+        "paths": {
           "anyOf": [
             {
-              "pattern": "^[a-z][a-z0-9_]*$",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Paths"
+        },
+        "pattern": {
+          "anyOf": [
+            {
               "type": "string"
             },
             {
@@ -186,16 +118,13 @@
             }
           ],
           "default": null,
-          "title": "Rubric Group Key"
+          "title": "Pattern"
         }
       },
       "required": [
-        "key",
-        "label",
-        "points",
-        "extra_credit"
+        "label"
       ],
-      "title": "ManualRubricItemConfig",
+      "title": "FileRequirementConfig",
       "type": "object"
     },
     "RubricGroupConfig": {
@@ -209,20 +138,11 @@
           "minLength": 1,
           "title": "Label",
           "type": "string"
-        },
-        "item_keys": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Item Keys",
-          "type": "array"
         }
       },
       "required": [
         "key",
-        "label",
-        "item_keys"
+        "label"
       ],
       "title": "RubricGroupConfig",
       "type": "object"
@@ -247,6 +167,15 @@
         "extra_credit": {
           "title": "Extra Credit",
           "type": "boolean"
+        },
+        "item_type": {
+          "default": "pytest",
+          "enum": [
+            "pytest",
+            "manual"
+          ],
+          "title": "Item Type",
+          "type": "string"
         },
         "rubric_group_key": {
           "anyOf": [
@@ -300,41 +229,9 @@
       ],
       "title": "ScoringItemConfig",
       "type": "object"
-    },
-    "StdinScenarioConfig": {
-      "properties": {
-        "key": {
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "title": "Key",
-          "type": "string"
-        },
-        "label": {
-          "minLength": 1,
-          "title": "Label",
-          "type": "string"
-        },
-        "stdin": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Stdin",
-          "type": "array"
-        }
-      },
-      "required": [
-        "key",
-        "label"
-      ],
-      "title": "StdinScenarioConfig",
-      "type": "object"
     }
   },
   "properties": {
-    "schema_version": {
-      "const": 1,
-      "title": "Schema Version",
-      "type": "integer"
-    },
     "bundle": {
       "$ref": "#/$defs/BundleConfig"
     },
@@ -346,12 +243,12 @@
       "title": "Artifacts",
       "type": "object"
     },
-    "tests": {
+    "scoring_items": {
       "items": {
         "$ref": "#/$defs/ScoringItemConfig"
       },
       "minItems": 1,
-      "title": "Tests",
+      "title": "Scoring Items",
       "type": "array"
     },
     "completion_requirements": {
@@ -361,8 +258,12 @@
       "title": "Completion Requirements",
       "type": "array"
     },
-    "execution": {
-      "$ref": "#/$defs/ExecutionConfig"
+    "dependencies": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Dependencies",
+      "type": "array"
     },
     "rubric_groups": {
       "items": {
@@ -370,27 +271,12 @@
       },
       "title": "Rubric Groups",
       "type": "array"
-    },
-    "manual_rubric_items": {
-      "items": {
-        "$ref": "#/$defs/ManualRubricItemConfig"
-      },
-      "title": "Manual Rubric Items",
-      "type": "array"
-    },
-    "stdin_scenarios": {
-      "items": {
-        "$ref": "#/$defs/StdinScenarioConfig"
-      },
-      "title": "Stdin Scenarios",
-      "type": "array"
     }
   },
   "required": [
-    "schema_version",
     "bundle",
     "artifacts",
-    "tests"
+    "scoring_items"
   ],
   "title": "AssignmentConfigV1",
   "type": "object"

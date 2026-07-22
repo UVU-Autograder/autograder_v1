@@ -98,7 +98,8 @@ def get_sandbox_assignment(
     from app.domains.assignments.service import effective_allowed_concepts
 
     allowed_concepts = effective_allowed_concepts(assignment)
-    tests_map = {test.key: test for test in config.tests}
+    tests_map = {test.key: test for test in config.scoring_items}
+    req_files = config.bundle.derived_required_files()
     return SandboxAssignmentDetail(
         **_summary_for(assignment, quota).model_dump(),
         description=assignment.title,
@@ -106,7 +107,7 @@ def get_sandbox_assignment(
         max_upload_bytes=settings.max_upload_bytes,
         constraints=[
             SandboxConstraint(label="Entrypoint", value=config.bundle.entrypoint),
-            SandboxConstraint(label="Required files", value=", ".join(config.bundle.required_files)),
+            SandboxConstraint(label="Required files", value=", ".join(req_files)),
         ],
         allowed_concepts=allowed_concepts,
         rubric=[
@@ -125,11 +126,11 @@ def get_sandbox_assignment(
         ],
         rubric_groups=[
             SandboxRubricGroup(
-                key=item.key,
-                label=item.label,
-                item_keys=item.item_keys,
+                key=group.key,
+                label=group.label,
+                item_keys=[item.key for item in config.scoring_items if item.rubric_group_key == group.key],
             )
-            for item in config.rubric_groups
+            for group in config.rubric_groups
         ],
         completion_requirements=[item.model_dump() for item in config.completion_requirements],
     )

@@ -47,7 +47,7 @@ def manual_score_sum(manual_results: dict | None) -> int:
     )
 
 
-def init_manual_results(manual_rubric_items) -> dict:
+def init_manual_results(scoring_items) -> dict:
     return {
         item.key: {
             "label": item.label,
@@ -55,7 +55,8 @@ def init_manual_results(manual_rubric_items) -> dict:
             "score": None,
             "comments": "",
         }
-        for item in manual_rubric_items
+        for item in scoring_items
+        if getattr(item, "item_type", None) == "manual"
     }
 
 

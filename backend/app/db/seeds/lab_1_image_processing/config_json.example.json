@@ -1,52 +1,31 @@
 {
-  "schema_version": 1,
   "bundle": {
-    "required_files": [
-      "bears2.py",
-      "bears3.py",
-      "bears2.jpg",
-      "bears3.jpg"
-    ],
     "entrypoint": "bears2.py",
     "file_requirements": [
       {
-        "key": "bears2_py",
         "label": "Part 1 code",
-        "requirement_type": "exact",
         "paths": [
           "bears2.py"
         ]
       },
       {
-        "key": "bears3_py",
         "label": "Part 2 code",
-        "requirement_type": "exact",
         "paths": [
           "bears3.py"
         ]
       },
       {
-        "key": "bears2_jpg",
         "label": "Part 1 output image",
-        "requirement_type": "exact",
         "paths": [
           "bears2.jpg"
         ]
       },
       {
-        "key": "bears3_jpg",
         "label": "Part 2 output image",
-        "requirement_type": "exact",
         "paths": [
           "bears3.jpg"
         ]
       }
-    ]
-  },
-
-  "execution": {
-    "dependencies": [
-      "pillow"
     ]
   },
   "artifacts": {
@@ -79,74 +58,68 @@
       "display_filename": "balloon.png"
     }
   },
-
-  "rubric_groups": [
-    {
-      "key": "part1",
-      "label": "Part 1: Apply a Photo Filter",
-      "item_keys": [
-        "part1_files",
-        "part1_output",
-        "part1_visual"
-      ]
-    },
-    {
-      "key": "part2",
-      "label": "Part 2: Image Compositing",
-      "item_keys": [
-        "part2_files",
-        "part2_output",
-        "part2_visual"
-      ]
-    }
-  ],
-  "tests": [
+  "scoring_items": [
     {
       "key": "part1_files",
       "label": "Part 1 required files are present",
       "points": 15,
       "extra_credit": false,
-      "rubric_group_key": "part1"
+      "rubric_group_key": "part1",
+      "item_type": "pytest"
     },
     {
       "key": "part1_output",
       "label": "Part 1 output image opens and contains non-trivial pixels",
       "points": 15,
       "extra_credit": false,
-      "rubric_group_key": "part1"
+      "rubric_group_key": "part1",
+      "item_type": "pytest"
     },
     {
       "key": "part2_files",
       "label": "Part 2 required files are present",
       "points": 15,
       "extra_credit": false,
-      "rubric_group_key": "part2"
+      "rubric_group_key": "part2",
+      "item_type": "pytest"
     },
     {
       "key": "part2_output",
       "label": "Part 2 output image opens and contains non-trivial pixels",
       "points": 15,
       "extra_credit": false,
-      "rubric_group_key": "part2"
-    }
-  ],
-  "manual_rubric_items": [
+      "rubric_group_key": "part2",
+      "item_type": "pytest"
+    },
     {
       "key": "part1_visual",
       "label": "Subjective filter visual quality & color conversion",
       "points": 20,
       "extra_credit": false,
-      "rubric_group_key": "part1"
+      "rubric_group_key": "part1",
+      "item_type": "manual"
     },
     {
       "key": "part2_visual",
       "label": "Subjective balloon composite quality & placement",
       "points": 20,
       "extra_credit": false,
-      "rubric_group_key": "part2"
+      "rubric_group_key": "part2",
+      "item_type": "manual"
     }
   ],
   "completion_requirements": [],
-
-  "stdin_scenarios": []
+  "dependencies": [
+    "pillow"
+  ],
+  "rubric_groups": [
+    {
+      "key": "part1",
+      "label": "Part 1: Apply a Photo Filter"
+    },
+    {
+      "key": "part2",
+      "label": "Part 2: Image Compositing"
+    }
+  ]
 }

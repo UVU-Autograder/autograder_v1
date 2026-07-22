@@ -33,31 +33,22 @@ def initialized_database(reset_database):
 def test_assignment_config_accepts_simple_python_example():
     config = AssignmentConfigV1.model_validate(load_example_config())
 
-    assert config.schema_version == 1
     assert config.base_points == 25
     assert config.extra_credit_points == 0
-    assert pytest_marker_for_key(config.tests[0].key) == "ag_add_numbers"
-
-
-def test_assignment_config_rejects_missing_schema_version():
-    raw = load_example_config()
-    raw.pop("schema_version")
-
-    with pytest.raises(ValidationError):
-        AssignmentConfigV1.model_validate(raw)
+    assert pytest_marker_for_key(config.scoring_items[0].key) == "ag_add_numbers"
 
 
 def test_assignment_config_rejects_duplicate_test_keys():
     raw = load_example_config()
-    raw["tests"][1]["key"] = raw["tests"][0]["key"]
+    raw["scoring_items"][1]["key"] = raw["scoring_items"][0]["key"]
 
-    with pytest.raises(ValidationError, match="duplicate test keys"):
+    with pytest.raises(ValidationError, match="duplicate scoring item keys"):
         AssignmentConfigV1.model_validate(raw)
 
 
 def test_assignment_config_rejects_missing_extra_credit():
     raw = load_example_config()
-    raw["tests"][0].pop("extra_credit")
+    raw["scoring_items"][0].pop("extra_credit")
 
     with pytest.raises(ValidationError):
         AssignmentConfigV1.model_validate(raw)
@@ -131,17 +122,14 @@ def test_seed_creates_artifacts_and_scoring_items_from_config(seed_dir: Path):
             .order_by(assignment_models.ScoringItem.display_order)
         ).all()
 
-        expected_keys = [item.key for item in config.tests] + [
-            item.key for item in config.manual_rubric_items
-        ]
+        expected_keys = [item.key for item in config.scoring_items]
         assert [item.config_item_key for item in scoring_items] == expected_keys
         assert [item.item_type for item in scoring_items] == [
-            *(["pytest"] * len(config.tests)),
-            *(["manual"] * len(config.manual_rubric_items)),
+            item.item_type for item in config.scoring_items
         ]
         assert [item.pytest_marker for item in scoring_items] == [
-            *[pytest_marker_for_key(item.key) for item in config.tests],
-            *([None] * len(config.manual_rubric_items)),
+            pytest_marker_for_key(item.key) if item.item_type == "pytest" else None
+            for item in config.scoring_items
         ]
 
 
@@ -165,14 +153,13 @@ def test_seed_is_idempotent():
 
 def test_manual_rubric_items_derive_non_pytest_scoring_projections():
     raw = load_example_config()
-    raw["manual_rubric_items"] = [
-        {
-            "key": "reflection_quality",
-            "label": "Quality of the reflection report",
-            "points": 10,
-            "extra_credit": False,
-        }
-    ]
+    raw["scoring_items"].append({
+        "key": "reflection_quality",
+        "label": "Quality of the reflection report",
+        "points": 10,
+        "extra_credit": False,
+        "item_type": "manual",
+    })
 
     with SessionLocal() as db:
         setup = update_staff_setup(
