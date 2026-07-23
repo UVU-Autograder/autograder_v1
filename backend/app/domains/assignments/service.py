@@ -1,12 +1,17 @@
+import json
+import mimetypes
+from pathlib import Path
+
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.domains.artifacts.models import AssignmentArtifact
 from app.domains.assignments.models import (
     Assignment,
+    AssignmentArtifact,
     AssignmentConfig,
     AssignmentConfigHistory,
     ScoringItem as ScoringItemProjection,
+    file_storage_ref_to_path,
 )
 from app.domains.assignments.schemas import (
     ArtifactMetadata,
@@ -20,7 +25,7 @@ from app.domains.assignments.schemas import (
     pytest_marker_for_key,
 )
 from app.domains.courses.models import Course
-from app.domains.artifacts.models import file_storage_ref_to_path
+
 
 
 def validate_config_json(config_json: dict) -> AssignmentConfigV1:
@@ -117,7 +122,15 @@ def effective_allowed_concepts(assignment: Assignment) -> list[str]:
                     out.append(concept)
             if m.id == assignment.module_id:
                 break
+    if assignment.config and assignment.config.config_json and isinstance(assignment.config.config_json, dict):
+        concepts_cfg = assignment.config.config_json.get("concepts") or {}
+        denylist = set(concepts_cfg.get("denylist") or concepts_cfg.get("blacklist") or [])
+        if denylist:
+            out = [c for c in out if c not in denylist]
+
+
     return out
+
 
 
 
@@ -395,7 +408,27 @@ def get_artifact_content(
         return None
 
 
-def get_default_config_json() -> dict:
+SEEDS_DIR = Path(__file__).resolve().parents[2] / "db" / "seeds"
+
+
+def resolve_seed_folder(slug: str | None = None) -> Path:
+    if slug:
+        for folder_name in (slug.replace("-", "_"), slug):
+            candidate = SEEDS_DIR / folder_name
+            if candidate.exists() and (candidate / "config_json.example.json").exists():
+                return candidate
+    fallback = SEEDS_DIR / "simple_python_functions"
+    if fallback.exists() and (fallback / "config_json.example.json").exists():
+        return fallback
+    return SEEDS_DIR
+
+
+def get_default_config_json(slug: str | None = None) -> dict:
+    seed_folder = resolve_seed_folder(slug)
+    config_path = seed_folder / "config_json.example.json"
+    if config_path.exists():
+        return json.loads(config_path.read_text(encoding="utf-8"))
+
     return {
         "bundle": {
             "entrypoint": "main.py",
@@ -430,6 +463,67 @@ def get_default_config_json() -> dict:
     }
 
 
+def resolve_seed_artifact_path(
+    seed_dir: Path,
+    display_filename: str,
+    *,
+    artifact_type: str | None = None,
+) -> Path | None:
+    local = seed_dir / display_filename
+    if local.exists():
+        return local
+    if artifact_type == "model_solution":
+        fallback = seed_dir / "model_solution.py"
+        if fallback.exists():
+            return fallback
+    shared = SEEDS_DIR / "shared" / display_filename
+    if shared.exists():
+        return shared
+    return None
+
+
+def seed_assignment_artifacts(
+    db: Session,
+    assignment: Assignment,
+    slug: str,
+) -> None:
+    seed_dir = resolve_seed_folder(slug)
+    config_path = seed_dir / "config_json.example.json"
+    if not config_path.exists():
+        return
+
+    config_json = json.loads(config_path.read_text(encoding="utf-8"))
+    upsert_assignment_config(db, assignment, config_json)
+
+    db.query(AssignmentArtifact).filter(AssignmentArtifact.assignment_id == assignment.id).delete()
+
+    for artifact_key, artifact in (config_json.get("artifacts") or {}).items():
+        display_filename = artifact.get("display_filename")
+        if not display_filename:
+            continue
+
+        resolved = resolve_seed_artifact_path(
+            seed_dir,
+            display_filename,
+            artifact_type=artifact.get("type"),
+        )
+        if resolved is None:
+            continue
+        artifact_folder = "shared" if resolved.parent.name == "shared" else seed_dir.name
+
+        db.add(
+            AssignmentArtifact(
+                assignment=assignment,
+                artifact_key=artifact_key,
+                artifact_type=artifact["type"],
+                storage_ref=f"seed://{artifact_folder}/{resolved.name}",
+                display_filename=display_filename,
+                content_type=mimetypes.guess_type(display_filename)[0]
+                or "application/octet-stream",
+            )
+        )
+
+
 def create_assignment(
     db: Session,
     course_code: str,
@@ -460,8 +554,7 @@ def create_assignment(
         existing.module_id = payload.module_id
         existing.is_active = True
         if existing.config is None:
-            default_config_json = get_default_config_json()
-            upsert_assignment_config(db, existing, default_config_json)
+            seed_assignment_artifacts(db, existing, payload.slug)
         db.commit()
         db.refresh(existing)
         return existing
@@ -480,8 +573,7 @@ def create_assignment(
     db.add(assignment)
     db.flush()
 
-    default_config_json = get_default_config_json()
-    upsert_assignment_config(db, assignment, default_config_json)
+    seed_assignment_artifacts(db, assignment, payload.slug)
 
     db.commit()
     db.refresh(assignment)

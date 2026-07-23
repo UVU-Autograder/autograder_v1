@@ -3,7 +3,7 @@
 > Product goal: on-prem zero-retention Python grading with a public student sandbox, staff assignment setup, and official Canvas ZIP runs.
 > Initial delivery is complete. This file is the living implementation backlog for active development.
 
-## Source Of Truth
+## Source of Truth
 
 - [decisions.md](../core/decisions.md) — product and policy decisions
 - [storage_and_test_plan.md](../implementation/storage_and_test_plan.md) — assignment config, artifacts, pytest scoring
@@ -16,7 +16,6 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 ## Operating Guidelines
 
 - Prefer completing fewer end-to-end deliverables over starting many disconnected tasks.
-- Do not mark workstation / Kata / capacity items complete without Dell-workstation evidence (access still pending).
 - Do not reintroduce purged topics without a new product decision.
 - Reduce scope before weakening zero-retention, FERPA, authentication, or cleanup safeguards.
 
@@ -24,24 +23,16 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ## Active — Product
 
-### Remove Stdin Scenarios / Add Sandbox Stdin Box
-
-**Decision**: Stdin scenarios (instructor-configured keyboard input presets) are removed from the system entirely. The sandbox's purpose is to check code against assignment specs — not to be an IDE. Instructors should embed any required inputs directly into pytest test cases. Sandbox ad-hoc stdin is retained only as a minimal accessibility affordance for students who cannot run code locally (e.g. Chromebook users).
-
-- [x] **Frontend — remove the "Simulated Keyboard Scenarios (Stdin Scenarios)" section** from the instructor assignment edit view (`app/staff/courses/[courseId]/assignments/[assignmentId]/page.tsx`). This includes the `StdinScenarioConfig` type, `stdinScenarios` state, `addStdinScenario` / `removeStdinScenario` / `updateStdinScenario` handlers, validation logic (lines ~644–678), the `stdin_scenarios` key in the save payload (line ~826), and the full UI block (lines ~2084–2190).
-- [x] **Backend — remove `StdinScenarioConfig` and `stdin_scenarios`** from `AssignmentConfigV1` schema (`schemas.py`), the `validate_references` model validator, `service.py` default config, and the JSON Schema (`docs/schemas/config_v1.schema.json`). Update `technical_specs.md` and `modeling_guide.md` to remove all references.
-- [x] **Seed cleanup** — remove `"stdin_scenarios": []` from all `config_json.example.json` seed files (ds1–ds10, lab1–lab7). Regenerate `docs/schemas/openapi.json`.
-- [x] **Frontend — add unobtrusive sandbox stdin textarea** to the run output panel (`code-results.tsx`). Requirements:
-  - A small, **collapsed by default** "Provide stdin (optional)" disclosure/expander above the Run button.
-  - When expanded: plain `<textarea>` with placeholder `"Each line will be fed as keyboard input…"`.
-  - Contents are sent to the existing `stdin` field of the Judge0 submission payload — no new API surface needed.
-  - Visually **secondary** to the pytest results panel. No label or prominence that implies this is a development environment.
-  - No instructor configuration. No presets. No persistence between runs.
 
 ### Manual grading UX
 
 - [ ] Add coarse status/manual-completion filters and queue polish without introducing a bulk grading grid.
 - [ ] Add explicit same-student edit conflict detection if multiple API processes or simultaneous graders become a requirement (current v1 is last-write-wins).
+
+### Student sandbox UX
+
+- [ ] Fix student sandbox sidebar 
+- [ ] Refactor problem description rendering to structured layout instead of raw text file views.
 
 ### Expected I/O extraction and visual diff
 
@@ -50,12 +41,6 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` already exists; do not require `react-diff-viewer`).
 - [ ] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel.
 
-### Autograding results UI & test feedback polish
-
-- [x] **Per-test assertion diff display:** Extract `Your value` / `Expected value` diff blocks from traceback assertions (`result_parser.py`) and render inline under failing test items.
-- [x] **Results filtering:** Added "Only show failing tests" filter toggle checkbox in results UI (`code-results.tsx`).
-- [x] **Rubric section grouping & subtotals:** Group test items into collapsible rubric sections displaying per-section point subtotals (e.g. `15 / 15`) in the results view.
-- [x] **Instructor-Only Raw Log View:** Full raw pytest terminal output toggle restricted to instructor / staff roles. (Cascading "test aborted" short-circuiting omitted to preserve independent student feedback).
 
 ---
 
@@ -67,28 +52,6 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
   - register a new, non-`71` language ID whose run command targets that interpreter, then update `JUDGE0_LANGUAGE_ID`;
   - seed and test the language mapping against a disposable Judge0 database before migrating the deployed instance;
   - smoke-test `sys.version`, every allowlisted import, multi-file execution, and submission deletion. Until then, the runner intentionally fails fast on the incompatible image.
-- [ ] **Per-Assignment Concept & Function Blacklisting (Fine-Grained AST Constraints)** — Extend `config_json` schema v1 and the AST validator (`ast_validator.py`) to support per-assignment concept and function blacklisting. Allow instructors to explicitly forbid specific built-in functions, method calls, or syntax constructs (e.g., prohibiting `.sort()`, `sorted()`, `min()`, or `max()` when testing student algorithm implementations).
-
----
-
-## Active — CS1410 course modeling
-
-Goal: fully model UVU **CS 1410** in the database from the local (gitignored) source tree [`cs1410/`](../../cs1410/) — modules, assignments, Concepts Covered, pytest, model solutions, support artifacts, and seed. Specs live in `cs1410/m*/overview.md` and `cs1410/m*/**/desc.md`. Real `submissions/` are **local-only** (reference when authoring tests/model solutions; also used later for testing/LLM training). Do **not** commit, seed, or persist student identifiers from that tree.
-
-The course skeleton and deep models for lab1, DS1–DS10, and lab6 are complete.
-
-### Modeling constraints
-
-- **Image / hard-to-check parts:** pytest what is feasible; pixel/visual correctness → **manual rubric for now** (visual-diff later if useful).
-- **Concepts Covered:** map module learning objectives onto the **existing AST concept vocabulary**; store on **`Module.concepts`** (not per-assignment additions). Non-mappable LOs (e.g. “online readiness”) stay out of Concepts Covered.
-For each remaining assignment, author `backend/app/db/seeds/<slug>/`, wire config/artifacts, pass preflight and model validation, and smoke the sandbox.
-
-### Remaining labs
-
-- [x] `lab2`, `lab3` (m2) — `lab2` Bank Account Class (8/10 real student submissions pass rate) and `lab3` Type Hinting & Encapsulation (9/10 real student submissions pass rate).
-- [x] `lab4`, `lab5` (m3) — `lab4` Properties & Validation (10/10 real student submissions pass rate) and `lab5` Operator Overloading (10/10 real student submissions pass rate).
-- [x] `lab7` (m11) — Data Classes & ID Ordering (10/10 real student submissions pass rate).
-- [x] All 17 CS 1410 assignments (`ds1`–`ds10`, `lab1`–`lab7`) are 100% modeled, seeded, and verified.
 
 ---
 
@@ -103,7 +66,6 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
 - [ ] Smoke test on the Dell-workstation deployment.
 - [ ] Review deployment configuration.
 - [ ] Update README with deployment and operating notes.
-- [ ] Record a demo walkthrough.
 
 ---
 
@@ -122,3 +84,4 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
   - deterministically remove names, Canvas/submission identifiers, identifying paths, and identifiers in source comments/string literals;
   - use run-local pseudonyms only and skip feedback when anonymization confidence is insufficient;
   - prove with tests that raw identifiers never reach the Local LLM client.
+- [ ] CS 1400 modeling: We do not yet have access to official course data.

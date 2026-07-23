@@ -232,6 +232,36 @@ def test_staff_access_management(client, admin_token, db_session):
     access = db_session.get(StaffAccess, access_id)
     assert access.is_active is False
 
+
+def test_staff_access_admin_and_instructor_roles(client, admin_token, db_session):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    course = db_session.scalar(select(Course).where(Course.code == "cs1400"))
+
+    # Admin grant (no course_id, no section_id)
+    res = client.post(
+        "/staff/admin/access",
+        json={"email": "global.admin@uvu.edu", "role_name": "admin"},
+        headers=headers,
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["role_name"] == "admin"
+    assert data["course_id"] is None
+    assert data["section_id"] is None
+
+    # Instructor grant (course_id provided, section_id omitted)
+    res = client.post(
+        "/staff/admin/access",
+        json={"email": "course.instructor@uvu.edu", "role_name": "instructor", "course_id": course.id},
+        headers=headers,
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["role_name"] == "instructor"
+    assert data["course_id"] == course.id
+    assert data["section_id"] is not None
+
+
 # 5. Monitoring Test
 
 def test_monitoring_endpoint(client, admin_token):

@@ -1,33 +1,77 @@
 export type Constraint = {
     label: string;
     value: string;
-}
+};
 
-type RubricItem = {
+export type RubricItem = {
     key: string;
     label: string;
     points: number;
     extra_credit: boolean;
     pytest_marker: string | null;
-    item_type: string;
+    item_type: "pytest" | "manual";
     rubric_group_key: string | null;
     inputs?: string[] | null;
     outputs?: string[] | null;
-}
+};
 
-type StaffArtifact = {
+export type RubricGroup = {
+    key: string;
+    label: string;
+    item_keys?: string[];
+};
+
+export type CompletionRequirement = {
+    key: string;
+    label: string;
+    test_keys: string[];
+    minimum_passed: number;
+};
+
+export type StaffArtifact = {
     artifact_key: string;
     artifact_type: string;
     display_filename: string | null;
     size_bytes: number | null;
-}
+    sha256?: string | null;
+};
+
+export type FileRequirementConfig = {
+    label: string;
+    paths?: string[] | null;
+    pattern?: string | null;
+};
+
+export type BundleConfig = {
+    entrypoint: string;
+    file_requirements?: FileRequirementConfig[];
+};
+
+export type ArtifactConfig = {
+    type: "pytest_file" | "model_solution" | "support_file";
+    display_filename?: string | null;
+};
+
+export type AssignmentConfigV1 = {
+    bundle: BundleConfig;
+    artifacts?: Record<string, ArtifactConfig>;
+    concepts?: {
+        allowlist?: string[];
+        denylist?: string[];
+    };
+
+    scoring_items: RubricItem[];
+    rubric_groups?: RubricGroup[];
+    completion_requirements?: CompletionRequirement[];
+    dependencies?: string[];
+};
 
 type UploadQuota = {
     limit: number;
     window_seconds: number;
     remaining: number;
     reset_at: string;
-}
+};
 
 export type AssignmentsDetails = {
     id: string;
@@ -38,7 +82,7 @@ export type AssignmentsDetails = {
     max_score: number;
     upload_quota: UploadQuota;
     module_name?: string | null;
-}
+};
 
 export type Assignment = AssignmentsDetails & {
     description: string;
@@ -47,14 +91,14 @@ export type Assignment = AssignmentsDetails & {
     constraints: Constraint[];
     allowed_concepts?: string[];
     rubric: RubricItem[];
-    rubric_groups: [];
-    completion_requirements: [];
-}
+    rubric_groups: RubricGroup[];
+    completion_requirements: CompletionRequirement[];
+};
 
 export type AssignmentsResponse = {
     course_id: string;
     assignments: AssignmentsDetails[];
-}
+};
 
 export type RunState = "queue" | "run" | "complete" | "failure";
 
@@ -138,11 +182,13 @@ export type StaffAssignmentSetup = {
     base_points: number;
     extra_credit_points: number;
     entrypoint_path: string;
-    concept_additions: string[];
     scoring_items: RubricItem[];
+    rubric_groups?: RubricGroup[];
+    completion_requirements?: CompletionRequirement[];
     artifacts: StaffArtifact[];
-    config_json: Record<string, unknown>;
+    config_json: AssignmentConfigV1;
     module_id?: number | null;
+    effective_allowed_concepts?: string[];
 };
 
 export type AssignmentCreatePayload = {
@@ -153,4 +199,3 @@ export type AssignmentCreatePayload = {
     sandbox_enabled?: boolean;
     module_id?: number | null;
 };
-

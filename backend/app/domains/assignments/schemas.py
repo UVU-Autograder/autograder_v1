@@ -112,13 +112,20 @@ class CompletionRequirementConfig(BaseModel):
     minimum_passed: int = Field(ge=1)
 
 
+class ConceptsConfig(BaseModel):
+    allowlist: list[str] = Field(default_factory=list)
+    denylist: list[str] = Field(default_factory=list)
+
+
 class AssignmentConfigV1(BaseModel):
     bundle: BundleConfig
     artifacts: dict[str, ArtifactConfig] = Field(min_length=1)
     scoring_items: list[ScoringItemConfig] = Field(min_length=1)
+    concepts: ConceptsConfig = Field(default_factory=ConceptsConfig)
     completion_requirements: list[CompletionRequirementConfig] = Field(default_factory=list)
     dependencies: list[str] = Field(default_factory=list)
     rubric_groups: list[RubricGroupConfig] = Field(default_factory=list)
+
 
     @model_validator(mode="after")
     def validate_dependencies(self) -> "AssignmentConfigV1":
@@ -255,4 +262,11 @@ class AssignmentCreate(BaseModel):
     canvas_ref: str | None = Field(default=None)
     sandbox_enabled: bool = Field(default=True)
     module_id: int | None = Field(default=None)
+
+
+class ArtifactListResponse(BaseModel):
+    course_id: str
+    assignment_id: str
+    artifacts: list[ArtifactMetadata]
+
 

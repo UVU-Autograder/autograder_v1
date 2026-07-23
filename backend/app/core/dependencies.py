@@ -37,8 +37,15 @@ def get_current_user(
     name = payload.get("name")
 
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.domains.auth.models import StaffAccess
 
-    user = db.scalar(select(User).where(User.email == email))
+    user = db.scalar(
+        select(User)
+        .options(selectinload(User.staff_access).selectinload(StaffAccess.role))
+        .where(User.email == email)
+    )
+
     if user is None:
         user = User(email=email, display_name=name, is_active=True)
         db.add(user)
@@ -76,7 +83,9 @@ def require_role(allowed_roles: list[str]):
 
     def dependency(user: User = Depends(get_current_user)) -> User:
         user_roles = {
-            access.role.name for access in user.staff_access if access.is_active
+            access.role.name
+            for access in user.staff_access
+            if access.is_active and access.role is not None
         }
         if not user_roles.intersection(allowed_roles) and not any(
             r == "admin" for r in user_roles
@@ -93,7 +102,11 @@ def require_role(allowed_roles: list[str]):
 def require_staff(user: User = Depends(get_current_user)) -> User:
     """Enforces that the user is a staff member (admin, instructor, or IA)."""
 
-    user_roles = {access.role.name for access in user.staff_access if access.is_active}
+    user_roles = {
+        access.role.name
+        for access in user.staff_access
+        if access.is_active and access.role is not None
+    }
     if not user_roles.intersection({"admin", "instructor", "IA"}):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -104,8 +117,10 @@ def require_staff(user: User = Depends(get_current_user)) -> User:
 
 def user_is_admin(user: User) -> bool:
     return any(
-        access.is_active and access.role.name == "admin" for access in user.staff_access
+        access.is_active and access.role is not None and access.role.name == "admin"
+        for access in user.staff_access
     )
+
 
 
 def assert_course_section_access(

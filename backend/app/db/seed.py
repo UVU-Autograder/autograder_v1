@@ -7,9 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base, import_domain_models
 from app.db.session import SessionLocal, engine
-from app.domains.artifacts.models import AssignmentArtifact
-from app.domains.assignments.models import Assignment
-from app.domains.assignments.service import upsert_assignment_config
+from app.domains.assignments.models import Assignment, AssignmentArtifact
+from app.domains.assignments.service import (
+    resolve_seed_artifact_path,
+    seed_assignment_artifacts,
+    upsert_assignment_config,
+)
+
 from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Module, Section
 
@@ -26,80 +30,6 @@ def load_example_config() -> dict:
 
 def load_cs1410_catalog() -> dict:
     return json.loads(CS1410_CATALOG.read_text(encoding="utf-8"))
-
-
-def _seed_storage_ref(
-    example_slug: str,
-    artifact_key: str,
-    display_filename: str,
-) -> str:
-    return f"seed://{example_slug}/{display_filename}"
-
-
-def resolve_seed_artifact_path(
-    seed_dir: Path,
-    display_filename: str,
-    *,
-    artifact_type: str | None = None,
-) -> Path | None:
-    """Resolve a seed artifact file under the assignment folder or seeds/shared."""
-    local = seed_dir / display_filename
-    if local.exists():
-        return local
-    if artifact_type == "model_solution":
-        fallback = seed_dir / "model_solution.py"
-        if fallback.exists():
-            return fallback
-    shared = SEEDS_DIR / "shared" / display_filename
-    if shared.exists():
-        return shared
-    return None
-
-
-def _seed_assignment_artifacts(
-    db: Session,
-    assignment: Assignment,
-    slug: str,
-) -> None:
-    folder = slug.replace("-", "_")
-    config_path = SEEDS_DIR / folder / "config_json.example.json"
-    if not config_path.exists():
-        return
-
-    config_json = json.loads(config_path.read_text(encoding="utf-8"))
-    upsert_assignment_config(db, assignment, config_json)
-
-    db.query(AssignmentArtifact).filter(AssignmentArtifact.assignment_id == assignment.id).delete()
-
-    for artifact_key, artifact in (config_json.get("artifacts") or {}).items():
-        display_filename = artifact.get("display_filename")
-        if not display_filename:
-            continue
-
-        resolved = resolve_seed_artifact_path(
-            SEEDS_DIR / folder,
-            display_filename,
-            artifact_type=artifact.get("type"),
-        )
-        if resolved is None:
-            continue
-        artifact_folder = "shared" if resolved.parent.name == "shared" else folder
-
-        db.add(
-            AssignmentArtifact(
-                assignment=assignment,
-                artifact_key=artifact_key,
-                artifact_type=artifact["type"],
-                storage_ref=_seed_storage_ref(
-                    artifact_folder,
-                    artifact_key,
-                    resolved.name,
-                ),
-                display_filename=display_filename,
-                content_type=mimetypes.guess_type(display_filename)[0]
-                or "application/octet-stream",
-            )
-        )
 
 
 def initialize_database(seed: bool = True) -> None:
@@ -158,7 +88,7 @@ def _seed_cs1400(
     )
     db.add(assignment)
     db.flush()
-    _seed_assignment_artifacts(db, assignment, assignment.slug)
+    seed_assignment_artifacts(db, assignment, assignment.slug)
 
 
 def _seed_cs1410(
@@ -217,7 +147,7 @@ def _seed_cs1410(
         )
         db.add(assignment)
         db.flush()
-        _seed_assignment_artifacts(db, assignment, slug)
+        seed_assignment_artifacts(db, assignment, slug)
 
 
 def seed_development_data(db: Session) -> None:

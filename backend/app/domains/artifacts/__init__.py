@@ -1,2 +1,0 @@
-# Artifacts domain placeholder.
-

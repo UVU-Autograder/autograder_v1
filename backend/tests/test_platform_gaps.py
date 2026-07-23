@@ -339,3 +339,17 @@ def test_cumulative_module_concept_inheritance(db_session):
     assert "variables" in concepts
     assert "image-processing" in concepts
     assert "classes" in concepts
+
+
+def test_effective_allowed_concepts_stops_at_assignment_module(db_session):
+    assignment = get_assignment_for_course(db_session, "cs1410", "lab2")
+    assert assignment is not None
+    assert assignment.module is not None
+    
+    # Add a concept to a later module (e.g. module with id > assignment.module_id)
+    later_module = next(m for m in assignment.course.modules if m.id > assignment.module_id)
+    later_module.concepts = list(later_module.concepts or []) + ["future-unintroduced-concept"]
+    db_session.commit()
+
+    concepts = effective_allowed_concepts(assignment)
+    assert "future-unintroduced-concept" not in concepts
