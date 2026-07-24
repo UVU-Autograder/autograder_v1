@@ -16,6 +16,11 @@ import {
 
 type AppSidebarData = {
   header?: React.ReactNode
+  onOpenDetails?: () => void
+  workspaceFiles?: string[]
+  onOpenFile?: (filename: string) => void
+  onDeleteFile?: (filename: string) => void
+  fileUploadAction?: React.ReactNode
   user?: {
     name: string
     email: string
@@ -26,10 +31,10 @@ type AppSidebarData = {
     logo: React.ReactNode
     plan: string
   }>
-  navMain: Array<{
+  navMain?: Array<{
     title: string
-    url: string
-    icon: React.ReactNode
+    url?: string
+    icon?: React.ReactNode
     isActive?: boolean
     items?: Array<{
       title: string
@@ -53,7 +58,14 @@ export function AppSidebar({ data, ...props }: React.ComponentProps<typeof Sideb
         {data.teams && <TeamSwitcher teams={data.teams} />}
       </SidebarHeader>
       <SidebarContent>
-        {data.navMain && <NavMain items={data.navMain} />}
+        <NavMain
+          onOpenDetails={data.onOpenDetails}
+          workspaceFiles={data.workspaceFiles}
+          onOpenFile={data.onOpenFile}
+          onDeleteFile={data.onDeleteFile}
+          fileUploadAction={data.fileUploadAction}
+          items={data.navMain}
+        />
         {data.projects && <NavProjects projects={data.projects} />}
       </SidebarContent>
       <SidebarFooter>

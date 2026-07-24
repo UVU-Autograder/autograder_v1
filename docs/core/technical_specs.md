@@ -380,7 +380,7 @@ flowchart TD
   - the deleted Judge0 submission/result is no longer retrievable
   - ephemeral local workspace files are removed
   - Kata execution state is destroyed or no longer reachable
-- Cleanup proof for launch signoff requires automated integration evidence plus documented Dell-workstation operational spot checks summarized in `docs/planning/delivery_controls.md`.
+- Cleanup proof for launch signoff requires automated integration evidence plus documented Dell-workstation operational spot checks summarized in [delivery_controls.md](../planning/delivery_controls.md).
 - Automated cleanup tests must cover success, test failure, compile/import error, timeout, Judge0 cleanup failure, and workspace cleanup after exceptions.
 - Dell spot-check evidence must be dated and must include sanitized command output or summaries for Judge0 deletion/non-retrievability, workspace removal, and Kata runtime evidence. It must not include student code, filenames, identifiers, raw tracebacks, or detailed feedback.
 - Capacity planning for Judge0 and Celery is memory-bound on the Dell workstation and must prefer queueing/backpressure over aggressive parallelism.

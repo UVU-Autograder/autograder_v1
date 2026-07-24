@@ -12,7 +12,10 @@ import {
 } from './editor-layout';
 import { readFilesAsOpenFiles } from './file-utils';
 
+import { Assignment } from '@/features/assignments/types';
+
 type AssignmentFileContextType = {
+  assignment?: Assignment;
   files: Record<string, OpenFile>;
   panes: EditorLayoutState['panes'];
   layout: EditorLayoutState['layout'];
@@ -42,7 +45,7 @@ const AssignmentFileContext = createContext<AssignmentFileContextType | null>(nu
 
 const INITIAL_PANE_ID = createPaneId();
 
-export function AssignmentFileProvider({ children }: { children: ReactNode }) {
+export function AssignmentFileProvider({ children, assignment }: { children: ReactNode; assignment?: Assignment }) {
   const [files, setFiles] = useState<Record<string, OpenFile>>({});
   const [editorLayout, setEditorLayout] = useState<EditorLayoutState>({
     panes: {
@@ -216,6 +219,7 @@ export function AssignmentFileProvider({ children }: { children: ReactNode }) {
   return (
     <AssignmentFileContext.Provider
       value={{
+        assignment,
         files,
         panes,
         layout,

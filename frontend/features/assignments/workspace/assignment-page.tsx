@@ -3,11 +3,12 @@
 import CodeResults from "./code-results";
 import { useAssignmentFile } from "./assignment-file-context";
 import { EditorSplitView } from "./editor-split-view";
+import { AssignmentSidebar } from "./sidebar";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@/components/ui/resizable"
+} from "@/components/ui/resizable";
 
 import type { AssignmentsDetails, Assignment } from "@/features/assignments/types";
 
@@ -27,24 +28,32 @@ export default function AssignmentWorkspace({
   assignment,
 }: AssignmentsPageProps) {
   const { layout } = useAssignmentFile();
-  
+
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col">
-		<ResizablePanelGroup orientation="horizontal" className="min-h-0 w-full flex-1">
-			<ResizablePanel defaultSize={75} minSize={50} className="flex min-h-0">
-					<EditorSplitView layout={layout} />
-			</ResizablePanel>
-			<ResizableHandle withHandle />
-			<ResizablePanel defaultSize={25} minSize={0} className="overflow-y-auto">
-				<CodeResults
-          courseId={courseId}
-          assignmentId={assignmentId}
-          maxScore={maxScore}
-          initialQuota={initialQuota}
-          assignment={assignment}
-        />
-			</ResizablePanel>
-        </ResizablePanelGroup>
+    <div className="flex h-full min-h-0 w-full flex-1 overflow-hidden">
+      <ResizablePanelGroup orientation="horizontal">
+        <ResizablePanel defaultSize={25} minSize={10}>
+          <AssignmentSidebar assignment={assignment} courseId={courseId} />
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        <ResizablePanel defaultSize={45} minSize={15}>
+          <EditorSplitView layout={layout} />
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        <ResizablePanel defaultSize={30} minSize={10}>
+          <CodeResults
+            courseId={courseId}
+            assignmentId={assignmentId}
+            maxScore={maxScore}
+            initialQuota={initialQuota}
+            assignment={assignment}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

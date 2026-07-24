@@ -31,15 +31,15 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ### Student sandbox UX
 
-- [ ] Fix student sandbox sidebar 
-- [ ] Refactor problem description rendering to structured layout instead of raw text file views.
+- [x] Fix student sandbox sidebar (removed `mt-15` offset, aligned flush with shell header, added Problem Overview button).
+- [x] Refactor problem description rendering to structured layout instead of raw text file views (implemented minimal `<ProblemOverview />` tab component).
 
-### Expected I/O extraction and visual diff
+### Expected I/O extraction and visual diff (Unverified / Manual validation needed)
 
-- [x] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`).
-- [x] Expose extracted expected fields in the sandbox run results API.
-- [x] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` already exists; do not require `react-diff-viewer`).
-- [ ] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel.
+- [ ] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`) — implementation present; needs end-to-end host verification.
+- [ ] Expose extracted expected fields in the sandbox run results API — implementation present; needs payload verification.
+- [ ] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` exists; verify rendering against live student outputs).
+- [x] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel (implemented via `parseExpectedIO` & `scoring-rules-section.tsx` badges).
 
 
 ---

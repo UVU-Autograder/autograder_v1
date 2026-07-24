@@ -11,12 +11,12 @@ export function EditorSplitView({ layout }: { layout: LayoutNode }) {
   const isRow = layout.direction === 'row';
 
   return (
-    <div className={`flex h-full min-h-0 min-w-0 flex-1 ${isRow ? 'flex-row' : 'flex-col'}`}>
-        <div className={`flex h-full flex-1 ${isRow ? 'border-r' : 'border-b'} border-border`}>
+    <div className={`flex h-full min-h-0 min-w-0 w-full flex-1 overflow-hidden ${isRow ? 'flex-row' : 'flex-col'}`}>
+        <div className={`flex h-full min-w-0 flex-1 overflow-hidden ${isRow ? 'border-r' : 'border-b'} border-border`}>
             <EditorSplitView layout={layout.children[0]} />
         </div>
 
-        <div className="flex h-full flex-1">
+        <div className="flex h-full min-w-0 flex-1 overflow-hidden">
             <EditorSplitView layout={layout.children[1]} />
         </div>
     </div>

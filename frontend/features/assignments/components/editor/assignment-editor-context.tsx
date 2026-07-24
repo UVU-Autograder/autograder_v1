@@ -459,6 +459,33 @@ export function AssignmentEditorProvider({
   };
 
 
+  const parseExpectedIO = (sourceCode: string, key: string) => {
+    const inputs: string[] = [];
+    const outputs: string[] = [];
+
+    // Match block following marker up to next marker or end of code
+    const markerRegex = new RegExp(`@(?:pytest\\.)?(?:mark\\.)?ag_${key}\\b([\\s\\S]*?)(?=(?:@(?:pytest\\.)?(?:mark\\.)?ag_|\\Z))`, "i");
+    const match = sourceCode.match(markerRegex);
+    const block = match ? match[1] : sourceCode;
+
+    const inputMatches = block.matchAll(/EXPECTED_INPUT(?:S)?\s*=\s*(?:["']{3}([\s\S]*?)["']{3}|["']([^"'\r\n]*)["'])/g);
+    for (const m of inputMatches) {
+      const val = m[1] !== undefined ? m[1] : m[2];
+      if (val && !inputs.includes(val.trim())) inputs.push(val.trim());
+    }
+
+    const outputMatches = block.matchAll(/EXPECTED_OUTPUT(?:S)?\s*=\s*(?:["']{3}([\s\S]*?)["']{3}|["']([^"'\r\n]*)["'])/g);
+    for (const m of outputMatches) {
+      const val = m[1] !== undefined ? m[1] : m[2];
+      if (val && !outputs.includes(val.trim())) outputs.push(val.trim());
+    }
+
+    return {
+      inputs: inputs.length > 0 ? inputs : undefined,
+      outputs: outputs.length > 0 ? outputs : undefined,
+    };
+  };
+
   const syncMarkersFromTestSuite = (sourceCode: string) => {
     const matches = sourceCode.match(/@(?:pytest\.)?(?:mark\.)?ag_([a-zA-Z0-9_]+)/g);
     if (!matches) return 0;
@@ -470,11 +497,23 @@ export function AssignmentEditorProvider({
     let addedCount = 0;
     setScoringItems((prev) => {
       const existingKeys = new Set(prev.map((item) => item.key));
-      const newItems: RubricItem[] = [];
+      const updatedItems = prev.map((item) => {
+        if (extractedKeys.includes(item.key) && (item.item_type || "pytest") === "pytest") {
+          const parsed = parseExpectedIO(sourceCode, item.key);
+          return {
+            ...item,
+            inputs: parsed.inputs || item.inputs,
+            outputs: parsed.outputs || item.outputs,
+          };
+        }
+        return item;
+      });
 
+      const newItems: RubricItem[] = [];
       extractedKeys.forEach((k) => {
         if (!existingKeys.has(k)) {
           addedCount++;
+          const parsed = parseExpectedIO(sourceCode, k);
           newItems.push({
             key: k,
             label: `${k.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} Test`,
@@ -483,15 +522,16 @@ export function AssignmentEditorProvider({
             item_type: "pytest",
             pytest_marker: `ag_${k}`,
             rubric_group_key: null,
+            inputs: parsed.inputs,
+            outputs: parsed.outputs,
           });
         }
       });
 
-      if (newItems.length > 0) {
+      if (addedCount > 0 || newItems.length > 0) {
         markDirty();
-        return [...prev, ...newItems];
       }
-      return prev;
+      return [...updatedItems, ...newItems];
     });
 
     return addedCount;

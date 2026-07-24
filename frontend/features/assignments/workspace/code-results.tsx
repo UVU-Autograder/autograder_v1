@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   createSandboxRun,
@@ -18,14 +18,13 @@ import type {
 } from "@/features/assignments/types";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
-import VisualDiffViewer from "@/components/visual-diff-viewer";
 
 function cleanTestMessage(message: string | null | undefined): string {
   if (!message) return "";
 
   const lines = message.split("\n");
   const assertIndex = lines.findIndex(
-    (line) => line.includes("AssertionError") || line.trim().startsWith("E   ")
+    (line) => line.includes("AssertionError") || line.trim().startsWith("E   "),
   );
   if (assertIndex !== -1) {
     return lines.slice(assertIndex).join("\n");
@@ -39,12 +38,14 @@ type CodeResultsProps = {
   assignmentId: string;
   maxScore: number;
   initialQuota?: AssignmentsDetails["upload_quota"];
-  assignment: Assignment;
+  assignment?: Assignment;
 };
 
 type RunPhase = "idle" | "submitting" | "running" | "complete" | "error";
 
-function testStatusLabel(status: SandboxRunResultResponse["test_summaries"][number]["status"]) {
+function testStatusLabel(
+  status: SandboxRunResultResponse["test_summaries"][number]["status"],
+) {
   switch (status) {
     case "passed":
       return "Passed";
@@ -58,7 +59,7 @@ function testStatusLabel(status: SandboxRunResultResponse["test_summaries"][numb
 }
 
 function testStatusContainerClass(
-  status: SandboxRunResultResponse["test_summaries"][number]["status"]
+  status: SandboxRunResultResponse["test_summaries"][number]["status"],
 ) {
   switch (status) {
     case "passed":
@@ -73,7 +74,7 @@ function testStatusContainerClass(
 }
 
 function testStatusTextClass(
-  status: SandboxRunResultResponse["test_summaries"][number]["status"]
+  status: SandboxRunResultResponse["test_summaries"][number]["status"],
 ) {
   switch (status) {
     case "passed":
@@ -118,58 +119,32 @@ export default function CodeResults({
   assignmentId,
   maxScore,
   initialQuota,
-  assignment,
 }: CodeResultsProps) {
   const { files } = useAssignmentFile();
-  const [showCheckCode, setShowCheckCode] = useState(true);
+  const [showCheckCode] = useState(true);
   const [showFeedback, setShowFeedback] = useState(true);
   const [phase, setPhase] = useState<RunPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<SandboxRunResultResponse | null>(null);
-  const [quota, setQuota] = useState<AssignmentsDetails["upload_quota"] | undefined>(initialQuota);
+  const [quota, setQuota] = useState<
+    AssignmentsDetails["upload_quota"] | undefined
+  >(initialQuota);
   const [prevInitialQuota, setPrevInitialQuota] = useState(initialQuota);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [runState, setRunState] = useState<string>("queue");
   const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
   const [onlyFailing, setOnlyFailing] = useState(false);
-  const [isStaff, setIsStaff] = useState(false);
+  const [isStaff] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !!(localStorage.getItem("token") || sessionStorage.getItem("token"));
+  });
   const [stdinInput, setStdinInput] = useState("");
-
-  useEffect(() => {
-    const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
-    setIsStaff(!!token);
-  }, []);
 
   if (initialQuota !== prevInitialQuota) {
     setQuota(initialQuota);
     setPrevInitialQuota(initialQuota);
   }
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-
-    Promise.resolve().then(() => {
-      if (!quota || quota.remaining > 0) {
-        setCountdown(null);
-        return;
-      }
-
-      const resetTime = new Date(quota.reset_at).getTime();
-
-      const updateCountdown = () => {
-        const now = new Date().getTime();
-        const diff = Math.max(0, Math.floor((resetTime - now) / 1000));
-        setCountdown(diff);
-      };
-
-      updateCountdown();
-      timer = setInterval(updateCountdown, 1000);
-    });
-
-    return () => clearInterval(timer);
-  }, [quota]);
 
   const handleRunCode = async () => {
     setPhase("submitting");
@@ -180,7 +155,12 @@ export default function CodeResults({
 
     try {
       const bundleBlob = await createSubmissionBundle(files);
-      const { run, sessionId } = await createSandboxRun(courseId, assignmentId, bundleBlob, stdinInput || undefined);
+      const { run, sessionId } = await createSandboxRun(
+        courseId,
+        assignmentId,
+        bundleBlob,
+        stdinInput || undefined,
+      );
 
       setQuota(run.upload_quota);
 
@@ -191,15 +171,12 @@ export default function CodeResults({
       setRunState(run.initial_status.state);
       setPhase("running");
 
-      const finalStatus = await pollRunUntilComplete(
-        run.status_url,
-        {
-          onStatusUpdate: (currentStatus) => {
-            setRunStatus(currentStatus);
-            setRunState(currentStatus.state);
-          },
-        }
-      );
+      const finalStatus = await pollRunUntilComplete(run.status_url, {
+        onStatusUpdate: (currentStatus) => {
+          setRunStatus(currentStatus);
+          setRunState(currentStatus.state);
+        },
+      });
 
       if (finalStatus.state === "failure") {
         setPhase("error");
@@ -214,7 +191,9 @@ export default function CodeResults({
       setPhase("error");
       if (err instanceof ApiError) {
         if (err.status === 429) {
-          setErrorMessage("Upload quota exceeded. Please wait for the window to reset.");
+          setErrorMessage(
+            "Upload quota exceeded. Please wait for the window to reset.",
+          );
         } else {
           setErrorMessage(err.message);
         }
@@ -268,16 +247,23 @@ export default function CodeResults({
           {test.points_possible}
         </p>
 
-        {(test.your_value != null || test.actual != null || test.expected_value != null || test.expected != null) && (
+        {(test.your_value != null ||
+          test.actual != null ||
+          test.expected_value != null ||
+          test.expected != null) && (
           <div className="mt-2.5 p-3 rounded-md border border-red-200 bg-red-100/60 space-y-1.5 text-xs font-sans">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-red-900 w-28 shrink-0">Your value:</span>
+              <span className="font-semibold text-red-900 w-28 shrink-0">
+                Your value:
+              </span>
               <code className="bg-red-200/70 text-red-950 px-2 py-0.5 rounded font-mono break-all">
                 {test.your_value ?? test.actual ?? "false"}
               </code>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-emerald-900 w-28 shrink-0">Expected value:</span>
+              <span className="font-semibold text-emerald-900 w-28 shrink-0">
+                Expected value:
+              </span>
               <code className="bg-emerald-200/70 text-emerald-950 px-2 py-0.5 rounded font-mono break-all">
                 {test.expected_value ?? test.expected ?? "true"}
               </code>
@@ -306,10 +292,13 @@ export default function CodeResults({
   );
 
   return (
-    <div className="w-[450px] bg-slate-50 border-l border-slate-200 p-4 flex flex-col h-full overflow-y-auto">
-      <details className="mb-2 rounded border border-slate-200 bg-white text-xs">
-        <summary className="cursor-pointer select-none px-3 py-2 text-slate-400 hover:text-slate-600">
-          Provide stdin <span className="font-mono text-[10px]">(optional)</span>
+    <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-slate-50 border-l border-slate-200">
+      <details className="mb-3 rounded-md border border-slate-200 bg-white text-xs">
+        <summary className="cursor-pointer select-none px-3 py-2 text-slate-500 font-medium hover:text-slate-800">
+          Provide stdin{" "}
+          <span className="font-mono text-[10px] text-slate-400">
+            (optional)
+          </span>
         </summary>
         <div className="border-t border-slate-200 px-3 pb-3 pt-2">
           <textarea
@@ -317,16 +306,18 @@ export default function CodeResults({
             aria-label="Console input / stdin"
             value={stdinInput}
             onChange={(e) => setStdinInput(e.target.value)}
-            placeholder={"Each line will be fed as keyboard input (Enter)\ne.g.\nAlice\n3"}
-            rows={4}
-            className="w-full resize-y rounded border border-slate-300 p-2 font-mono text-xs leading-relaxed focus:border-slate-400 focus:outline-none"
+            placeholder={
+              "Each line will be fed as keyboard input (Enter)\ne.g.\nAlice\n3"
+            }
+            rows={3}
+            className="w-full max-w-full resize-y rounded border border-slate-300 p-2 font-mono text-xs leading-relaxed focus:border-indigo-400 focus:outline-none"
           />
         </div>
       </details>
       <Button
         onClick={handleRunCode}
         disabled={isLoading || isQuotaExceeded}
-        className="w-full bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-lg font-semibold px-6 py-3 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-md shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? "Running Tests..." : "Run Code"}
       </Button>
@@ -354,22 +345,6 @@ export default function CodeResults({
         </div>
       )}
 
-      {quota && (
-        <div className="mt-3 text-xs text-slate-500 bg-white p-2.5 rounded border border-slate-200">
-          <div className="flex justify-between items-center">
-            <span>Sandbox Quota:</span>
-            <span className={`font-bold ${quota.remaining === 0 ? "text-red-600" : "text-slate-600"}`}>
-              {quota.remaining} / {quota.limit} remaining
-            </span>
-          </div>
-          {quota.remaining === 0 && countdown !== null && (
-            <div className="mt-2 text-red-600 font-semibold border-t border-red-200 pt-2 text-center">
-              Resets in {Math.floor(countdown / 60)}m {countdown % 60}s
-            </div>
-          )}
-        </div>
-      )}
-
       {errorMessage && (
         <p className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
           {errorMessage}
@@ -392,7 +367,7 @@ export default function CodeResults({
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-3 mt-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3 mt-4">
               <p className="font-bold text-lg">Test Cases:</p>
               <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer select-none">
                 <input
@@ -406,45 +381,53 @@ export default function CodeResults({
             </div>
 
             <div>
-              {result.rubric_groups && result.rubric_groups.length > 0 ? (
-                result.rubric_groups.map((group) => {
-                  const filteredItems = onlyFailing
-                    ? group.items.filter((item) => item.status !== "passed")
-                    : group.items;
-                  if (onlyFailing && filteredItems.length === 0) return null;
+              {result.rubric_groups && result.rubric_groups.length > 0
+                ? result.rubric_groups.map((group) => {
+                    const filteredItems = onlyFailing
+                      ? group.items.filter((item) => item.status !== "passed")
+                      : group.items;
+                    if (onlyFailing && filteredItems.length === 0) return null;
 
-                  return (
-                    <div
-                      key={group.group_key}
-                      className="mb-4 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm"
-                    >
-                      <div className="flex justify-between items-center bg-slate-100 px-3 py-2 border-b border-slate-200">
-                        <span className="font-bold text-slate-800 text-xs">{group.label}</span>
-                        <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-full">
-                          {group.points_earned} / {group.points_possible} pts
-                        </span>
-                      </div>
-                      <div className="p-2 space-y-1">
-                        {filteredItems.map((test, index) => renderTestItem(test, index))}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                (() => {
-                  const displaySummaries = onlyFailing
-                    ? result.test_summaries.filter((t) => t.status !== "passed")
-                    : result.test_summaries;
-                  if (displaySummaries.length === 0) {
                     return (
-                      <p className="text-sm text-slate-600">
-                        {onlyFailing ? "No failing tests found 🎉" : "No test summaries returned."}
-                      </p>
+                      <div
+                        key={group.group_key}
+                        className="mb-4 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm"
+                      >
+                        <div className="flex justify-between items-center bg-slate-100 px-3 py-2 border-b border-slate-200">
+                          <span className="font-bold text-slate-800 text-xs">
+                            {group.label}
+                          </span>
+                          <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-full">
+                            {group.points_earned} / {group.points_possible} pts
+                          </span>
+                        </div>
+                        <div className="p-2 space-y-1">
+                          {filteredItems.map((test, index) =>
+                            renderTestItem(test, index),
+                          )}
+                        </div>
+                      </div>
                     );
-                  }
-                  return displaySummaries.map((test, index) => renderTestItem(test, index));
-                })()
-              )}
+                  })
+                : (() => {
+                    const displaySummaries = onlyFailing
+                      ? result.test_summaries.filter(
+                          (t) => t.status !== "passed",
+                        )
+                      : result.test_summaries;
+                    if (displaySummaries.length === 0) {
+                      return (
+                        <p className="text-sm text-slate-600">
+                          {onlyFailing
+                            ? "No failing tests found 🎉"
+                            : "No test summaries returned."}
+                        </p>
+                      );
+                    }
+                    return displaySummaries.map((test, index) =>
+                      renderTestItem(test, index),
+                    );
+                  })()}
             </div>
 
             {result.warnings.length > 0 && (
@@ -456,8 +439,12 @@ export default function CodeResults({
                       key={`${warning.code}-${index}`}
                       className="border-l-4 border-amber-500 bg-amber-50 rounded-md p-4"
                     >
-                      <p className="text-amber-800 font-semibold">{warning.code}</p>
-                      <p className="text-sm text-amber-700 mt-2">{warning.message}</p>
+                      <p className="text-amber-800 font-semibold">
+                        {warning.code}
+                      </p>
+                      <p className="text-sm text-amber-700 mt-2">
+                        {warning.message}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -477,13 +464,11 @@ export default function CodeResults({
         )}
       </div>
 
-      <br />
-
       <Button
         onClick={() => setShowFeedback((prev) => !prev)}
-        className="w-full mt-2 bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-lg font-semibold px-6 py-3 rounded-lg"
+        className="w-full mt-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-md shadow-xs"
       >
-        View AI Feedback
+        {showFeedback ? "Hide AI Feedback" : "View AI Feedback"}
       </Button>
       <div className={`flex flex-1 flex-col ${showFeedback ? "" : "hidden"}`}>
         <div className="text-wrap mt-4">
@@ -493,7 +478,9 @@ export default function CodeResults({
               "Run tests to generate session-only projected feedback."}
           </p>
           {result?.retention_notice && (
-            <p className="mt-3 text-xs text-slate-500">{result.retention_notice}</p>
+            <p className="mt-3 text-xs text-slate-500">
+              {result.retention_notice}
+            </p>
           )}
         </div>
       </div>

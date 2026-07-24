@@ -15,12 +15,10 @@ import {
   PlusIcon,
   Trash2Icon,
   FileTextIcon,
-  KeyIcon,
   DownloadIcon,
   SaveIcon,
   RefreshCwIcon,
   CheckCircle2Icon,
-  SparklesIcon,
 } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { apiClient } from "@/lib/api-client";
@@ -260,6 +258,32 @@ export function ScoringRulesSection() {
                   >
                     <Trash2Icon className="w-4 h-4 text-red-500" />
                   </Button>
+                </div>
+
+                {/* Expected I/O Preview */}
+                <div className="md:col-span-12 mt-1 pt-2 border-t border-stone-200 flex flex-wrap items-center gap-3 text-xs text-stone-600">
+                  <span className="font-semibold text-stone-700 flex items-center gap-1">
+                    <FileTextIcon className="w-3.5 h-3.5 text-indigo-600" />
+                    Parsed Expected I/O:
+                  </span>
+                  {((item.inputs && item.inputs.length > 0) || (item.outputs && item.outputs.length > 0)) ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {item.inputs && item.inputs.length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-blue-50 text-blue-700 border border-blue-200" title="Expected Input">
+                          <strong className="mr-1 font-sans font-semibold">Input:</strong> {item.inputs.join(", ")}
+                        </span>
+                      )}
+                      {item.outputs && item.outputs.length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200" title="Expected Output">
+                          <strong className="mr-1 font-sans font-semibold">Output:</strong> {item.outputs.join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-stone-400 italic">
+                      No EXPECTED_INPUT or EXPECTED_OUTPUT constants detected in test code for marker ag_{item.key}.
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

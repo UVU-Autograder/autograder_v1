@@ -27,7 +27,12 @@ export default function MonacoEditor({
       defaultValue={defaultValue}
       value={value}
       onChange={onChange}
-      options={options}
+      options={{
+        automaticLayout: true,
+        scrollBeyondLastLine: false,
+        minimap: { enabled: false },
+        ...options,
+      }}
     />
   );
 }

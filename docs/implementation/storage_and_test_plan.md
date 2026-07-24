@@ -10,7 +10,7 @@ This file is the canonical plan for assignment config storage, grading assets, p
 - Assignment artifact types are `pytest_file`, `model_solution`, and `support_file`.
 - `AssignmentArtifact` metadata stays lightweight: assignment linkage, stable artifact key, artifact type, generated storage reference, optional sanitized display filename, and validation metadata as needed.
 - `config_json` is not an `AssignmentArtifact` class. The canonical config lives in `assignment_configs.config_json`.
-- Student submissions, extracted files, Judge0 payloads, pytest tracebacks, generated feedback bodies, and execution workspaces remain ephemeral. Official review/export artifacts may exist ≤24h or until staff cleanup; sandbox artifacts are wiped immediately after results.
+- Student submissions, extracted files, Judge0 payloads, pytest tracebacks, generated feedback bodies, and execution workspaces remain ephemeral. Official review/export artifacts may exist ≤24h or until staff cleanup; sandbox artifacts are wiped immediately after results (see canonical retention lifecycle in [technical_specs.md](../core/technical_specs.md#2-core-features)).
 
 ## Assignment Test Model
 
