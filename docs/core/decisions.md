@@ -67,5 +67,5 @@ This file tracks current product and implementation decisions.
 ## Architecture notes (current)
 
 - Official upload: [ingestion/router.py](../../backend/app/domains/ingestion/router.py) → [ingestion/service.py](../../backend/app/domains/ingestion/service.py).
-- Grading: [grading/service.py](../../backend/app/domains/grading/service.py) orchestrates; [grading/executor.py](../../backend/app/domains/grading/executor.py) owns Judge0 pytest execution.
-- AST checking remains source-string based (`check_student_code`); no path-level AST API.
+- Grading: [grading/engine.py](../../backend/app/domains/grading/engine.py) (`GradingEngine`) orchestrates intake, AST inspection, runner packaging, Judge0 pytest execution via [grading/executor.py](../../backend/app/domains/grading/executor.py), and zero-retention cleanup.
+- AST checking: [integrations/ast_checker/validator.py](../../backend/app/integrations/ast_checker/validator.py) provides `ASTCodeInspector` for directory-level auditing and concept whitelisting.

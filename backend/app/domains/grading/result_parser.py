@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 
 from app.domains.assignments.schemas import ScoringItemConfig, pytest_marker_for_key
@@ -191,9 +192,6 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
 # ---------------------------------------------------------------------------
 
 
-import re
-
-
 def _extract_assertion_values(message: str | None, actual: str | None = None, expected: str | None = None) -> tuple[str | None, str | None]:
     """Extract your_value (actual) and expected_value (expected) from failure message or result attributes."""
     if actual is not None or expected is not None:
@@ -304,3 +302,19 @@ def calculate_scores(
         )
 
     return total_score, details
+
+
+class PytestOutcomeParser:
+    """Cohesive parser for Pytest execution outputs, assertion diffs, and score calculations."""
+
+    @staticmethod
+    def parse_execution_output(
+        stdout: str,
+        stderr: str = "",
+        test_configs: list[ScoringItemConfig] | None = None,
+    ) -> tuple[PytestRunResult, tuple[int, list[dict]]]:
+        run_result = parse_pytest_json(stdout)
+        if test_configs is None:
+            return run_result, (0, [])
+        score, details = calculate_scores(run_result, test_configs)
+        return run_result, (score, details)
