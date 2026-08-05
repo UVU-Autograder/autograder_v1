@@ -19,9 +19,9 @@ from app.domains.runs.tasks import (
     build_model_solution_zip,
     failing_automated_items,
     grade_official_run,
-    run_mock_official_run,
 )
-from app.domains.grading.service import GradingResult
+from app.domains.runs.mock_runner import run_mock_official_run
+from app.domains.grading.engine import GradingResult
 from app.core.settings import get_settings
 from test_ingestion_extractor import create_zip_bytes
 
@@ -132,7 +132,7 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
     })
     zip_dest.write_bytes(canvas_zip_bytes)
 
-    # 3. Mock run_grading_pipeline
+    # 3. Mock GradingEngine.grade_submission
     mock_result = GradingResult(
         success=True,
         score=100,
@@ -141,7 +141,7 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
         warnings=[]
     )
 
-    with patch("app.domains.grading.service.run_grading_pipeline", new_callable=AsyncMock) as mock_pipeline:
+    with patch("app.domains.grading.engine.GradingEngine.grade_submission", new_callable=AsyncMock) as mock_pipeline:
         mock_pipeline.return_value = mock_result
 
         # Run task directly
@@ -227,7 +227,7 @@ def anyio_backend() -> str:
 
 @pytest.mark.anyio
 async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_workspaces: Any) -> None:
-    from app.domains.grading.service import run_grading_pipeline
+    from app.domains.grading.engine import GradingEngine
     from app.domains.assignments.schemas import AssignmentConfigV1
 
     # Create configuration for an assignment
@@ -272,12 +272,12 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
         "assignment_tests": f"file://{tests_file.as_posix()}"
     }
 
-    result = await run_grading_pipeline(
-        zip_data=zip_bytes,
+    engine = GradingEngine(
         config=config,
         artifact_refs=artifact_refs,
         allowed_concepts=["variables", "functions"]
     )
+    result = await engine.grade_submission(zip_data=zip_bytes)
 
     # Check that it got blocked by helper.py, not main.py!
     assert not result.success
@@ -288,7 +288,7 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
 
 @pytest.mark.anyio
 async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_workspaces: Path) -> None:
-    from app.domains.grading.service import run_grading_pipeline
+    from app.domains.grading.engine import GradingEngine
     from app.domains.assignments.service import get_assignment_for_course
     from app.domains.assignments.schemas import AssignmentConfigV1
     from app.domains.grading.executor import ExecutionOutcome
@@ -337,15 +337,15 @@ async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_worksp
     from app.domains.assignments.service import effective_allowed_concepts
     allowed = effective_allowed_concepts(assignment)
 
-    with patch("app.domains.grading.service.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_execute:
+    with patch("app.domains.grading.engine.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_execute:
         mock_execute.return_value = mock_outcome
 
-        result = await run_grading_pipeline(
-            zip_data=zip_bytes,
+        engine = GradingEngine(
             config=config,
             artifact_refs=artifact_refs,
-            allowed_concepts=allowed
+            allowed_concepts=allowed,
         )
+        result = await engine.grade_submission(zip_data=zip_bytes)
 
     # 5. Assert it graded perfectly!
     assert result.success

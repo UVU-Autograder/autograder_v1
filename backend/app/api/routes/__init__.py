@@ -1,1 +1,0 @@
-# Shared route module placeholder.

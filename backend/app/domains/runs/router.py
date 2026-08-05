@@ -37,7 +37,7 @@ from app.domains.runs.service import (
     student_workspace_dir,
     update_student_manual_result,
 )
-from app.domains.runs.tasks import get_run_state
+from app.domains.runs.orchestrator import get_run_state
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -79,58 +79,43 @@ def _official_status_from_run(run: RunSummary, redis_state: dict | None) -> RunS
         state = redis_state.get("state", run.status)
         if state not in ("queue", "run", "complete", "failure"):
             state = "complete"
-        total = int(redis_state.get("total", run.total_submission_count or 0))
-        queued = int(redis_state.get("queued", 0))
-        running = int(redis_state.get("running", 0))
-        completed = int(redis_state.get("completed", 0))
-        failed = int(redis_state.get("failed", 0))
-        warnings = int(redis_state.get("warnings", 0))
-        queue_position = redis_state.get("queue_position")
-        if state != "queue":
-            queue_position = None
+        queue_position = redis_state.get("queue_position") if state == "queue" else None
         eta = redis_state.get("eta_band") if state == "queue" else None
         if state == "queue" and eta is None:
             eta = eta_band_for_position(queue_position)
-        message = redis_state.get("message") or f"Official run status: {state}"
-        return RunStatusResponse(
-            run_id=str(run.id),
-            state=state,
-            queue_position=queue_position,
-            eta_band=eta,
-            counters=RunCounters(
-                total=total,
-                queued=queued,
-                running=running,
-                completed=completed,
-                failed=failed,
-                warnings=warnings,
-            ),
-            backpressure=bp,
-            message=message,
+        counters = RunCounters(
+            total=int(redis_state.get("total", run.total_submission_count or 0)),
+            queued=int(redis_state.get("queued", 0)),
+            running=int(redis_state.get("running", 0)),
+            completed=int(redis_state.get("completed", 0)),
+            failed=int(redis_state.get("failed", 0)),
+            warnings=int(redis_state.get("warnings", 0)),
         )
-
-    state_val = run.status
-    if state_val not in ("queue", "run", "complete", "failure"):
-        state_val = "complete"
-    completed = run.success_count + run.warning_count
-    failed = run.failure_count + run.timeout_count
-    return RunStatusResponse(
-        run_id=str(run.id),
-        state=state_val,
-        queue_position=None,
-        eta_band=None,
-        counters=RunCounters(
+        message = redis_state.get("message") or f"Official run status: {state}"
+    else:
+        state = run.status if run.status in ("queue", "run", "complete", "failure") else "complete"
+        completed = run.success_count + run.warning_count
+        failed = run.failure_count + run.timeout_count
+        queue_position = None
+        eta = None
+        counters = RunCounters(
             total=run.total_submission_count,
-            queued=0 if state_val != "queue" else run.total_submission_count,
-            running=0 if state_val != "run" else max(
-                0, run.total_submission_count - completed - failed
-            ),
+            queued=0 if state != "queue" else run.total_submission_count,
+            running=0 if state != "run" else max(0, run.total_submission_count - completed - failed),
             completed=completed,
             failed=failed,
             warnings=run.warning_count,
-        ),
+        )
+        message = f"Official run status: {run.status}"
+
+    return RunStatusResponse(
+        run_id=str(run.id),
+        state=state,
+        queue_position=queue_position,
+        eta_band=eta,
+        counters=counters,
         backpressure=bp,
-        message=f"Official run status: {run.status}",
+        message=message,
     )
 
 
@@ -442,8 +427,8 @@ def update_student_manual_grades(
     require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    from app.domains.grading.service import GradingResult
-    from app.domains.runs.tasks import generate_pedagogical_feedback_html
+    from app.domains.grading.engine import GradingResult
+    from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
 
     def apply_update(data: dict) -> dict:
         student_results = data.get("student_results", {})

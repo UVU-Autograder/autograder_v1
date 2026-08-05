@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
@@ -484,3 +485,59 @@ def get_concepts_metadata() -> dict[str, dict]:
         }
         for k, v in CONCEPT_DETAILS.items()
     }
+
+
+class ASTCodeInspector:
+    """Audits student Python source code or whole project directories for concept whitelist compliance."""
+
+    def __init__(self, allowed_concepts: list[str] | None = None):
+        self.allowed_concepts = allowed_concepts or []
+
+    def inspect_source(self, source_code: str, file_label: str = "") -> ASTCheckResult:
+        res = check_student_code(source_code, self.allowed_concepts)
+        if not file_label:
+            return res
+
+        prefix = f"[{file_label}] "
+        tagged_warnings = [
+            ASTFinding(code=w.code, message=f"{prefix}{w.message}", line=w.line)
+            for w in res.warnings
+        ]
+        tagged_blocked = [
+            ASTFinding(code=b.code, message=f"{prefix}{b.message}", line=b.line)
+            for b in res.blocked
+        ]
+        return ASTCheckResult(
+            detected_concepts=res.detected_concepts,
+            warnings=tagged_warnings,
+            blocked=tagged_blocked,
+        )
+
+    def inspect_directory(self, root_dir: Path) -> ASTCheckResult:
+        combined_detected: set[str] = set()
+        combined_warnings: list[ASTFinding] = []
+        combined_blocked: list[ASTFinding] = []
+
+        for py_file in root_dir.rglob("*.py"):
+            rel_path = py_file.relative_to(root_dir).as_posix()
+            try:
+                source_code = py_file.read_text(encoding="utf-8")
+            except Exception as exc:
+                combined_blocked.append(
+                    ASTFinding(
+                        code="validation_error",
+                        message=f"[{rel_path}] Could not read file: {exc}",
+                    )
+                )
+                continue
+
+            res = self.inspect_source(source_code, file_label=rel_path)
+            combined_detected.update(res.detected_concepts)
+            combined_warnings.extend(res.warnings)
+            combined_blocked.extend(res.blocked)
+
+        return ASTCheckResult(
+            detected_concepts=combined_detected,
+            warnings=combined_warnings,
+            blocked=combined_blocked,
+        )

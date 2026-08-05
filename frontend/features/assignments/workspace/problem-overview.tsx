@@ -3,14 +3,21 @@
 import React from "react";
 import { Assignment, ConceptMetadata } from "@/features/assignments/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2Icon, AlertCircleIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  AlertCircleIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 
 type ProblemOverviewProps = {
   assignment: Assignment;
   conceptMeta?: Record<string, ConceptMetadata>;
 };
 
-export function ProblemOverview({ assignment, conceptMeta = {} }: ProblemOverviewProps) {
+export function ProblemOverview({
+  assignment,
+  conceptMeta = {},
+}: ProblemOverviewProps) {
   const allowedConcepts = assignment.allowed_concepts || [];
   const constraints = assignment.constraints || [];
 
@@ -24,12 +31,18 @@ export function ProblemOverview({ assignment, conceptMeta = {} }: ProblemOvervie
               Sandbox Assignment
             </span>
           </div>
-          <h1 className="text-xl font-bold text-stone-900">{assignment.title}</h1>
+          <h1 className="text-xl font-bold text-stone-900">
+            {assignment.title}
+          </h1>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <span className="text-xs text-stone-500 block uppercase font-medium">Max Score</span>
-            <span className="text-lg font-bold font-mono text-emerald-600">{assignment.max_score} pts</span>
+            <span className="text-xs text-stone-500 block uppercase font-medium">
+              Max Score
+            </span>
+            <span className="text-lg font-bold font-mono text-emerald-600">
+              {assignment.max_score} pts
+            </span>
           </div>
         </div>
       </div>
@@ -48,7 +61,8 @@ export function ProblemOverview({ assignment, conceptMeta = {} }: ProblemOvervie
               <div key={i} className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 <span>
-                  <strong className="font-semibold">{c.label}:</strong> {c.value}
+                  <strong className="font-semibold">{c.label}:</strong>{" "}
+                  {c.value}
                 </span>
               </div>
             ))}
@@ -62,11 +76,13 @@ export function ProblemOverview({ assignment, conceptMeta = {} }: ProblemOvervie
           <div className="flex items-center gap-2">
             <ShieldCheckIcon className="w-4 h-4 text-indigo-600" />
             <CardTitle className="text-sm font-semibold text-stone-900">
-              Allowed Concepts Whitelist
+              Allowed Concepts
             </CardTitle>
           </div>
           <span className="text-xs text-stone-500">
-            {allowedConcepts.length > 0 ? `${allowedConcepts.length} allowed` : "All concepts allowed"}
+            {allowedConcepts.length > 0
+              ? `${allowedConcepts.length} allowed`
+              : "All concepts allowed"}
           </span>
         </CardHeader>
         <CardContent className="py-3 px-4">
@@ -89,7 +105,8 @@ export function ProblemOverview({ assignment, conceptMeta = {} }: ProblemOvervie
             </div>
           ) : (
             <p className="text-xs text-stone-500 italic">
-              No specific AST concept restrictions configured for this assignment.
+              No specific AST concept restrictions configured for this
+              assignment.
             </p>
           )}
         </CardContent>

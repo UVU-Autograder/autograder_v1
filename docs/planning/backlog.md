@@ -26,8 +26,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ### Manual grading UX
 
-- [ ] Add coarse status/manual-completion filters and queue polish without introducing a bulk grading grid.
-- [ ] Add explicit same-student edit conflict detection if multiple API processes or simultaneous graders become a requirement (current v1 is last-write-wins).
+- [ ] Add coarse status/manual-completion filters and queue polish without introducing a bulk grading grid (runs & exports remain isolated per staff upload session).
 
 ### Student sandbox UX
 

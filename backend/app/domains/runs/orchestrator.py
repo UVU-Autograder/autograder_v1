@@ -17,7 +17,7 @@ import redis
 
 from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
-from app.domains.grading.service import run_grading_pipeline
+from app.domains.grading.engine import GradingEngine
 from app.domains.runs.queue_admission import release_execution_slots
 
 
@@ -109,6 +109,19 @@ def get_run_result(run_id: str) -> dict | None:
     return json.loads(raw)
 
 
+def _cancelled_response(run_id: str, message: str = "Sandbox run was cancelled before execution.") -> dict:
+    return {
+        "run_id": run_id,
+        "success": False,
+        "score": 0,
+        "max_score": 0,
+        "test_results": [],
+        "warnings": [],
+        "failure_category": "cancelled",
+        "failure_message": message,
+    }
+
+
 def execute_sandbox_run(
     run_id: str,
     zip_data_b64: str,
@@ -119,59 +132,33 @@ def execute_sandbox_run(
 ) -> dict:
     """Execute a sandbox grading run directly through the pipeline."""
     if is_run_cancelled(run_id):
-        return {
-            "run_id": run_id,
-            "success": False,
-            "score": 0,
-            "max_score": 0,
-            "test_results": [],
-            "warnings": [],
-            "failure_category": "cancelled",
-            "failure_message": "Sandbox run was cancelled before execution.",
-        }
+        return _cancelled_response(run_id)
 
     set_run_state(run_id, "run")
     if is_run_cancelled(run_id):
-        return {
-            "run_id": run_id,
-            "success": False,
-            "score": 0,
-            "max_score": 0,
-            "test_results": [],
-            "warnings": [],
-            "failure_category": "cancelled",
-            "failure_message": "Sandbox run was cancelled before execution.",
-        }
+        return _cancelled_response(run_id)
 
     try:
         zip_data = base64.b64decode(zip_data_b64)
         config = AssignmentConfigV1.model_validate(config_json)
 
+        engine = GradingEngine(
+            config=config,
+            artifact_refs=artifact_refs,
+            allowed_concepts=allowed_concepts,
+        )
         loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             grading_result = loop.run_until_complete(
-                run_grading_pipeline(
-                    zip_data=zip_data,
-                    config=config,
-                    artifact_refs=artifact_refs,
-                    allowed_concepts=allowed_concepts,
-                    stdin=stdin,
-                )
+                engine.grade_submission(zip_data=zip_data, stdin=stdin)
             )
         finally:
+            asyncio.set_event_loop(None)
             loop.close()
 
         if is_run_cancelled(run_id):
-            return {
-                "run_id": run_id,
-                "success": False,
-                "score": 0,
-                "max_score": 0,
-                "test_results": [],
-                "warnings": [],
-                "failure_category": "cancelled",
-                "failure_message": "Sandbox run was cancelled after pipeline execution.",
-            }
+            return _cancelled_response(run_id, "Sandbox run was cancelled after pipeline execution.")
 
         result_dict = {
             "run_id": run_id,

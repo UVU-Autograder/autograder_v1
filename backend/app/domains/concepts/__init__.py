@@ -1,2 +1,0 @@
-# Concepts domain placeholder.
-

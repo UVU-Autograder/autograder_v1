@@ -2241,7 +2241,7 @@
     "/staff/courses/{course_id}/assignments/{assignment_id}/artifacts": {
       "get": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Get Assignment Artifacts",
         "operationId": "get_assignment_artifacts_staff_courses__course_id__assignments__assignment_id__artifacts_get",
@@ -2295,7 +2295,7 @@
       },
       "post": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Upload Assignment Artifact",
         "operationId": "upload_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts_post",
@@ -2361,7 +2361,7 @@
     "/staff/courses/{course_id}/assignments/{assignment_id}/artifacts/{artifact_key}": {
       "delete": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Delete Assignment Artifact",
         "operationId": "delete_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts__artifact_key__delete",
@@ -2422,7 +2422,7 @@
       },
       "get": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Download Assignment Artifact",
         "operationId": "download_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts__artifact_key__get",
@@ -2679,6 +2679,9 @@
             "minItems": 1,
             "title": "Scoring Items"
           },
+          "concepts": {
+            "$ref": "#/components/schemas/ConceptsConfig"
+          },
           "completion_requirements": {
             "items": {
               "$ref": "#/components/schemas/CompletionRequirementConfig"
@@ -2729,6 +2732,9 @@
             "type": "array",
             "minItems": 1,
             "title": "Scoring Items"
+          },
+          "concepts": {
+            "$ref": "#/components/schemas/ConceptsConfig"
           },
           "completion_requirements": {
             "items": {
@@ -3000,6 +3006,26 @@
           "nodes"
         ],
         "title": "ConceptMetadata"
+      },
+      "ConceptsConfig": {
+        "properties": {
+          "allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowlist"
+          },
+          "denylist": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Denylist"
+          }
+        },
+        "type": "object",
+        "title": "ConceptsConfig"
       },
       "CourseAdminDetail": {
         "properties": {

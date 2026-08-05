@@ -1,1 +1,0 @@
-# Canvas ZIP integration placeholder for archive validation, recognizable Canvas structure checks, one-student-target filename mapping, duplicate or ambiguous match failure handling, and path traversal rejection.

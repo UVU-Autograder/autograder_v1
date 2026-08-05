@@ -31,43 +31,16 @@
 - Hallucination guardrails (when Local LLM is enabled): treat pytest and tracebacks as ground truth; LLM explains, does not re-grade (sandbox only).
 - Prefer fake/synthetic or completely anonymized validation data until live-data posture is confirmed for a workflow.
 
-## 3. Open-Source Patterns Reused
+## 3. Architecture Patterns Reused
 
-- Autolab/Tango inspires the async grading/job orchestration shape, including queue-driven official-run processing and status tracking.
-- Submitty's `config.json` format informs the grading-config direction for tests, point values, and execution settings.
-- A custom output normalizer (`app/domains/grading/normalizer.py`) handles whitespace, line-ending, and blank-line normalization to reduce false negatives from formatting differences.
+- **Async Job Queueing:** Submitty/Tango pattern for Celery-backed worker queueing and status polling.
+- **Output Normalization:** Standardized string normalizer (`app/domains/grading/normalizer.py`) stripping trailing whitespace and normalizing line endings (`\r\n` -> `\n`) to prevent false test failures.
 
-## 4. App Workflows
+## 4. Pipeline Execution Summaries
 
-### Official staff batch grading
-
-1. Staff uploads a Canvas ZIP for one assignment.
-2. The backend validates the archive and rejects malformed or non-Canvas ZIPs before queueing.
-3. Valid archives are extracted into a shared ephemeral workspace.
-4. Student submission bundles are validated against assignment-config requirements, then graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and sandbox Local LLM explanation when enabled for non-personally-traceable code payloads (official AI deferred).
-5. Results are packaged into staff-facing export artifacts.
-6. Export is returned.
-
-### Student sandbox projected grading
-
-1. Student opens the sandbox entry flow.
-2. Backend returns globally visible courses and assignments where sandbox access is enabled.
-3. Student selects a visible course and assignment.
-4. Student uploads a ZIP/project bundle for projected grading.
-5. The backend applies sandbox rate limiting before any grading work starts.
-6. The backend validates ZIP safety and assignment-config bundle requirements before grading.
-7. The frontend shows upload quota, preview, and rate-limit state.
-8. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and sandbox Local LLM explanation pipeline when enabled for non-personally-traceable code payloads.
-9. Projected score, warnings, and feedback appear on screen only.
-
-### Assignment and grading setup
-
-1. Instructor creates an assignment linked to a course.
-2. Authorized staff configure grading data through a comprehensive instructor-facing wizard that writes the app-owned `assignment_configs.config_json`; the wizard is the authoring surface for that config.
-3. Assignment metadata (for example name, due date, and points context) is entered manually; Canvas assignment-metadata import is not required.
-4. `Concepts Covered` defaults are maintained at the course level, and module learning concepts are merged into the effective whitelist at runtime. Per-assignment additions are not supported.
-5. One assignment-owned pytest file, model solution content, support files, ZIP/project bundle requirements, and test metadata derived from the app-owned config are maintained as assignment-owned grading assets.
-6. Model solution validation runs through the same Judge0 + Kata execution path used for student code.
+- **Official Staff Batch Grading:** Canvas ZIP archive -> Ingest Validation -> Ephemeral Workspace Extraction -> Assignment Config & AST Validation -> Judge0 Execution (in Kata VM) -> Result Formatting -> Staff CSV/Feedback Export Package -> Immediate Workspace Wipe (≤24h window).
+- **Student Sandbox Runs:** ZIP Bundle -> Rate Limiting -> Ephemeral Extraction -> AST Validation -> Judge0 Execution -> On-screen Results & Visual Diff -> Immediate Cleanup.
+- **Assignment Configuration Setup:** Instructor Wizard -> App-Owned `config_json` v1 -> Pytest/Model Solution Artifact Upload -> Model Solution Verification in Judge0 -> Published Assignment Config.
 
 ## 5. Data Model
 
