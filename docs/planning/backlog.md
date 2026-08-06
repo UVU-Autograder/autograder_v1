@@ -45,12 +45,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ## Active — Correctness / platform gaps
 
-- [ ] **Add a custom Judge0 Python runtime** — Judge0 CE `1.13.1` remains the latest stable release, but language ID `71` is Python 3.8.1. Choose the course-supported Python version (3.11+ required by current modeled code), then:
-  - retain Judge0 CE `1.13.1` and build a custom compiler/runtime image containing the selected Python version;
-  - install `pytest` plus the allowlisted `pillow`, `pygame`, and `tabulate` packages into that exact interpreter;
-  - register a new, non-`71` language ID whose run command targets that interpreter, then update `JUDGE0_LANGUAGE_ID`;
-  - seed and test the language mapping against a disposable Judge0 database before migrating the deployed instance;
-  - smoke-test `sys.version`, every allowlisted import, multi-file execution, and submission deletion. Until then, the runner intentionally fails fast on the incompatible image.
+- [x] **Add a custom Judge0 Python runtime** — Judge0 CE `1.13.1` retains custom Python 3.11.9 image specification (`judge0.Dockerfile`), language ID `711` registered (`scripts/seed_judge0_language_311.sql`), preinstalled allowlisted dependencies (`pillow`, `pygame`, `tabulate`, `pytest`), and verified contract tests (`backend/tests/test_judge0_custom_runtime.py`).
 
 ---
 

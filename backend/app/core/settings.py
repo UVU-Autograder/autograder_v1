@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     )
     judge0_url: str = Field(default="http://localhost:2358", validation_alias="JUDGE0_URL")
     judge0_auth_token: str | None = Field(default=None, validation_alias="JUDGE0_AUTH_TOKEN")
-    judge0_language_id: int = Field(default=71, ge=1, validation_alias="JUDGE0_LANGUAGE_ID")
+    judge0_language_id: int = Field(default=711, ge=1, validation_alias="JUDGE0_LANGUAGE_ID")
     judge0_max_concurrent: int = Field(default=2, ge=1, validation_alias="JUDGE0_MAX_CONCURRENT")
     judge0_preinstalled_dependencies: str = Field(
         default="pillow,pygame,tabulate",
