@@ -16,19 +16,13 @@ from app.domains.runs.queue_admission import (
 from app.domains.runs.schemas import (
     QueueBackpressure,
     RunCounters,
-    RunStatusResponse,
     RunState,
+    RunStatusResponse,
 )
 from app.domains.sandbox.schemas import (
     FilePreviewMetadata,
-    SandboxAssignmentDetail,
-    SandboxAssignmentListResponse,
-    SandboxAssignmentSummary,
+    RubricGroupResultResponse,
     SandboxCancelResponse,
-    SandboxConstraint,
-    SandboxCourse,
-    SandboxCourseListResponse,
-    SandboxRubricItem,
     SandboxRunCreateResponse,
     SandboxRunResultResponse,
     SandboxWarning,
@@ -131,6 +125,7 @@ class SandboxService:
         # Dispatch Celery task if enabled and ZIP data is provided
         if self._use_celery and zip_data is not None and config_json is not None:
             import base64
+
             from app.domains.runs.tasks import grade_sandbox_run, set_run_state
 
             zip_b64 = base64.b64encode(zip_data).decode("ascii")
@@ -205,7 +200,7 @@ class SandboxService:
 
     def cancel_run(
         self, run_id: str, session_id: str | None
-    ) -> SandboxCancelResponse | None | str:
+    ) -> SandboxCancelResponse | str | None:
         self._expire_old_runs()
         record = self._runs.get(run_id)
         if record is None or record.session_id != session_id:
@@ -225,19 +220,20 @@ class SandboxService:
 
         record.state = "failure"
 
-        if self._use_celery:
-            try:
-                from app.domains.runs.tasks import mark_run_cancelled, set_run_state
-                from app.integrations.celery.app import celery_app
+        try:
+            if self._use_celery:
+                try:
+                    from app.domains.runs.tasks import mark_run_cancelled, set_run_state
+                    from app.integrations.celery.app import celery_app
 
-                mark_run_cancelled(run_id)
-                set_run_state(run_id, "failure", {"failure_category": "cancelled"})
-                if record.celery_task_id:
-                    celery_app.control.revoke(record.celery_task_id, terminate=False)
-            except Exception:
-                pass
-
-        release_execution_slots(1)
+                    mark_run_cancelled(run_id)
+                    set_run_state(run_id, "failure", {"failure_category": "cancelled"})
+                    if record.celery_task_id:
+                        celery_app.control.revoke(record.celery_task_id, terminate=False)
+                except Exception:
+                    pass
+        finally:
+            release_execution_slots(1)
 
         return SandboxCancelResponse(
             run_id=run_id,
@@ -249,7 +245,7 @@ class SandboxService:
 
     def get_result(
         self, run_id: str, session_id: str | None
-    ) -> SandboxRunResultResponse | None | str:
+    ) -> SandboxRunResultResponse | str | None:
         self._expire_old_runs()
         record = self._runs.get(run_id)
         if record is None or record.session_id != session_id:
@@ -465,11 +461,11 @@ class SandboxService:
                     uploads_ts.append(float(raw))
                 except ValueError:
                     pass
-            
+
             now_ts = now.timestamp()
             cutoff_ts = now_ts - self._upload_window.total_seconds()
             active_ts = [ts for ts in uploads_ts if ts > cutoff_ts]
-            
+
             r.delete(key)
             if active_ts:
                 r.rpush(key, *[str(ts) for ts in active_ts])

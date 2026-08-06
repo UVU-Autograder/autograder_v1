@@ -1,28 +1,27 @@
-from typing import Any
+import csv
 import io
 import sys
-import os
 import zipfile
-import json
-import csv
 from pathlib import Path
-from unittest.mock import patch, AsyncMock
+from typing import Any
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.core.settings import get_settings
 from app.db.session import SessionLocal
+from app.domains.grading.engine import GradingResult
+from app.domains.runs.mock_runner import run_mock_official_run
 from app.domains.runs.models import RunSummary
 from app.domains.runs.tasks import (
     build_model_solution_zip,
     failing_automated_items,
     grade_official_run,
 )
-from app.domains.runs.mock_runner import run_mock_official_run
-from app.domains.grading.engine import GradingResult
-from app.core.settings import get_settings
 from test_ingestion_extractor import create_zip_bytes
 
 
@@ -163,7 +162,8 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
 
 
 def test_cleanup_expired_workspaces(db_session: Session, temp_workspaces: Path) -> None:
-    from datetime import datetime, timedelta, UTC
+    from datetime import UTC, datetime, timedelta
+
     from app.domains.runs.tasks import cleanup_expired_workspaces
 
     # 1. Create a run that is 25 hours old (expired)
@@ -227,8 +227,8 @@ def anyio_backend() -> str:
 
 @pytest.mark.anyio
 async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_workspaces: Any) -> None:
-    from app.domains.grading.engine import GradingEngine
     from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.grading.engine import GradingEngine
 
     # Create configuration for an assignment
     config_dict = {
@@ -288,9 +288,9 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
 
 @pytest.mark.anyio
 async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_workspaces: Path) -> None:
-    from app.domains.grading.engine import GradingEngine
-    from app.domains.assignments.service import get_assignment_for_course
     from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.assignments.service import get_assignment_for_course
+    from app.domains.grading.engine import GradingEngine
     from app.domains.grading.executor import ExecutionOutcome
     from app.domains.grading.result_parser import PytestRunResult, PytestTestResult
 

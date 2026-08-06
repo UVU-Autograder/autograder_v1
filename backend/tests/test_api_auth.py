@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 import pytest
 from fastapi import Depends, status
 from fastapi.testclient import TestClient
@@ -7,10 +8,10 @@ from fastapi.testclient import TestClient
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.main import create_app
 from app.core.dependencies import get_current_user
-from app.domains.auth.models import User, Role, StaffAccess
 from app.db.session import SessionLocal, get_db
+from app.domains.auth.models import Role, StaffAccess, User
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +30,7 @@ def test_staff_endpoints_allow_default_dev_staff(client):
     from app.core.auth_utils import create_access_token
     token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     # 1. Courses list
     res = client.get("/staff/courses", headers=headers)
     assert res.status_code == status.HTTP_200_OK
@@ -58,8 +59,8 @@ def test_staff_endpoints_block_non_staff_user(client):
 
     # Override get_current_user to return the student user using the request's db session
     def override_get_current_user(db=Depends(get_db)):
-        from sqlalchemy.orm import selectinload
         from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
         stmt = select(User).where(User.id == student_id).options(selectinload(User.staff_access))
         return db.scalar(stmt)
 
@@ -89,13 +90,13 @@ def test_staff_endpoints_allow_other_roles(client):
     with SessionLocal() as db:
         instructor = User(email="instructor@uvu.edu", display_name="Instructor User")
         db.add(instructor)
-        
+
         from sqlalchemy import select
         instructor_role = db.scalar(select(Role).where(Role.name == "instructor"))
         from app.domains.courses.models import Course, Section
         course = db.scalar(select(Course).where(Course.code == "cs1400"))
         section = db.scalar(select(Section).where(Section.course_id == course.id))
-        
+
         access = StaffAccess(
             user=instructor,
             role=instructor_role,
@@ -110,8 +111,8 @@ def test_staff_endpoints_allow_other_roles(client):
     app = client.app
 
     def override_get_current_user(db=Depends(get_db)):
-        from sqlalchemy.orm import selectinload
         from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
         stmt = select(User).where(User.id == instructor_id).options(selectinload(User.staff_access))
         return db.scalar(stmt)
 
@@ -129,9 +130,9 @@ def test_staff_endpoints_allow_other_roles(client):
 
 
 def test_ia_cannot_put_assignment_setup(client):
-    from sqlalchemy import select
     from app.core.auth_utils import create_access_token
     from app.domains.courses.models import Course, Section
+    from sqlalchemy import select
 
     with SessionLocal() as db:
         ia_role = db.scalar(select(Role).where(Role.name == "IA"))

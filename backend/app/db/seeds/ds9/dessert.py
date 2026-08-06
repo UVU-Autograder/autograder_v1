@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Any
+
 from packaging import Packaging
 from payment import Payable, PayType
 
@@ -23,12 +24,12 @@ class DessertItem(ABC, Packaging):
     def calculate_tax(self) -> float:
         return round(self.calculate_cost() * (self.tax_percent / 100), 2)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, DessertItem):
             return self.calculate_cost() == other.calculate_cost()
         return False
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not (self == other)
 
     def __lt__(self, other: "DessertItem") -> bool:

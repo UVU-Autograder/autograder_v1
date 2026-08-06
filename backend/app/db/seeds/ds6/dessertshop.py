@@ -1,12 +1,13 @@
-from dessert import Order, Candy, Cookie, IceCream, Sundae
+from dessert import Candy, Cookie, IceCream, Order, Sundae
 from tabulate import tabulate
+
 
 class DessertShop:
     def user_prompt_candy(self) -> Candy:
         name = input("Enter the candy name: ")
         if not name.strip():
             raise ValueError("Name cannot be empty.")
-        
+
         while True:
             try:
                 weight = float(input("Enter candy weight(lbs): "))
@@ -16,7 +17,7 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter a number value.")
-                
+
         while True:
             try:
                 price = float(input("Enter the price per pound: "))
@@ -26,14 +27,14 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter a number value.")
-                
+
         return Candy(name, weight, price)
 
     def user_prompt_cookie(self) -> Cookie:
         name = input("Enter the cookie name: ")
         if not name.strip():
             raise ValueError("Name cannot be empty.")
-            
+
         while True:
             try:
                 qty = int(input("Enter the quantity of cookies: "))
@@ -43,7 +44,7 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter an integer.")
-                
+
         while True:
             try:
                 price = float(input("Enter the price per dozen: "))
@@ -53,14 +54,14 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter a number value.")
-                
+
         return Cookie(name, qty, price)
 
     def user_prompt_icecream(self) -> IceCream:
         name = input("Enter the icecream flavor: ")
         if not name.strip():
             raise ValueError("Name cannot be empty.")
-            
+
         while True:
             try:
                 scoops = int(input("Enter the number of scoops: "))
@@ -70,7 +71,7 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter an integer.")
-                
+
         while True:
             try:
                 price = float(input("Enter the price per scoop: "))
@@ -80,14 +81,14 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter a number value.")
-                
+
         return IceCream(name, scoops, price)
 
     def user_prompt_sundae(self) -> Sundae:
         name = input("Enter the icecream flavor: ")
         if not name.strip():
             raise ValueError("Name cannot be empty.")
-            
+
         while True:
             try:
                 scoops = int(input("Enter number of scoops: "))
@@ -97,7 +98,7 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter an integer.")
-                
+
         while True:
             try:
                 price = float(input("Enter price per scoop: "))
@@ -107,11 +108,11 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter a number value.")
-                
+
         topping = input("Enter the topping name: ")
         if not topping.strip():
             raise ValueError("Topping name cannot be empty.")
-            
+
         while True:
             try:
                 t_price = float(input("Enter the price of the topping: "))
@@ -121,7 +122,7 @@ class DessertShop:
                 break
             except ValueError:
                 print("Invalid input. Please enter a number value.")
-                
+
         return Sundae(name, scoops, price, topping, t_price)
 
 

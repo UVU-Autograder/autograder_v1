@@ -7,8 +7,8 @@ Create Date: 2026-06-12
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0005_db_improvements"
 down_revision: str | None = "0004_remove_due_label"

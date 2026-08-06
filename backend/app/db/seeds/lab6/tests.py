@@ -1,4 +1,5 @@
 import os
+
 import pytest
 from pygame_test_helpers import (
     FakeRect,

@@ -1,4 +1,4 @@
-from dessert import Order, Candy, Cookie, IceCream, Sundae
+from dessert import Candy, Cookie, IceCream, Order, Sundae
 from tabulate import tabulate
 
 

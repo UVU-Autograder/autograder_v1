@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.main import create_app  # noqa: E402
-from app.domains.sandbox.service import sandbox_service  # noqa: E402
+from app.domains.sandbox.service import sandbox_service
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)

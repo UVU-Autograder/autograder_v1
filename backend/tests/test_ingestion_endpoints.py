@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -7,11 +8,13 @@ from sqlalchemy import select
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.session import SessionLocal  # noqa: E402
-from app.domains.courses.models import Section  # noqa: E402
-from app.domains.runs.queue_admission import reset_admission_state_for_tests  # noqa: E402
-from app.main import create_app  # noqa: E402
-from test_ingestion_extractor import create_zip_bytes  # noqa: E402
+from app.db.session import SessionLocal
+from app.domains.courses.models import Section
+from app.domains.runs.queue_admission import (
+    reset_admission_state_for_tests,
+)
+from app.main import create_app
+from test_ingestion_extractor import create_zip_bytes
 
 
 @pytest.fixture(autouse=True)

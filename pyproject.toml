@@ -1,0 +1,15 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",  # Line length
+    "E402",  # Allow sys.path modifications before imports in test files
+    "W293",  # Blank line whitespace in multiline string templates
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/*" = ["E402"]
+"backend/app/domains/*/models.py" = ["F821"]

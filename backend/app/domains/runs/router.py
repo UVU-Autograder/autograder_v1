@@ -1,30 +1,31 @@
+import shutil
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from pathlib import Path
-import shutil
 
 from app.core.dependencies import (
     DbSession,
+    accessible_section_ids_for_course,
     assert_run_section_access,
     get_optional_user,
     require_staff,
-    accessible_section_ids_for_course,
 )
 from app.domains.auth.models import User
-from app.domains.runs.schemas import (
-    RunStatusResponse,
-    RunSummaryResponse,
-    RunSummaryListResponse,
-    RunCounters,
-    UpdateManualGradesRequest,
-)
+from app.domains.runs.models import RunSummary
+from app.domains.runs.orchestrator import get_run_state
 from app.domains.runs.queue_admission import (
     backpressure_snapshot,
     eta_band_for_position,
 )
-from app.domains.sandbox.service import sandbox_service
-from app.domains.runs.models import RunSummary
+from app.domains.runs.schemas import (
+    RunCounters,
+    RunStatusResponse,
+    RunSummaryListResponse,
+    RunSummaryResponse,
+    UpdateManualGradesRequest,
+)
 from app.domains.runs.service import (
     is_listable_student_file,
     load_run_details_json,
@@ -37,7 +38,7 @@ from app.domains.runs.service import (
     student_workspace_dir,
     update_student_manual_result,
 )
-from app.domains.runs.orchestrator import get_run_state
+from app.domains.sandbox.service import sandbox_service
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -142,8 +143,9 @@ def get_run_status(
         if run is None:
             raise HTTPException(status_code=404, detail="Run not found.")
 
-        from app.domains.assignments.models import Assignment
         from sqlalchemy.orm import selectinload
+
+        from app.domains.assignments.models import Assignment
 
         assignment = db.scalar(
             select(Assignment)

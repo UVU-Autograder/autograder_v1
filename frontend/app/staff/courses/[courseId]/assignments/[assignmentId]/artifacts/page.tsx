@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import { UploadIcon, TrashIcon, DownloadIcon, FileIcon, EditIcon, XIcon, ShieldAlertIcon, SaveIcon, FileTextIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export default function ArtifactsPage({ params }: PageProps) {
   const [artifactKey, setArtifactKey] = useState("");
   const [artifactType, setArtifactType] = useState<"pytest_file" | "model_solution" | "support_file">("pytest_file");
 
-  const fetchArtifacts = async () => {
+  const fetchArtifacts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -63,14 +63,11 @@ export default function ArtifactsPage({ params }: PageProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [courseId, assignmentId]);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      fetchArtifacts();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, assignmentId]);
+    fetchArtifacts();
+  }, [fetchArtifacts]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();

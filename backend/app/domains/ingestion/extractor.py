@@ -2,11 +2,12 @@ import io
 import shutil
 import zipfile
 from pathlib import Path
+
 from app.domains.assignments.schemas import AssignmentConfigV1
+
 
 class ExtractionError(Exception):
     """Raised when ZIP validation or extraction fails."""
-    pass
 
 def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | None = None) -> None:
     """Safely extracts a ZIP file to extract_dir.
@@ -18,7 +19,7 @@ def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | N
 
     extract_dir = Path(extract_dir).resolve()
     extract_dir.mkdir(parents=True, exist_ok=True)
-    
+
     total_size = 0
     try:
         with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
@@ -36,11 +37,11 @@ def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | N
                 mode = info.external_attr >> 16
                 if mode & 0o120000 == 0o120000:
                     raise ExtractionError("Symbolic links are not allowed in ZIP files")
-                
+
                 total_size += info.file_size
                 if total_size > max_total_size:
                     raise ExtractionError("ZIP extraction size limit exceeded")
-            
+
             # Second pass: extract safely
             for info in zf.infolist():
                 target_path = (extract_dir / info.filename).resolve()
@@ -60,7 +61,7 @@ def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | N
 def cleanup_system_files(directory: Path) -> None:
     """Recursively deletes hidden/system files and directories like .DS_Store, __MACOSX, Thumbs.db."""
     directory = Path(directory).resolve()
-    paths = sorted(list(directory.rglob("*")), key=lambda p: len(p.parts), reverse=True)
+    paths = sorted(directory.rglob("*"), key=lambda p: len(p.parts), reverse=True)
     for path in paths:
         if not path.exists():
             continue
@@ -79,7 +80,7 @@ def normalize_root_directory(extract_dir: Path) -> None:
     extract_dir = Path(extract_dir).resolve()
     cleanup_system_files(extract_dir)
     items = list(extract_dir.iterdir())
-    
+
     if len(items) == 1 and items[0].is_dir():
         single_dir = items[0]
         for sub_item in single_dir.iterdir():
@@ -92,15 +93,15 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
     from app.core.settings import get_settings
     settings = get_settings()
     extract_dir = Path(extract_dir).resolve()
-    
+
     # 1. Normalize root automatically
     normalize_root_directory(extract_dir)
-    
+
     # 2. Enforce max_files count (global safety limit)
     all_files = [f for f in extract_dir.rglob("*") if f.is_file()]
     if len(all_files) > settings.default_max_files:
         raise ValueError(f"Submission exceeds maximum allowed files limit: {settings.default_max_files}")
-            
+
     # 3. Process file_requirements
     for req in config.bundle.file_requirements:
         if req.paths:

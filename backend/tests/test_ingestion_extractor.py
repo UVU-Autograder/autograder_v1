@@ -1,20 +1,21 @@
 import io
 import sys
-import pytest
 import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.domains.ingestion.extractor import (
-    safe_extract_zip,
-    normalize_root_directory,
-    validate_submission_bundle,
-    ExtractionError,
-)
 from app.domains.assignments.schemas import AssignmentConfigV1, FileRequirementConfig
+from app.domains.ingestion.extractor import (
+    ExtractionError,
+    normalize_root_directory,
+    safe_extract_zip,
+    validate_submission_bundle,
+)
 
 
 def create_zip_bytes(files_dict: dict[str, bytes]) -> bytes:
@@ -74,17 +75,17 @@ def test_cleanup_system_files(tmp_path: Path):
     from app.domains.ingestion.extractor import cleanup_system_files
     directory = tmp_path / "target"
     directory.mkdir()
-    
+
     (directory / ".DS_Store").write_text("dsstore")
     (directory / "Thumbs.db").write_text("thumbs")
     (directory / "normal_file.py").write_text("python")
-    
+
     macosx_dir = directory / "__MACOSX"
     macosx_dir.mkdir()
     (macosx_dir / "nested_file.jpg").write_text("image")
-    
+
     cleanup_system_files(directory)
-    
+
     assert not (directory / ".DS_Store").exists()
     assert not (directory / "Thumbs.db").exists()
     assert not macosx_dir.exists()
@@ -98,7 +99,7 @@ def test_normalize_root_directory_single_subdir(tmp_path: Path):
     subdir.mkdir(parents=True)
     (subdir / "main.py").write_text("main")
     (subdir / "utils.py").write_text("utils")
-    
+
     (extract_dir / ".DS_Store").write_text("junk")
     (extract_dir / "__MACOSX").mkdir()
     (extract_dir / "__MACOSX" / "nested.xml").write_text("xml")
@@ -231,7 +232,7 @@ def test_validate_submission_bundle_file_requirements_single_path(tmp_path: Path
     (extract_dir / "utils.py").write_text("utils")
 
     config = AssignmentConfigV1.model_validate(base_config_dict)
-    
+
     # Missing extra.py
     with pytest.raises(ValueError, match="Required file 'extra.py' is missing"):
         validate_submission_bundle(extract_dir, config)
@@ -299,10 +300,10 @@ def test_file_requirement_schema_validation():
 
 
 from app.domains.ingestion.extractor import (
-    parse_canvas_filename,
-    group_canvas_files,
-    prepare_student_bundle,
     count_canvas_submissions,
+    group_canvas_files,
+    parse_canvas_filename,
+    prepare_student_bundle,
 )
 
 

@@ -1,6 +1,6 @@
-import pytest
 import abc
 
+import pytest
 from python_autograder_helpers import import_student_modules
 
 (des_mod,) = import_student_modules("dessert")
@@ -16,7 +16,7 @@ Order = getattr(des_mod, "Order", None)
 def test_abstract_class():
     # 1. DessertItem must be an ABC
     assert issubclass(DessertItem, abc.ABC), "DessertItem must inherit from abc.ABC"
-    
+
     # 2. Cannot instantiate DessertItem directly
     with pytest.raises(TypeError):
         DessertItem("Generic Item")

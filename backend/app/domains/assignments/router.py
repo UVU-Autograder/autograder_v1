@@ -1,4 +1,5 @@
 import io
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
@@ -67,7 +68,6 @@ def delete_assignment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assignment not found.",
         )
-    return
 
 
 @router.get("/{assignment_id}/setup", response_model=StaffAssignmentSetup)
@@ -126,7 +126,7 @@ def validate_model_solution(
             detail={"message": "Preflight validation failed.", "errors": errors},
         )
 
-    from app.domains.runs.tasks import validate_assignment_model_solution, set_run_state
+    from app.domains.runs.tasks import set_run_state, validate_assignment_model_solution
 
     run_id = f"val:{course_id}:{assignment_id}"
     set_run_state(run_id, "queue")
@@ -140,7 +140,7 @@ def get_validation_status(
     course_id: str,
     assignment_id: str,
 ):
-    from app.domains.runs.tasks import get_run_state, get_run_result
+    from app.domains.runs.tasks import get_run_result, get_run_state
 
     run_id = f"val:{course_id}:{assignment_id}"
     state_data = get_run_state(run_id)
@@ -186,7 +186,11 @@ def get_assignment_artifacts(
     )
 
 
-@router.post("/{assignment_id}/artifacts", response_model=ArtifactMetadata)
+@router.post(
+    "/{assignment_id}/artifacts",
+    response_model=ArtifactMetadata,
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
 async def upload_assignment_artifact(
     course_id: str,
     assignment_id: str,
@@ -210,7 +214,10 @@ async def upload_assignment_artifact(
     return artifact
 
 
-@router.delete("/{assignment_id}/artifacts/{artifact_key}")
+@router.delete(
+    "/{assignment_id}/artifacts/{artifact_key}",
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
 def delete_assignment_artifact(
     course_id: str,
     assignment_id: str,

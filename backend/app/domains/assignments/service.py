@@ -1,6 +1,9 @@
 import json
+import logging
 import mimetypes
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
@@ -10,8 +13,10 @@ from app.domains.assignments.models import (
     AssignmentArtifact,
     AssignmentConfig,
     AssignmentConfigHistory,
-    ScoringItem as ScoringItemProjection,
     file_storage_ref_to_path,
+)
+from app.domains.assignments.models import (
+    ScoringItem as ScoringItemProjection,
 )
 from app.domains.assignments.schemas import (
     ArtifactMetadata,
@@ -25,7 +30,6 @@ from app.domains.assignments.schemas import (
     pytest_marker_for_key,
 )
 from app.domains.courses.models import Course
-
 
 
 def validate_config_json(config_json: dict) -> AssignmentConfigV1:
@@ -267,6 +271,7 @@ def save_artifact(
 ) -> ArtifactMetadata | None:
     import hashlib
     import uuid
+
     from app.core.settings import get_settings
 
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
@@ -327,8 +332,8 @@ def save_artifact(
             old_path = file_storage_ref_to_path(old_ref)
             if old_path is not None:
                 old_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to unlink overwritten artifact file %s: %s", old_ref, exc)
 
     return ArtifactMetadata(
         artifact_key=artifact.artifact_key,
@@ -345,7 +350,6 @@ def delete_artifact(
     assignment_slug: str,
     artifact_key: str,
 ) -> bool:
-    import logging
     logger = logging.getLogger(__name__)
     from app.integrations.artifacts.resolver import resolve_storage_ref
 
@@ -495,7 +499,7 @@ def seed_assignment_artifacts(
     config_json = json.loads(config_path.read_text(encoding="utf-8"))
     upsert_assignment_config(db, assignment, config_json)
 
-    db.query(AssignmentArtifact).filter(AssignmentArtifact.assignment_id == assignment.id).delete()
+    db.execute(delete(AssignmentArtifact).where(AssignmentArtifact.assignment_id == assignment.id))
 
     for artifact_key, artifact in (config_json.get("artifacts") or {}).items():
         display_filename = artifact.get("display_filename")

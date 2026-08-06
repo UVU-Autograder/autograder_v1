@@ -87,8 +87,6 @@ export default function RunsPage({ params }: PageProps) {
   useEffect(() => {
     if (!activeRunId) return;
 
-    // eslint-disable-next-line prefer-const
-    let timer: NodeJS.Timeout;
     const checkStatus = async () => {
       try {
         const data = await apiClient.get<RunStatusResponse>(`/runs/${activeRunId}/status`);
@@ -107,7 +105,7 @@ export default function RunsPage({ params }: PageProps) {
       }
     };
 
-    timer = setInterval(checkStatus, 2000);
+    const timer = setInterval(checkStatus, 2000);
     return () => clearInterval(timer);
   }, [activeRunId, courseId, assignmentId, router]);
 

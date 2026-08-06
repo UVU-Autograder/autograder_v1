@@ -1,5 +1,4 @@
 import json
-import mimetypes
 from pathlib import Path
 
 from sqlalchemy import select, text
@@ -7,16 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base, import_domain_models
 from app.db.session import SessionLocal, engine
-from app.domains.assignments.models import Assignment, AssignmentArtifact
+from app.domains.assignments.models import Assignment
 from app.domains.assignments.service import (
-    resolve_seed_artifact_path,
+    resolve_seed_artifact_path as resolve_seed_artifact_path,
     seed_assignment_artifacts,
-    upsert_assignment_config,
 )
-
 from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Module, Section
-
 
 SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
 EXAMPLE_DIR = SEEDS_DIR / "simple_python_functions"

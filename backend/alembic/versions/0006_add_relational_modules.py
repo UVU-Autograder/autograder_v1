@@ -7,9 +7,8 @@ Create Date: 2026-07-08
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "0006_add_relational_modules"
 down_revision: str | None = "0005_db_improvements"
@@ -28,7 +27,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["course_id"], ["courses.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    
+
     # 2. Add module_id to assignments in batch mode (for SQLite compatibility)
     with op.batch_alter_table("assignments") as batch_op:
         batch_op.add_column(sa.Column("module_id", sa.Integer(), nullable=True))
@@ -46,6 +45,6 @@ def downgrade() -> None:
     with op.batch_alter_table("assignments") as batch_op:
         batch_op.drop_constraint("fk_assignments_module_id_modules", type_="foreignkey")
         batch_op.drop_column("module_id")
-        
+
     # 2. Drop modules table
     op.drop_table("modules")

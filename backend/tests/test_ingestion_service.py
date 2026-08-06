@@ -11,13 +11,18 @@ from sqlalchemy import select
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.session import SessionLocal  # noqa: E402
-from app.domains.auth.models import User  # noqa: E402
-from app.domains.courses.models import Section  # noqa: E402
-from app.domains.ingestion.service import IngestError, ingest_official_canvas_zip  # noqa: E402
-from app.domains.runs.queue_admission import reset_admission_state_for_tests  # noqa: E402
-from app.domains.runs.service import official_run_zip_path  # noqa: E402
-from test_ingestion_extractor import create_zip_bytes  # noqa: E402
+from app.db.session import SessionLocal
+from app.domains.auth.models import User
+from app.domains.courses.models import Section
+from app.domains.ingestion.service import (
+    IngestError,
+    ingest_official_canvas_zip,
+)
+from app.domains.runs.queue_admission import (
+    reset_admission_state_for_tests,
+)
+from app.domains.runs.service import official_run_zip_path
+from test_ingestion_extractor import create_zip_bytes
 
 
 @pytest.fixture(autouse=True)

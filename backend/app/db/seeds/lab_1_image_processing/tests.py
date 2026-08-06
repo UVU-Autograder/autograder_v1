@@ -1,10 +1,9 @@
-from pathlib import Path
 import os
 import runpy
+from pathlib import Path
 
 import pytest
 from PIL import Image
-
 
 ROOT = Path.cwd()
 

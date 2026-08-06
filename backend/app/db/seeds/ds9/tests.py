@@ -5,7 +5,7 @@ from python_autograder_helpers import import_student_modules
 @pytest.mark.ag_ds8_regression
 def test_ds8_regression() -> None:
     (des_mod,) = import_student_modules("dessert")
-    Order = getattr(des_mod, "Order")
+    Order = des_mod.Order
     order = Order()
     assert order.get_pay_type() == "CASH"
     order.set_pay_type("CARD")
@@ -15,7 +15,7 @@ def test_ds8_regression() -> None:
 @pytest.mark.ag_relational_ops
 def test_relational_ops() -> None:
     (des_mod,) = import_student_modules("dessert")
-    Candy = getattr(des_mod, "Candy")
+    Candy = des_mod.Candy
     c1 = Candy("Cheap Candy", 1.0, 2.0)  # cost 2.0
     c2 = Candy("Expensive Candy", 2.0, 2.0)  # cost 4.0
     c3 = Candy("Equal Candy", 1.0, 2.0)  # cost 2.0
@@ -31,8 +31,8 @@ def test_relational_ops() -> None:
 @pytest.mark.ag_order_sort
 def test_order_sort() -> None:
     (des_mod,) = import_student_modules("dessert")
-    Candy = getattr(des_mod, "Candy")
-    Order = getattr(des_mod, "Order")
+    Candy = des_mod.Candy
+    Order = des_mod.Order
     order = Order()
     c1 = Candy("Expensive", 5.0, 2.0)  # cost 10.0
     c2 = Candy("Cheap", 1.0, 1.0)  # cost 1.0

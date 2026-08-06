@@ -10,12 +10,10 @@ from app.db.session import SessionLocal
 from app.domains.runs.models import RunSummary
 from app.domains.runs.orchestrator import (
     is_run_cancelled,
-    set_run_result,
     set_run_state,
 )
 from app.domains.runs.queue_admission import (
     release_execution_slots,
-    reserve_execution_slots,
 )
 
 logger = logging.getLogger(__name__)

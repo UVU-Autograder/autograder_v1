@@ -1,4 +1,4 @@
-from dessert import Order, Candy
+from dessert import Candy, Order
 
 
 def test_order():

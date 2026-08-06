@@ -5,10 +5,10 @@ from python_autograder_helpers import import_student_modules
 @pytest.mark.ag_ds7_regression
 def test_ds7_regression():
     (des_mod,) = import_student_modules("dessert")
-    Candy = getattr(des_mod, "Candy")
-    Cookie = getattr(des_mod, "Cookie")
-    IceCream = getattr(des_mod, "IceCream")
-    Sundae = getattr(des_mod, "Sundae")
+    Candy = des_mod.Candy
+    Cookie = des_mod.Cookie
+    IceCream = des_mod.IceCream
+    Sundae = des_mod.Sundae
     c = Candy("Fudge", 1.0, 2.0)
     co = Cookie("Choc Chip", 12, 5.0)
     i = IceCream("Vanilla", 2, 1.5)
@@ -31,7 +31,7 @@ def test_payment_protocol():
 @pytest.mark.ag_order_payable
 def test_order_payable():
     (des_mod,) = import_student_modules("dessert")
-    Order = getattr(des_mod, "Order")
+    Order = des_mod.Order
     order = Order()
     assert order.get_pay_type() == "CASH"
     order.set_pay_type("CARD")

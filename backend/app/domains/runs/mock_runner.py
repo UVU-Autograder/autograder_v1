@@ -4,19 +4,16 @@ Simulates official run execution without requiring live Judge0 or Celery workers
 """
 from __future__ import annotations
 
-import csv
 import json
-import zipfile
 
 from sqlalchemy import select
 
-from app.core.settings import get_settings
 from app.db.session import SessionLocal
 from app.domains.assignments.models import Assignment
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.runs.models import RunSummary
-from app.domains.runs.queue_admission import release_execution_slots
 from app.domains.runs.orchestrator import set_run_state
+from app.domains.runs.queue_admission import release_execution_slots
 from app.domains.runs.service import (
     init_manual_results,
     official_run_dir,

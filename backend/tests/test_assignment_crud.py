@@ -1,17 +1,18 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
+from app.core.auth_utils import create_access_token
+from app.db.session import SessionLocal
+from app.domains.assignments.models import Assignment
+from app.domains.auth.models import Role, StaffAccess, User
+from app.domains.courses.models import Course, Section
+from app.main import create_app
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.main import create_app
-from app.domains.auth.models import User, Role, StaffAccess
-from app.domains.courses.models import Course, Section
-from app.domains.assignments.models import Assignment
-from app.db.session import SessionLocal
-from app.core.auth_utils import create_access_token
 
 @pytest.fixture(autouse=True)
 def initialized_database(reset_database):
@@ -42,11 +43,11 @@ def instructor_token(db_session):
         user = User(email=email, display_name="Test Instructor", is_active=True)
         db_session.add(user)
         db_session.flush()
-        
+
         role = db_session.scalar(select(Role).where(Role.name == "instructor"))
         course = db_session.scalar(select(Course).where(Course.code == "cs1400"))
         section = db_session.scalar(select(Section).where(Section.course_id == course.id))
-        
+
         access = StaffAccess(
             user=user,
             role=role,
@@ -66,11 +67,11 @@ def ia_token(db_session):
         user = User(email=email, display_name="Test IA", is_active=True)
         db_session.add(user)
         db_session.flush()
-        
+
         role = db_session.scalar(select(Role).where(Role.name == "IA"))
         course = db_session.scalar(select(Course).where(Course.code == "cs1400"))
         section = db_session.scalar(select(Section).where(Section.course_id == course.id))
-        
+
         access = StaffAccess(
             user=user,
             role=role,
@@ -157,7 +158,7 @@ def test_create_assignment_success(client, instructor_token, db_session):
 
 def test_create_assignment_duplicate_slug_blocked(client, instructor_token):
     headers = {"Authorization": f"Bearer {instructor_token}"}
-    
+
     # Try to create using an existing slug "simple-python-functions"
     payload = {
         "slug": "simple-python-functions",
@@ -187,7 +188,7 @@ def test_create_assignment_duplicate_slug_blocked(client, instructor_token):
 
 def test_create_assignment_invalid_slug(client, instructor_token):
     headers = {"Authorization": f"Bearer {instructor_token}"}
-    
+
     # Slug with spaces/uppercase
     payload = {
         "slug": "Invalid Slug",
@@ -203,7 +204,7 @@ def test_create_assignment_invalid_slug(client, instructor_token):
 
 def test_create_assignment_invalid_course(client, admin_token):
     headers = {"Authorization": f"Bearer {admin_token}"}
-    
+
     payload = {
         "slug": "valid-slug",
         "title": "Valid title",

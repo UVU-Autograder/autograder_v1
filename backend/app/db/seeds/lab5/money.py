@@ -1,5 +1,3 @@
-"""Money Class - Lab 5 Model Solution."""
-
 from __future__ import annotations
 
 

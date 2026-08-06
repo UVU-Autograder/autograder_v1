@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
-from app.core.settings import get_settings
+
 from app.core.auth_utils import create_access_token
 from app.core.dependencies import DbSession
+from app.core.settings import get_settings
 from app.domains.auth.models import User
 
 router = APIRouter()
@@ -24,14 +25,14 @@ def mock_login(request: MockLoginRequest, db: DbSession):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Mock login is only available in local development mode or when explicitly enabled.",
         )
-        
+
     email = request.email.strip().lower()
     if not email.endswith("@uvu.edu"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Mock login is restricted to @uvu.edu email addresses.",
         )
-        
+
     # Check/auto-provision user
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
@@ -39,9 +40,9 @@ def mock_login(request: MockLoginRequest, db: DbSession):
         db.add(user)
         db.commit()
         db.refresh(user)
-        
+
     token = create_access_token(email=email, display_name=user.display_name)
-    
+
     return {
         "access_token": token,
         "token_type": "bearer",

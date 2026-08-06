@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -9,10 +10,6 @@ from app.api.router import api_router
 from app.core.exception_handlers import AppError, app_error_handler
 from app.core.settings import get_settings
 from app.db.seed import initialize_database
-
-
-import asyncio
-import logging
 
 logger = logging.getLogger(__name__)
 

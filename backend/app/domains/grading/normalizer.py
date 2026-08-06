@@ -34,18 +34,3 @@ def normalize_output(text: str) -> str:
     return "\n".join(lines).strip()
 
 
-def outputs_match(expected: str, actual: str) -> bool:
-    """Compare two outputs after normalization.
-
-    Both *expected* and *actual* are passed through :func:`normalize_output`
-    before the comparison, so trivial whitespace/line-ending differences are
-    ignored.
-
-    Args:
-        expected: The reference (correct) output.
-        actual: The student program's output.
-
-    Returns:
-        ``True`` if the normalized outputs are identical.
-    """
-    return normalize_output(expected) == normalize_output(actual)

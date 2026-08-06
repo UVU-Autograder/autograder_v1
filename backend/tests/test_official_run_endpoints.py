@@ -1,9 +1,8 @@
-import sys
-import os
 import json
-import csv
+import sys
 import zipfile
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -11,8 +10,8 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db.session import SessionLocal
-from app.main import create_app
 from app.domains.runs.models import RunSummary
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
@@ -245,7 +244,7 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
     student_dir = workspaces_dir / f"official_{run.id}" / "student_11111"
     student_dir.mkdir(parents=True, exist_ok=True)
-    
+
     test_code_file = student_dir / "solution.py"
     test_code_file.write_text("def test(): return 42", encoding="utf-8")
     (student_dir / "diagram.png").write_bytes(b"\x89PNG\r\n")

@@ -1,20 +1,21 @@
 import ast
-from typing import TypedDict, Optional, Generator
+from collections.abc import Generator
+from typing import TypedDict
 
 
 class ExpectedIO(TypedDict):
-    expected_input: Optional[str]
-    expected_output: Optional[str]
+    expected_input: str | None
+    expected_output: str | None
 
 
-def _get_string_constant(node: Optional[ast.AST]) -> Optional[str]:
+def _get_string_constant(node: ast.AST | None) -> str | None:
     """Helper to extract a string literal constant from an AST node."""
     if node is not None and isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     return None
 
 
-def _get_assignment_targets_and_value(stmt: ast.AST) -> Generator[tuple[str, Optional[str]], None, None]:
+def _get_assignment_targets_and_value(stmt: ast.AST) -> Generator[tuple[str, str | None], None, None]:
     """Yields (target_var_name, string_value) pairs for Assign and AnnAssign nodes."""
     if isinstance(stmt, ast.Assign):
         val = _get_string_constant(stmt.value)
@@ -41,8 +42,8 @@ def extract_expected_io(source_code: str) -> dict[str, ExpectedIO]:
         return results
 
     # Track module-level assignments as fallbacks
-    module_input: Optional[str] = None
-    module_output: Optional[str] = None
+    module_input: str | None = None
+    module_output: str | None = None
 
     for stmt in tree.body:
         for var_name, val in _get_assignment_targets_and_value(stmt):
@@ -83,8 +84,8 @@ def extract_expected_io(source_code: str) -> dict[str, ExpectedIO]:
             if not markers:
                 continue
 
-            func_input: Optional[str] = None
-            func_output: Optional[str] = None
+            func_input: str | None = None
+            func_output: str | None = None
 
             for body_stmt in stmt.body:
                 for var_name, val in _get_assignment_targets_and_value(body_stmt):

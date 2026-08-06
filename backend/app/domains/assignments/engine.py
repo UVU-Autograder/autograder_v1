@@ -80,7 +80,7 @@ class AssignmentSpecificationEngine:
         except Exception as e:
             if hasattr(e, "errors"):
                 for err in e.errors():
-                    loc = " -> ".join(str(l) for l in err.get("loc", []))
+                    loc = " -> ".join(str(part) for part in err.get("loc", []))
                     errors.append(f"Schema validation error at '{loc}': {err.get('msg')}")
             else:
                 errors.append(f"Invalid configuration format: {e}")

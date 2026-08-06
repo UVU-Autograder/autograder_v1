@@ -1,15 +1,21 @@
 import sys
 from pathlib import Path
+
 import pytest
 from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.session import SessionLocal  # noqa: E402
-from app.domains.assignments.models import Assignment, AssignmentConfig  # noqa: E402
-from app.domains.assignments.validation import extract_ag_markers, run_preflight_validation  # noqa: E402
-from app.domains.assignments.service import save_artifact, get_assignment_for_course  # noqa: E402
+from app.db.session import SessionLocal
+from app.domains.assignments.service import (
+    get_assignment_for_course,
+    save_artifact,
+)
+from app.domains.assignments.validation import (
+    extract_ag_markers,
+    run_preflight_validation,
+)
 
 
 @pytest.fixture(autouse=True)

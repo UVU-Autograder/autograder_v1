@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class DessertItem(ABC):
     def __init__(self, name: str = ""):
         self.name = name

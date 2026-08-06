@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 RunState = Literal["queue", "run", "complete", "failure"]
 EtaBand = Literal["under_1_min", "1_to_3_min", "3_to_5_min", "over_5_min"]
@@ -34,6 +34,7 @@ class RunStatusResponse(BaseModel):
 
 
 from datetime import datetime
+
 
 class RunSummaryResponse(BaseModel):
     id: int

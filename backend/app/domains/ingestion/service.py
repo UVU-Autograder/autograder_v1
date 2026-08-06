@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.domains.ingestion.engine import IngestError, SubmissionIngestionEngine
+from app.domains.ingestion.engine import IngestError as IngestError, SubmissionIngestionEngine
 from app.domains.runs.models import RunSummary
 
 _engine = SubmissionIngestionEngine()

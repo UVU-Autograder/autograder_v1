@@ -9,20 +9,20 @@ from sqlalchemy import func, inspect, select
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-import app.domains.assignments.models as assignment_models  # noqa: E402
-from app.db.seed import (  # noqa: E402
+import app.domains.assignments.models as assignment_models
+from app.db.seed import (
     SEEDS_DIR,
     initialize_database,
     load_example_config,
 )
-from app.db.session import SessionLocal, engine  # noqa: E402
-from app.domains.assignments.schemas import (  # noqa: E402
+from app.db.session import SessionLocal, engine
+from app.domains.assignments.schemas import (
     AssignmentConfigV1,
     StaffAssignmentSetupUpdate,
     pytest_marker_for_key,
 )
-from app.domains.assignments.service import update_staff_setup  # noqa: E402
-from app.domains.courses.models import Course  # noqa: E402
+from app.domains.assignments.service import update_staff_setup
+from app.domains.courses.models import Course
 
 
 @pytest.fixture(autouse=True)

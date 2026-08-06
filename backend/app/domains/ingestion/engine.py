@@ -103,60 +103,66 @@ class SubmissionIngestionEngine:
         except QueueFullError as exc:
             raise IngestError(str(exc), status_code=429) from exc
 
-        run = RunSummary(
-            workflow_type="official",
-            actor_user_id=actor_user_id,
-            assignment_id=assignment.id,
-            section_id=section.id,
-            status="queue",
-            total_submission_count=submission_count,
-            success_count=0,
-            warning_count=0,
-            failure_count=0,
-            timeout_count=0,
-            failure_summary={},
-            token_usage_metadata={},
-        )
-        db.add(run)
-        db.commit()
-        db.refresh(run)
-
-        get_workspaces_dir().mkdir(parents=True, exist_ok=True)
         try:
-            official_run_zip_path(run.id).write_bytes(content)
-        except OSError:
-            release_execution_slots(submission_count)
-            run.status = "failure"
-            run.failure_summary = {"error": "Failed to persist submission archive."}
+            run = RunSummary(
+                workflow_type="official",
+                actor_user_id=actor_user_id,
+                assignment_id=assignment.id,
+                section_id=section.id,
+                status="queue",
+                total_submission_count=submission_count,
+                success_count=0,
+                warning_count=0,
+                failure_count=0,
+                timeout_count=0,
+                failure_summary={},
+                token_usage_metadata={},
+            )
+            db.add(run)
             db.commit()
-            raise IngestError("Failed to persist submission archive.", status_code=500)
-
-        queue_position = max(1, waiting - submission_count + 1)
-        set_run_state(
-            str(run.id),
-            "queue",
-            {
-                "total": submission_count,
-                "queued": submission_count,
-                "running": 0,
-                "completed": 0,
-                "failed": 0,
-                "warnings": 0,
-                "queue_position": queue_position,
-                "eta_band": eta_band_for_position(queue_position),
-                "message": "Official run queued for execution.",
-                "high_load": backpressure_snapshot().high_load,
-            },
-        )
-
-        if settings.sandbox_use_celery:
-            from app.domains.runs.tasks import grade_official_run
-
-            grade_official_run.delay(run.id)
-        else:
-            from app.domains.runs.tasks import run_mock_official_run
-
-            run_mock_official_run(run.id)
             db.refresh(run)
 
-        return run
+            get_workspaces_dir().mkdir(parents=True, exist_ok=True)
+            official_run_zip_path(run.id).write_bytes(content)
+
+            queue_position = max(1, waiting - submission_count + 1)
+            set_run_state(
+                str(run.id),
+                "queue",
+                {
+                    "total": submission_count,
+                    "queued": submission_count,
+                    "running": 0,
+                    "completed": 0,
+                    "failed": 0,
+                    "warnings": 0,
+                    "queue_position": queue_position,
+                    "eta_band": eta_band_for_position(queue_position),
+                    "message": "Official run queued for execution.",
+                    "high_load": backpressure_snapshot().high_load,
+                },
+            )
+
+            if settings.sandbox_use_celery:
+                from app.domains.runs.tasks import grade_official_run
+
+                grade_official_run.delay(run.id)
+            else:
+                from app.domains.runs.tasks import run_mock_official_run
+
+                run_mock_official_run(run.id)
+                db.refresh(run)
+
+            return run
+        except Exception as exc:
+            release_execution_slots(submission_count)
+            if 'run' in locals() and isinstance(run, RunSummary):
+                try:
+                    run.status = "failure"
+                    run.failure_summary = {"error": f"Ingestion error: {exc}"}
+                    db.commit()
+                except Exception:
+                    pass
+            if isinstance(exc, OSError):
+                raise IngestError("Failed to persist submission archive.", status_code=500) from exc
+            raise

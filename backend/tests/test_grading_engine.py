@@ -4,13 +4,11 @@ from __future__ import annotations
 import io
 import zipfile
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from app.domains.assignments.schemas import AssignmentConfigV1
-from app.domains.grading.engine import GradingEngine, GradingResult
+from app.domains.grading.engine import GradingEngine
 from app.domains.grading.executor import ExecutionOutcome
 from app.domains.grading.result_parser import PytestRunResult, PytestTestResult
 

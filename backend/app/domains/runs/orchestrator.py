@@ -20,7 +20,6 @@ from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.grading.engine import GradingEngine
 from app.domains.runs.queue_admission import release_execution_slots
 
-
 logger = logging.getLogger(__name__)
 
 # Redis key prefixes for run state

@@ -1,6 +1,7 @@
 """Autograding test suite for Lab 3: Type Hinting and Encapsulation."""
 
 import inspect
+
 import pytest
 from python_autograder_helpers import import_student_modules
 
@@ -9,7 +10,7 @@ from python_autograder_helpers import import_student_modules
 def test_encapsulation() -> None:
     """Verify _name protected attribute and __video_count private attribute encapsulation."""
     (yt_mod,) = import_student_modules("youtube_channel")
-    YouTubeChannel = getattr(yt_mod, "YouTubeChannel")
+    YouTubeChannel = yt_mod.YouTubeChannel
     ch = YouTubeChannel("Test", 10)
 
     assert hasattr(ch, "_name"), "YouTubeChannel must have _name attribute"
@@ -20,7 +21,7 @@ def test_encapsulation() -> None:
 def test_getters_setters() -> None:
     """Verify getter and setter methods and negative guard for video count."""
     (yt_mod,) = import_student_modules("youtube_channel")
-    YouTubeChannel = getattr(yt_mod, "YouTubeChannel")
+    YouTubeChannel = yt_mod.YouTubeChannel
     ch = YouTubeChannel("Initial", 5)
 
     assert hasattr(ch, "get_name"), "Missing get_name method"
@@ -45,7 +46,7 @@ def test_getters_setters() -> None:
 def test_type_hints() -> None:
     """Verify type hint annotations on constructor and __str__ method."""
     (yt_mod,) = import_student_modules("youtube_channel")
-    YouTubeChannel = getattr(yt_mod, "YouTubeChannel")
+    YouTubeChannel = yt_mod.YouTubeChannel
 
     sig_init = inspect.signature(YouTubeChannel.__init__)
     params = sig_init.parameters

@@ -22,7 +22,10 @@ from app.domains.ingestion.extractor import (
     validate_submission_bundle,
 )
 from app.integrations.artifacts.resolver import load_artifact_content
-from app.integrations.ast_checker.validator import ASTCheckResult, ASTCodeInspector, ASTFinding
+from app.integrations.ast_checker.validator import (
+    ASTCheckResult,
+    ASTCodeInspector,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -3,8 +3,8 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
 import packaging
+import pytest
 from pydantic import ValidationError
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]

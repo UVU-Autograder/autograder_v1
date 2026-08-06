@@ -13,13 +13,13 @@ from app.domains.sandbox.catalog import (
     list_sandbox_courses,
 )
 from app.domains.sandbox.schemas import (
+    ConceptMetadata,
     SandboxAssignmentDetail,
     SandboxAssignmentListResponse,
     SandboxCancelResponse,
     SandboxCourseListResponse,
     SandboxRunCreateResponse,
     SandboxRunResultResponse,
-    ConceptMetadata,
 )
 from app.domains.sandbox.service import sandbox_service
 

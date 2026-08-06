@@ -2,8 +2,8 @@ import inspect
 import io
 import runpy
 import sys
-import pytest
 
+import pytest
 from python_autograder_helpers import import_student_modules
 
 (des_mod,) = import_student_modules("dessert")

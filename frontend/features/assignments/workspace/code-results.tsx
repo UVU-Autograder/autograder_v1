@@ -16,6 +16,7 @@ import type {
   RunStatusResponse,
   SandboxTestSummary,
 } from "@/features/assignments/types";
+import VisualDiffViewer from "@/components/visual-diff-viewer";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 
@@ -251,23 +252,31 @@ export default function CodeResults({
           test.actual != null ||
           test.expected_value != null ||
           test.expected != null) && (
-          <div className="mt-2.5 p-3 rounded-md border border-red-200 bg-red-100/60 space-y-1.5 text-xs font-sans">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-red-900 w-28 shrink-0">
-                Your value:
-              </span>
-              <code className="bg-red-200/70 text-red-950 px-2 py-0.5 rounded font-mono break-all">
-                {test.your_value ?? test.actual ?? "false"}
-              </code>
+          <div className="mt-2.5 space-y-2">
+            <div className="p-3 rounded-md border border-red-200 bg-red-100/60 space-y-1.5 text-xs font-sans">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-red-900 w-28 shrink-0">
+                  Your value:
+                </span>
+                <code className="bg-red-200/70 text-red-950 px-2 py-0.5 rounded font-mono break-all">
+                  {test.your_value ?? test.actual ?? "false"}
+                </code>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-emerald-900 w-28 shrink-0">
+                  Expected value:
+                </span>
+                <code className="bg-emerald-200/70 text-emerald-950 px-2 py-0.5 rounded font-mono break-all">
+                  {test.expected_value ?? test.expected ?? "true"}
+                </code>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-emerald-900 w-28 shrink-0">
-                Expected value:
-              </span>
-              <code className="bg-emerald-200/70 text-emerald-950 px-2 py-0.5 rounded font-mono break-all">
-                {test.expected_value ?? test.expected ?? "true"}
-              </code>
-            </div>
+            {(test.expected || test.actual) && (
+              <VisualDiffViewer
+                expected={test.expected ?? test.expected_value}
+                actual={test.actual ?? test.your_value}
+              />
+            )}
           </div>
         )}
 

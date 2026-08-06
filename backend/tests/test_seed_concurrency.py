@@ -1,17 +1,16 @@
 import sys
-from pathlib import Path
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import sessionmaker
-
 from app.db import seed as seed_module
 from app.db.base import Base
 from app.domains.auth.models import User
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import sessionmaker
 
 
 def test_initialize_database_serializes_sqlite_seed(

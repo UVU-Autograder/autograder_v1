@@ -1,5 +1,5 @@
-import pytest
-from dessert import DessertItem, Candy, Cookie, IceCream, Sundae
+from dessert import Candy, Cookie, DessertItem, IceCream, Sundae
+
 
 # 1. DessertItem tests
 def test_dessert_item_default():

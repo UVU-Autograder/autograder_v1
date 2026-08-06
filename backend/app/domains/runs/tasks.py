@@ -13,30 +13,36 @@ import zipfile
 from datetime import UTC, datetime
 
 from app.db.base import import_domain_models
+
 import_domain_models()
 
-from app.integrations.celery.app import celery_app
-
-from app.domains.runs.lifecycle import RunLifecycleTracker
-from app.domains.runs.queue_admission import release_execution_slots, reserve_execution_slots
 from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
+from app.domains.runs.lifecycle import RunLifecycleTracker
 from app.domains.runs.mock_runner import run_mock_official_run
 from app.domains.runs.orchestrator import (
-    RUN_CANCELLED_PREFIX,
-    RUN_RESULT_PREFIX,
-    RUN_STATE_PREFIX,
-    RUN_STATE_TTL,
-    _get_redis,
     build_model_solution_zip,
     execute_sandbox_run,
     failing_automated_items,
     get_run_result,
     get_run_state,
-    is_run_cancelled,
-    mark_run_cancelled,
     set_run_result,
     set_run_state,
 )
+
+__all__ = [
+    "get_run_state",
+    "get_run_result",
+    "run_mock_official_run",
+    "grade_official_run",
+    "grade_sandbox_run",
+    "validate_assignment_model_solution",
+    "cleanup_expired_workspaces",
+]
+from app.domains.runs.queue_admission import (
+    release_execution_slots,
+    reserve_execution_slots,
+)
+from app.integrations.celery.app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +97,12 @@ def validate_assignment_model_solution(
     4. Records validation outcome (success or failure) in Redis
     """
     from app.db.session import SessionLocal
-    from app.domains.assignments.service import get_assignment_for_course, get_artifact_content
-    from app.domains.assignments.validation import run_preflight_validation
     from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.assignments.service import (
+        get_artifact_content,
+        get_assignment_for_course,
+    )
+    from app.domains.assignments.validation import run_preflight_validation
     from app.domains.grading.engine import GradingEngine
 
     run_id = f"val:{course_code}:{assignment_slug}"
@@ -247,7 +256,7 @@ def validate_assignment_model_solution(
         logger.exception("Model solution validation failed for assignment %s", assignment_slug)
         error_result = {
             "passed": False,
-            "errors": [f"Internal validation error: {type(exc).__name__}: {str(exc)}"],
+            "errors": [f"Internal validation error: {type(exc).__name__}: {exc!s}"],
             "score": 0,
             "max_score": 0,
         }
@@ -269,26 +278,25 @@ def validate_assignment_model_solution(
 )
 def grade_official_run(self, run_id: int) -> dict:
     """Execute official batch grading run asynchronously."""
-    import shutil
-    import zipfile
-    from pathlib import Path
-    import io
     import asyncio
-    import json
+    import shutil
+    from pathlib import Path
+
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
+
+    from app.core.settings import get_settings
     from app.db.session import SessionLocal
-    from app.domains.runs.models import RunSummary
     from app.domains.assignments.models import Assignment
     from app.domains.assignments.schemas import AssignmentConfigV1
-    from app.domains.ingestion.extractor import (
-        safe_extract_zip,
-        group_canvas_files,
-        prepare_student_bundle,
-        parse_canvas_filename,
-    )
     from app.domains.grading.engine import GradingEngine, GradingResult
-    from app.core.settings import get_settings
+    from app.domains.ingestion.extractor import (
+        group_canvas_files,
+        parse_canvas_filename,
+        prepare_student_bundle,
+        safe_extract_zip,
+    )
+    from app.domains.runs.models import RunSummary
     from app.domains.runs.service import (
         init_manual_results,
         official_run_dir,
@@ -324,28 +332,35 @@ def grade_official_run(self, run_id: int) -> dict:
             set_run_state(str(run_id), "failure", {"message": "Assignment or config not found"})
             return {"error": "Assignment or config not found"}
 
-        config = AssignmentConfigV1.model_validate(assignment.config.config_json)
-        max_score = config.base_points
-        automated_max_score = sum(
-            item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit
-        )
-        total_submissions = run.total_submission_count
+        try:
+            config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+            max_score = config.base_points
+            automated_max_score = sum(
+                item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit
+            )
+            total_submissions = run.total_submission_count
 
-        # Build artifact references
-        artifact_refs = {}
-        for art in assignment.artifacts:
-            if art.storage_ref:
-                artifact_refs[art.artifact_key] = art.storage_ref
+            # Build artifact references
+            artifact_refs = {}
+            for art in assignment.artifacts:
+                if art.storage_ref:
+                    artifact_refs[art.artifact_key] = art.storage_ref
 
-        # Merged concepts covered list
-        from app.domains.assignments.service import effective_allowed_concepts
+            # Merged concepts covered list
+            from app.domains.assignments.service import effective_allowed_concepts
 
-        allowed_concepts = effective_allowed_concepts(assignment)
-        grading_engine = GradingEngine(
-            config=config,
-            artifact_refs=artifact_refs,
-            allowed_concepts=allowed_concepts,
-        )
+            allowed_concepts = effective_allowed_concepts(assignment)
+            grading_engine = GradingEngine(
+                config=config,
+                artifact_refs=artifact_refs,
+                allowed_concepts=allowed_concepts,
+            )
+        except Exception as exc:
+            run.status = "failure"
+            db.commit()
+            release_execution_slots(run.total_submission_count or 0)
+            set_run_state(str(run_id), "failure", {"message": f"Setup error: {exc}"})
+            return {"error": str(exc)}
 
     tracker = RunLifecycleTracker(run_id, total_submissions)
     tracker.set_running("Official run executing.")
@@ -415,8 +430,8 @@ def grade_official_run(self, run_id: int) -> dict:
                     "test_results": [],
                     "warnings": [],
                     "failure_category": "preparation_error",
-                    "failure_message": f"Failed to prepare submission bundle: {str(e)}",
-                    "feedback_html": f"<html><body><p>Error preparing submission: {str(e)}</p></body></html>",
+                    "failure_message": f"Failed to prepare submission bundle: {e!s}",
+                    "feedback_html": f"<html><body><p>Error preparing submission: {e!s}</p></body></html>",
                     "manual_results": manual_results,
                     "overall_comment": "",
                 }
@@ -517,9 +532,11 @@ def grade_official_run(self, run_id: int) -> dict:
 @celery_app.task(name="app.domains.runs.tasks.cleanup_expired_workspaces")
 def cleanup_expired_workspaces() -> dict:
     """Clean up workspaces and ZIP files for runs older than 24 hours."""
-    from datetime import datetime, timedelta, UTC
     import shutil
+    from datetime import timedelta
+
     from sqlalchemy import select
+
     from app.db.session import SessionLocal
     from app.domains.runs.models import RunSummary
     from app.domains.runs.service import (
@@ -550,14 +567,14 @@ def cleanup_expired_workspaces() -> dict:
                     shutil.rmtree(run_dir, ignore_errors=True)
                     deleted_any = True
                 except Exception as e:
-                    errors.append(f"Failed to remove run_dir {run.id}: {str(e)}")
+                    errors.append(f"Failed to remove run_dir {run.id}: {e!s}")
 
             if zip_file.exists():
                 try:
                     zip_file.unlink(missing_ok=True)
                     deleted_any = True
                 except Exception as e:
-                    errors.append(f"Failed to unlink ZIP {run.id}: {str(e)}")
+                    errors.append(f"Failed to unlink ZIP {run.id}: {e!s}")
 
             if deleted_any:
                 cleaned_count += 1

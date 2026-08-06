@@ -10,7 +10,7 @@ import asyncio
 from typing import Any
 
 import httpx
-
+from typing_extensions import Self
 
 # ---------------------------------------------------------------------------
 # Custom exceptions
@@ -260,7 +260,7 @@ class Judge0Client:
         """Close the underlying HTTP client."""
         await self._client.aclose()
 
-    async def __aenter__(self) -> Judge0Client:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

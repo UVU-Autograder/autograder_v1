@@ -10,11 +10,11 @@ import pytest
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.domains.grading.executor import (  # noqa: E402
+from app.domains.grading.executor import (
     ExecutionOutcome,
     execute_pytest_in_judge0,
 )
-from app.integrations.judge0.client import Judge0CleanupError, Judge0Error  # noqa: E402
+from app.integrations.judge0.client import Judge0CleanupError, Judge0Error
 
 
 def _mock_judge0_client(
