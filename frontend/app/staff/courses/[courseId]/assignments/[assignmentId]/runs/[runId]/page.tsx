@@ -2,7 +2,7 @@
 
 import { DownloadIcon, AwardIcon, EyeIcon, FileIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
-import { use, useState, useEffect, useRef, useMemo } from "react";
+import { use, useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
@@ -296,53 +296,7 @@ export default function RunDetailPage({ params }: PageProps) {
     };
   }, [courseId, assignmentId, runId]);
 
-  const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    // Cancel any pending cleanup from a previous mount/strict-mode cycle
-    if (cleanupTimeoutRef.current) {
-      clearTimeout(cleanupTimeoutRef.current);
-      cleanupTimeoutRef.current = null;
-    }
-
-    const triggerCleanup = () => {
-      const url = `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/cleanup`;
-      const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
-      const headers = new Headers();
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      const base = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
-      
-      fetch(`${base}${url}`, {
-        method: "POST",
-        headers,
-        keepalive: true,
-      }).catch((err) => console.error("Auto cleanup failed", err));
-    };
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-
-    const handleUnload = () => {
-      triggerCleanup();
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("pagehide", handleUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      window.removeEventListener("pagehide", handleUnload);
-      
-      // Delay unmount cleanup to avoid React 18 strict mode double-render purging files on initial load
-      cleanupTimeoutRef.current = setTimeout(() => {
-        triggerCleanup();
-      }, 1500);
-    };
-  }, [courseId, assignmentId, runId]);
+  // Keep workspace intact for its 24h retention window unless explicitly purged by staff
 
   const handleCsvExport = async () => {
     setError(null);

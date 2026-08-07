@@ -58,7 +58,7 @@ type AssignmentEditorContextType = {
   fileRequirements: FileRequirementConfig[];
   addFileRequirement: () => void;
   removeFileRequirement: (idx: number) => void;
-  updateFileRequirement: (idx: number, field: keyof FileRequirementConfig, val: any) => void;
+  updateFileRequirement: (idx: number, field: keyof FileRequirementConfig, val: unknown) => void;
   updateFileRequirementPath: (reqIdx: number, pathIdx: number, val: string) => void;
   addFileRequirementPath: (reqIdx: number) => void;
   removeFileRequirementPath: (reqIdx: number, pathIdx: number) => void;
@@ -68,7 +68,7 @@ type AssignmentEditorContextType = {
   scoringItems: RubricItem[];
   addScoringItem: (itemType: "pytest" | "manual") => void;
   removeScoringItem: (key: string) => void;
-  updateScoringItemField: (key: string, field: keyof RubricItem, val: any) => void;
+  updateScoringItemField: (key: string, field: keyof RubricItem, val: unknown) => void;
   rubricGroups: RubricGroup[];
   addRubricGroup: () => void;
   removeRubricGroup: (key: string) => void;
@@ -156,10 +156,15 @@ export function AssignmentEditorProvider({
   // Concepts & Dependencies
   const [conceptDenylist, setConceptDenylist] = useState<string[]>([]);
   const [courseDefaultConcepts, setCourseDefaultConcepts] = useState<string[]>([]);
-  const [moduleConcepts, setModuleConcepts] = useState<string[]>([]);
   const [conceptMeta, setConceptMeta] = useState<Record<string, ConceptMetadata>>({});
   const [courseModules, setCourseModules] = useState<CourseModule[]>([]);
   const [dependencies, setDependencies] = useState<string[]>([]);
+
+  const moduleConcepts = useMemo(() => {
+    if (moduleId === null) return [];
+    const mod = courseModules.find((m) => m.id === moduleId);
+    return mod?.concepts || [];
+  }, [moduleId, courseModules]);
 
   // Dynamically compute cumulative inherited concepts up to currently selected moduleId
   const inheritedConcepts = useMemo(() => {
@@ -246,10 +251,11 @@ export function AssignmentEditorProvider({
       setScoringItems(cfg.scoring_items || setupData.scoring_items || []);
       setRubricGroups(cfg.rubric_groups || setupData.rubric_groups || []);
       setDependencies(cfg.dependencies || []);
-      setConceptDenylist(cfg.concepts?.denylist || (cfg.concepts as any)?.blacklist || []);
+      const legacyConcepts = cfg.concepts as Record<string, string[]> | undefined;
+      setConceptDenylist(cfg.concepts?.denylist || legacyConcepts?.blacklist || []);
 
       setDirty(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to load assignment setup.");
     } finally {
       setLoading(false);
@@ -257,18 +263,16 @@ export function AssignmentEditorProvider({
   }, [courseId, assignmentId]);
 
   useEffect(() => {
-    loadSetup();
+    let active = true;
+    const run = async () => {
+      await loadSetup();
+    };
+    if (active) run();
+    return () => {
+      active = false;
+    };
   }, [loadSetup]);
 
-  // Sync module concepts when moduleId changes
-  useEffect(() => {
-    if (moduleId !== null) {
-      const mod = courseModules.find((m) => m.id === moduleId);
-      setModuleConcepts(mod?.concepts || []);
-    } else {
-      setModuleConcepts([]);
-    }
-  }, [moduleId, courseModules]);
 
   const refreshArtifacts = async () => {
     try {
@@ -276,7 +280,7 @@ export function AssignmentEditorProvider({
         `/staff/courses/${courseId}/assignments/${assignmentId}/setup`
       );
       setArtifacts(res.artifacts || []);
-    } catch (e) {
+    } catch {
       // ignore refresh errors
     }
   };
@@ -293,7 +297,7 @@ export function AssignmentEditorProvider({
     markDirty();
   };
 
-  const updateFileRequirement = (idx: number, field: keyof FileRequirementConfig, val: any) => {
+  const updateFileRequirement = (idx: number, field: keyof FileRequirementConfig, val: unknown) => {
     setFileRequirements((prev) => prev.map((req, i) => (i === idx ? { ...req, [field]: val } : req)));
     markDirty();
   };
@@ -383,7 +387,7 @@ export function AssignmentEditorProvider({
     markDirty();
   };
 
-  const updateScoringItemField = (key: string, field: keyof RubricItem, val: any) => {
+  const updateScoringItemField = (key: string, field: keyof RubricItem, val: unknown) => {
     setScoringItems((prev) =>
       prev.map((item) => {
         if (item.key === key) {
@@ -567,7 +571,7 @@ export function AssignmentEditorProvider({
         `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`
       );
       setEditCodeText(text);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to fetch artifact code.");
     } finally {
       setIsLoadingCode(false);
@@ -588,7 +592,7 @@ export function AssignmentEditorProvider({
       setIsCodeModalOpen(false);
       setSuccessMessage(`Saved artifact '${editArtifactFilename}' successfully.`);
       await refreshArtifacts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to save artifact code.");
     } finally {
       setIsSavingCode(false);
@@ -649,7 +653,7 @@ export function AssignmentEditorProvider({
       setDirty(false);
       setSuccessMessage("Assignment configuration saved successfully.");
       await loadSetup();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to save assignment configuration.");
     } finally {
       setSaving(false);
@@ -664,7 +668,7 @@ export function AssignmentEditorProvider({
     try {
       await deleteStaffAssignment(courseId, assignmentId);
       router.push(`/staff/courses/${courseId}/assignments`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to delete assignment.");
     }
   };

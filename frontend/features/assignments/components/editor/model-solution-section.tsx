@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { apiClient } from "@/lib/api-client";
+import { staffArtifactPath } from "@/features/staff/api";
 
 type ValidationStatus = {
   status: "idle" | "queue" | "run" | "success" | "failure";
@@ -171,22 +172,8 @@ export function ModelSolutionSection() {
   };
 
   const handleDownload = (key: string, filename: string) => {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("token") || sessionStorage.getItem("token")
-        : null;
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-    const url = `${baseUrl.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`;
-
-    fetch(url, { headers: token ? { authorization: `Bearer ${token}` } : {} })
-      .then((res) => res.blob())
-      .then((blob) => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = filename || key;
-        a.click();
-      })
+    apiClient
+      .download(staffArtifactPath(courseId, assignmentId, key), filename || key)
       .catch(() => setErrorMessage("Download failed."));
   };
 

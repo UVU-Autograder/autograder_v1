@@ -52,10 +52,14 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       }
     };
 
+    let lastRecorded = 0;
     const updateActivity = () => {
+      const now = Date.now();
+      if (now - lastRecorded < 15000) return;
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       if (token && pathname !== "/staff/login") {
-        localStorage.setItem("lastActivity", Date.now().toString());
+        lastRecorded = now;
+        localStorage.setItem("lastActivity", now.toString());
       }
     };
 

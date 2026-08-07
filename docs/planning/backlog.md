@@ -37,7 +37,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 - [ ] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`) — implementation present; needs end-to-end host verification.
 - [ ] Expose extracted expected fields in the sandbox run results API — implementation present; needs payload verification.
-- [ ] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` exists; verify rendering against live student outputs).
+- [x] Wire sandbox visual diff to real expected vs actual output (`VisualDiffViewer` integrated into `code-results.tsx` with Vitest unit tests).
 - [x] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel (implemented via `parseExpectedIO` & `scoring-rules-section.tsx` badges).
 
 

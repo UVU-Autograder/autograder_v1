@@ -13,10 +13,10 @@
 A checklist item or pull request is complete when:
 
 - [ ] **End-to-End Verification:** Feature functions end-to-end in the integrated stack, not merely in isolation.
-- [ ] **Code Quality & Linting:** Passes type checking (`tsc` and `mypy` / Python types) and linters (`ESLint` and `Ruff`) without suppressions.
+- [ ] **Code Quality & Linting:** Passes type checking (`tsc` and Python typing) and linters (`ESLint` and `Ruff`) with zero comment suppressions (`// eslint-disable-next-line ...`). Re-exported symbols use explicit `as` or `__all__`.
 - [ ] **Automated Test Coverage:** Includes unit and integration test coverage for happy paths and high-risk paths (input validation, rate limiting, zero-retention cleanup, permissions).
 - [ ] **Edge Case Handling:** Correctly handles malformed ZIPs, unsafe archive paths (path traversal), missing bundle entrypoints, unmatched student filenames, non-`@uvu.edu` log-ins, execution timeouts, and workspace cleanup failures.
-- [ ] **Zero-Retention Compliance:** Deletion of temporary student code, extracted workspaces, and Judge0 execution artifacts (`DELETE /submissions/{token}`) is verified by automated test assertions.
+- [ ] **Zero-Retention & Slot Safety Compliance:** Deletion of temporary student code, extracted workspaces, and Judge0 execution artifacts is verified by automated test assertions. All concurrency slot reservations are guarded by top-level `try...finally` blocks.
 - [ ] **On-Prem Host Evidence:** Code changes affecting execution or system capacity include host evidence (or documented spot-check logs) prior to marking complete.
 - [ ] **Documentation Parity:** Updated relevant specifications in `docs/` and `.agents/memory/context.md` if interfaces, setup, or behaviors changed.
 

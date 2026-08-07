@@ -8,11 +8,10 @@ import { FileUploadButton } from "./file-upload-button";
 import { useBasePath } from "@/lib/view-context";
 
 export function AssignmentSidebar({
-    assignment,
     courseId,
     className
 }: {
-    assignment: Assignment;
+    assignment?: Assignment;
     courseId: string;
     className?: string;
 }) {

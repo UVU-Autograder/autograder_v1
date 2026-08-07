@@ -12,6 +12,6 @@
     "openapi:generate": "cd backend && python scripts/generate_openapi.py"
   },
   "devDependencies": {
-    "concurrently": "^10.0.3"
+    "concurrently": "^10.0.4"
   }
 }
