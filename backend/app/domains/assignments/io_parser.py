@@ -48,9 +48,9 @@ def extract_expected_io(source_code: str) -> dict[str, ExpectedIO]:
     for stmt in tree.body:
         for var_name, val in _get_assignment_targets_and_value(stmt):
             if val is not None:
-                if var_name in ("EXPECTED_INPUT", "INPUT"):
+                if var_name in ("EXPECTED_INPUT", "EXPECTED_INPUTS", "INPUT", "INPUTS"):
                     module_input = val
-                elif var_name in ("EXPECTED_OUTPUT", "EXPECTED", "OUTPUT"):
+                elif var_name in ("EXPECTED_OUTPUT", "EXPECTED_OUTPUTS", "EXPECTED", "OUTPUT", "OUTPUTS"):
                     module_output = val
 
     def get_ag_markers(func_node: ast.AST) -> list[str]:
@@ -90,9 +90,9 @@ def extract_expected_io(source_code: str) -> dict[str, ExpectedIO]:
             for body_stmt in stmt.body:
                 for var_name, val in _get_assignment_targets_and_value(body_stmt):
                     if val is not None:
-                        if var_name in ("EXPECTED_INPUT", "INPUT"):
+                        if var_name in ("EXPECTED_INPUT", "EXPECTED_INPUTS", "INPUT", "INPUTS"):
                             func_input = val
-                        elif var_name in ("EXPECTED_OUTPUT", "EXPECTED", "OUTPUT"):
+                        elif var_name in ("EXPECTED_OUTPUT", "EXPECTED_OUTPUTS", "EXPECTED", "OUTPUT", "OUTPUTS"):
                             func_output = val
 
             effective_input = func_input if func_input is not None else module_input

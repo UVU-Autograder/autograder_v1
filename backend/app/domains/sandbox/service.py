@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
 
@@ -24,47 +23,57 @@ from app.domains.sandbox.schemas import (
     RubricGroupResultResponse,
     SandboxCancelResponse,
     SandboxRunCreateResponse,
+    SandboxRunRecord,
     SandboxRunResultResponse,
     SandboxWarning,
     TestSummary,
     UploadQuota,
 )
 
-SESSION_TTL = timedelta(hours=1)
+from app.domains.sandbox.store import (
+    InMemoryRunStateStore,
+    RedisRunStateStore,
+    RunStateStore,
+)
 
-@dataclass
-class SandboxRunRecord:
-    run_id: str
-    session_id: str
-    course_id: str
-    assignment_id: str
-    state: RunState = "queue"
-    status_reads: int = 0
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    expires_at: datetime = field(
-        default_factory=lambda: datetime.now(UTC) + SESSION_TTL
-    )
-    queue_position: int = 1
-    warnings: int = 1
-    max_score: int = 100
-    celery_task_id: str | None = None
+SESSION_TTL = timedelta(hours=1)
 
 
 class SandboxService:
-    """In-memory contract store with optional Celery dispatch.
 
-    When use_celery=True, create_run dispatches a real Celery task and
-    run state is tracked in Redis. When use_celery=False (default for
-    contract tests), the service uses the original in-memory mock behavior.
+    """Deep domain service for student sandbox runs, quota tracking, and status monitoring.
+
+    Persistence and rate-limiting operations are delegated to a RunStateStore instance.
     """
 
-    def __init__(self, use_celery: bool = False) -> None:
+    def __init__(
+        self,
+        use_celery: bool = False,
+        store: RunStateStore | None = None,
+    ) -> None:
         self._use_celery = use_celery
-        self._runs: dict[str, SandboxRunRecord] = {}
-        self._session_uploads: dict[str, list[datetime]] = {}
+        if store is not None:
+            self._store = store
+        elif use_celery:
+            self._store = RedisRunStateStore()
+        else:
+            self._store = InMemoryRunStateStore()
+
+    @property
+    def _runs(self) -> dict[str, SandboxRunRecord]:
+        if isinstance(self._store, InMemoryRunStateStore):
+            return self._store._runs
+        return {}
+
+    @property
+    def _session_uploads(self) -> dict[str, list[datetime]]:
+        if isinstance(self._store, InMemoryRunStateStore):
+            return self._store._session_uploads
+        return {}
 
     @property
     def _upload_limit(self) -> int:
+
         return get_settings().sandbox_upload_limit
 
     @property
@@ -72,7 +81,7 @@ class SandboxService:
         return timedelta(seconds=get_settings().sandbox_upload_window_seconds)
 
     def quota_for_session(self, session_id: str | None) -> UploadQuota:
-        return self._quota_for(session_id)
+        return self._store.get_quota(session_id, self._upload_limit, self._upload_window)
 
     def create_run(
         self,
@@ -92,7 +101,7 @@ class SandboxService:
             return None, session_id or self._new_session(), None
 
         session = session_id or self._new_session()
-        quota = self._quota_for(session)
+        quota = self.quota_for_session(session)
         if quota.remaining <= 0:
             return None, session, 429
 
@@ -102,15 +111,8 @@ class SandboxService:
             return None, session, 503
 
         now = datetime.now(UTC)
-        if self._use_celery:
-            try:
-                r = self._redis_conn()
-                r.rpush(f"sandbox:uploads:{session}", str(now.timestamp()))
-                r.expire(f"sandbox:uploads:{session}", int(self._upload_window.total_seconds()))
-            except Exception:
-                self._session_uploads.setdefault(session, []).append(now)
-        else:
-            self._session_uploads.setdefault(session, []).append(now)
+        self._store.record_upload(session, now)
+
         run_id = f"run_{token_urlsafe(16)}"
         record = SandboxRunRecord(
             run_id=run_id,
@@ -120,7 +122,8 @@ class SandboxService:
             queue_position=max(1, waiting),
             max_score=max_score,
         )
-        self._runs[run_id] = record
+        self._store.save_run(record)
+
 
         # Dispatch Celery task if enabled and ZIP data is provided
         if self._use_celery and zip_data is not None and config_json is not None:
@@ -190,8 +193,8 @@ class SandboxService:
             except Exception:
                 pass
 
-        # Fall back to in-memory mock
-        record = self._runs.get(run_id)
+        # Fall back to store
+        record = self._store.get_run(run_id)
         if record is None:
             return None
         status = self._status_for(record)
@@ -202,7 +205,7 @@ class SandboxService:
         self, run_id: str, session_id: str | None
     ) -> SandboxCancelResponse | str | None:
         self._expire_old_runs()
-        record = self._runs.get(run_id)
+        record = self._store.get_run(run_id)
         if record is None or record.session_id != session_id:
             return None
         if record.state != "queue":
@@ -247,9 +250,10 @@ class SandboxService:
         self, run_id: str, session_id: str | None
     ) -> SandboxRunResultResponse | str | None:
         self._expire_old_runs()
-        record = self._runs.get(run_id)
+        record = self._store.get_run(run_id)
         if record is None or record.session_id != session_id:
             return None
+
 
         # Try Redis for real results if in Celery mode
         if self._use_celery:
@@ -522,7 +526,7 @@ class SandboxService:
         }[state]
 
     def _counters(self) -> RunCounters:
-        values = list(self._runs.values())
+        values = self._store.list_runs()
         if self._use_celery:
             try:
                 from app.domains.runs.tasks import get_run_state
@@ -562,9 +566,10 @@ class SandboxService:
 
     def _expire_old_runs(self) -> None:
         now = datetime.now(UTC)
-        expired = [run_id for run_id, run in self._runs.items() if run.expires_at < now]
-        for run_id in expired:
-            del self._runs[run_id]
+        for run in self._store.list_runs():
+            if run.expires_at < now:
+                self._store.delete_run(run.run_id)
+
 
 
 # Default instance - use_celery controlled via SANDBOX_USE_CELERY env var

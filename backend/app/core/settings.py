@@ -48,9 +48,22 @@ class Settings(BaseSettings):
     jwt_expiration_minutes: int = Field(default=5, ge=1, validation_alias="JWT_EXPIRATION_MINUTES")
     enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
+    cors_allowed_origins: str = Field(
+        default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://autograder-frontend-mockup.vercel.app",
+        validation_alias="CORS_ALLOWED_ORIGINS",
+    )
     local_llm_api_key: str | None = Field(default=None, validation_alias="LOCAL_LLM_API_KEY")
     local_llm_endpoint: str | None = Field(default=None, validation_alias="LOCAL_LLM_ENDPOINT")
     repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
+
+    @property
+    def parsed_cors_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
+
 
     @property
     def is_sqlite(self) -> bool:

@@ -5,7 +5,6 @@ and result persistence from Celery task worker wrappers.
 """
 from __future__ import annotations
 
-import asyncio
 import base64
 import io
 import json
@@ -146,29 +145,13 @@ def execute_sandbox_run(
             artifact_refs=artifact_refs,
             allowed_concepts=allowed_concepts,
         )
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            grading_result = loop.run_until_complete(
-                engine.grade_submission(zip_data=zip_data, stdin=stdin)
-            )
-        finally:
-            asyncio.set_event_loop(None)
-            loop.close()
+        grading_result = engine.grade_submission_sync(zip_data=zip_data, stdin=stdin)
 
         if is_run_cancelled(run_id):
             return _cancelled_response(run_id, "Sandbox run was cancelled after pipeline execution.")
 
-        result_dict = {
-            "run_id": run_id,
-            "success": grading_result.success,
-            "score": grading_result.score,
-            "max_score": grading_result.max_score,
-            "test_results": grading_result.test_results,
-            "warnings": grading_result.warnings,
-            "failure_category": grading_result.failure_category,
-            "failure_message": grading_result.failure_message,
-        }
+        result_dict = grading_result.to_dict(run_id=run_id)
+
 
         set_run_result(run_id, result_dict)
         if grading_result.success:

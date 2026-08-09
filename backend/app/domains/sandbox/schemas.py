@@ -1,8 +1,31 @@
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.domains.runs.schemas import QueueBackpressure, RunCounters, RunStatusResponse
+from app.domains.runs.schemas import QueueBackpressure, RunCounters, RunState, RunStatusResponse
+
+SESSION_TTL = timedelta(hours=1)
+
+
+@dataclass
+class SandboxRunRecord:
+    run_id: str
+    session_id: str
+    course_id: str
+    assignment_id: str
+    state: RunState = "queue"
+    status_reads: int = 0
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime = field(
+        default_factory=lambda: datetime.now(UTC) + SESSION_TTL
+    )
+    queue_position: int = 1
+    warnings: int = 1
+    max_score: int = 100
+    celery_task_id: str | None = None
+
 
 
 class UploadQuota(BaseModel):

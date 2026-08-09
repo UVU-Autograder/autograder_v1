@@ -45,6 +45,10 @@ Do not install `next`/`react` at the repo root.
 ## Backend
 
 ```bash
+# From repo root:
+npm run openapi:generate
+
+# Or inside backend directory:
 cd backend
 python -m pytest
 python scripts/generate_openapi.py   # refresh docs/schemas/openapi.json

@@ -33,10 +33,10 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 - [x] Fix student sandbox sidebar (removed `mt-15` offset, aligned flush with shell header, added Problem Overview button).
 - [x] Refactor problem description rendering to structured layout instead of raw text file views (implemented minimal `<ProblemOverview />` tab component).
 
-### Expected I/O extraction and visual diff (Unverified / Manual validation needed)
+### Expected I/O extraction and visual diff
 
-- [ ] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`) — implementation present; needs end-to-end host verification.
-- [ ] Expose extracted expected fields in the sandbox run results API — implementation present; needs payload verification.
+- [x] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`) — verified via unit tests in `backend/tests/test_io_parser.py`.
+- [x] Expose extracted expected fields in the sandbox run results API — integrated in `runner_gen.py` & verified via contract tests.
 - [x] Wire sandbox visual diff to real expected vs actual output (`VisualDiffViewer` integrated into `code-results.tsx` with Vitest unit tests).
 - [x] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel (implemented via `parseExpectedIO` & `scoring-rules-section.tsx` badges).
 

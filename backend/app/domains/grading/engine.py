@@ -43,6 +43,21 @@ class GradingResult:
     ast_result: ASTCheckResult | None = None
     pytest_result: PytestRunResult | None = None
 
+    def to_dict(self, run_id: str | None = None) -> dict:
+        """Serialize GradingResult into a standardized dictionary for state tracking and Redis."""
+        data = {
+            "success": self.success,
+            "score": self.score,
+            "max_score": self.max_score,
+            "test_results": self.test_results,
+            "warnings": self.warnings,
+            "failure_category": self.failure_category,
+            "failure_message": self.failure_message,
+        }
+        if run_id is not None:
+            data["run_id"] = run_id
+        return data
+
 
 class GradingEngine:
     """Deep domain engine for executing Python submission grading.
@@ -62,11 +77,32 @@ class GradingEngine:
         self.allowed_concepts = allowed_concepts
         self.settings = get_settings()
 
+    def grade_submission_sync(
+        self,
+        zip_data: bytes,
+        stdin: str | None = None,
+    ) -> GradingResult:
+        """Synchronous convenience entrypoint for Celery workers and offline execution."""
+        import asyncio
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            return loop.run_until_complete(self.grade_submission(zip_data, stdin=stdin))
+        return asyncio.run(self.grade_submission(zip_data, stdin=stdin))
+
     async def grade_submission(
         self,
         zip_data: bytes,
         stdin: str | None = None,
     ) -> GradingResult:
+
         """Execute the full grading pipeline for a single student submission bundle.
 
         :param zip_data: Raw byte array of the student submission ZIP archive.

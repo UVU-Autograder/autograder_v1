@@ -156,8 +156,9 @@ class SubmissionIngestionEngine:
             return run
         except Exception as exc:
             release_execution_slots(submission_count)
-            if 'run' in locals() and isinstance(run, RunSummary):
+            if "run" in locals() and isinstance(run, RunSummary):
                 try:
+                    official_run_zip_path(run.id).unlink(missing_ok=True)
                     run.status = "failure"
                     run.failure_summary = {"error": f"Ingestion error: {exc}"}
                     db.commit()
@@ -166,3 +167,4 @@ class SubmissionIngestionEngine:
             if isinstance(exc, OSError):
                 raise IngestError("Failed to persist submission archive.", status_code=500) from exc
             raise
+

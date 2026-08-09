@@ -415,39 +415,37 @@ def grade_official_run(self, run_id: int) -> dict:
             manual_results = init_manual_results(config.scoring_items)
 
             try:
-                prepare_student_bundle(paths, student_temp_dir)
-            except Exception as e:
-                failure_count += 1
-                failure_summary_counts["preparation_error"] = failure_summary_counts.get("preparation_error", 0) + 1
-                student_results[canvas_user_id] = {
-                    "student_identifier": student_identifier,
-                    "submission_id": submission_id,
-                    "matched_file": original_filename,
-                    "success": False,
-                    "score": 0,
-                    "max_score": max_score,
-                    "automated_max_score": automated_max_score,
-                    "test_results": [],
-                    "warnings": [],
-                    "failure_category": "preparation_error",
-                    "failure_message": f"Failed to prepare submission bundle: {e!s}",
-                    "feedback_html": f"<html><body><p>Error preparing submission: {e!s}</p></body></html>",
-                    "manual_results": manual_results,
-                    "overall_comment": "",
-                }
-                shutil.rmtree(student_temp_dir, ignore_errors=True)
-                tracker.release_slots(1)
-                tracker.update_progress(success_count, warning_count, failure_count, timeout_count, failure_summary_counts)
-                return
+                try:
+                    prepare_student_bundle(paths, student_temp_dir)
+                except Exception as e:
+                    failure_count += 1
+                    failure_summary_counts["preparation_error"] = failure_summary_counts.get("preparation_error", 0) + 1
+                    student_results[canvas_user_id] = {
+                        "student_identifier": student_identifier,
+                        "submission_id": submission_id,
+                        "matched_file": original_filename,
+                        "success": False,
+                        "score": 0,
+                        "max_score": max_score,
+                        "automated_max_score": automated_max_score,
+                        "test_results": [],
+                        "warnings": [],
+                        "failure_category": "preparation_error",
+                        "failure_message": f"Failed to prepare submission bundle: {e!s}",
+                        "feedback_html": f"<html><body><p>Error preparing submission: {e!s}</p></body></html>",
+                        "manual_results": manual_results,
+                        "overall_comment": "",
+                    }
+                    tracker.update_progress(success_count, warning_count, failure_count, timeout_count, failure_summary_counts)
+                    return
 
-            student_zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(student_zip_buffer, "w", zipfile.ZIP_DEFLATED) as sz:
-                for filepath in student_temp_dir.rglob("*"):
-                    if filepath.is_file():
-                        sz.write(filepath, filepath.relative_to(student_temp_dir))
-            student_zip_bytes = student_zip_buffer.getvalue()
+                student_zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(student_zip_buffer, "w", zipfile.ZIP_DEFLATED) as sz:
+                    for filepath in student_temp_dir.rglob("*"):
+                        if filepath.is_file():
+                            sz.write(filepath, filepath.relative_to(student_temp_dir))
+                student_zip_bytes = student_zip_buffer.getvalue()
 
-            try:
                 try:
                     async with semaphore:
                         grading_result = await grading_engine.grade_submission(
@@ -496,6 +494,7 @@ def grade_official_run(self, run_id: int) -> dict:
 
                 tracker.update_progress(success_count, warning_count, failure_count, timeout_count, failure_summary_counts)
             finally:
+                shutil.rmtree(student_temp_dir, ignore_errors=True)
                 tracker.release_slots(1)
 
         loop = asyncio.new_event_loop()
