@@ -132,6 +132,37 @@ The compose file starts Judge0 CE and its worker locally. The app sends zipped s
 
 Judge0 CE `1.13.1` is Debian Buster (EOL). `judge0.Dockerfile` retargets apt to `archive.debian.org` and builds as `USER root` during install, then switches back to `judge0`.
 
+### Cgroups: Judge0 isolate vs modern Linux
+
+Stock Judge0 1.13.1 ships **isolate 1.8.1**, which expects **cgroup v1** paths such as `/sys/fs/cgroup/memory/box-N/tasks`. Modern hosts (Arch with systemd ≥258, and many current kernels) run **cgroup v2 only**. Symptoms:
+
+- API and containers look healthy
+- Submissions return status **13 Internal Error** with message like `Cannot write /sys/fs/cgroup/memory/box-…/tasks: No such file or directory`
+
+**Do not rely on** `systemd.unified_cgroup_hierarchy=0` on this Arch host: systemd **261** has removed forcing cgroup v1 (see ArchWiki *Cgroups* historical note). Mounting `/sys/fs/cgroup` into the container also does not create missing v1 controllers.
+
+**POC workaround (enabled in `docker-compose.poc.yml`):** set
+
+```yaml
+ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT: "true"
+ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
+```
+
+on both `judge0` and `judge0-worker`. That makes Judge0 omit isolate’s `--cg` flag and use process rlimits instead, which works on cgroup v2. Isolation is weaker than cgroup accounting; fine for laptop POC, not a substitute for Kata on the Dell workstation.
+
+**Longer-term:** upgrade to isolate v2 + Judge0 cgroup-v2 entrypoint changes (upstream PR discussion), or run on a host that still supports cgroup v1 / Kata validation path.
+
+Verify after recreate:
+
+```bash
+# stock Python 3.8 language id 71, or custom 711 after seed
+curl -sS -X POST "http://127.0.0.1:2358/submissions?base64_encoded=false&wait=true" \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $JUDGE0_AUTH_TOKEN" \
+  -d '{"source_code":"print(12345)","language_id":71}'
+# expect status.description Accepted (or similar success), stdout "12345\n"
+```
+
 Kata Containers is host-level execution isolation. The repository cannot configure GRUB or prove Kata isolation from inside the FastAPI image. The optional `docker-compose.kata.yml` override requires a host Docker runtime named `kata-runtime`. Before treating the Ubuntu machine as the intended execution target, collect operational evidence on the host that:
 
 - Docker/containerd uses the Kata-capable runtime expected by the Judge0 execution path.
