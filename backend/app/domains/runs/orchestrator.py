@@ -53,6 +53,17 @@ def failing_automated_items(test_results: list[dict]) -> list[dict]:
     ]
 
 
+_local_state_cache: dict[str, dict] = {}
+_local_result_cache: dict[str, dict] = {}
+_local_cancelled_set: set[str] = set()
+
+
+def clear_local_orchestrator_cache() -> None:
+    _local_state_cache.clear()
+    _local_result_cache.clear()
+    _local_cancelled_set.clear()
+
+
 def _get_redis():
     """Get a Redis connection from the Celery broker."""
     settings = get_settings()
@@ -60,50 +71,73 @@ def _get_redis():
 
 
 def set_run_state(run_id: str, state: str, extra: dict | None = None) -> None:
-    """Store run state in Redis with TTL."""
-    r = _get_redis()
+    """Store run state in Redis or local cache with TTL."""
     data = {"state": state, "updated_at": datetime.now(UTC).isoformat()}
     if extra:
         data.update(extra)
-    r.setex(f"{RUN_STATE_PREFIX}{run_id}", RUN_STATE_TTL, json.dumps(data))
+    _local_state_cache[run_id] = data
+    try:
+        r = _get_redis()
+        r.setex(f"{RUN_STATE_PREFIX}{run_id}", RUN_STATE_TTL, json.dumps(data))
+    except Exception:
+        pass
 
 
 def get_run_state(run_id: str) -> dict | None:
-    """Read run state from Redis."""
-    r = _get_redis()
-    raw = r.get(f"{RUN_STATE_PREFIX}{run_id}")
-    if raw is None:
-        return None
-    return json.loads(raw)
+    """Read run state from Redis or local cache."""
+    try:
+        r = _get_redis()
+        raw = r.get(f"{RUN_STATE_PREFIX}{run_id}")
+        if raw is not None:
+            return json.loads(raw)
+    except Exception:
+        pass
+    return _local_state_cache.get(run_id)
 
 
 def mark_run_cancelled(run_id: str) -> None:
     """Durable cancel marker so workers skip release after cancel_run."""
-    r = _get_redis()
-    r.setex(f"{RUN_CANCELLED_PREFIX}{run_id}", RUN_STATE_TTL, "1")
+    _local_cancelled_set.add(run_id)
+    try:
+        r = _get_redis()
+        r.setex(f"{RUN_CANCELLED_PREFIX}{run_id}", RUN_STATE_TTL, "1")
+    except Exception:
+        pass
 
 
 def is_run_cancelled(run_id: str) -> bool:
     try:
-        return bool(_get_redis().get(f"{RUN_CANCELLED_PREFIX}{run_id}"))
+        if run_id in _local_cancelled_set:
+            return True
+        r = _get_redis()
+        if bool(r.get(f"{RUN_CANCELLED_PREFIX}{run_id}")):
+            return True
     except Exception:
-        state = get_run_state(run_id) or {}
-        return state.get("failure_category") == "cancelled"
+        pass
+    state = get_run_state(run_id) or {}
+    return state.get("failure_category") == "cancelled"
 
 
 def set_run_result(run_id: str, result: dict) -> None:
-    """Store grading result in Redis with TTL."""
-    r = _get_redis()
-    r.setex(f"{RUN_RESULT_PREFIX}{run_id}", RUN_STATE_TTL, json.dumps(result))
+    """Store grading result in Redis or local cache with TTL."""
+    _local_result_cache[run_id] = result
+    try:
+        r = _get_redis()
+        r.setex(f"{RUN_RESULT_PREFIX}{run_id}", RUN_STATE_TTL, json.dumps(result))
+    except Exception:
+        pass
 
 
 def get_run_result(run_id: str) -> dict | None:
-    """Read grading result from Redis."""
-    r = _get_redis()
-    raw = r.get(f"{RUN_RESULT_PREFIX}{run_id}")
-    if raw is None:
-        return None
-    return json.loads(raw)
+    """Read grading result from Redis or local cache."""
+    try:
+        r = _get_redis()
+        raw = r.get(f"{RUN_RESULT_PREFIX}{run_id}")
+        if raw is not None:
+            return json.loads(raw)
+    except Exception:
+        pass
+    return _local_result_cache.get(run_id)
 
 
 def _cancelled_response(run_id: str, message: str = "Sandbox run was cancelled before execution.") -> dict:

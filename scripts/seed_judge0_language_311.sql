@@ -5,8 +5,8 @@ VALUES (
     711,
     'Python (3.11.9)',
     NULL,
-    '/usr/local/python-3.11.9/bin/python3.11 main.py',
-    'main.py',
+    '/usr/local/python-3.11.9/bin/python3.11 script.py',
+    'script.py',
     false
 )
 ON CONFLICT (id) DO UPDATE SET

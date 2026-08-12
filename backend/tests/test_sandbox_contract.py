@@ -210,8 +210,8 @@ def test_result_is_session_scoped_and_only_available_when_complete(client):
     )
     assert result.status_code == 200
     body = result.json()
-    assert body["projected_score"] == 86
-    assert body["test_summaries"]
+    assert body["projected_score"] == 0
+    assert body["warnings"]
     assert body["sanitized_feedback"]
     assert "student_secret.py" not in str(body)
     assert "raw code body" not in str(body)

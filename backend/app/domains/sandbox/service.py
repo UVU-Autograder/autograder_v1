@@ -1,7 +1,8 @@
-from __future__ import annotations
-
+import logging
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
+
+logger = logging.getLogger(__name__)
 
 from app.core.settings import get_settings
 from app.domains.runs.queue_admission import (
@@ -125,33 +126,40 @@ class SandboxService:
         self._store.save_run(record)
 
 
-        # Dispatch Celery task if enabled and ZIP data is provided
-        if self._use_celery and zip_data is not None and config_json is not None:
+        # Store execution payload on record
+        if zip_data is not None and config_json is not None:
             import base64
 
-            from app.domains.runs.tasks import grade_sandbox_run, set_run_state
-
             zip_b64 = base64.b64encode(zip_data).decode("ascii")
-            try:
-                set_run_state(
-                    run_id,
-                    "queue",
-                    {
-                        "queue_position": record.queue_position,
-                        "eta_band": eta_band_for_position(record.queue_position),
-                    },
+            record.zip_data_b64 = zip_b64
+            record.config_json = config_json
+            record.artifact_refs = artifact_refs or {}
+            record.allowed_concepts = allowed_concepts or []
+            record.stdin = stdin
+
+            if self._use_celery:
+                from app.domains.runs.tasks import grade_sandbox_run, set_run_state
+
+                try:
+                    set_run_state(
+                        run_id,
+                        "queue",
+                        {
+                            "queue_position": record.queue_position,
+                            "eta_band": eta_band_for_position(record.queue_position),
+                        },
+                    )
+                except Exception:
+                    pass
+                grade_result = grade_sandbox_run.delay(
+                    run_id=run_id,
+                    zip_data_b64=zip_b64,
+                    config_json=config_json,
+                    artifact_refs=artifact_refs or {},
+                    allowed_concepts=allowed_concepts or [],
+                    stdin=stdin,
                 )
-            except Exception:
-                pass
-            grade_result = grade_sandbox_run.delay(
-                run_id=run_id,
-                zip_data_b64=zip_b64,
-                config_json=config_json,
-                artifact_refs=artifact_refs or {},
-                allowed_concepts=allowed_concepts or [],
-                stdin=stdin,
-            )
-            record.celery_task_id = grade_result.id
+                record.celery_task_id = grade_result.id
 
         status = self._status_for(record)
         return (
@@ -366,7 +374,6 @@ class SandboxService:
             except Exception:
                 pass
 
-        # In-memory mock behavior for contract tests
         if record.state not in {"complete", "failure"}:
             return "not_ready"
         if record.state == "failure":
@@ -382,37 +389,109 @@ class SandboxService:
                 sanitized_feedback="The sandbox run ended before projected grading completed.",
                 file_preview=self._file_preview(),
             )
+
+        # In offline/mock mode, evaluate synchronously when complete if result is not yet computed
+        if record.result is None and record.zip_data_b64 and record.config_json:
+            from app.domains.runs.orchestrator import execute_sandbox_run
+
+            try:
+                record.result = execute_sandbox_run(
+                    run_id=run_id,
+                    zip_data_b64=record.zip_data_b64,
+                    config_json=record.config_json,
+                    artifact_refs=record.artifact_refs or {},
+                    allowed_concepts=record.allowed_concepts or [],
+                    stdin=record.stdin,
+                )
+            except Exception:
+                logger.exception("Synchronous sandbox evaluation failed for %s", run_id)
+
+        # Check stored result from execution
+        if record.result is not None:
+            res_data = record.result
+            test_summaries = []
+            for tr in res_data.get("test_results", []):
+                failed_sub = None
+                actual_val = None
+                expected_val = None
+                expected_input_val = None
+
+                for sub in tr.get("test_results", []):
+                    if sub.get("actual") is not None and actual_val is None:
+                        actual_val = sub.get("actual")
+                    if sub.get("expected") is not None and expected_val is None:
+                        expected_val = sub.get("expected")
+                    if sub.get("expected_input") is not None and expected_input_val is None:
+                        expected_input_val = sub.get("expected_input")
+                    if sub.get("outcome") != "passed":
+                        failed_sub = sub
+                        break
+
+                msg = tr.get("label", "")
+                if failed_sub:
+                    msg = failed_sub.get("message") or ""
+                    if failed_sub.get("actual") is not None:
+                        actual_val = failed_sub.get("actual")
+                    if failed_sub.get("expected") is not None:
+                        expected_val = failed_sub.get("expected")
+                    if failed_sub.get("expected_input") is not None:
+                        expected_input_val = failed_sub.get("expected_input")
+
+                your_val = tr.get("your_value") or actual_val
+                exp_val = tr.get("expected_value") or expected_val
+
+                test_summaries.append(
+                    TestSummary(
+                        label=tr.get("label", tr.get("key", "Unknown")),
+                        status="passed" if tr.get("passed") else "failed",
+                        points_awarded=tr.get("points_awarded", 0),
+                        points_possible=tr.get("points", 0),
+                        message=msg,
+                        actual=actual_val,
+                        expected=expected_val,
+                        your_value=your_val,
+                        expected_value=exp_val,
+                        expected_input=expected_input_val,
+                    )
+                )
+
+            warnings = [
+                SandboxWarning(code=w.get("code", "warning"), message=w.get("message", ""))
+                for w in res_data.get("warnings", [])
+            ]
+            if not res_data.get("success") and res_data.get("failure_message"):
+                warnings.append(
+                    SandboxWarning(
+                        code=res_data.get("failure_category", "submission_error"),
+                        message=res_data.get("failure_message"),
+                    )
+                )
+
+            return SandboxRunResultResponse(
+                run_id=run_id,
+                state="complete" if res_data.get("success", True) else "failure",
+                projected_score=res_data.get("score", 0),
+                max_score=res_data.get("max_score", record.max_score),
+                warnings=warnings,
+                test_summaries=test_summaries,
+                sanitized_feedback=res_data.get("failure_message") if not res_data.get("success") else "Review your results above.",
+                file_preview=self._file_preview(),
+                raw_output=res_data.get("raw_output"),
+            )
+
         return SandboxRunResultResponse(
             run_id=run_id,
             state="complete",
-            projected_score=86,
-            max_score=100,
+            projected_score=0,
+            max_score=self._assignment_max_score(record),
             warnings=[
                 SandboxWarning(
-                    code="style_signal",
-                    message="One style check reported a non-blocking improvement.",
+                    code="missing_files",
+                    message="No valid submission files were uploaded or evaluated.",
                 )
             ],
-            test_summaries=[
-                TestSummary(
-                    label="Public behavior checks",
-                    status="passed",
-                    points_awarded=60,
-                    points_possible=60,
-                    message="Visible examples matched expected behavior.",
-                ),
-                TestSummary(
-                    label="Edge-case checks",
-                    status="warning",
-                    points_awarded=26,
-                    points_possible=40,
-                    message="Some boundary behavior may need review.",
-                ),
-            ],
-            sanitized_feedback=(
-                "Your projected result is strong. Review boundary-case handling and keep "
-                "the implementation organized before an official submission."
-            ),
+            test_summaries=[],
+            sanitized_feedback="Upload assignment files to receive a projected score.",
             file_preview=self._file_preview(),
         )
 

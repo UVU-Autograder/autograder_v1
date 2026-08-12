@@ -25,6 +25,12 @@ class SandboxRunRecord:
     warnings: int = 1
     max_score: int = 100
     celery_task_id: str | None = None
+    result: dict | None = None
+    zip_data_b64: str | None = None
+    config_json: dict | None = None
+    artifact_refs: dict | None = None
+    allowed_concepts: list | None = None
+    stdin: str | None = None
 
 
 

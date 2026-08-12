@@ -38,5 +38,3 @@ RUN /usr/local/python-3.11.9/bin/python3.11 -m pip install --no-cache-dir --upgr
     pillow \
     pygame \
     tabulate
-
-USER judge0
