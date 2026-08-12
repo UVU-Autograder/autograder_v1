@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/bin/sh
 # Creates the Judge0 database/role alongside the app DB from POSTGRES_DB.
 # Runs only on first Postgres data-volume init.
 # CREATEDB is required so Judge0's Rails `db:create` entrypoint step succeeds.
-set -euo pipefail
+set -eu
 
 JUDGE0_PASSWORD="${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}"
 
@@ -14,8 +14,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  END IF;
 	END
 	\$\$;
-
-	ALTER ROLE judge0 WITH CREATEDB;
 
 	SELECT 'CREATE DATABASE judge0 OWNER judge0'
 	WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'judge0')\gexec

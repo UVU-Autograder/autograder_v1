@@ -1,6 +1,8 @@
-# Ubuntu 24.x Local POC Deployment
+# Local POC Deployment (Ubuntu 24.x target; other Linux OK for light use)
 
-This document wires the current repository into a fully functional local proof-of-concept stack for the Ubuntu 24.x machine. This is not a live-student production approval document. It is intended for synthetic, fake, or approved anonymized test code while the team validates the end-to-end autograder path.
+This document wires the current repository into a fully functional local proof-of-concept stack. The long-term execution target is the Ubuntu 24.x / Dell workstation with Kata. The same compose file can run on other Linux hosts (e.g. a developer laptop) for backend and single-job grading smoke tests—see [Host capacity](#host-capacity).
+
+This is not a live-student production approval document. Use synthetic, fake, or approved anonymized test code while validating the end-to-end autograder path.
 
 ## Stack
 
@@ -16,10 +18,10 @@ This document wires the current repository into a fully functional local proof-o
 
 - `docker-compose.poc.yml`: local POC stack for Postgres, Redis, Judge0, backend, and Celery worker.
 - `judge0.Dockerfile`: custom Judge0 image with Python 3.11.9 and allowlisted course deps; tagged locally as `uvu-autograder-judge0:latest`.
-- `scripts/init_poc_databases.sh`: creates the `judge0` role/database on first Postgres volume init.
-- `scripts/seed_judge0_language_311.sql`: registers language ID `711` after Judge0 is healthy.
+- `scripts/init_poc_databases.sh`: POSIX `sh` script that creates the `judge0` role (`CREATEDB`) and database on first Postgres volume init. Judge0’s Rails entrypoint runs `db:create`, which requires `CREATEDB` even when the database already exists.
+- `scripts/seed_judge0_language_311.sql`: registers language ID `711` after Judge0 is healthy (cannot run in `initdb` because the `languages` table does not exist yet).
 - `backend/Dockerfile`: backend runtime image that installs Python dependencies, waits for Postgres, runs Alembic, and optionally seeds development data.
-- `.env.example`: local POC environment template.
+- `.env.example`: local POC environment template (copy to `.env.local`; do not commit real secrets).
 - `backend/scripts/docker-entrypoint.sh`: backend container startup script.
 
 ## First Run
@@ -29,25 +31,51 @@ From the repository root:
 ```bash
 cp .env.example .env.local
 # Edit .env.local secrets if needed.
+# On low-RAM laptops, set JUDGE0_MAX_CONCURRENT=1 (see Host capacity).
 
 # First time (or after judge0.Dockerfile / allowlisted deps change):
 docker compose --env-file .env.local -f docker-compose.poc.yml build judge0
 
 # Day-to-day: reuses the local uvu-autograder-judge0:latest tag
-docker compose --env-file .env.local -f docker-compose.poc.yml up --build
+docker compose --env-file .env.local -f docker-compose.poc.yml up -d --build
 ```
 
-`up --build` rebuilds backend/celery when their Dockerfile or context changes; Judge0 is only rebuilt when you explicitly `build judge0` (or change its Dockerfile and force a rebuild).
+`up --build` rebuilds backend/celery when their Dockerfile or context changes; Judge0 is only rebuilt when you explicitly `build judge0` (or change its Dockerfile and force a rebuild). The Judge0 image is **local-tag only** (no registry): `uvu-autograder-judge0:latest`.
+
+Python in `judge0.Dockerfile` is built **without** `--enable-optimizations` so POC rebuilds stay shorter. Revisit PGO later only if the Dell image needs it.
 
 Then open:
 
-- UI: run the existing frontend separately when needed.
+- UI: run the existing frontend separately when needed (`NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`).
 - API health: `http://localhost:8000/health`
 - Judge0 languages: `http://localhost:2358/languages` (should include id `711` / Python 3.11.9)
 
 The seeded staff account is `dev.staff@uvu.edu`. The POC compose file enables mock login with `ENABLE_MOCK_LOGIN=true`; turn this off for any non-local deployment.
 
-Changing from the older dual-Postgres layout to the single Postgres service uses a new volume name (`postgres_data`). Expect a clean database on first bring-up after that change.
+Stop the stack:
+
+```bash
+docker compose -f docker-compose.poc.yml down
+```
+
+### Host capacity
+
+Capacity planning in the specs assumes the **32GB Dell** workstation (default execution-slot cap `2`). A typical developer laptop (~8GB RAM, few cores) can idle the POC stack for API work and **one grading job at a time**, but will thrash under concurrent Judge0 work, heavy pygame runs, Kata, or IDE + browser + frontend together.
+
+On small hosts:
+
+```bash
+# in .env.local
+JUDGE0_MAX_CONCURRENT=1
+```
+
+Skip Kata on laptops; use `docker-compose.kata.yml` only on the Ubuntu/Dell host.
+
+### Volume and database caveats
+
+- Switching from the older dual-Postgres layout to the single `postgres` service uses volume `postgres_data`. First bring-up after that change is a clean DB (re-seed).
+- `scripts/init_poc_databases.sh` runs **only** on first init of an empty data volume. Changing the script does nothing until you recreate the volume, e.g. `docker compose -f docker-compose.poc.yml down -v` (destroys POC DB data).
+- Compose defaults include local-only passwords (`autograder_dev_password`, `judge0_dev_password`). Override them in `.env.local` for any shared or long-lived machine.
 
 ## Optional Kata Runtime Setup
 
@@ -99,6 +127,10 @@ Judge0 uses the same Postgres container on database `judge0`. Custom language `7
 ## Judge0 And Kata
 
 The compose file starts Judge0 CE and its worker locally. The app sends zipped student work to Judge0 through the existing backend grading pipeline and deletes Judge0 submissions after result retrieval.
+
+`judge0` and `judge0-worker` use `privileged: true`. That matches official Judge0 CE (isolate sandbox) and is expected for local POC; do not treat removing it as a simple hardening step without proving isolate still works. Long-term isolation on the Dell host is Kata (`docker-compose.kata.yml`), not dropping privileges alone.
+
+Judge0 CE `1.13.1` is Debian Buster (EOL). `judge0.Dockerfile` retargets apt to `archive.debian.org` and builds as `USER root` during install, then switches back to `judge0`.
 
 Kata Containers is host-level execution isolation. The repository cannot configure GRUB or prove Kata isolation from inside the FastAPI image. The optional `docker-compose.kata.yml` override requires a host Docker runtime named `kata-runtime`. Before treating the Ubuntu machine as the intended execution target, collect operational evidence on the host that:
 
