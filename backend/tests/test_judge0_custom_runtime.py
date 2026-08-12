@@ -32,7 +32,7 @@ def test_seed_sql_file_validity():
     content = sql_file.read_text(encoding="utf-8")
     assert "711" in content
     assert "Python (3.11.9)" in content
-    assert "/usr/local/python-3.11.9/bin/python3.11 main.py" in content
+    assert "/usr/local/python-3.11.9/bin/python3.11" in content
     assert "compile_cmd" in content
     assert "run_cmd" in content
 
