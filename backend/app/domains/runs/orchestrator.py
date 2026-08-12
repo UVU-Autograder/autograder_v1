@@ -16,7 +16,6 @@ import redis
 
 from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
-from app.domains.grading.engine import GradingEngine
 from app.domains.runs.queue_admission import release_execution_slots
 
 logger = logging.getLogger(__name__)
@@ -137,6 +136,8 @@ def execute_sandbox_run(
         return _cancelled_response(run_id)
 
     try:
+        from app.domains.grading.engine import GradingEngine
+
         zip_data = base64.b64decode(zip_data_b64)
         config = AssignmentConfigV1.model_validate(config_json)
 

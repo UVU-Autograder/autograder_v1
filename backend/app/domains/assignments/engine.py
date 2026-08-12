@@ -14,7 +14,6 @@ from app.domains.assignments.service import (
     get_artifact_content,
     get_assignment_for_course,
 )
-from app.domains.runs.orchestrator import build_model_solution_zip
 from app.integrations.artifacts.resolver import resolve_storage_ref
 
 logger = logging.getLogger(__name__)
@@ -209,6 +208,8 @@ class AssignmentSpecificationEngine:
                 raise ValueError(f"Model solution file content missing for key '{key}'.")
             model_files[artifact.display_filename] = content[0]
             model_keys.add(key)
+
+        from app.domains.runs.orchestrator import build_model_solution_zip
 
         zip_data = build_model_solution_zip(config.bundle.required_files, model_files)
 

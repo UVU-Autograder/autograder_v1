@@ -1,35 +1,21 @@
 name: uvu-autograder-poc
 
 services:
-  app-postgres:
+  postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-autograder}
       POSTGRES_USER: ${POSTGRES_USER:-autograder}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autograder_dev_password}
+      JUDGE0_POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
     ports:
       - "5432:5432"
     volumes:
-      - app_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_poc_databases.sh:/docker-entrypoint-initdb.d/01_init_poc_databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autograder} -d ${POSTGRES_DB:-autograder}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  judge0-postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: judge0
-      POSTGRES_USER: judge0
-      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
-    volumes:
-      - judge0_postgres_data:/var/lib/postgresql/data
-      - ./scripts/seed_judge0_language_311.sql:/docker-entrypoint-initdb.d/01_seed_language_311.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -48,6 +34,8 @@ services:
       timeout: 5s
       retries: 10
 
+  # Local tag only: build once with `docker compose -f docker-compose.poc.yml build judge0`
+  # after judge0.Dockerfile changes; day-to-day `up` reuses uvu-autograder-judge0:latest.
   judge0:
     build:
       context: .
@@ -56,7 +44,7 @@ services:
     restart: unless-stopped
     privileged: true
     depends_on:
-      judge0-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -67,7 +55,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD:
-      POSTGRES_HOST: judge0-postgres
+      POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: judge0
       POSTGRES_USER: judge0
@@ -90,6 +78,34 @@ services:
       timeout: 10s
       retries: 10
 
+  # Languages table is created by Judge0 on first boot, so seed after Judge0 is healthy.
+  judge0-language-seed:
+    image: postgres:16-alpine
+    restart: "no"
+    depends_on:
+      judge0:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
+    volumes:
+      - ./scripts/seed_judge0_language_311.sql:/seed.sql:ro
+    entrypoint:
+      [
+        "psql",
+        "-h",
+        "postgres",
+        "-U",
+        "judge0",
+        "-d",
+        "judge0",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/seed.sql",
+      ]
+
   judge0-worker:
     build:
       context: .
@@ -97,20 +113,21 @@ services:
     image: uvu-autograder-judge0:latest
     restart: unless-stopped
     privileged: true
-
     depends_on:
-      judge0-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       judge0:
         condition: service_healthy
+      judge0-language-seed:
+        condition: service_completed_successfully
     environment:
       REDIS_URL: redis://redis:6379/1
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD:
-      POSTGRES_HOST: judge0-postgres
+      POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: judge0
       POSTGRES_USER: judge0
@@ -135,14 +152,16 @@ services:
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     depends_on:
-      app-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       judge0:
         condition: service_healthy
+      judge0-language-seed:
+        condition: service_completed_successfully
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@app-postgres:5432/autograder}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
       JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
@@ -176,14 +195,16 @@ services:
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     depends_on:
-      app-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       judge0:
         condition: service_healthy
+      judge0-language-seed:
+        condition: service_completed_successfully
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@app-postgres:5432/autograder}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
       JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
@@ -210,9 +231,7 @@ services:
     volumes:
       - backend_data:/data
 
-
 volumes:
-  app_postgres_data:
-  judge0_postgres_data:
+  postgres_data:
   redis_data:
   backend_data:

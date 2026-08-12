@@ -6,15 +6,18 @@ This document wires the current repository into a fully functional local proof-o
 
 - Frontend: run separately with the existing frontend workflow; this backend POC compose file does not build or modify frontend assets.
 - Backend: FastAPI on `http://localhost:8000`
-- App database: PostgreSQL, migrated by Alembic at backend startup
+- Database: one PostgreSQL instance with two databases (`autograder` for the app, `judge0` for Judge0 CE), migrated by Alembic at backend startup
 - Queue/state: Redis
 - Worker: Celery using the `sandbox`, `official`, and `default` queues
-- Execution API: local Judge0 CE on `http://localhost:2358`
+- Execution API: local Judge0 CE on `http://localhost:2358` (image tag `uvu-autograder-judge0:latest`)
 - Isolation: Kata Containers is expected to be configured on the Ubuntu host and validated operationally outside the app container
 
 ## Files
 
-- `docker-compose.poc.yml`: local POC stack for app Postgres, Judge0 Postgres, Redis, Judge0, backend, and Celery worker.
+- `docker-compose.poc.yml`: local POC stack for Postgres, Redis, Judge0, backend, and Celery worker.
+- `judge0.Dockerfile`: custom Judge0 image with Python 3.11.9 and allowlisted course deps; tagged locally as `uvu-autograder-judge0:latest`.
+- `scripts/init_poc_databases.sh`: creates the `judge0` role/database on first Postgres volume init.
+- `scripts/seed_judge0_language_311.sql`: registers language ID `711` after Judge0 is healthy.
 - `backend/Dockerfile`: backend runtime image that installs Python dependencies, waits for Postgres, runs Alembic, and optionally seeds development data.
 - `.env.example`: local POC environment template.
 - `backend/scripts/docker-entrypoint.sh`: backend container startup script.
@@ -26,16 +29,25 @@ From the repository root:
 ```bash
 cp .env.example .env.local
 # Edit .env.local secrets if needed.
+
+# First time (or after judge0.Dockerfile / allowlisted deps change):
+docker compose --env-file .env.local -f docker-compose.poc.yml build judge0
+
+# Day-to-day: reuses the local uvu-autograder-judge0:latest tag
 docker compose --env-file .env.local -f docker-compose.poc.yml up --build
 ```
+
+`up --build` rebuilds backend/celery when their Dockerfile or context changes; Judge0 is only rebuilt when you explicitly `build judge0` (or change its Dockerfile and force a rebuild).
 
 Then open:
 
 - UI: run the existing frontend separately when needed.
 - API health: `http://localhost:8000/health`
-- Judge0 languages: `http://localhost:2358/languages`
+- Judge0 languages: `http://localhost:2358/languages` (should include id `711` / Python 3.11.9)
 
 The seeded staff account is `dev.staff@uvu.edu`. The POC compose file enables mock login with `ENABLE_MOCK_LOGIN=true`; turn this off for any non-local deployment.
+
+Changing from the older dual-Postgres layout to the single Postgres service uses a new volume name (`postgres_data`). Expect a clean database on first bring-up after that change.
 
 ## Optional Kata Runtime Setup
 
@@ -82,6 +94,8 @@ python -m app.db.seed
 
 The seeded data uses `backend/app/db/seeds` through `seed://...` artifact references. Those seed packages ship inside the backend image and resolve relative to `app/db/seeds`.
 
+Judge0 uses the same Postgres container on database `judge0`. Custom language `711` is inserted by the one-shot `judge0-language-seed` service after Judge0 finishes creating its schema.
+
 ## Judge0 And Kata
 
 The compose file starts Judge0 CE and its worker locally. The app sends zipped student work to Judge0 through the existing backend grading pipeline and deletes Judge0 submissions after result retrieval.
@@ -109,30 +123,11 @@ Local LLM credentials can be supplied through environment variables, but AI feed
 
 The autograder stack utilizes **Celery Beat** to schedule periodic background tasks such as the hourly workspace cleanup (`cleanup_expired_workspaces`).
 
-### Running Celery Beat in Development
-In the development environment, you can run the Celery Beat scheduler in a separate terminal process:
+`docker-compose.poc.yml` does not include a Celery Beat service. Run Beat separately when you need periodic cleanup:
 
 ```bash
+# From the backend venv / container shell:
 celery -A app.integrations.celery.app beat --loglevel=info
 ```
 
-### Running in Docker Compose
-In production/POC compose deployments, the Celery Beat scheduler is included as a service in the docker compose configurations, using the same backend container image:
-
-```yaml
-  celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A app.integrations.celery.app beat --loglevel=info
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-    depends_on:
-      - redis
-      - app-postgres
-```
-
 Make sure the Celery Beat scheduler process is running to guarantee that temporary student workspaces and grade review exports are cleaned up after their 24-hour expiration window.
-
