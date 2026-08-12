@@ -47,21 +47,21 @@
   "scoring_items": [
     {
       "key": "ds2_regression",
-      "label": "DS2 class hierarchy + Order intact",
+      "label": "DS2 class hierarchy and Order class methods intact",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "test_file_exists",
-      "label": "test_dessert.py present with >=15 test functions",
+      "label": "test_dessert.py exists and defines at least 15 valid test functions",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "student_tests_pass",
-      "label": "Student's own tests pass",
+      "label": "Student test suite executes cleanly and passes all assertions",
       "points": 40,
       "extra_credit": false,
       "item_type": "pytest"

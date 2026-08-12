@@ -53,28 +53,28 @@
   "scoring_items": [
     {
       "key": "dessertshop_class",
-      "label": "DessertShop class with 4 prompt methods",
+      "label": "DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "ds4_regression",
-      "label": "DS4 ABC + cost/tax intact",
+      "label": "DS4 ABC inheritance, cost calculations, and tax formulas intact",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "input_validation",
-      "label": "Input validation quality (retries, ValueError, positive values only)",
+      "label": "Input validation quality (retries on invalid type or negative values)",
       "points": 20,
       "extra_credit": false,
       "item_type": "manual"
     },
     {
       "key": "receipt_output",
-      "label": "Receipt format and correctness in final output",
+      "label": "Formatted receipt layout, item columns, subtotal, tax, and total price alignment",
       "points": 20,
       "extra_credit": false,
       "item_type": "manual"

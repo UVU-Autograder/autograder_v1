@@ -38,6 +38,7 @@ type AssignmentFileContextType = {
   ) => void;
   moveTabToPane: (filename: string, sourcePaneId: string, targetPaneId: string) => void;
   uploadFiles: (files: FileList | File[]) => Promise<void>;
+  updateFileContent: (filename: string, content: string) => void;
   deleteFile: (filename: string) => void;
 };
 
@@ -193,6 +194,20 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
     });
   };
 
+  const updateFileContent = (filename: string, content: string) => {
+    setFiles((prev) => {
+      const existing = prev[filename];
+      if (!existing || existing.content === content) return prev;
+      return {
+        ...prev,
+        [filename]: {
+          ...existing,
+          content,
+        },
+      };
+    });
+  };
+
   const deleteFile = (filename: string) => {
     setFiles((prev) => {
       const next = { ...prev };
@@ -234,6 +249,7 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
         splitTabToPane,
         moveTabToPane,
         uploadFiles,
+        updateFileContent,
         deleteFile,
       }}
     >

@@ -62,6 +62,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
     splitTabToPane,
     moveTabToPane,
     uploadFiles,
+    updateFileContent,
   } = useAssignmentFile();
 
   const pane = panes[paneId];
@@ -151,7 +152,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
           onValueChange={(filename) => setActiveTab(paneId, filename)}
           className="flex min-h-0 flex-1 flex-col gap-0 p-0"
         >
-          <TabsList className="w-full shrink-0 justify-start rounded-none p-0 overflow-x-auto min-w-0 flex-nowrap">
+          <TabsList className="w-full h-9 shrink-0 justify-start rounded-none p-0 overflow-x-auto overflow-y-hidden min-w-0 flex-nowrap border-b border-border bg-stone-100/80">
             {pane.tabs.map((filename) => (
               <div
                 key={filename}
@@ -162,7 +163,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
                   startTabDrag({ filename, sourcePaneId: paneId });
                 }}
                 onDragEnd={endTabDrag}
-                className="inline-flex items-stretch border-r border-border last:border-r-0 data-[active=true]:bg-background"
+                className="inline-flex items-center h-full border-r border-border last:border-r-0 data-[active=true]:bg-background"
                 data-active={activeTab === filename}
                 onMouseDown={(event) => {
                   if (event.button === 1) {
@@ -171,13 +172,13 @@ export function EditorPane({ paneId }: { paneId: string }) {
                   }
                 }}
               >
-                <TabsTrigger className="max-w-48 flex-none rounded-none px-4 py-2" value={filename}>
+                <TabsTrigger className="max-w-48 flex-none rounded-none px-3 py-1 text-xs h-full" value={filename}>
                   <span className="truncate">{filename}</span>
                 </TabsTrigger>
                 <button
                   type="button"
                   aria-label={`Close ${filename}`}
-                  className="inline-flex items-center justify-center px-1.5 opacity-60 transition-opacity hover:bg-muted hover:opacity-100"
+                  className="inline-flex items-center justify-center px-1.5 h-full opacity-60 transition-opacity hover:bg-muted hover:opacity-100 cursor-pointer"
                   onClick={() => closeTab(paneId, filename)}
                 >
                   <XIcon className="size-3.5" />
@@ -210,6 +211,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
                       width="100%"
                       defaultLanguage={file.language}
                       defaultValue={file.content}
+                      onChange={(val) => updateFileContent(filename, val ?? '')}
                       options={{ readOnly: file.category !== 'workspace' }}
                     />
                   )}

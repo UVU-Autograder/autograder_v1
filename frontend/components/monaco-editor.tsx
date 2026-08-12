@@ -8,6 +8,7 @@ export default function MonacoEditor({
   value,
   language,
   onChange,
+  onMount,
   options,
 }: {
   height?: string;
@@ -17,6 +18,7 @@ export default function MonacoEditor({
   value?: string;
   language?: string;
   onChange?: (value: string | undefined) => void;
+  onMount?: EditorProps["onMount"];
   options?: EditorProps["options"];
 }) {
   return (
@@ -27,6 +29,7 @@ export default function MonacoEditor({
       defaultValue={defaultValue}
       value={value}
       onChange={onChange}
+      onMount={onMount}
       options={{
         automaticLayout: true,
         scrollBeyondLastLine: false,

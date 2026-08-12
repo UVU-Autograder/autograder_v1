@@ -29,7 +29,7 @@ class Settings(BaseSettings):
         default="pillow,pygame,tabulate",
         validation_alias="JUDGE0_PREINSTALLED_DEPENDENCIES",
     )
-    sandbox_upload_limit: int = Field(default=5, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
+    sandbox_upload_limit: int = Field(default=999999, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
     sandbox_upload_window_seconds: int = Field(
         default=3600,
         ge=1,

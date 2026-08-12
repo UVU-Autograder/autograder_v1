@@ -33,28 +33,28 @@
   "scoring_items": [
     {
       "key": "title_property",
-      "label": "title property with TypeError and ValueError validation",
+      "label": "@property title decorator validates type (str) and non-empty string constraint",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "author_property",
-      "label": "author property with TypeError and ValueError validation",
+      "label": "@property author decorator validates type (str) and non-empty string constraint",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "description_readonly",
-      "label": "description read-only property format and immutability",
+      "label": "description read-only property formats 'Title by Author' and raises AttributeError on write",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "reflection",
-      "label": "Reflection response on read-only property mutation attempt",
+      "label": "Lab 4 reflection markdown explains read-only property mechanics and AttributeError exception",
       "points": 20,
       "extra_credit": false,
       "item_type": "manual"

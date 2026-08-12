@@ -71,3 +71,27 @@ export async function createSubmissionBundle(files: Record<string, OpenFile>) {
 
   return zip.generateAsync({ type: "blob" });
 }
+
+export function downloadFile(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadZipBundle(files: Record<string, OpenFile>, zipName = "workspace.zip") {
+  const blob = await createSubmissionBundle(files);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = zipName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

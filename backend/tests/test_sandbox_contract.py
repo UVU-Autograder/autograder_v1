@@ -217,7 +217,10 @@ def test_result_is_session_scoped_and_only_available_when_complete(client):
     assert "raw code body" not in str(body)
 
 
-def test_quota_rejects_sixth_upload_in_one_hour(client):
+def test_quota_rejects_sixth_upload_in_one_hour(client, monkeypatch):
+    from app.core.settings import get_settings
+
+    monkeypatch.setattr(get_settings(), "sandbox_upload_limit", 5)
     session = "sandbox_quota_test"
     responses = [create_run(client, session=session) for _ in range(6)]
 

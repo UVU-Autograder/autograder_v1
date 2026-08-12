@@ -123,7 +123,8 @@ export default function CodeResults({
 }: CodeResultsProps) {
   const { files } = useAssignmentFile();
   const [showCheckCode] = useState(true);
-  const [showFeedback, setShowFeedback] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [aiFeedbackRequested, setAiFeedbackRequested] = useState(false);
   const [phase, setPhase] = useState<RunPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<SandboxRunResultResponse | null>(null);
@@ -153,6 +154,8 @@ export default function CodeResults({
     setResult(null);
     setRunStatus(null);
     setRunState("queue");
+    setShowFeedback(false);
+    setAiFeedbackRequested(false);
 
     try {
       const bundleBlob = await createSubmissionBundle(files);
@@ -248,54 +251,61 @@ export default function CodeResults({
           {test.points_possible}
         </p>
 
-        {(test.your_value != null ||
-          test.actual != null ||
-          test.expected_value != null ||
-          test.expected != null) && (
-          <div className="mt-2.5 space-y-2">
-            <div className="p-3 rounded-md border border-red-200 bg-red-100/60 space-y-1.5 text-xs font-sans">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-red-900 w-28 shrink-0">
-                  Your value:
-                </span>
-                <code className="bg-red-200/70 text-red-950 px-2 py-0.5 rounded font-mono break-all">
-                  {test.your_value ?? test.actual ?? "false"}
-                </code>
+        {test.status !== "passed" &&
+          (test.your_value != null ||
+            test.actual != null ||
+            test.expected_value != null ||
+            test.expected != null) && (
+            <div className="mt-2.5 space-y-2">
+              <div className="p-3 rounded-md border border-red-200 bg-red-100/60 space-y-1.5 text-xs font-sans">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-red-900 w-28 shrink-0">
+                    Your value:
+                  </span>
+                  <code className="bg-red-200/70 text-red-950 px-2 py-0.5 rounded font-mono break-all">
+                    {test.your_value ?? test.actual ?? "false"}
+                  </code>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-emerald-900 w-28 shrink-0">
+                    Expected value:
+                  </span>
+                  <code className="bg-emerald-200/70 text-emerald-950 px-2 py-0.5 rounded font-mono break-all">
+                    {test.expected_value ?? test.expected ?? "true"}
+                  </code>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-emerald-900 w-28 shrink-0">
-                  Expected value:
-                </span>
-                <code className="bg-emerald-200/70 text-emerald-950 px-2 py-0.5 rounded font-mono break-all">
-                  {test.expected_value ?? test.expected ?? "true"}
-                </code>
-              </div>
+              {(test.expected || test.actual) && (
+                <VisualDiffViewer
+                  expected={test.expected ?? test.expected_value}
+                  actual={test.actual ?? test.your_value}
+                />
+              )}
             </div>
-            {(test.expected || test.actual) && (
-              <VisualDiffViewer
-                expected={test.expected ?? test.expected_value}
-                actual={test.actual ?? test.your_value}
-              />
-            )}
-          </div>
-        )}
+          )}
 
-        {test.message && !test.your_value && !test.actual && (
-          <p className="mt-2 text-xs text-red-700 bg-red-100/60 p-2 rounded font-sans">
-            {cleanTestMessage(test.message).split("\n")[0]}
-          </p>
-        )}
+        {test.status !== "passed" &&
+          test.message &&
+          !test.your_value &&
+          !test.actual &&
+          cleanTestMessage(test.message).trim() !== (test.label || test.title || "").trim() && (
+            <p className="mt-2 text-xs text-red-700 bg-red-100/60 p-2 rounded font-sans">
+              {cleanTestMessage(test.message).split("\n")[0]}
+            </p>
+          )}
 
-        {isStaff && (result?.raw_output || test.message) && (
-          <details className="mt-2 text-xs text-slate-500">
-            <summary className="cursor-pointer font-semibold text-purple-700 hover:text-purple-900">
-              🔍 [Instructor Only] View Raw Terminal Output
-            </summary>
-            <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
-              {result?.raw_output || cleanTestMessage(test.message)}
-            </pre>
-          </details>
-        )}
+        {test.status !== "passed" &&
+          (result?.raw_output ||
+            (test.message && cleanTestMessage(test.message).includes("\n"))) && (
+            <details className="mt-2 text-xs text-slate-500">
+              <summary className="cursor-pointer font-medium text-slate-600 hover:text-slate-900">
+                View Raw Terminal Output
+              </summary>
+              <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
+                {result?.raw_output || cleanTestMessage(test.message)}
+              </pre>
+            </details>
+          )}
       </div>
     </div>
   );
@@ -474,25 +484,24 @@ export default function CodeResults({
       </div>
 
       <Button
-        onClick={() => setShowFeedback((prev) => !prev)}
+        onClick={() => {
+          if (!aiFeedbackRequested) {
+            setAiFeedbackRequested(true);
+          }
+          setShowFeedback((prev) => !prev);
+        }}
         className="w-full mt-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-md shadow-xs"
       >
-        {showFeedback ? "Hide AI Feedback" : "View AI Feedback"}
+        {showFeedback ? "Hide AI Feedback" : "Request AI Feedback"}
       </Button>
-      <div className={`flex flex-1 flex-col ${showFeedback ? "" : "hidden"}`}>
-        <div className="text-wrap mt-4">
-          <p className="font-bold text-lg">Feedback:</p>
-          <p className="mt-2 text-sm text-slate-700">
-            {result?.sanitized_feedback ??
-              "Run tests to generate session-only projected feedback."}
+      {showFeedback && (
+        <div className="mt-3 p-3 rounded-lg border border-purple-200 bg-purple-50/50 text-xs text-purple-950">
+          <p className="font-semibold text-sm mb-1 text-purple-900">AI Feedback</p>
+          <p className="text-purple-800 leading-relaxed">
+            AI Feedback generation is coming soon.
           </p>
-          {result?.retention_notice && (
-            <p className="mt-3 text-xs text-slate-500">
-              {result.retention_notice}
-            </p>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
