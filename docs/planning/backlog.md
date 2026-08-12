@@ -15,9 +15,7 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ## Operating Guidelines
 
-- Prefer completing fewer end-to-end deliverables over starting many disconnected tasks.
-- Do not reintroduce purged topics without a new product decision.
-- Reduce scope before weakening zero-retention, FERPA, authentication, or cleanup safeguards.
+Refer to [delivery_controls.md](delivery_controls.md) for Definition of Done (DoD), verification standards, and zero-retention / FERPA acceptance gates. Refer to [.agents/memory/context.md](../../.agents/memory/context.md) for operational domain vocabulary. Do not reintroduce purged topics without a new product decision.
 
 ---
 

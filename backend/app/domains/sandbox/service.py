@@ -285,7 +285,6 @@ class SandboxService:
                         test_summaries=[],
                         sanitized_feedback="The sandbox run ended with an error.",
                         file_preview=self._file_preview(),
-                        retention_notice="Sandbox results are session-only and are not retained as student submissions.",
                     )
 
                 # Build test summaries from real results
@@ -362,7 +361,6 @@ class SandboxService:
                     rubric_groups=rubric_groups,
                     sanitized_feedback="Review your results above.",
                     file_preview=self._file_preview(),
-                    retention_notice="Sandbox results are session-only and are not retained as student submissions.",
                     raw_output=redis_result.get("raw_output"),
                 )
             except Exception:
@@ -383,7 +381,6 @@ class SandboxService:
                 test_summaries=[],
                 sanitized_feedback="The sandbox run ended before projected grading completed.",
                 file_preview=self._file_preview(),
-                retention_notice="Sandbox results are session-only and are not retained as student submissions.",
             )
         return SandboxRunResultResponse(
             run_id=run_id,
@@ -417,7 +414,6 @@ class SandboxService:
                 "the implementation organized before an official submission."
             ),
             file_preview=self._file_preview(),
-            retention_notice="Sandbox results are session-only and are not retained as student submissions.",
         )
 
     def _redis_conn(self):

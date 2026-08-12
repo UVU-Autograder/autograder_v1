@@ -45,7 +45,7 @@ Frontend mockup preview: https://autograder-frontend-mockup.vercel.app/
 - The sandbox entry surface should immediately show globally visible sandbox-enabled courses and assignments.
 - The sandbox workspace is upload-first: students upload one ZIP/project bundle for the selected assignment, then see a sanitized file tree, read-only Monaco preview, rubric details, assignment constraints, terminal/output information where available, test results with passed/failed counts, projected score, grounded feedback, explicit retention messaging, visible remaining uploads, and a clear limit-reached state for backend `429` responses.
 - Sandbox Local LLM feedback (in development) appears beside test results for sandbox runs only, explanation-only, and only for non-personally-traceable code payloads.
-- Expected I/O visual diff in the sandbox is an active backlog item (custom `VisualDiffViewer` exists; wire to real expected fields from the API).
+- Expected I/O visual diff in the sandbox is fully implemented (`VisualDiffViewer` component integrated with backend API expected fields parsing).
 - The sandbox workspace does not support loose multi-file drag-and-drop.
 - The assignment artifacts surface owns one or more pytest files, model solution files, and support files through the backend `assignment_artifacts` storage-reference model.
 - UI-visible "test cases" are scoring items from the assignment setup/config, not separate physical test files.

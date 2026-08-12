@@ -73,10 +73,13 @@ def get_optional_user(
         HTTPAuthorizationCredentials | None, Depends(security)
     ] = None,
 ) -> User | None:
-    """Return the authenticated user when a Bearer token is present, else None."""
+    """Return the authenticated user when a valid Bearer token is present, else None."""
     if not credentials:
         return None
-    return get_current_user(db, response, credentials)
+    try:
+        return get_current_user(db, response, credentials)
+    except HTTPException:
+        return None
 
 def require_role(allowed_roles: list[str]):
     """Standardized guard to enforce specific user roles."""

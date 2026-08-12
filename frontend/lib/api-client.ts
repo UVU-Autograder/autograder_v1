@@ -80,6 +80,9 @@ async function apiFetch<T>(
     if (!response.ok) {
         const message = await parseErrorMessage(response);
         if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+            localStorage.removeItem("lastActivity");
             window.dispatchEvent(new Event("unauthorized-api-call"));
         }
         throw new ApiError(response.status, message);
@@ -155,6 +158,9 @@ export const apiClient = {
         if (!response.ok) {
             const message = await parseErrorMessage(response);
             if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+                localStorage.removeItem("token");
+                sessionStorage.removeItem("token");
+                localStorage.removeItem("lastActivity");
                 window.dispatchEvent(new Event("unauthorized-api-call"));
             }
             throw new ApiError(response.status, message);

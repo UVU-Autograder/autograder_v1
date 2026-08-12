@@ -139,6 +139,9 @@ class SandboxWarning(BaseModel):
     message: str
 
 
+DEFAULT_RETENTION_NOTICE = "Sandbox results are session-only and are not retained as student submissions."
+
+
 class SandboxRunResultResponse(BaseModel):
     run_id: str
     state: Literal["complete", "failure"]
@@ -149,7 +152,7 @@ class SandboxRunResultResponse(BaseModel):
     rubric_groups: list[RubricGroupResultResponse] = Field(default_factory=list)
     sanitized_feedback: str
     file_preview: FilePreviewMetadata
-    retention_notice: str
+    retention_notice: str = DEFAULT_RETENTION_NOTICE
     raw_output: str | None = None
 
 
