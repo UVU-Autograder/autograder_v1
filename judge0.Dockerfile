@@ -37,4 +37,6 @@ RUN /usr/local/python-3.11.9/bin/python3.11 -m pip install --no-cache-dir --upgr
     pytest \
     pillow \
     pygame \
-    tabulate
+    tabulate \
+    && mkdir -p /box /tmp/isolate /var/local/lib/isolate \
+    && chmod 777 /box /tmp/isolate /var/local/lib/isolate
