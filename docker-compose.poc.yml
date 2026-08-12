@@ -141,9 +141,8 @@ services:
       MAX_CPU_TIME_LIMIT: "35"
       WALL_TIME_LIMIT: "40"
       MAX_WALL_TIME_LIMIT: "45"
-      MEMORY_LIMIT: "262144"
-      MAX_MEMORY_LIMIT: "524288"
-      volumes:
+      RAILS_ENV: production
+    volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     command: ["/bin/sh", "-c", "cd /api && bundle exec rake resque:work QUEUE=*"]
 
