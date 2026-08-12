@@ -75,4 +75,6 @@ def test_judge0_dockerfile_skips_pgo():
     content = (repo_root / "judge0.Dockerfile").read_text(encoding="utf-8")
     assert "--enable-optimizations" not in content
     assert "USER root" in content
+    assert "USER judge0" in content
     assert "archive.debian.org" in content
+    assert "chmod 777" not in content
