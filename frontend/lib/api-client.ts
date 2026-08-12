@@ -80,6 +80,9 @@ async function apiFetch<T>(
     if (!response.ok) {
         const message = await parseErrorMessage(response);
         if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+            localStorage.removeItem("lastActivity");
             window.dispatchEvent(new Event("unauthorized-api-call"));
         }
         throw new ApiError(response.status, message);
@@ -91,15 +94,34 @@ async function apiFetch<T>(
     }
 
     updateStoredToken(response);
-    return {
-        data: (await response.json()) as T,
-        response,
-    };
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+        return {
+            data: (await response.json()) as T,
+            response,
+        };
+    }
+
+    const text = await response.text();
+    try {
+        return {
+            data: JSON.parse(text) as T,
+            response,
+        };
+    } catch {
+        return {
+            data: text as unknown as T,
+            response,
+        };
+    }
 }
 
 export const apiClient = {
     get: <T>(path: string, options?: ApiFetchOptions) =>
         apiFetch<T>(path, { method: "GET", headers: options?.headers }).then((result) => result.data),
+
+    getText: (path: string, options?: ApiFetchOptions): Promise<string> =>
+        apiFetch<string>(path, { method: "GET", headers: options?.headers }).then((res) => String(res.data)),
 
     post: <T>(path: string, body: unknown, options?: ApiFetchOptions) =>
         apiFetch<T>(path, {
@@ -136,6 +158,9 @@ export const apiClient = {
         if (!response.ok) {
             const message = await parseErrorMessage(response);
             if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+                localStorage.removeItem("token");
+                sessionStorage.removeItem("token");
+                localStorage.removeItem("lastActivity");
                 window.dispatchEvent(new Event("unauthorized-api-call"));
             }
             throw new ApiError(response.status, message);

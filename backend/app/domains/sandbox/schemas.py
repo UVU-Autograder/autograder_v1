@@ -1,8 +1,31 @@
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.domains.runs.schemas import QueueBackpressure, RunCounters, RunStatusResponse
+from app.domains.runs.schemas import QueueBackpressure, RunCounters, RunState, RunStatusResponse
+
+SESSION_TTL = timedelta(hours=1)
+
+
+@dataclass
+class SandboxRunRecord:
+    run_id: str
+    session_id: str
+    course_id: str
+    assignment_id: str
+    state: RunState = "queue"
+    status_reads: int = 0
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime = field(
+        default_factory=lambda: datetime.now(UTC) + SESSION_TTL
+    )
+    queue_position: int = 1
+    warnings: int = 1
+    max_score: int = 100
+    celery_task_id: str | None = None
+
 
 
 class UploadQuota(BaseModel):
@@ -97,11 +120,26 @@ class TestSummary(BaseModel):
     message: str
     actual: str | None = None
     expected: str | None = None
+    your_value: str | None = None
+    expected_value: str | None = None
+    expected_input: str | None = None
+    group_key: str | None = None
+
+
+class RubricGroupResultResponse(BaseModel):
+    group_key: str
+    label: str
+    points_earned: int = Field(ge=0)
+    points_possible: int = Field(ge=0)
+    items: list[TestSummary] = Field(default_factory=list)
 
 
 class SandboxWarning(BaseModel):
     code: str
     message: str
+
+
+DEFAULT_RETENTION_NOTICE = "Sandbox results are session-only and are not retained as student submissions."
 
 
 class SandboxRunResultResponse(BaseModel):
@@ -111,9 +149,11 @@ class SandboxRunResultResponse(BaseModel):
     max_score: int = Field(ge=0)
     warnings: list[SandboxWarning]
     test_summaries: list[TestSummary]
+    rubric_groups: list[RubricGroupResultResponse] = Field(default_factory=list)
     sanitized_feedback: str
     file_preview: FilePreviewMetadata
-    retention_notice: str
+    retention_notice: str = DEFAULT_RETENTION_NOTICE
+    raw_output: str | None = None
 
 
 class SandboxCancelResponse(BaseModel):

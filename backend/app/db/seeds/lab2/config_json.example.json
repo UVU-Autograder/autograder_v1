@@ -1,0 +1,59 @@
+{
+  "bundle": {
+    "entrypoint": "account.py",
+    "file_requirements": [
+      {
+        "label": "Bank account class definition file",
+        "paths": [
+          "account.py"
+        ]
+      },
+      {
+        "label": "Demo testing script",
+        "paths": [
+          "demo.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "account.py"
+    },
+    "demo_solution": {
+      "type": "model_solution",
+      "display_filename": "demo.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "account_init",
+      "label": "Account class with default and custom values",
+      "points": 40,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "account_str",
+      "label": "Account __str__ string representation",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "demo_output",
+      "label": "demo.py manual testing module stdout output",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [],
+  "rubric_groups": []
+}

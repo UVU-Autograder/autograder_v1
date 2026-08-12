@@ -7,21 +7,13 @@ from fastapi.testclient import TestClient
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.main import create_app  # noqa: E402
-from app.db.base import Base, import_domain_models
-from app.db.seed import initialize_database
-from app.db.session import engine
-from app.domains.sandbox.service import sandbox_service  # noqa: E402
+from app.domains.sandbox.service import sandbox_service
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
-def initialized_database():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def initialized_database(reset_database):
     yield
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture(autouse=True)
@@ -70,8 +62,26 @@ def test_lists_visible_courses_and_assignments(client):
     assert assignments_1410.status_code == 200
     body_1410 = assignments_1410.json()
     assert body_1410["course_id"] == "cs1410"
-    assert body_1410["assignments"][0]["id"] == "lab-1-image-processing"
-    assert body_1410["assignments"][0]["sandbox_enabled"] is True
+    assert {a["id"] for a in body_1410["assignments"]} == {
+        "lab-1-image-processing",
+        "lab2",
+        "lab3",
+        "lab4",
+        "lab5",
+        "lab6",
+        "lab7",
+        "ds1",
+        "ds2",
+        "ds3",
+        "ds4",
+        "ds5",
+        "ds6",
+        "ds7",
+        "ds8",
+        "ds9",
+        "ds10",
+    }
+    assert all(a["sandbox_enabled"] for a in body_1410["assignments"])
 
 
 def test_assignment_detail_returns_contract_metadata(client):
@@ -95,7 +105,7 @@ def test_assignment_detail_returns_contract_metadata(client):
     assert body_1410["rubric_groups"]
     assert len(body_1410["rubric_groups"]) == 2
     assert body_1410["rubric_groups"][0]["key"] == "part1"
-    assert len(body_1410["rubric"]) == 4
+    assert len(body_1410["rubric"]) == 6
     assert body_1410["rubric"][0]["key"] == "part1_files"
     assert body_1410["rubric"][0]["pytest_marker"] == "ag_part1_files"
     assert body_1410["rubric"][0]["item_type"] == "pytest"
@@ -146,7 +156,7 @@ def test_run_creation_returns_session_quota_urls_and_queue_state(client):
     assert body["upload_quota"]["remaining"] == 4
     assert body["initial_status"]["state"] == "queue"
     assert body["initial_status"]["queue_position"] == 1
-    assert body["initial_status"]["eta_band"] == "1_to_3_min"
+    assert body["initial_status"]["eta_band"] == "under_1_min"
     assert body["initial_status"]["backpressure"]["high_load_threshold"] == 40
     assert body["initial_status"]["backpressure"]["full_queue_threshold"] == 50
     assert body["file_preview"]["preview_kind"] == "metadata_only"

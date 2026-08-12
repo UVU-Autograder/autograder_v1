@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -7,25 +8,20 @@ from sqlalchemy import select
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.base import Base, import_domain_models  # noqa: E402
-from app.db.seed import initialize_database  # noqa: E402
-from app.db.session import SessionLocal, engine  # noqa: E402
-from app.domains.courses.models import Section  # noqa: E402
-from app.domains.runs.queue_admission import reset_admission_state_for_tests  # noqa: E402
-from app.main import create_app  # noqa: E402
-from test_ingestion_extractor import create_zip_bytes  # noqa: E402
+from app.db.session import SessionLocal
+from app.domains.courses.models import Section
+from app.domains.runs.queue_admission import (
+    reset_admission_state_for_tests,
+)
+from app.main import create_app
+from test_ingestion_extractor import create_zip_bytes
 
 
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     reset_admission_state_for_tests()
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture(autouse=True)

@@ -1,0 +1,66 @@
+{
+  "bundle": {
+    "entrypoint": "book.py",
+    "file_requirements": [
+      {
+        "label": "Book class definition file",
+        "paths": [
+          "book.py"
+        ]
+      },
+      {
+        "label": "Lab 4 reflection responses",
+        "paths": [
+          "Lab4_reflection.md"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "book.py"
+    },
+    "reflection_solution": {
+      "type": "model_solution",
+      "display_filename": "Lab4_reflection.md"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "title_property",
+      "label": "title property with TypeError and ValueError validation",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "author_property",
+      "label": "author property with TypeError and ValueError validation",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "description_readonly",
+      "label": "description read-only property format and immutability",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "reflection",
+      "label": "Reflection response on read-only property mutation attempt",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "manual"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [],
+  "rubric_groups": []
+}

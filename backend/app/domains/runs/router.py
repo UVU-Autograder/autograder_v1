@@ -1,43 +1,44 @@
+import shutil
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from pathlib import Path
-import json
-import shutil
 
 from app.core.dependencies import (
     DbSession,
+    accessible_section_ids_for_course,
     assert_run_section_access,
     get_optional_user,
     require_staff,
-    accessible_section_ids_for_course,
 )
 from app.domains.auth.models import User
-from app.domains.runs.schemas import (
-    RunStatusResponse,
-    RunSummaryResponse,
-    RunSummaryListResponse,
-    RunCounters,
-    UpdateManualGradesRequest,
-)
+from app.domains.runs.models import RunSummary
+from app.domains.runs.orchestrator import get_run_state
 from app.domains.runs.queue_admission import (
     backpressure_snapshot,
     eta_band_for_position,
 )
-from app.domains.sandbox.service import sandbox_service
-from app.domains.runs.models import RunSummary
+from app.domains.runs.schemas import (
+    RunCounters,
+    RunStatusResponse,
+    RunSummaryListResponse,
+    RunSummaryResponse,
+    UpdateManualGradesRequest,
+)
 from app.domains.runs.service import (
     is_listable_student_file,
     load_run_details_json,
+    manual_grading_progress,
+    mutate_run_details,
     official_run_dir,
     official_run_zip_path,
     require_official_run_for_assignment,
     student_detail_from_result,
     student_workspace_dir,
-    write_feedback_zip,
-    write_run_grades_csv,
+    update_student_manual_result,
 )
-from app.domains.runs.tasks import get_run_state
+from app.domains.sandbox.service import sandbox_service
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -45,6 +46,26 @@ MAX_PREVIEW_BYTES = 1 * 1024 * 1024
 NON_PREVIEWABLE_SUFFIXES = (
     ".pyc", ".zip", ".png", ".jpg", ".jpeg", ".gif", ".exe", ".pdf", ".tar", ".gz",
 )
+
+
+def _load_official_run_details(run_id: int) -> dict:
+    details_file = official_run_dir(run_id) / "run_details.json"
+    if not details_file.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Run details are not available or have been cleaned up.",
+        )
+    return load_run_details_json(details_file)
+
+
+def _require_exports_ready(run_id: int) -> None:
+    data = _load_official_run_details(run_id)
+    progress = manual_grading_progress(data.get("student_results", {}))
+    if not progress["exports_ready"]:
+        raise HTTPException(
+            status_code=409,
+            detail="Complete every manual rubric score before exporting.",
+        )
 
 
 def _is_file_previewable(path: Path, size_bytes: int) -> bool:
@@ -59,58 +80,43 @@ def _official_status_from_run(run: RunSummary, redis_state: dict | None) -> RunS
         state = redis_state.get("state", run.status)
         if state not in ("queue", "run", "complete", "failure"):
             state = "complete"
-        total = int(redis_state.get("total", run.total_submission_count or 0))
-        queued = int(redis_state.get("queued", 0))
-        running = int(redis_state.get("running", 0))
-        completed = int(redis_state.get("completed", 0))
-        failed = int(redis_state.get("failed", 0))
-        warnings = int(redis_state.get("warnings", 0))
-        queue_position = redis_state.get("queue_position")
-        if state != "queue":
-            queue_position = None
+        queue_position = redis_state.get("queue_position") if state == "queue" else None
         eta = redis_state.get("eta_band") if state == "queue" else None
         if state == "queue" and eta is None:
             eta = eta_band_for_position(queue_position)
-        message = redis_state.get("message") or f"Official run status: {state}"
-        return RunStatusResponse(
-            run_id=str(run.id),
-            state=state,
-            queue_position=queue_position,
-            eta_band=eta,
-            counters=RunCounters(
-                total=total,
-                queued=queued,
-                running=running,
-                completed=completed,
-                failed=failed,
-                warnings=warnings,
-            ),
-            backpressure=bp,
-            message=message,
+        counters = RunCounters(
+            total=int(redis_state.get("total", run.total_submission_count or 0)),
+            queued=int(redis_state.get("queued", 0)),
+            running=int(redis_state.get("running", 0)),
+            completed=int(redis_state.get("completed", 0)),
+            failed=int(redis_state.get("failed", 0)),
+            warnings=int(redis_state.get("warnings", 0)),
         )
-
-    state_val = run.status
-    if state_val not in ("queue", "run", "complete", "failure"):
-        state_val = "complete"
-    completed = run.success_count + run.warning_count
-    failed = run.failure_count + run.timeout_count
-    return RunStatusResponse(
-        run_id=str(run.id),
-        state=state_val,
-        queue_position=None,
-        eta_band=None,
-        counters=RunCounters(
+        message = redis_state.get("message") or f"Official run status: {state}"
+    else:
+        state = run.status if run.status in ("queue", "run", "complete", "failure") else "complete"
+        completed = run.success_count + run.warning_count
+        failed = run.failure_count + run.timeout_count
+        queue_position = None
+        eta = None
+        counters = RunCounters(
             total=run.total_submission_count,
-            queued=0 if state_val != "queue" else run.total_submission_count,
-            running=0 if state_val != "run" else max(
-                0, run.total_submission_count - completed - failed
-            ),
+            queued=0 if state != "queue" else run.total_submission_count,
+            running=0 if state != "run" else max(0, run.total_submission_count - completed - failed),
             completed=completed,
             failed=failed,
             warnings=run.warning_count,
-        ),
+        )
+        message = f"Official run status: {run.status}"
+
+    return RunStatusResponse(
+        run_id=str(run.id),
+        state=state,
+        queue_position=queue_position,
+        eta_band=eta,
+        counters=counters,
         backpressure=bp,
-        message=f"Official run status: {run.status}",
+        message=message,
     )
 
 
@@ -137,8 +143,9 @@ def get_run_status(
         if run is None:
             raise HTTPException(status_code=404, detail="Run not found.")
 
-        from app.domains.assignments.models import Assignment
         from sqlalchemy.orm import selectinload
+
+        from app.domains.assignments.models import Assignment
 
         assignment = db.scalar(
             select(Assignment)
@@ -229,24 +236,19 @@ def get_official_run_details(
     run = require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    details_file = official_run_dir(run_id) / "run_details.json"
-
-    if not details_file.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Run details are not available or have been cleaned up.",
-        )
-
-    data = load_run_details_json(details_file)
+    data = _load_official_run_details(run_id)
     students = [
         student_detail_from_result(canvas_id, res)
         for canvas_id, res in data.get("student_results", {}).items()
     ]
+    students.sort(key=lambda student: student["student_name"].casefold())
+    progress = manual_grading_progress(data.get("student_results", {}))
 
     return {
         "run_id": run_id,
         "status": run.status,
         "students": students,
+        **progress,
     }
 
 
@@ -261,6 +263,7 @@ def export_official_run_csv(
     require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
+    _require_exports_ready(run_id)
     csv_file = official_run_dir(run_id) / "grades.csv"
 
     if not csv_file.exists():
@@ -287,6 +290,7 @@ def export_official_run_feedback(
     require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
+    _require_exports_ready(run_id)
     zip_file = official_run_dir(run_id) / "feedback.zip"
 
     if not zip_file.exists():
@@ -425,61 +429,46 @@ def update_student_manual_grades(
     require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    run_dir = official_run_dir(run_id)
-    details_file = run_dir / "run_details.json"
+    from app.domains.grading.engine import GradingResult
+    from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
 
-    if not details_file.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Run details are not available or have been cleaned up.",
+    def apply_update(data: dict) -> dict:
+        student_results = data.get("student_results", {})
+        if canvas_id not in student_results:
+            raise HTTPException(
+                status_code=404,
+                detail="Student not found in this run.",
+            )
+        result = student_results[canvas_id]
+        update_student_manual_result(
+            result,
+            {
+                key: value.model_dump()
+                for key, value in req.grades.items()
+            },
+            overall_comment=req.overall_comment,
+            update_overall_comment="overall_comment" in req.model_fields_set,
         )
+        grading_result = GradingResult(
+            success=result["success"],
+            failure_category=result["failure_category"],
+            failure_message=result["failure_message"],
+            score=result["score"],
+            max_score=result["max_score"],
+            test_results=result["test_results"],
+            warnings=result["warnings"],
+        )
+        result["feedback_html"] = generate_pedagogical_feedback_html(
+            result["student_identifier"],
+            grading_result,
+            result["manual_results"],
+            result.get("overall_comment", ""),
+        )
+        return result
 
-    data = load_run_details_json(details_file)
-    student_results = data.get("student_results", {})
-    if canvas_id not in student_results:
-        raise HTTPException(status_code=404, detail="Student not found in this run.")
-
-    res = student_results[canvas_id]
-    manual_results = res.get("manual_results", {})
-
-    for key, val in req.grades.items():
-        if key not in manual_results:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid manual rubric item key: {key}",
-            )
-        max_points = manual_results[key]["points"]
-        if val.score is not None and val.score > max_points:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Score {val.score} exceeds maximum points of {max_points} for key {key}.",
-            )
-        manual_results[key]["score"] = val.score
-        manual_results[key]["comments"] = val.comments or ""
-
-    res["manual_results"] = manual_results
-
-    from app.domains.grading.service import GradingResult
-    from app.domains.runs.tasks import generate_pedagogical_feedback_html
-
-    grading_result = GradingResult(
-        success=res["success"],
-        failure_category=res["failure_category"],
-        failure_message=res["failure_message"],
-        score=res["score"],
-        max_score=res["max_score"],
-        test_results=res["test_results"],
-        warnings=res["warnings"],
+    data, result = mutate_run_details(run_id, apply_update)
+    response = student_detail_from_result(canvas_id, result)
+    response["manual_progress"] = manual_grading_progress(
+        data.get("student_results", {})
     )
-    feedback_html = generate_pedagogical_feedback_html(
-        res["student_identifier"],
-        grading_result,
-        manual_results,
-    )
-    res["feedback_html"] = feedback_html
-
-    details_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    write_run_grades_csv(run_dir, student_results)
-    write_feedback_zip(run_dir, student_results)
-
-    return student_detail_from_result(canvas_id, res, feedback_html=feedback_html)
+    return response

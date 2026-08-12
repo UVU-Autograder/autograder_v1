@@ -14,18 +14,18 @@ import type {
   AssignmentsDetails,
   Assignment,
   RunStatusResponse,
+  SandboxTestSummary,
 } from "@/features/assignments/types";
+import VisualDiffViewer from "@/components/visual-diff-viewer";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
-import { useEffect } from "react";
-import VisualDiffViewer from "@/components/visual-diff-viewer";
 
 function cleanTestMessage(message: string | null | undefined): string {
   if (!message) return "";
 
   const lines = message.split("\n");
   const assertIndex = lines.findIndex(
-    (line) => line.includes("AssertionError") || line.trim().startsWith("E   ")
+    (line) => line.includes("AssertionError") || line.trim().startsWith("E   "),
   );
   if (assertIndex !== -1) {
     return lines.slice(assertIndex).join("\n");
@@ -39,12 +39,14 @@ type CodeResultsProps = {
   assignmentId: string;
   maxScore: number;
   initialQuota?: AssignmentsDetails["upload_quota"];
-  assignment: Assignment;
+  assignment?: Assignment;
 };
 
 type RunPhase = "idle" | "submitting" | "running" | "complete" | "error";
 
-function testStatusLabel(status: SandboxRunResultResponse["test_summaries"][number]["status"]) {
+function testStatusLabel(
+  status: SandboxRunResultResponse["test_summaries"][number]["status"],
+) {
   switch (status) {
     case "passed":
       return "Passed";
@@ -58,7 +60,7 @@ function testStatusLabel(status: SandboxRunResultResponse["test_summaries"][numb
 }
 
 function testStatusContainerClass(
-  status: SandboxRunResultResponse["test_summaries"][number]["status"]
+  status: SandboxRunResultResponse["test_summaries"][number]["status"],
 ) {
   switch (status) {
     case "passed":
@@ -73,17 +75,17 @@ function testStatusContainerClass(
 }
 
 function testStatusTextClass(
-  status: SandboxRunResultResponse["test_summaries"][number]["status"]
+  status: SandboxRunResultResponse["test_summaries"][number]["status"],
 ) {
   switch (status) {
     case "passed":
-      return "text-green-600";
+      return "text-green-600 font-bold";
     case "failed":
-      return "text-red-600";
+      return "text-red-600 font-bold";
     case "warning":
-      return "text-amber-700";
+      return "text-amber-700 font-bold";
     default:
-      return "text-slate-600";
+      return "text-slate-600 font-bold";
   }
 }
 
@@ -118,213 +120,236 @@ export default function CodeResults({
   assignmentId,
   maxScore,
   initialQuota,
-  assignment,
 }: CodeResultsProps) {
   const { files } = useAssignmentFile();
-  const [showCheckCode, setShowCheckCode] = useState(true);
+  const [showCheckCode] = useState(true);
   const [showFeedback, setShowFeedback] = useState(true);
   const [phase, setPhase] = useState<RunPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<SandboxRunResultResponse | null>(null);
-  const [quota, setQuota] = useState<AssignmentsDetails["upload_quota"] | undefined>(initialQuota);
+  const [quota, setQuota] = useState<
+    AssignmentsDetails["upload_quota"] | undefined
+  >(initialQuota);
   const [prevInitialQuota, setPrevInitialQuota] = useState(initialQuota);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [runState, setRunState] = useState<string>("queue");
   const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
+  const [onlyFailing, setOnlyFailing] = useState(false);
+  const [isStaff] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !!(localStorage.getItem("token") || sessionStorage.getItem("token"));
+  });
+  const [stdinInput, setStdinInput] = useState("");
 
   if (initialQuota !== prevInitialQuota) {
     setQuota(initialQuota);
     setPrevInitialQuota(initialQuota);
   }
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-
-    Promise.resolve().then(() => {
-      if (!quota || quota.remaining > 0) {
-        setCountdown(null);
-        return;
-      }
-
-      const calculateRemaining = () => {
-        const resetTime = new Date(quota.reset_at).getTime();
-        const now = new Date().getTime();
-        return Math.max(0, Math.floor((resetTime - now) / 1000));
-      };
-
-      const initialDiff = calculateRemaining();
-      setCountdown(initialDiff);
-
-      if (initialDiff <= 0) return;
-
-      timer = setInterval(() => {
-        const diff = calculateRemaining();
-        setCountdown(diff);
-        if (diff <= 0) {
-          clearInterval(timer);
-          setQuota((prev) => prev ? { ...prev, remaining: prev.limit } : prev);
-        }
-      }, 1000);
-    });
-
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [quota]);
-
-  const handleCheckCode = async () => {
+  const handleRunCode = async () => {
     setPhase("submitting");
     setErrorMessage(null);
-    setRunState("queue");
+    setResult(null);
     setRunStatus(null);
-    setShowCheckCode(true);
+    setRunState("queue");
 
     try {
-      const bundle = await createSubmissionBundle(files);
-      const { run, sessionId } = await createSandboxRun(courseId, assignmentId, bundle);
-      setActiveRunId(run.run_id);
+      const bundleBlob = await createSubmissionBundle(files);
+      const { run, sessionId } = await createSandboxRun(
+        courseId,
+        assignmentId,
+        bundleBlob,
+        stdinInput || undefined,
+      );
+
+      setQuota(run.upload_quota);
+
+      const runId = run.run_id;
+      setActiveRunId(runId);
       setActiveSessionId(sessionId);
       setRunStatus(run.initial_status);
       setRunState(run.initial_status.state);
       setPhase("running");
 
-      await pollRunUntilComplete(run.status_url, {
-        onStateChange: (state) => setRunState(state),
-        onStatusUpdate: (status) => setRunStatus(status),
+      const finalStatus = await pollRunUntilComplete(run.status_url, {
+        onStatusUpdate: (currentStatus) => {
+          setRunStatus(currentStatus);
+          setRunState(currentStatus.state);
+        },
       });
-      const runResult = await getRunResult(run.result_url, sessionId);
-      
-      setResult(runResult);
-      if (run.upload_quota) {
-        setQuota(run.upload_quota);
+
+      if (finalStatus.state === "failure") {
+        setPhase("error");
+        setErrorMessage(finalStatus.message || "Run failed during execution.");
+        return;
       }
+
+      const runResult = await getRunResult(run.result_url, sessionId);
+      setResult(runResult);
       setPhase("complete");
-    } catch (error) {
+    } catch (err) {
       setPhase("error");
-      if (error instanceof ApiError && error.status === 429) {
-        setErrorMessage("Upload limit reached. Please wait for the quota to reset.");
-        if (quota) {
-          setQuota({ ...quota, remaining: 0 });
+      if (err instanceof ApiError) {
+        if (err.status === 429) {
+          setErrorMessage(
+            "Upload quota exceeded. Please wait for the window to reset.",
+          );
+        } else {
+          setErrorMessage(err.message);
         }
+      } else if (err instanceof Error) {
+        setErrorMessage(err.message);
       } else {
-        setErrorMessage(
-          error instanceof Error ? error.message : "Failed to run sandbox check."
-        );
+        setErrorMessage("An unexpected error occurred.");
       }
     } finally {
       setActiveRunId(null);
       setActiveSessionId(null);
-      setRunStatus(null);
     }
   };
 
-  const handleCancel = async () => {
-    if (!activeRunId || !activeSessionId) return;
+  const handleCancelRun = async () => {
+    if (!activeRunId || !activeSessionId || runState !== "queue") return;
     try {
       await cancelSandboxRun(activeRunId, activeSessionId);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        setErrorMessage("Cannot cancel: the run has already started executing.");
-        return;
+      setPhase("idle");
+      setErrorMessage("Run cancelled.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message);
       }
-      console.error("Failed to cancel run:", error);
-      setErrorMessage(error instanceof Error ? error.message : "Failed to cancel run.");
     }
   };
 
+  const isLoading = phase === "submitting" || phase === "running";
+  const isQuotaExceeded = quota ? quota.remaining === 0 : false;
   const score = result?.projected_score ?? 0;
   const totalScore = result?.max_score ?? maxScore;
-  const percent = totalScore > 0 ? Math.round((score / totalScore) * 100) : 0;
-  const isLoading = phase === "submitting" || phase === "running";
-  const isQuotaExhausted = quota !== undefined && quota.remaining === 0;
-  const testCases = (assignment.rubric || []).filter((item) => item.item_type === 'pytest');
+  const percent = totalScore > 0 ? (score / totalScore) * 100 : 0;
 
-  return (
-    <div className="px-1">
-      <div className="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
-        <h4 className="text-xs font-bold text-slate-800 mb-2 uppercase tracking-wide">Test Case Specifications</h4>
-        <div className="space-y-2">
-          {testCases.length === 0 ? (
-            <p className="text-xs text-slate-500">No test cases specified.</p>
-          ) : (
-            testCases.map((tc, index) => (
-              <div key={tc.key} className="text-xs flex justify-between items-start gap-2 border-b border-slate-100 last:border-b-0 pb-1.5 last:pb-0">
-                <span className="font-medium text-slate-700">
-                  {tc.label || `Test Case #${index + 1}`}
-                </span>
-                <span className="text-slate-500 whitespace-nowrap">
-                  {tc.points} pts {tc.extra_credit ? "(EC)" : ""}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
+  const renderTestItem = (test: SandboxTestSummary, index: number) => (
+    <div
+      key={`${test.label}-${index}`}
+      className={`p-3 mb-2 rounded-lg border ${testStatusContainerClass(test.status)}`}
+    >
+      <div className="flex justify-between items-center mb-2 gap-2">
+        <p className="font-semibold text-slate-900 text-sm">
+          {test.label ? test.label : `Test Case #${index + 1}`}
+        </p>
+        <span className={`text-xs ${testStatusTextClass(test.status)}`}>
+          {testStatusLabel(test.status)}
+        </span>
       </div>
 
+      <div className="text-sm space-y-1 text-slate-700">
+        <p className="text-xs text-slate-600">
+          <span className="font-medium">Points:</span> {test.points_awarded} /{" "}
+          {test.points_possible}
+        </p>
+
+        {(test.your_value != null ||
+          test.actual != null ||
+          test.expected_value != null ||
+          test.expected != null) && (
+          <div className="mt-2.5 space-y-2">
+            <div className="p-3 rounded-md border border-red-200 bg-red-100/60 space-y-1.5 text-xs font-sans">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-red-900 w-28 shrink-0">
+                  Your value:
+                </span>
+                <code className="bg-red-200/70 text-red-950 px-2 py-0.5 rounded font-mono break-all">
+                  {test.your_value ?? test.actual ?? "false"}
+                </code>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-emerald-900 w-28 shrink-0">
+                  Expected value:
+                </span>
+                <code className="bg-emerald-200/70 text-emerald-950 px-2 py-0.5 rounded font-mono break-all">
+                  {test.expected_value ?? test.expected ?? "true"}
+                </code>
+              </div>
+            </div>
+            {(test.expected || test.actual) && (
+              <VisualDiffViewer
+                expected={test.expected ?? test.expected_value}
+                actual={test.actual ?? test.your_value}
+              />
+            )}
+          </div>
+        )}
+
+        {test.message && !test.your_value && !test.actual && (
+          <p className="mt-2 text-xs text-red-700 bg-red-100/60 p-2 rounded font-sans">
+            {cleanTestMessage(test.message).split("\n")[0]}
+          </p>
+        )}
+
+        {isStaff && (result?.raw_output || test.message) && (
+          <details className="mt-2 text-xs text-slate-500">
+            <summary className="cursor-pointer font-semibold text-purple-700 hover:text-purple-900">
+              🔍 [Instructor Only] View Raw Terminal Output
+            </summary>
+            <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
+              {result?.raw_output || cleanTestMessage(test.message)}
+            </pre>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-slate-50 border-l border-slate-200">
+      <details className="mb-3 rounded-md border border-slate-200 bg-white text-xs">
+        <summary className="cursor-pointer select-none px-3 py-2 text-slate-500 font-medium hover:text-slate-800">
+          Provide stdin{" "}
+          <span className="font-mono text-[10px] text-slate-400">
+            (optional)
+          </span>
+        </summary>
+        <div className="border-t border-slate-200 px-3 pb-3 pt-2">
+          <textarea
+            id="sandbox-stdin-input"
+            aria-label="Console input / stdin"
+            value={stdinInput}
+            onChange={(e) => setStdinInput(e.target.value)}
+            placeholder={
+              "Each line will be fed as keyboard input (Enter)\ne.g.\nAlice\n3"
+            }
+            rows={3}
+            className="w-full max-w-full resize-y rounded border border-slate-300 p-2 font-mono text-xs leading-relaxed focus:border-indigo-400 focus:outline-none"
+          />
+        </div>
+      </details>
       <Button
-        onClick={handleCheckCode}
-        disabled={isLoading || isQuotaExhausted}
-        className="w-full mt-2 bg-gradient-to-r from-gray-800 to-gray-500 hover:from-black hover:to-indigo-600 text-white text-lg font-semibold px-6 py-3 rounded-lg disabled:opacity-50"
+        onClick={handleRunCode}
+        disabled={isLoading || isQuotaExceeded}
+        className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-md shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {phase === "submitting"
-          ? "Submitting..."
-          : phase === "running"
-            ? "Running Tests..."
-            : isQuotaExhausted
-              ? "Upload Limit Reached"
-              : "Run Tests"}
+        {isLoading ? "Running Tests..." : "Run Code"}
       </Button>
 
-      {isLoading && runStatus && (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          <p className="mb-2 font-semibold uppercase tracking-wide">Run Status</p>
-          <div className="space-y-1 text-amber-700">
-            <p>
-              <span className="font-semibold">State:</span> {runStateLabel(runStatus.state)}
-            </p>
-            {runStatus.queue_position !== null && (
-              <p>
-                <span className="font-semibold">Queue position:</span> {runStatus.queue_position}
-              </p>
-            )}
-            {formatEtaBand(runStatus.eta_band) && (
-              <p>
-                <span className="font-semibold">Estimated wait: </span>
-                {formatEtaBand(runStatus.eta_band)}
-              </p>
-            )}
-            {runStatus.message && (
-              <p className="mt-2 border-t border-amber-200 pt-2 italic">{runStatus.message}</p>
+      {isLoading && (
+        <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900 space-y-1.5">
+          <div className="flex items-center justify-between font-semibold">
+            <span>Status: {runStateLabel(runState)}</span>
+            {runState === "queue" && activeRunId && (
+              <button
+                type="button"
+                onClick={handleCancelRun}
+                className="text-xs text-red-600 hover:underline font-bold"
+              >
+                Cancel Run
+              </button>
             )}
           </div>
-        </div>
-      )}
-
-      {isLoading && activeRunId && activeSessionId && (
-        <Button
-          onClick={handleCancel}
-          variant="destructive"
-          disabled={runState !== "queue"}
-          className="w-full mt-2"
-        >
-          {runState === "queue" ? "Cancel Run" : "Executing (Cannot Cancel)"}
-        </Button>
-      )}
-
-      {quota && (
-        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
-          <div className="flex justify-between items-center">
-            <span className="font-semibold text-slate-700">Sandbox Uploads:</span>
-            <span className={`font-bold ${quota.remaining === 0 ? "text-red-600" : "text-slate-600"}`}>
-              {quota.remaining} / {quota.limit} remaining
-            </span>
-          </div>
-          {quota.remaining === 0 && countdown !== null && (
-            <div className="mt-2 text-red-600 font-semibold border-t border-red-200 pt-2 text-center">
-              Resets in {Math.floor(countdown / 60)}m {countdown % 60}s
-            </div>
+          {runStatus?.queue_position != null && (
+            <p>Queue position: #{runStatus.queue_position}</p>
+          )}
+          {runStatus?.eta_band && (
+            <p>Estimated wait: {formatEtaBand(runStatus.eta_band)}</p>
           )}
         </div>
       )}
@@ -351,46 +376,67 @@ export default function CodeResults({
               </div>
             </div>
 
-            <p className="font-bold text-lg mb-2 mt-4">Test Cases:</p>
-            <div>
-              {result.test_summaries.length === 0 ? (
-                <p className="text-sm text-slate-600">No test summaries returned.</p>
-              ) : (
-                result.test_summaries.map((test, index) => (
-                  <div
-                    key={`${test.label}-${index}`}
-                    className={`p-3 mb-2 rounded-lg border ${testStatusContainerClass(test.status)}`}
-                  >
-                    <div className="flex justify-between items-center mb-2 gap-2">
-                      <p className="font-semibold">
-                        {test.label ? `Test Case: ${test.label}` : `Test Case #${index + 1}`}
-                      </p>
-                      <span className={`text-sm font-bold ${testStatusTextClass(test.status)}`}>
-                        {testStatusLabel(test.status)}
-                      </span>
-                    </div>
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3 mt-4">
+              <p className="font-bold text-lg">Test Cases:</p>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={onlyFailing}
+                  onChange={(e) => setOnlyFailing(e.target.checked)}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
+                />
+                Only show failing tests
+              </label>
+            </div>
 
-                    <div className="text-sm space-y-1 text-slate-700">
-                      <p>
-                        <span className="font-medium">Points:</span> {test.points_awarded} /{" "}
-                        {test.points_possible}
-                      </p>
-                      {test.message && (
-                        <div className="mt-2 space-y-2">
-                          <span className="font-medium text-slate-700">Details:</span>
-                          {test.expected != null && test.actual != null ? (
-                            <VisualDiffViewer expected={test.expected} actual={test.actual} />
-                          ) : (
-                            <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
-                              {cleanTestMessage(test.message)}
-                            </pre>
+            <div>
+              {result.rubric_groups && result.rubric_groups.length > 0
+                ? result.rubric_groups.map((group) => {
+                    const filteredItems = onlyFailing
+                      ? group.items.filter((item) => item.status !== "passed")
+                      : group.items;
+                    if (onlyFailing && filteredItems.length === 0) return null;
+
+                    return (
+                      <div
+                        key={group.group_key}
+                        className="mb-4 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm"
+                      >
+                        <div className="flex justify-between items-center bg-slate-100 px-3 py-2 border-b border-slate-200">
+                          <span className="font-bold text-slate-800 text-xs">
+                            {group.label}
+                          </span>
+                          <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-full">
+                            {group.points_earned} / {group.points_possible} pts
+                          </span>
+                        </div>
+                        <div className="p-2 space-y-1">
+                          {filteredItems.map((test, index) =>
+                            renderTestItem(test, index),
                           )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+                      </div>
+                    );
+                  })
+                : (() => {
+                    const displaySummaries = onlyFailing
+                      ? result.test_summaries.filter(
+                          (t) => t.status !== "passed",
+                        )
+                      : result.test_summaries;
+                    if (displaySummaries.length === 0) {
+                      return (
+                        <p className="text-sm text-slate-600">
+                          {onlyFailing
+                            ? "No failing tests found 🎉"
+                            : "No test summaries returned."}
+                        </p>
+                      );
+                    }
+                    return displaySummaries.map((test, index) =>
+                      renderTestItem(test, index),
+                    );
+                  })()}
             </div>
 
             {result.warnings.length > 0 && (
@@ -402,8 +448,12 @@ export default function CodeResults({
                       key={`${warning.code}-${index}`}
                       className="border-l-4 border-amber-500 bg-amber-50 rounded-md p-4"
                     >
-                      <p className="text-amber-800 font-semibold">{warning.code}</p>
-                      <p className="text-sm text-amber-700 mt-2">{warning.message}</p>
+                      <p className="text-amber-800 font-semibold">
+                        {warning.code}
+                      </p>
+                      <p className="text-sm text-amber-700 mt-2">
+                        {warning.message}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -423,13 +473,11 @@ export default function CodeResults({
         )}
       </div>
 
-      <br />
-
       <Button
         onClick={() => setShowFeedback((prev) => !prev)}
-        className="w-full mt-2 bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-lg font-semibold px-6 py-3 rounded-lg"
+        className="w-full mt-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-md shadow-xs"
       >
-        View AI Feedback
+        {showFeedback ? "Hide AI Feedback" : "View AI Feedback"}
       </Button>
       <div className={`flex flex-1 flex-col ${showFeedback ? "" : "hidden"}`}>
         <div className="text-wrap mt-4">
@@ -439,7 +487,9 @@ export default function CodeResults({
               "Run tests to generate session-only projected feedback."}
           </p>
           {result?.retention_notice && (
-            <p className="mt-3 text-xs text-slate-500">{result.retention_notice}</p>
+            <p className="mt-3 text-xs text-slate-500">
+              {result.retention_notice}
+            </p>
           )}
         </div>
       </div>

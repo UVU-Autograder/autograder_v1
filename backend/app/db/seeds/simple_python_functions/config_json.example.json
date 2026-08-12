@@ -1,0 +1,50 @@
+{
+  "bundle": {
+    "entrypoint": "student_functions.py"
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "assignment_tests.py"
+    },
+    "pytest_markers": {
+      "type": "support_file",
+      "display_filename": "pytest.ini"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "student_functions.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "add_numbers",
+      "label": "Adds numbers correctly",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "reverse_words",
+      "label": "Reverses words while preserving order",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "count_vowels",
+      "label": "Counts vowels case-insensitively",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "concepts": {
+    "additions": [
+      "functions",
+      "strings",
+      "loops"
+    ]
+  }
+}

@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+import threading
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -13,6 +17,8 @@ from app.core.settings import get_settings
 from app.domains.runs.models import RunSummary
 
 EXCLUDED_WORKSPACE_PARTS = frozenset({"__pycache__", ".DS_Store"})
+_RUN_LOCKS: dict[int, threading.Lock] = {}
+_RUN_LOCKS_GUARD = threading.Lock()
 
 
 def get_workspaces_dir() -> Path:
@@ -41,7 +47,7 @@ def manual_score_sum(manual_results: dict | None) -> int:
     )
 
 
-def init_manual_results(manual_rubric_items) -> dict:
+def init_manual_results(scoring_items) -> dict:
     return {
         item.key: {
             "label": item.label,
@@ -49,8 +55,105 @@ def init_manual_results(manual_rubric_items) -> dict:
             "score": None,
             "comments": "",
         }
-        for item in manual_rubric_items
+        for item in scoring_items
+        if getattr(item, "item_type", None) == "manual"
     }
+
+
+def manual_grading_progress(student_results: dict) -> dict[str, int | bool]:
+    total = len(student_results)
+    requires_manual = any(
+        bool(result.get("manual_results")) for result in student_results.values()
+    )
+    completed = sum(
+        1
+        for result in student_results.values()
+        if all(
+            item.get("score") is not None
+            for item in (result.get("manual_results") or {}).values()
+        )
+    )
+    return {
+        "requires_manual_grading": requires_manual,
+        "completed_students": completed,
+        "total_students": total,
+        "exports_ready": not requires_manual or completed == total,
+    }
+
+
+def update_student_manual_result(
+    result: dict,
+    grade_updates: dict[str, dict[str, Any]],
+    *,
+    overall_comment: str | None = None,
+    update_overall_comment: bool = False,
+) -> None:
+    manual_results = result.get("manual_results") or {}
+    for key, update in grade_updates.items():
+        if key not in manual_results:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid manual rubric item key: {key}",
+            )
+        score = update.get("score")
+        max_points = manual_results[key]["points"]
+        if score is not None and (
+            isinstance(score, bool)
+            or not isinstance(score, int)
+            or score < 0
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Score for {key} must be a whole number from 0 to "
+                    f"{max_points}, or null."
+                ),
+            )
+        if score is not None and score > max_points:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Score {score} exceeds maximum points of "
+                    f"{max_points} for key {key}."
+                ),
+            )
+        manual_results[key]["score"] = score
+        manual_results[key]["comments"] = update.get("comments") or ""
+
+    result["manual_results"] = manual_results
+    if update_overall_comment:
+        result["overall_comment"] = overall_comment or ""
+
+
+def mutate_run_details(
+    run_id: int,
+    mutator: Callable[[dict], Any],
+) -> tuple[dict, Any]:
+    """Atomically mutate one run's ephemeral details.
+
+    The lock is process-local. A multi-API-process deployment must replace it
+    with a Redis-backed distributed lock.
+    """
+    with _RUN_LOCKS_GUARD:
+        lock = _RUN_LOCKS.setdefault(run_id, threading.Lock())
+
+    run_dir = official_run_dir(run_id)
+    details_file = run_dir / "run_details.json"
+    with lock:
+        if not details_file.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="Run details are not available or have been cleaned up.",
+            )
+        data = load_run_details_json(details_file)
+        result = mutator(data)
+        temp_file = details_file.with_suffix(".json.tmp")
+        temp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        os.replace(temp_file, details_file)
+        student_results = data.get("student_results", {})
+        write_run_grades_csv(run_dir, student_results)
+        write_feedback_zip(run_dir, student_results)
+        return data, result
 
 
 def student_detail_from_result(
@@ -74,6 +177,17 @@ def student_detail_from_result(
         feedback_preview = "All tests passed successfully."
 
     manual_results = res.get("manual_results") or {}
+    automated_results = [
+        {
+            "key": item.get("key"),
+            "label": item.get("label", item.get("key", "Test Case")),
+            "outcome": item.get("outcome"),
+            "passed": item.get("passed"),
+            "points_awarded": item.get("points_awarded", 0),
+            "points": item.get("points", 0),
+        }
+        for item in res.get("test_results", [])
+    ]
     return {
         "student_name": res.get("student_identifier", "Unknown"),
         "canvas_id": canvas_id,
@@ -84,6 +198,14 @@ def student_detail_from_result(
         "feedback_preview": feedback_preview,
         "feedback_html": feedback_html if feedback_html is not None else (res.get("feedback_html") or ""),
         "manual_results": manual_results,
+        "overall_comment": res.get("overall_comment", ""),
+        "automated_results": automated_results,
+        "automated_score": res.get("score", 0),
+        "automated_max_score": res.get(
+            "automated_max_score",
+            res.get("max_score", 0)
+            - sum(item.get("points", 0) for item in manual_results.values()),
+        ),
     }
 
 
@@ -95,7 +217,9 @@ def load_run_details_json(details_file: Path) -> dict:
 
 
 def write_run_grades_csv(run_dir: Path, student_results: dict) -> None:
-    with open(run_dir / "grades.csv", "w", newline="", encoding="utf-8") as f:
+    output = run_dir / "grades.csv"
+    temp = output.with_suffix(".csv.tmp")
+    with open(temp, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Student Identifier", "Canvas User ID", "Submission ID", "Score", "Max Score"])
         for canvas_id, res in student_results.items():
@@ -106,13 +230,17 @@ def write_run_grades_csv(run_dir: Path, student_results: dict) -> None:
                 res.get("score", 0) + manual_score_sum(res.get("manual_results")),
                 res["max_score"],
             ])
+    os.replace(temp, output)
 
 
 def write_feedback_zip(run_dir: Path, student_results: dict) -> None:
-    with zipfile.ZipFile(run_dir / "feedback.zip", "w", zipfile.ZIP_DEFLATED) as z_out:
+    output = run_dir / "feedback.zip"
+    temp = output.with_suffix(".zip.tmp")
+    with zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as z_out:
         for canvas_id, res in student_results.items():
             filename = f"{res['student_identifier']}_{canvas_id}_feedback.html"
             z_out.writestr(filename, res["feedback_html"])
+    os.replace(temp, output)
 
 
 def is_listable_student_file(path: Path, student_dir: Path) -> bool:

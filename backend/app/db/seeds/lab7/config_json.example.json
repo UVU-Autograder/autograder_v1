@@ -1,0 +1,73 @@
+{
+  "bundle": {
+    "entrypoint": "student.py",
+    "file_requirements": [
+      {
+        "label": "Student dataclass definition file",
+        "paths": [
+          "student.py"
+        ]
+      },
+      {
+        "label": "Student reflection responses",
+        "paths": [
+          "student_reflection.md"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "student.py"
+    },
+    "reflection_solution": {
+      "type": "model_solution",
+      "display_filename": "student_reflection.md"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "dataclass",
+      "label": "@dataclass(order=True) with correct typed fields and default_factory",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "methods",
+      "label": "enroll() and total_courses() methods",
+      "points": 25,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "ordering",
+      "label": "Data class comparison operators and sorting by ID",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "main_output",
+      "label": "main() execution creates and tests Student objects",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "reflection",
+      "label": "Reflection responses on default_factory and dataclass design",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "manual"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [],
+  "rubric_groups": []
+}

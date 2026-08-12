@@ -39,7 +39,9 @@ export default function StaffLogin() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("reason") === "timeout") {
-        setInfoMessage("Your session has expired due to 5 minutes of inactivity. Please sign in again.");
+        void Promise.resolve().then(() => {
+          setInfoMessage("Your session has expired due to 5 minutes of inactivity. Please sign in again.");
+        });
       }
     }
   }, [router]);

@@ -1,45 +1,75 @@
-import sys
-import os
-import zipfile
-import json
 import csv
+import io
+import sys
+import zipfile
 from pathlib import Path
-from unittest.mock import patch, AsyncMock
+from typing import Any
+from unittest.mock import AsyncMock, patch
+
 import pytest
+from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.base import Base, import_domain_models
-from app.db.seed import initialize_database
-from app.db.session import SessionLocal, engine
-from app.domains.runs.models import RunSummary
-from app.domains.runs.tasks import grade_official_run, run_mock_official_run
-from app.domains.grading.service import GradingResult
 from app.core.settings import get_settings
+from app.db.session import SessionLocal
+from app.domains.grading.engine import GradingResult
+from app.domains.runs.mock_runner import run_mock_official_run
+from app.domains.runs.models import RunSummary
+from app.domains.runs.tasks import (
+    build_model_solution_zip,
+    failing_automated_items,
+    grade_official_run,
+)
 from test_ingestion_extractor import create_zip_bytes
 
 
+def test_build_model_solution_zip_uses_real_files():
+    payload = build_model_solution_zip(
+        ["dessert.py", "dessertshop.py"],
+        {
+            "dessert.py": b"class Dessert: pass\n",
+            "dessertshop.py": b"print('ok')\n",
+        },
+    )
+
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        assert archive.namelist() == ["dessert.py", "dessertshop.py"]
+        assert archive.read("dessertshop.py") == b"print('ok')\n"
+
+
+def test_build_model_solution_zip_rejects_missing_required_file():
+    with pytest.raises(ValueError, match="dessertshop.py"):
+        build_model_solution_zip(
+            ["dessert.py", "dessertshop.py"],
+            {"dessert.py": b"class Dessert: pass\n"},
+        )
+
+
+def test_model_validation_accepts_only_explicitly_passed_items():
+    passed = {"key": "behavior", "passed": True}
+    failed = {"key": "style", "passed": False}
+
+    assert failing_automated_items([passed]) == []
+    assert failing_automated_items([passed, failed]) == [failed]
+
+
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture()
-def temp_workspaces(tmp_path, monkeypatch):
+def temp_workspaces(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     from app.core.settings import get_settings
     settings = get_settings()
     monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path / "artifacts"))
     return tmp_path
 
 
-def test_run_mock_official_run_success(db_session, temp_workspaces):
+def test_run_mock_official_run_success(db_session: Session, temp_workspaces: Path) -> None:
     # 1. Create a RunSummary record
     run = RunSummary(
         workflow_type="official",
@@ -77,7 +107,7 @@ def test_run_mock_official_run_success(db_session, temp_workspaces):
         assert len(rows) == 4  # Header + 3 students
 
 
-def test_grade_official_run_pipeline_success(db_session, temp_workspaces):
+def test_grade_official_run_pipeline_success(db_session: Session, temp_workspaces: Path) -> None:
     # 1. Create a RunSummary record
     run = RunSummary(
         workflow_type="official",
@@ -101,7 +131,7 @@ def test_grade_official_run_pipeline_success(db_session, temp_workspaces):
     })
     zip_dest.write_bytes(canvas_zip_bytes)
 
-    # 3. Mock run_grading_pipeline
+    # 3. Mock GradingEngine.grade_submission
     mock_result = GradingResult(
         success=True,
         score=100,
@@ -110,7 +140,7 @@ def test_grade_official_run_pipeline_success(db_session, temp_workspaces):
         warnings=[]
     )
 
-    with patch("app.domains.grading.service.run_grading_pipeline", new_callable=AsyncMock) as mock_pipeline:
+    with patch("app.domains.grading.engine.GradingEngine.grade_submission", new_callable=AsyncMock) as mock_pipeline:
         mock_pipeline.return_value = mock_result
 
         # Run task directly
@@ -131,8 +161,9 @@ def test_grade_official_run_pipeline_success(db_session, temp_workspaces):
     assert (run_dir / "feedback.zip").exists()
 
 
-def test_cleanup_expired_workspaces(db_session, temp_workspaces):
-    from datetime import datetime, timedelta, UTC
+def test_cleanup_expired_workspaces(db_session: Session, temp_workspaces: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+
     from app.domains.runs.tasks import cleanup_expired_workspaces
 
     # 1. Create a run that is 25 hours old (expired)
@@ -187,4 +218,144 @@ def test_cleanup_expired_workspaces(db_session, temp_workspaces):
     # 6. Verify recent files are NOT deleted
     assert recent_run_dir.exists()
     assert recent_zip.exists()
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
+
+
+@pytest.mark.anyio
+async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_workspaces: Any) -> None:
+    from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.grading.engine import GradingEngine
+
+    # Create configuration for an assignment
+    config_dict = {
+        "bundle": {
+            "entrypoint": "main.py",
+            "file_requirements": [
+                {"label": "Main file", "paths": ["main.py"]},
+                {"label": "Helper file", "paths": ["helper.py"]}
+            ]
+        },
+        "artifacts": {
+            "assignment_tests": {
+                "type": "pytest_file",
+                "display_filename": "tests.py"
+            }
+        },
+        "scoring_items": [
+            {
+                "key": "t1",
+                "label": "Test 1",
+                "points": 10,
+                "extra_credit": False,
+                "item_type": "pytest",
+            }
+        ]
+    }
+    config = AssignmentConfigV1.model_validate(config_dict)
+
+    # ZIP contains student files: helper.py contains unsafe import (subprocess)
+    # but main.py is clean.
+    zip_bytes = create_zip_bytes({
+        "main.py": b"print('clean main')",
+        "helper.py": b"import subprocess\nsubprocess.run('echo hello')"
+    })
+
+    # Create test artifact file on disk
+    tests_file = temp_workspaces / "tests.py"
+    tests_file.write_text("def test_ok(): pass", encoding="utf-8")
+
+    artifact_refs = {
+        "assignment_tests": f"file://{tests_file.as_posix()}"
+    }
+
+    engine = GradingEngine(
+        config=config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=["variables", "functions"]
+    )
+    result = await engine.grade_submission(zip_data=zip_bytes)
+
+    # Check that it got blocked by helper.py, not main.py!
+    assert not result.success
+    assert result.failure_category == "concept_blocked"
+    assert "[helper.py]" in result.failure_message
+    assert "subprocess" in result.failure_message
+
+
+@pytest.mark.anyio
+async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_workspaces: Path) -> None:
+    from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.assignments.service import get_assignment_for_course
+    from app.domains.grading.engine import GradingEngine
+    from app.domains.grading.executor import ExecutionOutcome
+    from app.domains.grading.result_parser import PytestRunResult, PytestTestResult
+
+    # 1. Retrieve the seeded ds1 assignment
+    assignment = get_assignment_for_course(db_session, "cs1410", "ds1")
+    assert assignment is not None
+    assert assignment.config is not None
+
+    # Load configuration
+    config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+
+    # 2. Get artifact refs
+    artifact_refs = {}
+    for artifact in assignment.artifacts:
+        artifact_refs[artifact.artifact_key] = artifact.storage_ref
+
+    # 3. Create student submission ZIP with dessert.py solution
+    repo_root = Path(__file__).resolve().parents[2]
+    model_solution_path = repo_root / "backend" / "app" / "db" / "seeds" / "ds1" / "dessert.py"
+    dessert_content = model_solution_path.read_bytes()
+
+    zip_bytes = create_zip_bytes({
+        "dessert.py": dessert_content
+    })
+
+    # 4. Mock the Judge0 execution to return 5 passed tests
+    simulated_result = PytestRunResult(
+        tests=[
+            PytestTestResult(nodeid="test_dessert_item_class", outcome="passed", markers=["ag_dessert_item"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_candy_class", outcome="passed", markers=["ag_candy"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_cookie_class", outcome="passed", markers=["ag_cookie"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_icecream_class", outcome="passed", markers=["ag_icecream"], duration=0.01, message=None),
+            PytestTestResult(nodeid="test_sundae_class", outcome="passed", markers=["ag_sundae"], duration=0.01, message=None),
+        ],
+        total=5,
+        passed=5,
+        failed=0,
+        errors=0,
+        duration=0.1,
+        exit_code=0,
+    )
+    mock_outcome = ExecutionOutcome(success=True, pytest_result=simulated_result)
+
+    from app.domains.assignments.service import effective_allowed_concepts
+    allowed = effective_allowed_concepts(assignment)
+
+    with patch("app.domains.grading.engine.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = mock_outcome
+
+        engine = GradingEngine(
+            config=config,
+            artifact_refs=artifact_refs,
+            allowed_concepts=allowed,
+        )
+        result = await engine.grade_submission(zip_data=zip_bytes)
+
+    # 5. Assert it graded perfectly!
+    assert result.success
+    assert result.score == 100
+    assert result.max_score == 100
+    assert len(result.warnings) == 0
+    assert result.pytest_result is not None
+    assert result.pytest_result.total == 5
+    assert result.pytest_result.passed == 5
+    assert result.pytest_result.failed == 0
+
+
 

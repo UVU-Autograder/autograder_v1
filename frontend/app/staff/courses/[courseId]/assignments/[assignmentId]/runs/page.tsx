@@ -8,22 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
 
-type RunSummary = {
-  id: number;
-  workflow_type: string;
-  status: string;
-  total_submission_count: number;
-  success_count: number;
-  warning_count: number;
-  failure_count: number;
-  timeout_count: number;
-  created_at: string;
-};
-
-type RunSummaryListResponse = {
-  runs: RunSummary[];
-};
-
 type IngestionResponse = {
   run_id: string;
   status: string;
@@ -58,7 +42,6 @@ type PageProps = {
 export default function RunsPage({ params }: PageProps) {
   const router = useRouter();
   const { courseId, assignmentId } = use(params);
-  const [runs, setRuns] = useState<RunSummary[]>([]);
   const [sections, setSections] = useState<StaffSection[]>([]);
   const [sectionId, setSectionId] = useState<string>("");
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -79,15 +62,9 @@ export default function RunsPage({ params }: PageProps) {
       }
     });
 
-    Promise.all([
-      apiClient.get<RunSummaryListResponse>(
-        `/staff/courses/${courseId}/assignments/${assignmentId}/runs`
-      ),
-      apiClient.get<StaffSectionListResponse>(`/staff/courses/${courseId}/sections`),
-    ])
-      .then(([runsData, sectionsData]) => {
+    apiClient.get<StaffSectionListResponse>(`/staff/courses/${courseId}/sections`)
+      .then((sectionsData) => {
         if (!active) return;
-        setRuns(runsData.runs);
         setSections(sectionsData.sections);
         if (sectionsData.sections.length === 1) {
           setSectionId(String(sectionsData.sections[0].id));
@@ -110,8 +87,6 @@ export default function RunsPage({ params }: PageProps) {
   useEffect(() => {
     if (!activeRunId) return;
 
-    // eslint-disable-next-line prefer-const
-    let timer: NodeJS.Timeout;
     const checkStatus = async () => {
       try {
         const data = await apiClient.get<RunStatusResponse>(`/runs/${activeRunId}/status`);
@@ -130,7 +105,7 @@ export default function RunsPage({ params }: PageProps) {
       }
     };
 
-    timer = setInterval(checkStatus, 2000);
+    const timer = setInterval(checkStatus, 2000);
     return () => clearInterval(timer);
   }, [activeRunId, courseId, assignmentId, router]);
 

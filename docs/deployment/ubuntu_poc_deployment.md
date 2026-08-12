@@ -80,7 +80,7 @@ When `SEED_DATABASE=true`, it also runs:
 python -m app.db.seed
 ```
 
-The seeded data uses `docs/backend_implementation/examples` through `seed://...` artifact references. Those example artifacts are copied into the backend image and resolved with `REPO_ROOT=/app`.
+The seeded data uses `backend/app/db/seeds` through `seed://...` artifact references. Those seed packages ship inside the backend image and resolve relative to `app/db/seeds`.
 
 ## Judge0 And Kata
 
@@ -104,3 +104,35 @@ Use plain environment files for now, but do not commit real secrets. The existin
 The current documentation says the technical design reduces FERPA risk, but live official grading still depends on institutional approval and direct-control requirements. Use this POC with synthetic, fake, or approved anonymized data unless UVU approval has been explicitly documented for live student data.
 
 Local LLM credentials can be supplied through environment variables, but AI feedback for live, pseudonymous, or real student-derived code should remain disabled unless the UVU approval checklist is complete.
+
+## Celery Beat Scheduler (Periodic Tasks)
+
+The autograder stack utilizes **Celery Beat** to schedule periodic background tasks such as the hourly workspace cleanup (`cleanup_expired_workspaces`).
+
+### Running Celery Beat in Development
+In the development environment, you can run the Celery Beat scheduler in a separate terminal process:
+
+```bash
+celery -A app.integrations.celery.app beat --loglevel=info
+```
+
+### Running in Docker Compose
+In production/POC compose deployments, the Celery Beat scheduler is included as a service in the docker compose configurations, using the same backend container image:
+
+```yaml
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.integrations.celery.app beat --loglevel=info
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+    depends_on:
+      - redis
+      - app-postgres
+```
+
+Make sure the Celery Beat scheduler process is running to guarantee that temporary student workspaces and grade review exports are cleaned up after their 24-hour expiration window.
+

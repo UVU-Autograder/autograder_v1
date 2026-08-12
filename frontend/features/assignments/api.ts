@@ -61,10 +61,14 @@ function buildSandboxHeaders(courseId: string, assignmentId: string) {
 export async function createSandboxRun(
   courseId: string,
   assignmentId: string,
-  bundle: Blob
+  bundle: Blob,
+  stdin?: string,
 ): Promise<{ run: SandboxRunCreateResponse; sessionId: string }> {
   const formData = new FormData();
   formData.append("bundle", bundle, "submission.zip");
+  if (stdin && stdin.trim()) {
+    formData.append("stdin", stdin);
+  }
 
   const { data, response } = await apiClient.postForm<SandboxRunCreateResponse>(
     `/sandbox/courses/${courseId}/assignments/${assignmentId}/runs`,

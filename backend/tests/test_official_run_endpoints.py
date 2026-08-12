@@ -1,31 +1,23 @@
-import sys
-import os
 import json
-import csv
+import sys
 import zipfile
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.base import Base, import_domain_models
-from app.db.seed import initialize_database
-from app.db.session import SessionLocal, engine
-from app.main import create_app
+from app.db.session import SessionLocal
 from app.domains.runs.models import RunSummary
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture()
@@ -145,22 +137,27 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
         headers=headers
     )
     assert response.status_code == 200
-    assert response.json() == {
-        "run_id": run.id,
-        "status": "complete",
-        "students": [
-            {
-                "student_name": "studenta",
-                "canvas_id": "11111",
-                "matched_file": "student_functions.py",
-                "score": 100,
-                "max_score": 100,
-                "status": "success",
-                "feedback_preview": "All tests passed successfully.",
-                "feedback_html": "<html></html>",
-                "manual_results": {}
-            }
-        ]
+    body = response.json()
+    assert body["run_id"] == run.id
+    assert body["status"] == "complete"
+    assert body["requires_manual_grading"] is False
+    assert body["completed_students"] == 1
+    assert body["total_students"] == 1
+    assert body["exports_ready"] is True
+    assert body["students"][0] == {
+        "student_name": "studenta",
+        "canvas_id": "11111",
+        "matched_file": "student_functions.py",
+        "score": 100,
+        "max_score": 100,
+        "status": "success",
+        "feedback_preview": "All tests passed successfully.",
+        "feedback_html": "<html></html>",
+        "manual_results": {},
+        "overall_comment": "",
+        "automated_results": [],
+        "automated_score": 100,
+        "automated_max_score": 100,
     }
 
     # Request CSV export
@@ -247,7 +244,7 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
     student_dir = workspaces_dir / f"official_{run.id}" / "student_11111"
     student_dir.mkdir(parents=True, exist_ok=True)
-    
+
     test_code_file = student_dir / "solution.py"
     test_code_file.write_text("def test(): return 42", encoding="utf-8")
     (student_dir / "diagram.png").write_bytes(b"\x89PNG\r\n")
@@ -354,6 +351,12 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     assert body["score"] == 40
     assert body["manual_results"]["style"]["score"] is None
     assert body["manual_results"]["style"]["comments"] == "Pending review"
+    assert body["manual_progress"]["exports_ready"] is False
+    response = client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
+        headers=headers,
+    )
+    assert response.status_code == 409
 
     # 1. Successful update
     payload = {
@@ -362,7 +365,8 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
                 "score": 8,
                 "comments": "Nicely styled!"
             }
-        }
+        },
+        "overall_comment": "Keep up the good work.",
     }
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
@@ -375,6 +379,16 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     assert body["manual_results"]["style"]["score"] == 8
     assert body["manual_results"]["style"]["comments"] == "Nicely styled!"
     assert "Manual Grading Criteria" in body["feedback_html"]
+    assert "Keep up the good work." in body["feedback_html"]
+    assert body["manual_progress"]["exports_ready"] is True
+    assert client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
+        headers=headers,
+    ).status_code == 200
+    assert client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
+        headers=headers,
+    ).status_code == 200
 
     # Check files on disk
     updated_details = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
@@ -413,4 +427,25 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     )
     assert response.status_code == 400
     assert "Invalid manual rubric item key" in response.json()["detail"]
+
+    # 4. Non-integer scores are rejected at the request boundary.
+    response = client.post(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
+        json={"grades": {"style": {"score": 8.5}}},
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+    # 5. Clearing a score returns the student to ungraded and re-blocks export.
+    response = client.post(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
+        json={"grades": {"style": {"score": None, "comments": ""}}},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["manual_progress"]["exports_ready"] is False
+    assert client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
+        headers=headers,
+    ).status_code == 409
 

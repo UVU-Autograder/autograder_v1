@@ -1,0 +1,88 @@
+{
+  "bundle": {
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "label": "Dessert Shop classes definition file",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "label": "Dessert Shop main entrypoint file",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    },
+    "model_solution_test_dessert": {
+      "type": "model_solution",
+      "display_filename": "test_dessert.py"
+    },
+    "model_solution_test_candy": {
+      "type": "model_solution",
+      "display_filename": "test_candy.py"
+    },
+    "model_solution_test_cookie": {
+      "type": "model_solution",
+      "display_filename": "test_cookie.py"
+    },
+    "model_solution_test_icecream": {
+      "type": "model_solution",
+      "display_filename": "test_icecream.py"
+    },
+    "model_solution_test_sundae": {
+      "type": "model_solution",
+      "display_filename": "test_sundae.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "dessertshop_class",
+      "label": "DessertShop class with 4 prompt methods",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "ds4_regression",
+      "label": "DS4 ABC + cost/tax intact",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "input_validation",
+      "label": "Input validation quality (retries, ValueError, positive values only)",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "manual"
+    },
+    {
+      "key": "receipt_output",
+      "label": "Receipt format and correctness in final output",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "manual"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
+}

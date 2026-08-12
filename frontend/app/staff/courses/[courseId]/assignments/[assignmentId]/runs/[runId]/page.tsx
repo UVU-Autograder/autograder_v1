@@ -2,7 +2,7 @@
 
 import { DownloadIcon, AwardIcon, EyeIcon, FileIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
-import { use, useState, useEffect, useRef, useMemo } from "react";
+import { use, useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
@@ -49,12 +49,34 @@ type StudentRunDetail = {
     string,
     { label: string; points: number; score: number | null; comments: string }
   >;
+  overall_comment: string;
+  automated_results: {
+    key: string;
+    label: string;
+    outcome: string;
+    passed: boolean;
+    points_awarded: number;
+    points: number;
+  }[];
+  automated_score: number;
+  automated_max_score: number;
+};
+
+type ManualProgress = {
+  requires_manual_grading: boolean;
+  completed_students: number;
+  total_students: number;
+  exports_ready: boolean;
 };
 
 type RunDetailsResponse = {
   run_id: number;
   status: string;
   students: StudentRunDetail[];
+} & ManualProgress;
+
+type ManualGradeSaveResponse = StudentRunDetail & {
+  manual_progress: ManualProgress;
 };
 
 type PageProps = {
@@ -90,7 +112,21 @@ export default function RunDetailPage({ params }: PageProps) {
   );
 
   const [manualGradesDraft, setManualGradesDraft] = useState<Record<string, { score: number | null; comments: string }>>({});
+  const [overallCommentDraft, setOverallCommentDraft] = useState("");
   const [isSavingGrades, setIsSavingGrades] = useState(false);
+  const isManualDraftDirty = useMemo(() => {
+    if (!selectedStudent) return false;
+    const savedGrades = Object.fromEntries(
+      Object.entries(selectedStudent.manual_results).map(([key, item]) => [
+        key,
+        { score: item.score, comments: item.comments || "" },
+      ])
+    );
+    return (
+      JSON.stringify(manualGradesDraft) !== JSON.stringify(savedGrades) ||
+      overallCommentDraft !== (selectedStudent.overall_comment || "")
+    );
+  }, [manualGradesDraft, overallCommentDraft, selectedStudent]);
 
   const loadFileContent = async (canvasId: string, filepath: string) => {
     const cacheKey = `${canvasId}:${filepath}`;
@@ -126,7 +162,17 @@ export default function RunDetailPage({ params }: PageProps) {
     void loadFileContent(canvasId, file.filepath);
   };
 
-  const handleInspectStudent = async (student: StudentRunDetail) => {
+  const handleInspectStudent = async (
+    student: StudentRunDetail,
+    discardUnsaved = false
+  ) => {
+    if (
+      !discardUnsaved &&
+      isManualDraftDirty &&
+      !window.confirm("Discard unsaved manual grading changes?")
+    ) {
+      return;
+    }
     setSelectedCanvasId(student.canvas_id);
     setIsSheetOpen(true);
     setStudentFiles([]);
@@ -144,6 +190,7 @@ export default function RunDetailPage({ params }: PageProps) {
       };
     });
     setManualGradesDraft(draft);
+    setOverallCommentDraft(student.overall_comment || "");
 
     try {
       const data = await apiClient.get<{ files: StudentFile[] }>(
@@ -161,22 +208,44 @@ export default function RunDetailPage({ params }: PageProps) {
     }
   };
 
-  const handleSaveManualGrades = async () => {
+  const handleSaveManualGrades = async (saveAndNext = false) => {
     if (!selectedCanvasId || !details) return;
     setIsSavingGrades(true);
     try {
-      const updatedStudent = await apiClient.post<StudentRunDetail>(
+      const updatedStudent = await apiClient.post<ManualGradeSaveResponse>(
         staffRunManualGradesPath(courseId, assignmentId, runId, selectedCanvasId),
-        { grades: manualGradesDraft }
+        {
+          grades: manualGradesDraft,
+          overall_comment: overallCommentDraft,
+        }
+      );
+      const updatedStudents = details.students.map((student) =>
+        student.canvas_id === selectedCanvasId ? updatedStudent : student
       );
       setDetails({
         ...details,
-        students: details.students.map((student) =>
-          student.canvas_id === selectedCanvasId ? updatedStudent : student
-        ),
+        ...updatedStudent.manual_progress,
+        students: updatedStudents,
       });
       setSuccess("Manual grades saved successfully!");
       setTimeout(() => setSuccess(null), 3000);
+      if (saveAndNext) {
+        const currentIndex = updatedStudents.findIndex(
+          (student) => student.canvas_id === selectedCanvasId
+        );
+        const remainingQueue = [
+          ...updatedStudents.slice(currentIndex + 1),
+          ...updatedStudents.slice(0, currentIndex),
+        ];
+        const nextUngraded = remainingQueue.find((student) =>
+          Object.values(student.manual_results).some(
+            (item) => item.score === null
+          )
+        );
+        if (nextUngraded) {
+          await handleInspectStudent(nextUngraded, true);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save manual grades.");
       setTimeout(() => setError(null), 5000);
@@ -206,7 +275,12 @@ export default function RunDetailPage({ params }: PageProps) {
           `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/details`
         );
         if (!active) return;
-        setDetails(detailsData);
+        setDetails({
+          ...detailsData,
+          students: [...detailsData.students].sort((a, b) =>
+            a.student_name.localeCompare(b.student_name)
+          ),
+        });
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Failed to load run details.");
@@ -222,53 +296,7 @@ export default function RunDetailPage({ params }: PageProps) {
     };
   }, [courseId, assignmentId, runId]);
 
-  const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    // Cancel any pending cleanup from a previous mount/strict-mode cycle
-    if (cleanupTimeoutRef.current) {
-      clearTimeout(cleanupTimeoutRef.current);
-      cleanupTimeoutRef.current = null;
-    }
-
-    const triggerCleanup = () => {
-      const url = `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/cleanup`;
-      const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
-      const headers = new Headers();
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      const base = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
-      
-      fetch(`${base}${url}`, {
-        method: "POST",
-        headers,
-        keepalive: true,
-      }).catch((err) => console.error("Auto cleanup failed", err));
-    };
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-
-    const handleUnload = () => {
-      triggerCleanup();
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("pagehide", handleUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      window.removeEventListener("pagehide", handleUnload);
-      
-      // Delay unmount cleanup to avoid React 18 strict mode double-render purging files on initial load
-      cleanupTimeoutRef.current = setTimeout(() => {
-        triggerCleanup();
-      }, 1500);
-    };
-  }, [courseId, assignmentId, runId]);
+  // Keep workspace intact for its 24h retention window unless explicitly purged by staff
 
   const handleCsvExport = async () => {
     setError(null);
@@ -314,14 +342,29 @@ export default function RunDetailPage({ params }: PageProps) {
             <p className="text-slate-500">Grading results overview and student lists</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={handleCsvExport}>
+            <Button
+              variant="outline"
+              onClick={handleCsvExport}
+              disabled={!details?.exports_ready}
+              title={details?.exports_ready ? undefined : "Complete all manual scores before exporting."}
+            >
               <DownloadIcon className="mr-2 size-4" /> Export Grades CSV
             </Button>
-            <Button variant="outline" onClick={handleFeedbackExport}>
+            <Button
+              variant="outline"
+              onClick={handleFeedbackExport}
+              disabled={!details?.exports_ready}
+              title={details?.exports_ready ? undefined : "Complete all manual scores before exporting."}
+            >
               <DownloadIcon className="mr-2 size-4" /> Export Feedback ZIP
             </Button>
           </div>
         </div>
+        {details && !details.exports_ready && (
+          <p className="-mt-4 mb-6 text-right text-xs text-amber-700">
+            Exports unlock after every manual rubric item has a score.
+          </p>
+        )}
 
         {/* Zero-Retention Warning Banner */}
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -356,6 +399,16 @@ export default function RunDetailPage({ params }: PageProps) {
                 <div>
                   <p className="text-2xl font-bold text-slate-900">{summary?.total_submission_count}</p>
                   <p className="text-xs text-slate-500">Total Submissions Processed</p>
+                </div>
+                <div className="border-t border-slate-100 pt-3">
+                  <p className="text-2xl font-bold text-slate-900">
+                    {details?.completed_students ?? 0} / {details?.total_students ?? 0}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {details?.requires_manual_grading
+                      ? "Manual grading complete"
+                      : "No manual grading required"}
+                  </p>
                 </div>
                 <div className="flex justify-between border-t border-slate-100 pt-3 text-sm">
                   <span className="text-green-600 font-semibold">Passed</span>
@@ -459,6 +512,13 @@ export default function RunDetailPage({ params }: PageProps) {
         <Sheet
           open={isSheetOpen}
           onOpenChange={(open) => {
+            if (
+              !open &&
+              isManualDraftDirty &&
+              !window.confirm("Discard unsaved manual grading changes?")
+            ) {
+              return;
+            }
             setIsSheetOpen(open);
             if (!open) {
               setSelectedCanvasId(null);
@@ -592,8 +652,27 @@ export default function RunDetailPage({ params }: PageProps) {
                   <div>
                     <h3 className="text-lg font-semibold text-slate-100">Manual Rubric Grading</h3>
                     <p className="text-xs text-slate-400 mt-1">
-                      Score each criterion and add optional feedback comments. Click "Save Grades" to apply your updates.
+                      Score each criterion and add optional student-facing feedback.
                     </p>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-slate-200">Automated results</h4>
+                      <span className="text-xs font-mono text-slate-400">
+                        {selectedStudent?.automated_score} / {selectedStudent?.automated_max_score}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedStudent?.automated_results.map((item) => (
+                        <div key={item.key} className="flex justify-between gap-3 text-xs">
+                          <span className="text-slate-300">{item.label}</span>
+                          <span className={item.passed ? "text-green-400" : "text-red-400"}>
+                            {item.points_awarded} / {item.points}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -608,13 +687,14 @@ export default function RunDetailPage({ params }: PageProps) {
                                 type="number"
                                 min={0}
                                 max={item.points}
+                                step={1}
                                 value={draft.score ?? ""}
                                 placeholder="—"
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                   const raw = e.target.value;
                                   const score = raw === ""
                                     ? null
-                                    : Math.min(item.points, Math.max(0, parseInt(raw, 10) || 0));
+                                    : Number(raw);
                                   setManualGradesDraft((prev) => ({
                                     ...prev,
                                     [key]: { ...prev[key], score, comments: prev[key]?.comments ?? "" },
@@ -643,14 +723,37 @@ export default function RunDetailPage({ params }: PageProps) {
                     })}
                   </div>
 
-                  <div className="pt-2 flex justify-end">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-200" htmlFor="overall-comment">
+                      Overall student feedback
+                    </label>
+                    <textarea
+                      id="overall-comment"
+                      value={overallCommentDraft}
+                      onChange={(event) => setOverallCommentDraft(event.target.value)}
+                      placeholder="Optional feedback included in the final HTML report..."
+                      rows={3}
+                      className="w-full rounded border border-slate-800 bg-slate-900 p-2.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none placeholder-slate-600"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-2">
                     <Button
                       type="button"
                       disabled={isSavingGrades}
-                      onClick={handleSaveManualGrades}
+                      variant="outline"
+                      onClick={() => void handleSaveManualGrades(false)}
+                      className="text-xs px-4 py-2"
+                    >
+                      {isSavingGrades ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={isSavingGrades}
+                      onClick={() => void handleSaveManualGrades(true)}
                       className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2"
                     >
-                      {isSavingGrades ? "Saving Grades..." : "Save Grades"}
+                      {isSavingGrades ? "Saving..." : "Save & Next Ungraded"}
                     </Button>
                   </div>
                 </div>

@@ -75,23 +75,26 @@ export default function AccessPage() {
   };
 
   useEffect(() => {
-    loadData();
+    void Promise.resolve().then(loadData);
   }, []);
 
   // Fetch sections when course selection changes in the form
   useEffect(() => {
-    if (selectedCourseId === "none") {
-      setSections([]);
-      setSelectedSectionId("none");
-      return;
-    }
+    void Promise.resolve().then(async () => {
+      if (selectedCourseId === "none") {
+        setSections([]);
+        setSelectedSectionId("none");
+        return;
+      }
 
-    getCourseSections(Number(selectedCourseId))
-      .then((data) => {
+      try {
+        const data = await getCourseSections(Number(selectedCourseId));
         setSections(data.filter(s => s.is_active));
         setSelectedSectionId("none");
-      })
-      .catch((err) => console.error("Failed to load sections", err));
+      } catch (err) {
+        console.error("Failed to load sections", err);
+      }
+    });
   }, [selectedCourseId]);
 
   const openGrantDialog = () => {

@@ -1,17 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import io
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 
 from app.core.dependencies import DbSession, require_role, require_staff
 from app.domains.assignments.schemas import (
+    ArtifactListResponse,
+    ArtifactMetadata,
+    AssignmentCreate,
     StaffAssignmentSetup,
     StaffAssignmentSetupUpdate,
-    AssignmentCreate,
 )
 from app.domains.assignments.service import (
-    get_staff_setup,
-    update_staff_setup,
+    build_staff_setup,
     create_assignment,
     deactivate_assignment,
-    build_staff_setup,
+    delete_artifact,
+    get_artifact_content,
+    get_staff_setup,
+    list_artifacts,
+    save_artifact,
+    update_staff_setup,
 )
 
 router = APIRouter(
@@ -19,6 +28,7 @@ router = APIRouter(
     tags=["staff-assignments"],
     dependencies=[Depends(require_staff)],
 )
+
 
 
 @router.post(
@@ -58,7 +68,6 @@ def delete_assignment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assignment not found.",
         )
-    return
 
 
 @router.get("/{assignment_id}/setup", response_model=StaffAssignmentSetup)
@@ -117,7 +126,7 @@ def validate_model_solution(
             detail={"message": "Preflight validation failed.", "errors": errors},
         )
 
-    from app.domains.runs.tasks import validate_assignment_model_solution, set_run_state
+    from app.domains.runs.tasks import set_run_state, validate_assignment_model_solution
 
     run_id = f"val:{course_id}:{assignment_id}"
     set_run_state(run_id, "queue")
@@ -131,7 +140,7 @@ def get_validation_status(
     course_id: str,
     assignment_id: str,
 ):
-    from app.domains.runs.tasks import get_run_state, get_run_result
+    from app.domains.runs.tasks import get_run_result, get_run_state
 
     run_id = f"val:{course_id}:{assignment_id}"
     state_data = get_run_state(run_id)
@@ -159,3 +168,83 @@ def get_validation_status(
         "score": score,
         "max_score": max_score,
     }
+
+
+@router.get("/{assignment_id}/artifacts", response_model=ArtifactListResponse)
+def get_assignment_artifacts(
+    course_id: str,
+    assignment_id: str,
+    db: DbSession,
+) -> ArtifactListResponse:
+    artifacts = list_artifacts(db, course_id, assignment_id)
+    if artifacts is None:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+    return ArtifactListResponse(
+        course_id=course_id,
+        assignment_id=assignment_id,
+        artifacts=artifacts,
+    )
+
+
+@router.post(
+    "/{assignment_id}/artifacts",
+    response_model=ArtifactMetadata,
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
+async def upload_assignment_artifact(
+    course_id: str,
+    assignment_id: str,
+    db: DbSession,
+    artifact_key: str = Form(...),
+    artifact_type: str = Form(...),
+    file: UploadFile = File(...),
+) -> ArtifactMetadata:
+    content = await file.read()
+    artifact = save_artifact(
+        db=db,
+        course_code=course_id,
+        assignment_slug=assignment_id,
+        artifact_key=artifact_key,
+        artifact_type=artifact_type,
+        display_filename=file.filename or artifact_key,
+        file_content=content,
+    )
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+    return artifact
+
+
+@router.delete(
+    "/{assignment_id}/artifacts/{artifact_key}",
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
+def delete_assignment_artifact(
+    course_id: str,
+    assignment_id: str,
+    artifact_key: str,
+    db: DbSession,
+):
+    success = delete_artifact(db, course_id, assignment_id, artifact_key)
+    if not success:
+        raise HTTPException(status_code=404, detail="Artifact or Assignment not found.")
+    return {"status": "success", "message": f"Artifact '{artifact_key}' deleted."}
+
+
+@router.get("/{assignment_id}/artifacts/{artifact_key}")
+def download_assignment_artifact(
+    course_id: str,
+    assignment_id: str,
+    artifact_key: str,
+    db: DbSession,
+) -> StreamingResponse:
+    res = get_artifact_content(db, course_id, assignment_id, artifact_key)
+    if res is None:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+
+    content, filename = res
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+

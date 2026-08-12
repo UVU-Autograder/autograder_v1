@@ -1,0 +1,98 @@
+{
+  "bundle": {
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "label": "Dessert Shop classes definition file",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "label": "Packaging Protocol definition file",
+        "paths": [
+          "packaging.py"
+        ]
+      },
+      {
+        "label": "Dessert Shop main entrypoint file",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    },
+    "model_solution_packaging": {
+      "type": "model_solution",
+      "display_filename": "packaging.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    },
+    "model_solution_test_dessert": {
+      "type": "model_solution",
+      "display_filename": "test_dessert.py"
+    },
+    "model_solution_test_candy": {
+      "type": "model_solution",
+      "display_filename": "test_candy.py"
+    },
+    "model_solution_test_cookie": {
+      "type": "model_solution",
+      "display_filename": "test_cookie.py"
+    },
+    "model_solution_test_icecream": {
+      "type": "model_solution",
+      "display_filename": "test_icecream.py"
+    },
+    "model_solution_test_sundae": {
+      "type": "model_solution",
+      "display_filename": "test_sundae.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "packaging_protocol",
+      "label": "Packaging Protocol in packaging.py",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "packaging_defaults",
+      "label": "Default packaging values correct per class",
+      "points": 25,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "packaging_in_str",
+      "label": "__str__ includes packaging in output",
+      "points": 25,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "ds6_regression",
+      "label": "DS6 classes + __str__ + to_list intact",
+      "points": 35,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
+}

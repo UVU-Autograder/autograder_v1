@@ -35,10 +35,10 @@ export default function MonitoringPage() {
   };
 
   useEffect(() => {
-    fetchStats();
+    void Promise.resolve().then(fetchStats);
     
     // Poll stats every 10 seconds
-    const interval = setInterval(fetchStats, 10000);
+    const interval = setInterval(() => void fetchStats(), 10000);
     return () => clearInterval(interval);
   }, []);
 

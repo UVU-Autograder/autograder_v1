@@ -1,46 +1,31 @@
-from pathlib import Path
 import json
-import os
+from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db.base import Base, import_domain_models
-from app.db.session import engine, SessionLocal
-from app.domains.artifacts.models import AssignmentArtifact
+from app.db.session import SessionLocal, engine
 from app.domains.assignments.models import Assignment
-from app.domains.assignments.service import upsert_assignment_config
+from app.domains.assignments.service import (
+    resolve_seed_artifact_path as resolve_seed_artifact_path,
+    seed_assignment_artifacts,
+)
 from app.domains.auth.models import Role, StaffAccess, User
-from app.domains.courses.models import Course, Section, Module
+from app.domains.courses.models import Course, Module, Section
 
-
-def _repo_root() -> Path:
-    configured = os.environ.get("REPO_ROOT")
-    if configured:
-        return Path(configured).resolve()
-
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "docs" / "backend_implementation" / "examples").exists():
-            return parent
-    return Path.cwd().resolve()
-
-
-REPO_ROOT = _repo_root()
-EXAMPLE_DIR = REPO_ROOT / "docs" / "backend_implementation" / "examples" / "simple_python_functions"
+SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
+EXAMPLE_DIR = SEEDS_DIR / "simple_python_functions"
 EXAMPLE_CONFIG = EXAMPLE_DIR / "config_json.example.json"
+CS1410_CATALOG = SEEDS_DIR / "cs1410_catalog.json"
 
 
 def load_example_config() -> dict:
     return json.loads(EXAMPLE_CONFIG.read_text(encoding="utf-8"))
 
 
-def _seed_storage_ref(example_slug: str, artifact_key: str, display_filename: str) -> str:
-    # Model solutions are stored under their instructor-owned filename, then
-    # materialized at the student-facing display filename during execution.
-    if artifact_key == "model_solution":
-        return f"seed://{example_slug}/model_solution.py"
-    return f"seed://{example_slug}/{display_filename}"
+def load_cs1410_catalog() -> dict:
+    return json.loads(CS1410_CATALOG.read_text(encoding="utf-8"))
 
 
 def initialize_database(seed: bool = True) -> None:
@@ -48,7 +33,117 @@ def initialize_database(seed: bool = True) -> None:
     Base.metadata.create_all(bind=engine)
     if seed:
         with SessionLocal() as db:
+            if engine.dialect.name == "sqlite":
+                # Serialize check-then-insert seed logic across reload/workers.
+                db.execute(text("BEGIN IMMEDIATE"))
             seed_development_data(db)
+
+
+def _seed_cs1400(
+    db: Session,
+    *,
+    staff_user: User,
+    admin_role: Role,
+) -> None:
+    course = Course(
+        code="cs1400",
+        title="CS 1400: Fundamentals of Programming",
+        term="Spring 2026",
+        default_concepts=["variables", "conditionals"],
+        instructor=staff_user,
+    )
+    db.add(course)
+    db.flush()
+
+    module = Module(
+        course=course,
+        name="Module 1: Expressions & Conditionals",
+        concepts=["variables"],
+    )
+    section = Section(course=course, crn="12345")
+    db.add_all([module, section])
+    db.flush()
+
+    db.add(
+        StaffAccess(
+            user=staff_user,
+            role=admin_role,
+            course=course,
+            section=section,
+        )
+    )
+    assignment = Assignment(
+        course=course,
+        slug="simple-python-functions",
+        title="Simple Python Functions",
+        language="python",
+        canvas_ref="canvas:synthetic:simple-python-functions",
+        sandbox_enabled=True,
+        module=module,
+        is_active=True,
+    )
+    db.add(assignment)
+    db.flush()
+    seed_assignment_artifacts(db, assignment, assignment.slug)
+
+
+def _seed_cs1410(
+    db: Session,
+    *,
+    staff_user: User,
+    admin_role: Role,
+) -> None:
+    catalog = load_cs1410_catalog()
+    course = Course(
+        code="cs1410",
+        title="CS 1410: Object-Oriented Programming",
+        term="Spring 2026",
+        default_concepts=["variables", "conditionals", "loops", "functions"],
+        instructor=staff_user,
+    )
+    db.add(course)
+    db.flush()
+
+    modules = {}
+    accumulated_concepts: set[str] = set(course.default_concepts or [])
+    for code, module_data in catalog["modules"].items():
+        for c in module_data.get("concepts", []):
+            accumulated_concepts.add(c)
+        module = Module(
+            course=course,
+            name=module_data["name"],
+            concepts=list(accumulated_concepts),
+        )
+        db.add(module)
+        modules[code] = module
+    db.flush()
+
+    section = Section(course=course, crn="67890")
+    db.add(section)
+    db.add(
+        StaffAccess(
+            user=staff_user,
+            role=admin_role,
+            course=course,
+            section=section,
+        )
+    )
+
+    for assignment_data in catalog["assignments"]:
+        slug = assignment_data["slug"]
+        assignment = Assignment(
+            course=course,
+            slug=slug,
+            title=assignment_data["title"],
+            language="python",
+            canvas_ref=f"canvas:synthetic:{slug}",
+            sandbox_enabled=True,
+            module=modules[assignment_data["module"]],
+            is_active=True,
+        )
+        db.add(assignment)
+        db.flush()
+        seed_assignment_artifacts(db, assignment, slug)
 
 
 def seed_development_data(db: Session) -> None:
@@ -63,140 +158,19 @@ def seed_development_data(db: Session) -> None:
 
     staff_user = db.scalar(select(User).where(User.email == "dev.staff@uvu.edu"))
     if staff_user is None:
-        staff_user = User(email="dev.staff@uvu.edu", display_name="Development Staff")
+        staff_user = User(
+            email="dev.staff@uvu.edu",
+            display_name="Development Staff",
+        )
         db.add(staff_user)
         db.flush()
 
-    course_cs1400 = db.scalar(select(Course).where(Course.code == "cs1400"))
-    if course_cs1400 is None:
-        course_cs1400 = Course(
-            code="cs1400",
-            title="CS 1400: Fundamentals of Programming",
-            term="Spring 2026",
-            default_concepts=["variables", "conditionals"],
-            instructor=staff_user,
-        )
-        db.add(course_cs1400)
-        db.flush()
+    if db.scalar(select(Course).where(Course.code == "cs1400")) is None:
+        _seed_cs1400(db, staff_user=staff_user, admin_role=roles["admin"])
 
-        mod_cs1400 = Module(
-            course=course_cs1400,
-            name="Module 1: Expressions & Conditionals",
-            concepts=["variables"]
-        )
-        db.add(mod_cs1400)
-        db.flush()
+    if db.scalar(select(Course).where(Course.code == "cs1410")) is None:
+        _seed_cs1410(db, staff_user=staff_user, admin_role=roles["admin"])
 
-        section = Section(course=course_cs1400, crn="12345")
-        db.add(section)
-
-        db.add(
-            StaffAccess(
-                user=staff_user,
-                role=roles["admin"],
-                course=course_cs1400,
-                section=section,
-            )
-        )
-
-        assignment = Assignment(
-            course=course_cs1400,
-            slug="simple-python-functions",
-            title="Simple Python Functions",
-            language="python",
-            canvas_ref="canvas:synthetic:simple-python-functions",
-            sandbox_enabled=True,
-            module=mod_cs1400,
-            is_active=True,
-        )
-        db.add(assignment)
-        db.flush()
-
-        config_json = load_example_config()
-        upsert_assignment_config(db, assignment, config_json)
-
-        artifacts = config_json["artifacts"]
-        db.add_all(
-            AssignmentArtifact(
-                assignment=assignment,
-                artifact_key=artifact_key,
-                artifact_type=artifact["type"],
-                storage_ref=_seed_storage_ref(
-                    "simple_python_functions",
-                    artifact_key,
-                    artifact["display_filename"],
-                ),
-                display_filename=artifact.get("display_filename"),
-                content_type="text/plain",
-            )
-            for artifact_key, artifact in artifacts.items()
-        )
-
-    course_cs1410 = db.scalar(select(Course).where(Course.code == "cs1410"))
-    if course_cs1410 is None:
-        course_cs1410 = Course(
-            code="cs1410",
-            title="CS 1410: Object-Oriented Programming",
-            term="Spring 2026",
-            default_concepts=["image-processing", "file-io", "loops"],
-            instructor=staff_user,
-        )
-        db.add(course_cs1410)
-        db.flush()
-
-        mod_cs1410 = Module(
-            course=course_cs1410,
-            name="Module 1: Images & Loops",
-            concepts=["image-processing", "loops"]
-        )
-        db.add(mod_cs1410)
-        db.flush()
-
-        section = Section(course=course_cs1410, crn="67890")
-        db.add(section)
-
-        db.add(
-            StaffAccess(
-                user=staff_user,
-                role=roles["admin"],
-                course=course_cs1410,
-                section=section,
-            )
-        )
-
-        assignment_cs1410 = Assignment(
-            course=course_cs1410,
-            slug="lab-1-image-processing",
-            title="Lab 1: Image Processing",
-            language="python",
-            canvas_ref="canvas:synthetic:lab-1-image-processing",
-            sandbox_enabled=True,
-            module=mod_cs1410,
-            is_active=True,
-        )
-        db.add(assignment_cs1410)
-        db.flush()
-
-        cs1410_config_path = EXAMPLE_DIR.parent / "lab_1_image_processing" / "config_json.example.json"
-        config_json_cs1410 = json.loads(cs1410_config_path.read_text(encoding="utf-8"))
-        upsert_assignment_config(db, assignment_cs1410, config_json_cs1410)
-
-        artifacts = config_json_cs1410["artifacts"]
-        db.add_all(
-            AssignmentArtifact(
-                assignment=assignment_cs1410,
-                artifact_key=artifact_key,
-                artifact_type=artifact["type"],
-                storage_ref=_seed_storage_ref(
-                    "lab_1_image_processing",
-                    artifact_key,
-                    artifact["display_filename"],
-                ),
-                display_filename=artifact.get("display_filename"),
-                content_type="text/plain",
-            )
-            for artifact_key, artifact in artifacts.items()
-        )
     db.commit()
 
 

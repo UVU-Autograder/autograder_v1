@@ -1,0 +1,95 @@
+{
+  "bundle": {
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "label": "Dessert Shop classes definition file",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "label": "Dessert Shop main entrypoint file",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    },
+    "model_solution_test_dessert": {
+      "type": "model_solution",
+      "display_filename": "test_dessert.py"
+    },
+    "model_solution_test_candy": {
+      "type": "model_solution",
+      "display_filename": "test_candy.py"
+    },
+    "model_solution_test_cookie": {
+      "type": "model_solution",
+      "display_filename": "test_cookie.py"
+    },
+    "model_solution_test_icecream": {
+      "type": "model_solution",
+      "display_filename": "test_icecream.py"
+    },
+    "model_solution_test_sundae": {
+      "type": "model_solution",
+      "display_filename": "test_sundae.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "abstract_class",
+      "label": "DessertItem is ABC with abstract calculate_cost",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "tax_percent",
+      "label": "tax_percent attribute defaults to 7.25",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "calculate_cost",
+      "label": "calculate_cost() correct for all subclasses",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "calculate_tax",
+      "label": "calculate_tax() correct for all subclasses",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "order_totals",
+      "label": "order_cost() and order_tax() correct",
+      "points": 25,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
+}

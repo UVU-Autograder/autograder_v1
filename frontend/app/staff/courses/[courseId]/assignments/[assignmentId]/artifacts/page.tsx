@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
-import Link from "next/link";
 import { UploadIcon, TrashIcon, DownloadIcon, FileIcon, EditIcon, XIcon, ShieldAlertIcon, SaveIcon, FileTextIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
@@ -51,27 +50,39 @@ export default function ArtifactsPage({ params }: PageProps) {
   const [artifactKey, setArtifactKey] = useState("");
   const [artifactType, setArtifactType] = useState<"pytest_file" | "model_solution" | "support_file">("pytest_file");
 
-  const fetchArtifacts = async () => {
-    setIsLoading(true);
-    setError(null);
+  useEffect(() => {
+    let active = true;
+    apiClient
+      .get<ArtifactListResponse>(
+        `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`
+      )
+      .then((data) => {
+        if (active) {
+          setArtifacts(data.artifacts);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load artifacts.");
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [courseId, assignmentId]);
+
+  const reloadArtifacts = async () => {
     try {
       const data = await apiClient.get<ArtifactListResponse>(
         `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`
       );
       setArtifacts(data.artifacts);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load artifacts.");
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // ignore reload errors
     }
   };
-
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      fetchArtifacts();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, assignmentId]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +112,7 @@ export default function ArtifactsPage({ params }: PageProps) {
       setSuccess(`Artifact '${artifactKey}' uploaded successfully.`);
       setUploadFile(null);
       setArtifactKey("");
-      fetchArtifacts();
+      await reloadArtifacts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -119,7 +130,7 @@ export default function ArtifactsPage({ params }: PageProps) {
         `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`
       );
       setSuccess(`Artifact '${key}' deleted.`);
-      fetchArtifacts();
+      await reloadArtifacts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deletion failed.");
     }
@@ -138,18 +149,7 @@ export default function ArtifactsPage({ params }: PageProps) {
   };
 
   const fetchArtifactText = async (key: string): Promise<string> => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-    const url = `${baseUrl.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`;
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["authorization"] = `Bearer ${token}`;
-    }
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch artifact content: ${res.statusText}`);
-    }
-    return res.text();
+    return apiClient.getText(staffArtifactPath(courseId, assignmentId, key));
   };
 
   const openCodeEditor = async (key: string, type: string, filename: string) => {
@@ -191,7 +191,7 @@ export default function ArtifactsPage({ params }: PageProps) {
       );
       setIsCodeModalOpen(false);
       setSuccess(`Code saved successfully for '${editArtifactFilename}'.`);
-      fetchArtifacts();
+      await reloadArtifacts();
     } catch (err) {
       setCodeEditorError(err instanceof Error ? err.message : "Failed to save code changes.");
     } finally {

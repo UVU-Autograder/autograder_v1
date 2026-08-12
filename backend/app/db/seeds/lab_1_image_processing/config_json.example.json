@@ -1,0 +1,125 @@
+{
+  "bundle": {
+    "entrypoint": "bears2.py",
+    "file_requirements": [
+      {
+        "label": "Part 1 code",
+        "paths": [
+          "bears2.py"
+        ]
+      },
+      {
+        "label": "Part 2 code",
+        "paths": [
+          "bears3.py"
+        ]
+      },
+      {
+        "label": "Part 1 output image",
+        "paths": [
+          "bears2.jpg"
+        ]
+      },
+      {
+        "label": "Part 2 output image",
+        "paths": [
+          "bears3.jpg"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution_bears2": {
+      "type": "model_solution",
+      "display_filename": "bears2.py"
+    },
+    "model_solution_bears3": {
+      "type": "model_solution",
+      "display_filename": "bears3.py"
+    },
+    "model_solution_bears2_jpg": {
+      "type": "model_solution",
+      "display_filename": "bears2.jpg"
+    },
+    "model_solution_bears3_jpg": {
+      "type": "model_solution",
+      "display_filename": "bears3.jpg"
+    },
+    "bears_copy": {
+      "type": "support_file",
+      "display_filename": "bears_copy.jpg"
+    },
+    "balloon": {
+      "type": "support_file",
+      "display_filename": "balloon.png"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "part1_files",
+      "label": "Part 1 required files are present",
+      "points": 15,
+      "extra_credit": false,
+      "rubric_group_key": "part1",
+      "item_type": "pytest"
+    },
+    {
+      "key": "part1_output",
+      "label": "Part 1 output image opens and contains non-trivial pixels",
+      "points": 15,
+      "extra_credit": false,
+      "rubric_group_key": "part1",
+      "item_type": "pytest"
+    },
+    {
+      "key": "part2_files",
+      "label": "Part 2 required files are present",
+      "points": 15,
+      "extra_credit": false,
+      "rubric_group_key": "part2",
+      "item_type": "pytest"
+    },
+    {
+      "key": "part2_output",
+      "label": "Part 2 output image opens and contains non-trivial pixels",
+      "points": 15,
+      "extra_credit": false,
+      "rubric_group_key": "part2",
+      "item_type": "pytest"
+    },
+    {
+      "key": "part1_visual",
+      "label": "Subjective filter visual quality & color conversion",
+      "points": 20,
+      "extra_credit": false,
+      "rubric_group_key": "part1",
+      "item_type": "manual"
+    },
+    {
+      "key": "part2_visual",
+      "label": "Subjective balloon composite quality & placement",
+      "points": 20,
+      "extra_credit": false,
+      "rubric_group_key": "part2",
+      "item_type": "manual"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [
+    "pillow"
+  ],
+  "rubric_groups": [
+    {
+      "key": "part1",
+      "label": "Part 1: Apply a Photo Filter"
+    },
+    {
+      "key": "part2",
+      "label": "Part 2: Image Compositing"
+    }
+  ]
+}

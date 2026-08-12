@@ -1,0 +1,59 @@
+{
+  "bundle": {
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "label": "Dessert Shop classes definition file",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "label": "Dessert Shop main entrypoint file",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "ds1_regression",
+      "label": "DS1 class hierarchy intact",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "order_class",
+      "label": "Order class structure & methods",
+      "points": 40,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "main_output",
+      "label": "main() produces correct output",
+      "points": 40,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [],
+  "rubric_groups": []
+}

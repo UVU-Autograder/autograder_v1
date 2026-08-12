@@ -1,13 +1,16 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import pytest
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
+
 import jwt
-from fastapi import HTTPException
-from app.core.settings import get_settings
+import pytest
 from app.core.auth_utils import create_access_token, decode_access_token
+from app.core.settings import get_settings
+from fastapi import HTTPException
+
 
 def test_create_access_token():
     email = "test.user@uvu.edu"
@@ -33,7 +36,7 @@ def test_decode_valid_token():
 def test_decode_invalid_signature():
     email = "user@uvu.edu"
     token = create_access_token(email=email)
-    
+
     # Tamper with the token
     tampered_token = token + "corrupted"
     with pytest.raises(HTTPException) as exc_info:
@@ -51,7 +54,7 @@ def test_decode_expired_token():
         "exp": expire
     }
     expired_token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
-    
+
     with pytest.raises(HTTPException) as exc_info:
         decode_access_token(expired_token)
     assert exc_info.value.status_code == 401
@@ -65,7 +68,7 @@ def test_decode_missing_email():
         "exp": expire
     }
     bad_token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
-    
+
     with pytest.raises(HTTPException) as exc_info:
         decode_access_token(bad_token)
     assert exc_info.value.status_code == 401
@@ -74,7 +77,7 @@ def test_decode_missing_email():
 def test_decode_non_uvu_email():
     email = "hacker@gmail.com"
     token = create_access_token(email=email, display_name="Hacker")
-    
+
     with pytest.raises(HTTPException) as exc_info:
         decode_access_token(token)
     assert exc_info.value.status_code == 401

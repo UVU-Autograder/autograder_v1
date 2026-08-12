@@ -53,16 +53,24 @@ async def execute_pytest_in_judge0(
     entrypoint_module: str,
     language_id: int,
     cpu_time_limit: float,
+    dependencies: list[str] | None = None,
     memory_limit: int = 262144,
+    stdin: str | None = None,
 ) -> ExecutionOutcome:
     """Generate runner, submit to Judge0, parse stdout, enforce cleanup.
+
+    Args:
+        stdin: Optional raw stdin text string passed to the Judge0 execution environment.
 
     Zero-retention: a Judge0 delete failure overrides any prior success and
     sets ``failure_category`` to ``cleanup_failure``.
     """
     outcome = ExecutionOutcome()
     runner_source = generate_runner_script(
-        test_filenames, test_cases, entrypoint_module
+        test_filenames,
+        test_cases,
+        entrypoint_module,
+        dependencies,
     )
     # runner.py is Judge0 source_code only; exclude it from additional_files.
     additional_files_b64 = _build_additional_files_b64(exec_dir)
@@ -76,6 +84,7 @@ async def execute_pytest_in_judge0(
                 additional_files_b64=additional_files_b64,
                 cpu_time_limit=cpu_time_limit,
                 memory_limit=memory_limit,
+                stdin=stdin if stdin else None,
             )
             submission_result = await judge0.poll_submission(token)
 

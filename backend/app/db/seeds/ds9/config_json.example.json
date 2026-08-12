@@ -1,0 +1,106 @@
+{
+  "bundle": {
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "label": "Dessert Shop classes definition file",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "label": "Payment Protocol definition file",
+        "paths": [
+          "payment.py"
+        ]
+      },
+      {
+        "label": "Dessert Shop main entrypoint file",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    },
+    "model_solution_packaging": {
+      "type": "model_solution",
+      "display_filename": "packaging.py"
+    },
+    "model_solution_payment": {
+      "type": "model_solution",
+      "display_filename": "payment.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    },
+    "model_solution_test_dessert": {
+      "type": "model_solution",
+      "display_filename": "test_dessert.py"
+    },
+    "model_solution_test_candy": {
+      "type": "model_solution",
+      "display_filename": "test_candy.py"
+    },
+    "model_solution_test_cookie": {
+      "type": "model_solution",
+      "display_filename": "test_cookie.py"
+    },
+    "model_solution_test_icecream": {
+      "type": "model_solution",
+      "display_filename": "test_icecream.py"
+    },
+    "model_solution_test_sundae": {
+      "type": "model_solution",
+      "display_filename": "test_sundae.py"
+    },
+    "model_solution_test_order": {
+      "type": "model_solution",
+      "display_filename": "test_order.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "relational_ops",
+      "label": "All 6 relational operators on DessertItem",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "order_sort",
+      "label": "Order.sort() sorts by cost ascending",
+      "points": 25,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "student_sort_tests",
+      "label": "Student tests for operators + sort exist",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "ds8_regression",
+      "label": "DS8 payment + packaging intact",
+      "points": 25,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
+}

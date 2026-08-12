@@ -1,0 +1,106 @@
+{
+  "bundle": {
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "label": "Dessert Shop classes definition file",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "label": "Payment Protocol definition file",
+        "paths": [
+          "payment.py"
+        ]
+      },
+      {
+        "label": "Dessert Shop main entrypoint file",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    },
+    "model_solution_packaging": {
+      "type": "model_solution",
+      "display_filename": "packaging.py"
+    },
+    "model_solution_payment": {
+      "type": "model_solution",
+      "display_filename": "payment.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    },
+    "model_solution_test_dessert": {
+      "type": "model_solution",
+      "display_filename": "test_dessert.py"
+    },
+    "model_solution_test_candy": {
+      "type": "model_solution",
+      "display_filename": "test_candy.py"
+    },
+    "model_solution_test_cookie": {
+      "type": "model_solution",
+      "display_filename": "test_cookie.py"
+    },
+    "model_solution_test_icecream": {
+      "type": "model_solution",
+      "display_filename": "test_icecream.py"
+    },
+    "model_solution_test_sundae": {
+      "type": "model_solution",
+      "display_filename": "test_sundae.py"
+    },
+    "model_solution_test_order": {
+      "type": "model_solution",
+      "display_filename": "test_order.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "payment_protocol",
+      "label": "PayType + Payable in payment.py",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "order_payable",
+      "label": "Order implements get/set_pay_type with validation",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "student_order_tests",
+      "label": "Student test_order.py exists with >= 5 tests",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "ds7_regression",
+      "label": "DS7 packaging + classes intact",
+      "points": 35,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
+}

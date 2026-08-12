@@ -6,14 +6,10 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-import pytest
 
 from app.integrations.ast_checker.validator import (
-    ASTCheckResult,
-    ASTFinding,
     check_student_code,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Valid code with only allowed concepts → no warnings or blocks
@@ -127,7 +123,7 @@ class TestBlockedEval:
         code = "a = 1\nx = eval('a')\n"
         result = check_student_code(code, ["variables"])
 
-        eval_finding = [f for f in result.blocked if "eval" in f.message][0]
+        eval_finding = next(f for f in result.blocked if "eval" in f.message)
         assert eval_finding.line == 2
 
 
@@ -328,8 +324,12 @@ class TestMultipleConceptDetection:
 
 
 def test_concepts_metadata():
-    from app.integrations.ast_checker.validator import get_concepts_metadata, CONCEPT_NODE_MAP
     import ast
+
+    from app.integrations.ast_checker.validator import (
+        CONCEPT_NODE_MAP,
+        get_concepts_metadata,
+    )
 
     meta = get_concepts_metadata()
     assert "loops" in meta
@@ -340,12 +340,148 @@ def test_concepts_metadata():
 
     assert "conditionals" in meta
     assert meta["conditionals"]["title"] == "Conditionals"
-    
+
     assert "file-io" in meta
     assert len(meta["file-io"]["nodes"]) == 0
     assert len(meta["file-io"]["syntax_patterns"]) > 0
 
     # Ensure CONCEPT_NODE_MAP has the right keys/values
-    assert set(CONCEPT_NODE_MAP.keys()) == {"loops", "conditionals", "functions", "variables"}
+    assert set(CONCEPT_NODE_MAP.keys()) == {
+        "loops", "conditionals", "functions", "variables",
+        "classes", "generators", "exceptions", "type-hints"
+    }
     assert CONCEPT_NODE_MAP["loops"] == (ast.For, ast.While, ast.AsyncFor)
+
+
+# ---------------------------------------------------------------------------
+# 5. Tests for newly added AST concepts (classes, inheritance, abstract-classes, etc.)
+# ---------------------------------------------------------------------------
+
+class TestNewConcepts:
+    def test_classes_and_inheritance(self) -> None:
+        code = "class Base:\n    pass\nclass Derived(Base):\n    pass\n"
+        result = check_student_code(code, ["classes", "inheritance"])
+        assert "classes" in result.detected_concepts
+        assert "inheritance" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_abstract_classes(self) -> None:
+        code = (
+            "from abc import ABC, abstractmethod\n"
+            "class MyAbstract(ABC):\n"
+            "    @abstractmethod\n"
+            "    def run(self):\n"
+            "        pass\n"
+        )
+        result = check_student_code(code, ["classes", "inheritance", "abstract-classes", "functions"])
+        assert "abstract-classes" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_properties(self) -> None:
+        code = (
+            "class Book:\n"
+            "    @property\n"
+            "    def title(self):\n"
+            "        return self._title\n"
+            "    def make_prop(self):\n"
+            "        return property(self.get_x)\n"
+        )
+        result = check_student_code(code, ["classes", "properties", "functions", "variables"])
+        assert "properties" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_generators(self) -> None:
+        code = "def my_gen():\n    yield 1\n    yield from [2, 3]\n"
+        result = check_student_code(code, ["functions", "generators"])
+        assert "generators" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_testing(self) -> None:
+        code = "import pytest\ndef test_something():\n    assert True\n"
+        result = check_student_code(code, ["testing", "functions", "conditionals"])
+        assert "testing" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_exceptions(self) -> None:
+        code = "try:\n    raise ValueError()\nexcept Exception:\n    pass\n"
+        result = check_student_code(code, ["exceptions"])
+        assert "exceptions" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_raise_stop_iteration_not_exceptions(self) -> None:
+        code = "raise StopIteration\n"
+        result = check_student_code(code, [])
+        assert "exceptions" not in result.detected_concepts
+        assert result.warnings == []
+
+        code2 = "raise StopIteration()\n"
+        result2 = check_student_code(code2, [])
+        assert "exceptions" not in result2.detected_concepts
+        assert result2.warnings == []
+
+    def test_pygame(self) -> None:
+        code = "import pygame\npygame.init()\n"
+        result = check_student_code(code, ["pygame"])
+        assert "pygame" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_dataclasses(self) -> None:
+        code = "from dataclasses import dataclass\n@dataclass\nclass Point:\n    x: int\n"
+        result = check_student_code(code, ["dataclasses", "classes", "type-hints", "variables"])
+        assert "dataclasses" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_protocols(self) -> None:
+        code = (
+            "from typing import Protocol, runtime_checkable\n"
+            "@runtime_checkable\n"
+            "class MyProtocol(Protocol):\n"
+            "    pass\n"
+        )
+        result = check_student_code(code, ["protocols", "classes", "inheritance", "type-hints"])
+        assert "protocols" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_type_hints(self) -> None:
+        code = (
+            "from typing import List\n"
+            "x: int = 5\n"
+            "def greet(name: str) -> str:\n"
+            "    return 'hello'\n"
+        )
+        result = check_student_code(code, ["type-hints", "variables", "functions"])
+        assert "type-hints" in result.detected_concepts
+        assert result.warnings == []
+
+    def test_operator_overloading(self) -> None:
+        code = (
+            "class Vector:\n"
+            "    def __add__(self, other):\n"
+            "        return Vector()\n"
+            "    def __init__(self):\n"
+            "        pass\n"
+        )
+        result = check_student_code(code, ["classes", "functions", "operator-overloading"])
+        assert "operator-overloading" in result.detected_concepts
+        assert "functions" in result.detected_concepts
+        # __init__ should not trigger operator-overloading
+        assert result.warnings == []
+
+    def test_blocked_security_features(self) -> None:
+        # 1. importlib is blocked
+        code1 = "import importlib\n"
+        result1 = check_student_code(code1, [])
+        assert result1.is_blocked
+        assert any("Blocked import: 'importlib'" in b.message for b in result1.blocked)
+
+        code2 = "from importlib.machinery import SourceFileLoader\n"
+        result2 = check_student_code(code2, [])
+        assert result2.is_blocked
+        assert any("Blocked import: 'importlib'" in b.message for b in result2.blocked)
+
+        # 2. getattr/eval/exec are blocked calls
+        code3 = "getattr(obj, 'attribute')\n"
+        result3 = check_student_code(code3, [])
+        assert result3.is_blocked
+        assert any("Blocked call: 'getattr()'" in b.message for b in result3.blocked)
 

@@ -10,23 +10,22 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core.auth_utils import create_access_token  # noqa: E402
-from app.db.base import Base, import_domain_models  # noqa: E402
-from app.db.seed import initialize_database  # noqa: E402
-from app.db.session import SessionLocal, engine  # noqa: E402
-from app.domains.assignments.models import Assignment  # noqa: E402
-from app.domains.assignments.service import (  # noqa: E402
+from app.core.auth_utils import create_access_token
+from app.db.session import SessionLocal
+from app.domains.assignments.models import Assignment
+from app.domains.assignments.service import (
     effective_allowed_concepts,
     get_assignment_for_course,
 )
-from app.domains.auth.models import Role, StaffAccess, User  # noqa: E402
-from app.domains.courses.models import Section  # noqa: E402
-from app.domains.runs.models import RunSummary  # noqa: E402
-from app.domains.runs.queue_admission import (  # noqa: E402
+from app.domains.auth.models import Role, StaffAccess, User
+from app.domains.courses.models import Section
+from app.domains.runs.models import RunSummary
+from app.domains.runs.queue_admission import (
     FULL_QUEUE_THRESHOLD,
     HIGH_LOAD_THRESHOLD,
     QueueFullError,
@@ -36,20 +35,15 @@ from app.domains.runs.queue_admission import (  # noqa: E402
     reset_admission_state_for_tests,
     waiting_count,
 )
-from app.main import create_app  # noqa: E402
-from test_ingestion_extractor import create_zip_bytes  # noqa: E402
+from app.main import create_app
+from test_ingestion_extractor import create_zip_bytes
 
 
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     reset_admission_state_for_tests()
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
     reset_admission_state_for_tests()
 
 
@@ -270,7 +264,7 @@ def test_preflight_blocks_sandbox_create(client, db_session):
     assert "not ready for grading" in response.json()["detail"]
 
 
-def test_effective_allowed_concepts_excludes_module(db_session):
+def test_effective_allowed_concepts_includes_module(db_session: Session) -> None:
     assignment = get_assignment_for_course(db_session, "cs1400", "simple-python-functions")
     assert assignment is not None
     assert assignment.module is not None
@@ -280,11 +274,13 @@ def test_effective_allowed_concepts_excludes_module(db_session):
     concepts = effective_allowed_concepts(assignment)
     assert "variables" in concepts
     assert "conditionals" in concepts
-    assert "module-only-loops" not in concepts
+    assert "module-only-loops" in concepts
+
+
+    from datetime import UTC, datetime, timedelta
 
     from app.domains.sandbox.catalog import get_sandbox_assignment
     from app.domains.sandbox.schemas import UploadQuota
-    from datetime import UTC, datetime, timedelta
 
     detail = get_sandbox_assignment(
         db_session,
@@ -321,3 +317,40 @@ def test_official_ingest_rejects_when_queue_full(
     workspaces = temp_workspace_storage / "workspaces"
     if workspaces.exists():
         assert list(workspaces.glob("official_*.zip")) == []
+
+
+def test_cumulative_module_concept_inheritance(db_session):
+    from app.domains.courses.service import get_course_concepts
+
+    res = get_course_concepts(db_session, "cs1410")
+    assert res is not None
+    m1 = next(m for m in res.modules if "Module 1" in m.name)
+    m2 = next(m for m in res.modules if "Module 2" in m.name)
+
+    # Base course concepts are inherited by all modules
+    assert "variables" in m1.concepts
+    assert "variables" in m2.concepts
+    assert "image-processing" in m1.concepts
+    assert "image-processing" in m2.concepts
+    assert "classes" in m2.concepts
+
+    lab2_assignment = get_assignment_for_course(db_session, "cs1410", "lab2")
+    assert lab2_assignment is not None
+    concepts = effective_allowed_concepts(lab2_assignment)
+    assert "variables" in concepts
+    assert "image-processing" in concepts
+    assert "classes" in concepts
+
+
+def test_effective_allowed_concepts_stops_at_assignment_module(db_session):
+    assignment = get_assignment_for_course(db_session, "cs1410", "lab2")
+    assert assignment is not None
+    assert assignment.module is not None
+
+    # Add a concept to a later module (e.g. module with id > assignment.module_id)
+    later_module = next(m for m in assignment.course.modules if m.id > assignment.module_id)
+    later_module.concepts = list(later_module.concepts or []) + ["future-unintroduced-concept"]
+    db_session.commit()
+
+    concepts = effective_allowed_concepts(assignment)
+    assert "future-unintroduced-concept" not in concepts

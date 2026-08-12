@@ -7,9 +7,8 @@ Create Date: 2026-07-10
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "0007_run_section_id"
 down_revision: str | None = "0006_add_relational_modules"

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 RunState = Literal["queue", "run", "complete", "failure"]
 EtaBand = Literal["under_1_min", "1_to_3_min", "3_to_5_min", "over_5_min"]
@@ -35,6 +35,7 @@ class RunStatusResponse(BaseModel):
 
 from datetime import datetime
 
+
 class RunSummaryResponse(BaseModel):
     id: int
     workflow_type: str
@@ -58,10 +59,11 @@ class RunSummaryListResponse(BaseModel):
 
 
 class ManualGradeInput(BaseModel):
-    score: int | None = Field(default=None, ge=0)
+    score: int | None = Field(default=None, ge=0, strict=True)
     comments: str | None = Field(default="")
 
 
 class UpdateManualGradesRequest(BaseModel):
     grades: dict[str, ManualGradeInput]
+    overall_comment: str | None = None
 

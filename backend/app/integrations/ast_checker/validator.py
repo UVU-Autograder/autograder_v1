@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
-
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Concept-to-node mapping
@@ -47,6 +47,66 @@ CONCEPT_DETAILS: dict[str, dict] = {
         ],
         "nodes": (ast.Assign, ast.AnnAssign),
     },
+    "classes": {
+        "title": "Classes",
+        "syntax_patterns": ["Class definitions (class)"],
+        "nodes": (ast.ClassDef,),
+    },
+    "inheritance": {
+        "title": "Inheritance",
+        "syntax_patterns": ["Class definitions inheriting from base classes"],
+        "nodes": (),
+    },
+    "abstract-classes": {
+        "title": "Abstract Classes",
+        "syntax_patterns": ["Defining or inheriting from ABC, using @abstractmethod"],
+        "nodes": (),
+    },
+    "properties": {
+        "title": "Properties",
+        "syntax_patterns": ["Using @property decorator or property() function"],
+        "nodes": (),
+    },
+    "generators": {
+        "title": "Generators",
+        "syntax_patterns": ["Using yield or yield from in functions"],
+        "nodes": (ast.Yield, ast.YieldFrom),
+    },
+    "testing": {
+        "title": "Testing",
+        "syntax_patterns": ["Importing pytest, writing test_ functions"],
+        "nodes": (),
+    },
+    "exceptions": {
+        "title": "Exceptions",
+        "syntax_patterns": ["try/except blocks, raising exceptions, custom exceptions"],
+        "nodes": (ast.Try, ast.Raise),
+    },
+    "pygame": {
+        "title": "Pygame",
+        "syntax_patterns": ["Importing or using pygame library"],
+        "nodes": (),
+    },
+    "dataclasses": {
+        "title": "Data Classes",
+        "syntax_patterns": ["Using @dataclass decorator"],
+        "nodes": (),
+    },
+    "protocols": {
+        "title": "Protocols",
+        "syntax_patterns": ["Inheriting from Protocol, using @runtime_checkable"],
+        "nodes": (),
+    },
+    "type-hints": {
+        "title": "Type Hints",
+        "syntax_patterns": ["Function annotations, variable annotations, typing imports"],
+        "nodes": (ast.AnnAssign,),
+    },
+    "operator-overloading": {
+        "title": "Operator Overloading",
+        "syntax_patterns": ["Defining special methods like __add__, __eq__, etc."],
+        "nodes": (),
+    },
     "file-io": {
         "title": "File I/O",
         "syntax_patterns": [
@@ -79,12 +139,12 @@ BLOCKED_IMPORTS: frozenset[str] = frozenset(
         "subprocess",
         "os",
         "shutil",
-        "sys",
         "socket",
         "http",
         "urllib",
         "ctypes",
         "multiprocessing",
+        "importlib",
     }
 )
 
@@ -205,6 +265,15 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
         # ---- simple concept nodes (loops, conditionals, functions, vars) --
         for concept, node_types in CONCEPT_NODE_MAP.items():
             if isinstance(node, node_types):
+                # Special check: raise StopIteration is allowed for iterators (Module 4)
+                # and should not trigger the 'exceptions' concept.
+                if concept == "exceptions" and isinstance(node, ast.Raise):
+                    is_stop_iteration = False
+                    if node.exc:
+                        if (isinstance(node.exc, ast.Name) and node.exc.id == "StopIteration") or (isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name) and node.exc.func.id == "StopIteration"):
+                            is_stop_iteration = True
+                    if is_stop_iteration:
+                        continue
                 detected.add(concept)
 
         # ---- imports -------------------------------------------------
@@ -221,6 +290,73 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
                     )
                 if root == "PIL":
                     detected.add("image-processing")
+                if root == "pygame":
+                    detected.add("pygame")
+                if root == "pytest":
+                    detected.add("testing")
+                if root == "dataclasses":
+                    detected.add("dataclasses")
+                if root in ("typing", "typing_extensions"):
+                    detected.add("type-hints")
+
+        # ---- ClassDef ------------------------------------------------
+        if isinstance(node, ast.ClassDef):
+            detected.add("classes")
+            if len(node.bases) > 0:
+                detected.add("inheritance")
+                for base in node.bases:
+                    if (isinstance(base, ast.Name) and base.id == "ABC") or (isinstance(base, ast.Attribute) and base.attr == "ABC"):
+                        detected.add("abstract-classes")
+                    elif (isinstance(base, ast.Name) and base.id == "Protocol") or (isinstance(base, ast.Attribute) and base.attr == "Protocol"):
+                        detected.add("protocols")
+            for dec in node.decorator_list:
+                if (isinstance(dec, ast.Name) and dec.id == "dataclass") or (isinstance(dec, ast.Attribute) and dec.attr == "dataclass"):
+                    detected.add("dataclasses")
+                elif (isinstance(dec, ast.Name) and dec.id == "runtime_checkable") or (isinstance(dec, ast.Attribute) and dec.attr == "runtime_checkable"):
+                    detected.add("protocols")
+
+        # ---- FunctionDef / AsyncFunctionDef --------------------------
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.returns is not None:
+                detected.add("type-hints")
+            for arg in node.args.args:
+                if arg.annotation is not None:
+                    detected.add("type-hints")
+            for arg in node.args.kwonlyargs:
+                if arg.annotation is not None:
+                    detected.add("type-hints")
+            if node.args.vararg and node.args.vararg.annotation is not None:
+                detected.add("type-hints")
+            if node.args.kwarg and node.args.kwarg.annotation is not None:
+                detected.add("type-hints")
+
+            if node.name.startswith("test_"):
+                detected.add("testing")
+
+            special_operator_methods = {
+                "__add__", "__radd__", "__iadd__",
+                "__sub__", "__rsub__", "__isub__",
+                "__mul__", "__rmul__", "__imul__",
+                "__truediv__", "__rtruediv__", "__itruediv__",
+                "__floordiv__", "__rfloordiv__", "__ifloordiv__",
+                "__mod__", "__rmod__", "__imod__",
+                "__pow__", "__rpow__", "__ipow__",
+                "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__",
+                "__and__", "__rand__", "__iand__",
+                "__or__", "__ror__", "__ior__",
+                "__xor__", "__rxor__", "__ixor__",
+                "__lshift__", "__rlshift__", "__ilshift__",
+                "__rshift__", "__rrshift__", "__irshift__",
+                "__neg__", "__pos__", "__abs__", "__invert__",
+            }
+            if node.name in special_operator_methods:
+                detected.add("operator-overloading")
+
+            for dec in node.decorator_list:
+                if (isinstance(dec, ast.Name) and dec.id == "property") or (isinstance(dec, ast.Attribute) and dec.attr == "property"):
+                    detected.add("properties")
+                elif (isinstance(dec, ast.Name) and dec.id == "abstractmethod") or (isinstance(dec, ast.Attribute) and dec.attr == "abstractmethod"):
+                    detected.add("abstract-classes")
 
         # ---- calls ---------------------------------------------------
         if isinstance(node, ast.Call):
@@ -248,9 +384,12 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
             # image-processing: calls on PIL objects (e.g. Image.open)
             if isinstance(node.func, ast.Attribute) and isinstance(
                 node.func.value, ast.Name
-            ):
-                if node.func.value.id in ("Image", "ImageDraw", "ImageFilter"):
-                    detected.add("image-processing")
+            ) and node.func.value.id in ("Image", "ImageDraw", "ImageFilter"):
+                detected.add("image-processing")
+
+            # properties: call to property()
+            if isinstance(node.func, ast.Name) and node.func.id == "property":
+                detected.add("properties")
 
         # ---- with-item open() ----------------------------------------
         if isinstance(node, ast.withitem):
@@ -330,3 +469,59 @@ def get_concepts_metadata() -> dict[str, dict]:
         }
         for k, v in CONCEPT_DETAILS.items()
     }
+
+
+class ASTCodeInspector:
+    """Audits student Python source code or whole project directories for concept whitelist compliance."""
+
+    def __init__(self, allowed_concepts: list[str] | None = None):
+        self.allowed_concepts = allowed_concepts or []
+
+    def inspect_source(self, source_code: str, file_label: str = "") -> ASTCheckResult:
+        res = check_student_code(source_code, self.allowed_concepts)
+        if not file_label:
+            return res
+
+        prefix = f"[{file_label}] "
+        tagged_warnings = [
+            ASTFinding(code=w.code, message=f"{prefix}{w.message}", line=w.line)
+            for w in res.warnings
+        ]
+        tagged_blocked = [
+            ASTFinding(code=b.code, message=f"{prefix}{b.message}", line=b.line)
+            for b in res.blocked
+        ]
+        return ASTCheckResult(
+            detected_concepts=res.detected_concepts,
+            warnings=tagged_warnings,
+            blocked=tagged_blocked,
+        )
+
+    def inspect_directory(self, root_dir: Path) -> ASTCheckResult:
+        combined_detected: set[str] = set()
+        combined_warnings: list[ASTFinding] = []
+        combined_blocked: list[ASTFinding] = []
+
+        for py_file in root_dir.rglob("*.py"):
+            rel_path = py_file.relative_to(root_dir).as_posix()
+            try:
+                source_code = py_file.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as exc:
+                combined_blocked.append(
+                    ASTFinding(
+                        code="validation_error",
+                        message=f"[{rel_path}] Could not read file: {exc}",
+                    )
+                )
+                continue
+
+            res = self.inspect_source(source_code, file_label=rel_path)
+            combined_detected.update(res.detected_concepts)
+            combined_warnings.extend(res.warnings)
+            combined_blocked.extend(res.blocked)
+
+        return ASTCheckResult(
+            detected_concepts=combined_detected,
+            warnings=combined_warnings,
+            blocked=combined_blocked,
+        )

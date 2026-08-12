@@ -1,20 +1,21 @@
 import io
 import sys
-import pytest
 import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.domains.assignments.schemas import AssignmentConfigV1, FileRequirementConfig
 from app.domains.ingestion.extractor import (
-    safe_extract_zip,
-    normalize_root_directory,
-    validate_submission_bundle,
     ExtractionError,
+    normalize_root_directory,
+    safe_extract_zip,
+    validate_submission_bundle,
 )
-from app.domains.assignments.schemas import AssignmentConfigV1
 
 
 def create_zip_bytes(files_dict: dict[str, bytes]) -> bytes:
@@ -74,17 +75,17 @@ def test_cleanup_system_files(tmp_path: Path):
     from app.domains.ingestion.extractor import cleanup_system_files
     directory = tmp_path / "target"
     directory.mkdir()
-    
+
     (directory / ".DS_Store").write_text("dsstore")
     (directory / "Thumbs.db").write_text("thumbs")
     (directory / "normal_file.py").write_text("python")
-    
+
     macosx_dir = directory / "__MACOSX"
     macosx_dir.mkdir()
     (macosx_dir / "nested_file.jpg").write_text("image")
-    
+
     cleanup_system_files(directory)
-    
+
     assert not (directory / ".DS_Store").exists()
     assert not (directory / "Thumbs.db").exists()
     assert not macosx_dir.exists()
@@ -98,7 +99,7 @@ def test_normalize_root_directory_single_subdir(tmp_path: Path):
     subdir.mkdir(parents=True)
     (subdir / "main.py").write_text("main")
     (subdir / "utils.py").write_text("utils")
-    
+
     (extract_dir / ".DS_Store").write_text("junk")
     (extract_dir / "__MACOSX").mkdir()
     (extract_dir / "__MACOSX" / "nested.xml").write_text("xml")
@@ -139,23 +140,31 @@ def test_normalize_root_directory_no_change_file_only(tmp_path: Path):
 @pytest.fixture
 def base_config_dict():
     return {
-        "schema_version": 1,
         "bundle": {
-            "required_files": ["main.py", "utils.py"],
             "entrypoint": "main.py",
-            "file_requirements": []
+            "file_requirements": [
+                {
+                    "label": "Main Script",
+                    "paths": ["main.py"],
+                },
+                {
+                    "label": "Utils Module",
+                    "paths": ["utils.py"],
+                },
+            ],
         },
         "artifacts": {
             "pytest_file": {
                 "type": "pytest_file",
             }
         },
-        "tests": [
+        "scoring_items": [
             {
                 "key": "test_1",
                 "label": "Test 1",
                 "points": 10,
-                "extra_credit": False
+                "extra_credit": False,
+                "item_type": "pytest",
             }
         ]
     }
@@ -211,17 +220,11 @@ def test_validate_submission_bundle_root_flattening(tmp_path: Path, base_config_
     assert (extract_dir / "utils.py").exists()
 
 
-def test_validate_submission_bundle_file_requirements_exact(tmp_path: Path, base_config_dict):
-    base_config_dict["bundle"]["file_requirements"] = [
-        {
-            "key": "exact_req",
-            "requirement_type": "exact",
-            "paths": ["extra.py"]
-        }
-    ]
-    # In pydantic validator, any files in file_requirements are added to known_paths,
-    # but let's make sure entrypoint.path is in required_files.
-    base_config_dict["bundle"]["required_files"].append("extra.py")
+def test_validate_submission_bundle_file_requirements_single_path(tmp_path: Path, base_config_dict):
+    base_config_dict["bundle"]["file_requirements"].append({
+        "label": "Extra File",
+        "paths": ["extra.py"]
+    })
 
     extract_dir = tmp_path / "extracted"
     extract_dir.mkdir(parents=True)
@@ -229,8 +232,8 @@ def test_validate_submission_bundle_file_requirements_exact(tmp_path: Path, base
     (extract_dir / "utils.py").write_text("utils")
 
     config = AssignmentConfigV1.model_validate(base_config_dict)
-    
-    # Missing exact.py
+
+    # Missing extra.py
     with pytest.raises(ValueError, match="Required file 'extra.py' is missing"):
         validate_submission_bundle(extract_dir, config)
 
@@ -238,16 +241,11 @@ def test_validate_submission_bundle_file_requirements_exact(tmp_path: Path, base
     validate_submission_bundle(extract_dir, config)
 
 
-def test_validate_submission_bundle_file_requirements_one_of(tmp_path: Path, base_config_dict):
-    base_config_dict["bundle"]["file_requirements"] = [
-        {
-            "key": "one_of_req",
-            "requirement_type": "one_of",
-            "paths": ["opt1.py", "opt2.py"]
-        }
-    ]
-    # add to required_files just in case, though the validator allows it
-    base_config_dict["bundle"]["required_files"].append("opt1.py")
+def test_validate_submission_bundle_file_requirements_multi_paths(tmp_path: Path, base_config_dict):
+    base_config_dict["bundle"]["file_requirements"].append({
+        "label": "Option File",
+        "paths": ["opt1.py", "opt2.py"]
+    })
 
     extract_dir = tmp_path / "extracted"
     extract_dir.mkdir(parents=True)
@@ -257,7 +255,7 @@ def test_validate_submission_bundle_file_requirements_one_of(tmp_path: Path, bas
     config = AssignmentConfigV1.model_validate(base_config_dict)
 
     # Missing both opt1.py and opt2.py
-    with pytest.raises(ValueError, match="None of the options for 'one_of_req' were found"):
+    with pytest.raises(ValueError, match="None of the options for 'Option File' were found"):
         validate_submission_bundle(extract_dir, config)
 
     # Adding one option should satisfy it
@@ -265,47 +263,11 @@ def test_validate_submission_bundle_file_requirements_one_of(tmp_path: Path, bas
     validate_submission_bundle(extract_dir, config)
 
 
-def test_validate_submission_bundle_file_requirements_optional(tmp_path: Path, base_config_dict):
-    base_config_dict["bundle"]["file_requirements"] = [
-        {
-            "key": "opt_req",
-            "requirement_type": "optional",
-            "paths": ["maybe.py"]
-        }
-    ]
-    base_config_dict["bundle"]["required_files"].append("maybe.py")
-
-    extract_dir = tmp_path / "extracted"
-    extract_dir.mkdir(parents=True)
-    (extract_dir / "main.py").write_text("main")
-    (extract_dir / "utils.py").write_text("utils")
-
-    config = AssignmentConfigV1.model_validate(base_config_dict)
-
-    # Option is not present - valid
-    validate_submission_bundle(extract_dir, config)
-
-    # Option is a directory - invalid
-    (extract_dir / "maybe.py").mkdir()
-    with pytest.raises(ValueError, match="Optional path 'maybe.py' exists but is not a file"):
-        validate_submission_bundle(extract_dir, config)
-
-    # Option is a file - valid
-    (extract_dir / "maybe.py").rmdir()
-    (extract_dir / "maybe.py").write_text("maybe")
-    validate_submission_bundle(extract_dir, config)
-
-
 def test_validate_submission_bundle_file_requirements_pattern(tmp_path: Path, base_config_dict):
-    base_config_dict["bundle"]["file_requirements"] = [
-        {
-            "key": "pat_req",
-            "requirement_type": "pattern",
-            "paths": ["*.txt"]
-        }
-    ]
-    # No paths in pattern needs to be in required_files unless entrypoint uses it,
-    # but entrypoint needs to be in required_files. Let's make sure it's valid.
+    base_config_dict["bundle"]["file_requirements"].append({
+        "label": "Text Files",
+        "pattern": "*.txt"
+    })
 
     extract_dir = tmp_path / "extracted"
     extract_dir.mkdir(parents=True)
@@ -322,11 +284,26 @@ def test_validate_submission_bundle_file_requirements_pattern(tmp_path: Path, ba
     validate_submission_bundle(extract_dir, config)
 
 
+def test_file_requirement_schema_validation():
+    # Both paths and pattern provided -> error
+    with pytest.raises(ValueError, match="must specify exactly one of 'paths' or 'pattern'"):
+        FileRequirementConfig.model_validate({"label": "Bad", "paths": ["a.py"], "pattern": "*.py"})
+
+    # Neither paths nor pattern provided -> error
+    with pytest.raises(ValueError, match="must specify exactly one of 'paths' or 'pattern'"):
+        FileRequirementConfig.model_validate({"label": "Bad"})
+
+    # Empty paths list -> error
+    with pytest.raises(ValueError, match="must contain at least one path"):
+        FileRequirementConfig.model_validate({"label": "Bad", "paths": []})
+
+
+
 from app.domains.ingestion.extractor import (
-    parse_canvas_filename,
-    group_canvas_files,
-    prepare_student_bundle,
     count_canvas_submissions,
+    group_canvas_files,
+    parse_canvas_filename,
+    prepare_student_bundle,
 )
 
 

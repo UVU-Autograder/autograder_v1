@@ -1,10 +1,11 @@
-'use client';
-
 import MonacoEditor from '@/components/monaco-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { XIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAssignmentFile } from './assignment-file-context';
+import ProblemOverview from './problem-overview';
+import { getConceptsMetadata } from '@/features/assignments/api';
+import { ConceptMetadata } from '@/features/assignments/types';
 
 type DropZone = 'top' | 'bottom' | null;
 
@@ -48,6 +49,7 @@ function EditorDropOverlay({
 
 export function EditorPane({ paneId }: { paneId: string }) {
   const {
+    assignment,
     files,
     panes,
     activePaneId,
@@ -65,6 +67,11 @@ export function EditorPane({ paneId }: { paneId: string }) {
   const pane = panes[paneId];
   const [dropZone, setDropZone] = useState<DropZone>(null);
   const [isFileDropActive, setIsFileDropActive] = useState(false);
+  const [conceptMeta, setConceptMeta] = useState<Record<string, ConceptMetadata>>({});
+
+  useEffect(() => {
+    getConceptsMetadata().then(setConceptMeta).catch(console.error);
+  }, []);
 
   if (!pane) return null;
 
@@ -144,7 +151,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
           onValueChange={(filename) => setActiveTab(paneId, filename)}
           className="flex min-h-0 flex-1 flex-col gap-0 p-0"
         >
-          <TabsList className="w-full shrink-0 justify-start rounded-none p-0">
+          <TabsList className="w-full shrink-0 justify-start rounded-none p-0 overflow-x-auto min-w-0 flex-nowrap">
             {pane.tabs.map((filename) => (
               <div
                 key={filename}
@@ -179,7 +186,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
             ))}
           </TabsList>
 
-          <div className="relative mt-0 min-h-0 flex-1">
+          <div className="relative mt-0 min-h-0 min-w-0 w-full flex-1 overflow-hidden">
             {pane.tabs.map((filename) => {
               const file = files[filename];
               if (!file) return null;
@@ -188,16 +195,24 @@ export function EditorPane({ paneId }: { paneId: string }) {
                 <TabsContent
                   key={filename}
                   value={filename}
-                  className="mt-0 h-full min-h-0 data-active:flex data-active:flex-1"
+                  className="mt-0 h-full min-h-0 min-w-0 w-full overflow-hidden data-active:flex data-active:flex-1 data-active:flex-col"
                 >
-                  <MonacoEditor
-                    key={`${paneId}-${filename}`}
-                    height="100%"
-                    width="100%"
-                    defaultLanguage={file.language}
-                    defaultValue={file.content}
-                    options={{ readOnly: file.category !== 'workspace' }}
-                  />
+                  {file.category === 'overview' || filename === 'Problem Overview' ? (
+                    assignment ? (
+                      <ProblemOverview assignment={assignment} conceptMeta={conceptMeta} />
+                    ) : (
+                      <div className="p-4 text-sm text-stone-500">{file.content}</div>
+                    )
+                  ) : (
+                    <MonacoEditor
+                      key={`${paneId}-${filename}`}
+                      height="100%"
+                      width="100%"
+                      defaultLanguage={file.language}
+                      defaultValue={file.content}
+                      options={{ readOnly: file.category !== 'workspace' }}
+                    />
+                  )}
                 </TabsContent>
               );
             })}

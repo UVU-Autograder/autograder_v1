@@ -1,22 +1,24 @@
-import sys
-import os
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.domains.assignments.schemas import TestItemConfig
-from app.domains.sandbox.schemas import SandboxRubricItem
+from app.domains.assignments.schemas import ScoringItemConfig
+from app.domains.grading.result_parser import parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
+from app.domains.sandbox.schemas import SandboxRubricItem
 
 
 def test_test_item_config_validation():
     # 1. Valid config with inputs/outputs
-    config = TestItemConfig(
+    config = ScoringItemConfig(
         key="t1",
         label="Test 1",
         points=10,
@@ -28,7 +30,7 @@ def test_test_item_config_validation():
 
     # 2. Invalid config with mismatched lengths
     with pytest.raises(ValidationError):
-        TestItemConfig(
+        ScoringItemConfig(
             key="t2",
             label="Test 2",
             points=10,
@@ -39,7 +41,7 @@ def test_test_item_config_validation():
 
     # 3. Invalid config with missing outputs
     with pytest.raises(ValidationError):
-        TestItemConfig(
+        ScoringItemConfig(
             key="t3",
             label="Test 3",
             points=10,
@@ -74,6 +76,28 @@ def test_runner_generation_syntax():
     assert "ENTRYPOINT_MODULE = " in script
     assert "pytest_generate_tests" in script
     assert "run_case" in script
+
+
+def test_runner_reports_missing_preinstalled_dependency(tmp_path):
+    runner_code = generate_runner_script(
+        ["test_main.py"],
+        {},
+        "main",
+        ["definitely-not-installed-autograder-package"],
+    )
+    runner_file = tmp_path / "runner.py"
+    runner_file.write_text(runner_code, encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(runner_file)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    parsed = parse_pytest_json(result.stdout)
+    assert parsed.error_message is not None
+    assert "preinstalled dependency" in parsed.error_message
 
 
 def test_runner_execution_passing(tmp_path):
@@ -125,7 +149,7 @@ def test_runner_execution_passing(tmp_path):
     assert outcomes["summary"]["total"] == 2
     assert outcomes["summary"]["passed"] == 2
     assert outcomes["summary"]["failed"] == 0
-    
+
     # Check individual outcomes
     tests = outcomes["tests"]
     assert len(tests) == 2
@@ -180,13 +204,40 @@ def test_runner_execution_failing(tmp_path):
     _, _, json_part = result.stdout.partition("---AUTOGRADER_RESULTS---")
 
     outcomes = json.loads(json_part.strip())
-    assert outcomes["summary"]["total"] == 1
+    assert outcomes["summary"]["total"] == 2
     assert outcomes["summary"]["passed"] == 0
-    assert outcomes["summary"]["failed"] == 1
-    
+    assert outcomes["summary"]["failed"] == 2
+
     tests = outcomes["tests"]
-    assert len(tests) == 1
+    assert len(tests) == 2
     assert tests[0]["outcome"] == "failed"
     assert "AssertionError" in tests[0]["message"]
+    assert tests[1]["outcome"] == "failed"
+    assert "AssertionError" in tests[1]["message"]
     assert tests[0]["actual"].strip() == "2"
     assert tests[0]["expected"].strip() == "8"
+
+
+def test_extract_assertion_values():
+    from app.domains.grading.result_parser import _extract_assertion_values
+
+    # Exact equality string
+    act, exp = _extract_assertion_values("E AssertionError: assert 'Box' == 'Bag'")
+    assert act == "Box"
+    assert exp == "Bag"
+
+    # Number comparison
+    act, exp = _extract_assertion_values("E AssertionError: assert 5 == 10")
+    assert act == "5"
+    assert exp == "10"
+
+    # In comparison
+    act, exp = _extract_assertion_values("E AssertionError: assert 'foo' in 'bar'")
+    assert act == "foo"
+    assert exp == "bar"
+
+    # Boolean false fallback
+    act, exp = _extract_assertion_values("E AssertionError: assert False")
+    assert act == "false"
+    assert exp == "true"
+

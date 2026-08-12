@@ -24,6 +24,7 @@ def generate_runner_script(
     test_filenames: list[str],
     test_cases: dict[str, dict[str, list[str]]],
     entrypoint_module: str,
+    dependencies: list[str] | None = None,
 ) -> str:
     """Generate the ``runner.py`` source code string.
 
@@ -36,6 +37,7 @@ def generate_runner_script(
         test_cases: Dict mapping test marker keys (e.g. "t1") to their inputs
             and outputs.
         entrypoint_module: Stem of the student entrypoint file, e.g. "main".
+        dependencies: Preinstalled packages the assignment requires.
 
     Returns:
         A complete, self-contained Python source string ready for Judge0.
@@ -43,6 +45,7 @@ def generate_runner_script(
     filenames_literal = repr(test_filenames)
     test_cases_literal = repr(test_cases)
     entrypoint_literal = repr(entrypoint_module)
+    dependencies_literal = repr(dependencies or [])
     joiner = '"\\n"'
 
     script = textwrap.dedent(
@@ -50,20 +53,63 @@ def generate_runner_script(
         \"\"\"Auto-generated pytest runner for the autograder sandbox.\"\"\"
 
         import io
+        import importlib
         import json
+        import os
         import sys
         import time
-
-        import pytest
+        import signal
 
         # ------------------------------------------------------------------ #
-        # Constants                                                          #
+        # Constants & Signal Setup                                           #
         # ------------------------------------------------------------------ #
 
         RESULTS_DELIMITER = "---AUTOGRADER_RESULTS---"
         TEST_FILENAMES = {filenames_literal}
         TEST_CASES = {test_cases_literal}
         ENTRYPOINT_MODULE = {entrypoint_literal}
+        DEPENDENCIES = {dependencies_literal}
+        DEPENDENCY_IMPORTS = {{"pillow": "PIL"}}
+
+        def runtime_failure(message: str) -> None:
+            payload = {{
+                "tests": [],
+                "summary": {{
+                    "total": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "errors": 1,
+                    "duration": 0.0,
+                    "exit_code": 2,
+                }},
+                "infrastructure_error": message,
+            }}
+            print(RESULTS_DELIMITER)
+            print(json.dumps(payload))
+            raise SystemExit(0)
+
+        if sys.version_info < (3, 11):
+            runtime_failure(
+                "Judge0 Python 3.11+ is required; found "
+                + ".".join(str(part) for part in sys.version_info[:3])
+            )
+
+        for dependency in DEPENDENCIES:
+            import_name = DEPENDENCY_IMPORTS.get(dependency.lower(), dependency)
+            try:
+                importlib.import_module(import_name)
+            except ImportError:
+                runtime_failure(
+                    f"Required preinstalled dependency '{{dependency}}' is unavailable."
+                )
+
+        import pytest
+
+        class TimeoutException(Exception):
+            pass
+
+        def timeout_handler(signum: int, frame: object) -> None:
+            raise TimeoutException("Test case execution timed out (5s limit).")
 
 
         # ------------------------------------------------------------------ #
@@ -75,6 +121,34 @@ def generate_runner_script(
 
             def __init__(self):
                 self.results = []
+
+            def pytest_runtest_setup(self, item: pytest.Item) -> None:
+                if hasattr(signal, "alarm"):
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(5)
+                
+                # Check for EXPECTED_OUTPUT / EXPECTED_INPUT on item.obj or item.module
+                obj = getattr(item, "obj", None)
+                mod = getattr(item, "module", None)
+                exp = getattr(obj, "EXPECTED_OUTPUT", None)
+                if exp is None and mod is not None:
+                    exp = getattr(mod, "EXPECTED_OUTPUT", None)
+                if exp is None:
+                    exp = getattr(obj, "EXPECTED", None)
+                if exp is not None:
+                    item.user_properties.append(("expected", str(exp)))
+
+                inp = getattr(obj, "EXPECTED_INPUT", None)
+                if inp is None and mod is not None:
+                    inp = getattr(mod, "EXPECTED_INPUT", None)
+                if inp is None:
+                    inp = getattr(obj, "INPUT", None)
+                if inp is not None:
+                    item.user_properties.append(("expected_input", str(inp)))
+
+            def pytest_runtest_teardown(self, item: pytest.Item) -> None:
+                if hasattr(signal, "alarm"):
+                    signal.alarm(0)
 
             def pytest_generate_tests(self, metafunc):
                 marker_key = None
@@ -139,9 +213,6 @@ def generate_runner_script(
                     return
 
                 markers = []
-                # item.iter_markers is available on the report's node id,
-                # but the simplest approach is to parse own_markers from the
-                # item stored on the report.
                 if hasattr(report, "keywords"):
                     for key in report.keywords:
                         if isinstance(key, str) and key.startswith("ag_"):
@@ -149,10 +220,18 @@ def generate_runner_script(
 
                 actual = None
                 expected = None
+                expected_input = None
                 if hasattr(report, "user_properties"):
                     props = dict(report.user_properties)
                     actual = props.get("actual")
                     expected = props.get("expected")
+                    expected_input = props.get("expected_input")
+
+                if actual is None and hasattr(report, "sections"):
+                    for sec_name, sec_text in report.sections:
+                        if "stdout" in sec_name.lower():
+                            actual = sec_text
+                            break
 
                 message = None
                 if report.failed:
@@ -169,6 +248,7 @@ def generate_runner_script(
                     "message": message,
                     "actual": actual,
                     "expected": expected,
+                    "expected_input": expected_input,
                 }})
 
 
@@ -177,6 +257,9 @@ def generate_runner_script(
         # ------------------------------------------------------------------ #
 
         def main():
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+            os.environ["SDL_AUDIODRIVER"] = "dummy"
+
             plugin = AutograderPlugin()
 
             # Redirect stdout so student prints don't corrupt our JSON output.
@@ -186,7 +269,7 @@ def generate_runner_script(
 
             start = time.monotonic()
             exit_code = pytest.main(
-                ["-x", "--tb=short", "-q", "--no-header"] + TEST_FILENAMES,
+                ["--tb=short", "-q", "--no-header"] + TEST_FILENAMES,
                 plugins=[plugin],
             )
             elapsed = round(time.monotonic() - start, 6)

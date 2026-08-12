@@ -1,0 +1,117 @@
+{
+  "bundle": {
+    "entrypoint": "dessertshop.py",
+    "file_requirements": [
+      {
+        "label": "Dessert Shop classes definition file",
+        "paths": [
+          "dessert.py"
+        ]
+      },
+      {
+        "label": "Combinable Protocol definition file",
+        "paths": [
+          "combine.py"
+        ]
+      },
+      {
+        "label": "Dessert Shop main entrypoint file",
+        "paths": [
+          "dessertshop.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "dessert.py"
+    },
+    "model_solution_packaging": {
+      "type": "model_solution",
+      "display_filename": "packaging.py"
+    },
+    "model_solution_payment": {
+      "type": "model_solution",
+      "display_filename": "payment.py"
+    },
+    "model_solution_combine": {
+      "type": "model_solution",
+      "display_filename": "combine.py"
+    },
+    "model_solution_dessertshop": {
+      "type": "model_solution",
+      "display_filename": "dessertshop.py"
+    },
+    "model_solution_test_dessert": {
+      "type": "model_solution",
+      "display_filename": "test_dessert.py"
+    },
+    "model_solution_test_candy": {
+      "type": "model_solution",
+      "display_filename": "test_candy.py"
+    },
+    "model_solution_test_cookie": {
+      "type": "model_solution",
+      "display_filename": "test_cookie.py"
+    },
+    "model_solution_test_icecream": {
+      "type": "model_solution",
+      "display_filename": "test_icecream.py"
+    },
+    "model_solution_test_sundae": {
+      "type": "model_solution",
+      "display_filename": "test_sundae.py"
+    },
+    "model_solution_test_order": {
+      "type": "model_solution",
+      "display_filename": "test_order.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "combinable_protocol",
+      "label": "Combinable Protocol in combine.py (@runtime_checkable)",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "candy_combinable",
+      "label": "Candy can_combine + combine correct",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "cookie_combinable",
+      "label": "Cookie can_combine + combine correct",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "order_combine",
+      "label": "Order.add() merges combinable items",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "ds9_regression",
+      "label": "DS9 sort + relational ops intact",
+      "points": 25,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "completion_requirements": [],
+  "dependencies": [
+    "tabulate"
+  ],
+  "rubric_groups": []
+}

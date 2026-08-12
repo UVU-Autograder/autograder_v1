@@ -1,27 +1,27 @@
 import sys
 from pathlib import Path
+
 import pytest
+from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.base import Base, import_domain_models  # noqa: E402
-from app.db.seed import initialize_database  # noqa: E402
-from app.db.session import SessionLocal, engine  # noqa: E402
-from app.domains.assignments.models import Assignment, AssignmentConfig  # noqa: E402
-from app.domains.assignments.validation import extract_ag_markers, run_preflight_validation  # noqa: E402
-from app.domains.assignments.service import save_artifact, get_assignment_for_course  # noqa: E402
+from app.db.session import SessionLocal
+from app.domains.assignments.service import (
+    get_assignment_for_course,
+    save_artifact,
+)
+from app.domains.assignments.validation import (
+    extract_ag_markers,
+    run_preflight_validation,
+)
 
 
 @pytest.fixture(autouse=True)
-def db_session():
-    import_domain_models()
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
+def db_session(reset_database):
     with SessionLocal() as session:
         yield session
-    Base.metadata.drop_all(bind=engine)
-    initialize_database(seed=True)
 
 
 @pytest.fixture(autouse=True)
@@ -35,16 +35,18 @@ def temp_artifact_storage(tmp_path, monkeypatch):
 def test_extract_ag_markers():
     code = """
 import pytest
+from pytest import mark
+from pytest.mark import ag_count_vowels
 
 @pytest.mark.ag_add_numbers
 def test_add():
     pass
 
-@pytest.mark.ag_reverse_words()
+@mark.ag_reverse_words()
 async def test_reverse():
     pass
 
-@pytest.mark.ag_count_vowels(123)
+@ag_count_vowels(123)
 def test_vowels():
     pass
 
@@ -145,3 +147,9 @@ def test_vowels():
 
     errors = run_preflight_validation(db_session, "cs1400", "simple-python-functions")
     assert errors == []
+
+
+def test_run_preflight_validation_ds1_passes(db_session: Session) -> None:
+    errors = run_preflight_validation(db_session, "cs1410", "ds1")
+    assert errors == []
+
