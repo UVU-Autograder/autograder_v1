@@ -210,11 +210,11 @@ export default function CourseConceptsPage({ params }: PageProps) {
                   <div className="space-y-0.5 flex-1">
                     <label
                       htmlFor={`concept-${item.key}`}
-                      className="text-sm font-semibold text-slate-700 uppercase cursor-pointer block"
+                      className="text-sm font-semibold text-foreground uppercase cursor-pointer block"
                     >
                       {item.title}
                     </label>
-                    <ul className="text-xs text-slate-400 leading-relaxed list-disc pl-4 mt-1 space-y-0.5">
+                    <ul className="text-xs text-muted-foreground leading-relaxed list-disc pl-4 mt-1 space-y-0.5">
                       {(item.syntax_patterns || []).map((p) => (
                         <li key={p}>{p}</li>
                       ))}
@@ -232,10 +232,10 @@ export default function CourseConceptsPage({ params }: PageProps) {
         </Card>
 
         <div className="mt-8 mb-6 space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
             Course Modules & Concept Coverages
           </h2>
-          <p className="text-slate-500">
+          <p className="text-muted-foreground">
             Define course modules. Map specific allowed concepts to each module.
             Assignments will inherit these whitelisted concepts.
           </p>
@@ -270,7 +270,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
                 {Object.values(metadata).map((item) => (
                   <label
                     key={item.key}
-                    className="flex items-center space-x-2 border rounded-md p-2 bg-white hover:bg-slate-50 cursor-pointer text-xs"
+                    className="flex items-center space-x-2 border border-border rounded-md p-2 bg-card hover:bg-muted/50 cursor-pointer text-xs"
                   >
                     <input
                       type="checkbox"
@@ -278,9 +278,9 @@ export default function CourseConceptsPage({ params }: PageProps) {
                       onChange={() =>
                         handleModuleConceptToggle(modIdx, item.key)
                       }
-                      className="size-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="size-3.5 rounded border-input text-primary focus:ring-ring"
                     />
-                    <span className="font-semibold text-slate-700 uppercase">
+                    <span className="font-semibold text-foreground uppercase">
                       {item.title}
                     </span>
                   </label>

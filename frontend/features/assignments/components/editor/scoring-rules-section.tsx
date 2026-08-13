@@ -157,11 +157,11 @@ export function ScoringRulesSection() {
             <CardDescription>
               Each description/label acts as the test group header for asserts
               under{" "}
-              <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-700">
+              <code className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">
                 tests.py
               </code>
               . Base Total:{" "}
-              <strong className="text-slate-900 font-mono">
+              <strong className="text-foreground font-mono">
                 {totalBasePoints} pts
               </strong>
             </CardDescription>
@@ -185,25 +185,25 @@ export function ScoringRulesSection() {
             {pytestItems.map((item) => (
               <div
                 key={item.key}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-stone-50 rounded-lg border border-stone-200 items-center text-sm"
+                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm"
               >
                 {/* Key / Slug */}
                 <div className="md:col-span-4 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">
                       Key / Pytest Marker
                     </span>
                     <button
                       type="button"
                       onClick={() => autoGenerateKeyFromLabel(item.key)}
-                      className="text-[10px] flex items-center gap-1 text-indigo-600 font-semibold hover:text-indigo-800 hover:underline cursor-pointer"
+                      className="text-[10px] flex items-center gap-1 text-primary font-semibold hover:underline cursor-pointer"
                       title="Auto-generate key from description"
                     >
                       Auto-generate key
                     </button>
                   </div>
                   <div className="relative flex items-center">
-                    <span className="absolute left-2.5 text-xs font-mono font-bold text-stone-500 select-none pointer-events-none">
+                    <span className="absolute left-2.5 text-xs font-mono font-bold text-muted-foreground select-none pointer-events-none">
                       ag_
                     </span>
                     <Input
@@ -218,7 +218,7 @@ export function ScoringRulesSection() {
 
                 {/* Label / Description Header */}
                 <div className="md:col-span-5 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">
                     Description
                   </span>
                   <Input
@@ -232,7 +232,7 @@ export function ScoringRulesSection() {
 
                 {/* Points */}
                 <div className="md:col-span-2 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">
                     Points
                   </span>
                   <Input
@@ -254,34 +254,48 @@ export function ScoringRulesSection() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    aria-label="Remove test item"
                     onClick={() => removeScoringItem(item.key)}
                   >
-                    <Trash2Icon className="w-4 h-4 text-red-500" />
+                    <Trash2Icon className="w-4 h-4 text-destructive" />
                   </Button>
                 </div>
 
                 {/* Expected I/O Preview */}
-                <div className="md:col-span-12 mt-1 pt-2 border-t border-stone-200 flex flex-wrap items-center gap-3 text-xs text-stone-600">
-                  <span className="font-semibold text-stone-700 flex items-center gap-1">
-                    <FileTextIcon className="w-3.5 h-3.5 text-indigo-600" />
+                <div className="md:col-span-12 mt-1 pt-2 border-t border-border flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground flex items-center gap-1">
+                    <FileTextIcon className="w-3.5 h-3.5 text-primary" />
                     Parsed Expected I/O:
                   </span>
-                  {((item.inputs && item.inputs.length > 0) || (item.outputs && item.outputs.length > 0)) ? (
+                  {(item.inputs && item.inputs.length > 0) ||
+                  (item.outputs && item.outputs.length > 0) ? (
                     <div className="flex flex-wrap items-center gap-2">
                       {item.inputs && item.inputs.length > 0 && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-blue-50 text-blue-700 border border-blue-200" title="Expected Input">
-                          <strong className="mr-1 font-sans font-semibold">Input:</strong> {item.inputs.join(", ")}
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-blue-50 text-blue-700 border border-blue-200"
+                          title="Expected Input"
+                        >
+                          <strong className="mr-1 font-sans font-semibold">
+                            Input:
+                          </strong>{" "}
+                          {item.inputs.join(", ")}
                         </span>
                       )}
                       {item.outputs && item.outputs.length > 0 && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200" title="Expected Output">
-                          <strong className="mr-1 font-sans font-semibold">Output:</strong> {item.outputs.join(", ")}
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          title="Expected Output"
+                        >
+                          <strong className="mr-1 font-sans font-semibold">
+                            Output:
+                          </strong>{" "}
+                          {item.outputs.join(", ")}
                         </span>
                       )}
                     </div>
                   ) : (
                     <span className="text-[11px] text-stone-400 italic">
-                      No EXPECTED_INPUT or EXPECTED_OUTPUT constants detected in test code for marker ag_{item.key}.
+                      No EXPECTED_INPUT or EXPECTED_OUTPUT in ag_{item.key}.
                     </span>
                   )}
                 </div>
@@ -320,18 +334,18 @@ export function ScoringRulesSection() {
             {manualItems.map((item) => (
               <div
                 key={item.key}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-purple-50/50 rounded-lg border border-purple-200 items-center text-sm"
+                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm text-card-foreground"
               >
                 {/* Key / Slug */}
                 <div className="md:col-span-4 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">
                       Manual Key
                     </span>
                     <button
                       type="button"
                       onClick={() => autoGenerateKeyFromLabel(item.key)}
-                      className="text-[10px] flex items-center gap-1 text-purple-600 font-semibold hover:text-purple-800 hover:underline cursor-pointer"
+                      className="text-[10px] flex items-center gap-1 text-primary font-semibold hover:underline cursor-pointer"
                       title="Auto-generate key from label"
                     >
                       Auto-generate key
@@ -348,7 +362,7 @@ export function ScoringRulesSection() {
 
                 {/* Label / Description Header */}
                 <div className="md:col-span-5 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">
                     Criterion Label
                   </span>
                   <Input
@@ -362,7 +376,7 @@ export function ScoringRulesSection() {
 
                 {/* Points */}
                 <div className="md:col-span-2 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">
                     Points
                   </span>
                   <Input
@@ -384,16 +398,17 @@ export function ScoringRulesSection() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    aria-label="Remove manual rubric item"
                     onClick={() => removeScoringItem(item.key)}
                   >
-                    <Trash2Icon className="w-4 h-4 text-red-500" />
+                    <Trash2Icon className="w-4 h-4 text-destructive" />
                   </Button>
                 </div>
               </div>
             ))}
 
             {manualItems.length === 0 && (
-              <p className="text-xs text-stone-400 italic p-4 text-center border border-dashed rounded-lg">
+              <p className="text-xs text-muted-foreground italic p-4 text-center border border-dashed border-border rounded-lg">
                 No manual rubric items configured.
               </p>
             )}

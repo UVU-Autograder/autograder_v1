@@ -6,6 +6,7 @@ import { PlayIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api-client";
 
 type IngestionResponse = {
@@ -151,30 +152,30 @@ export default function RunsPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500 font-medium animate-pulse">Loading runs history...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground font-medium animate-pulse">Loading runs history...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10">
+    <div className="min-h-screen bg-background p-6 md:p-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 space-y-1">
           <BackLink href={`/staff/courses/${courseId}/assignments/${assignmentId}`} variant="compact">
             Back to assignment
           </BackLink>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Official Canvas Runs</h1>
-          <p className="text-slate-500">Launch student grading cycles via Canvas ZIP exports.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Official Canvas Runs</h1>
+          <p className="text-muted-foreground">Launch student grading cycles via Canvas ZIP exports.</p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive font-medium">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-600">
+          <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
             {success}
           </div>
         )}
@@ -189,32 +190,33 @@ export default function RunsPage({ params }: PageProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-500" htmlFor="section">
+                  <Label htmlFor="section" className="text-xs">
                     Section
-                  </label>
+                  </Label>
                   <select
                     id="section"
-                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                     value={sectionId}
                     required
                     onChange={(e) => setSectionId(e.target.value)}
                   >
-                    <option value="" disabled>
+                    <option value="" disabled className="bg-background text-foreground">
                       Select a section
                     </option>
                     {sections.map((section) => (
-                      <option key={section.id} value={section.id}>
+                      <option key={section.id} value={section.id} className="bg-background text-foreground">
                         CRN {section.crn}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-500">Submissions ZIP</label>
+                  <Label htmlFor="submissions-zip-input" className="text-xs">Submissions ZIP</Label>
                   <input
+                    id="submissions-zip-input"
                     type="file"
                     accept=".zip"
-                    className="w-full text-xs text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+                    className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground hover:file:bg-muted/80"
                     required
                     onChange={(e) => setZipFile(e.target.files?.[0] || null)}
                   />

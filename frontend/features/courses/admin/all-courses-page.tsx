@@ -303,8 +303,8 @@ export default function AllCoursesPage({
                         </span>
                       )}
                     </CardTitle>
-                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                      <span className="font-semibold uppercase text-slate-700">{course.code}</span>
+                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <span className="font-semibold uppercase text-foreground">{course.code}</span>
                       <span>•</span>
                       <span>{course.term}</span>
                       <span>•</span>
@@ -607,7 +607,7 @@ export default function AllCoursesPage({
                 onChange={(e) => setIsActive(e.target.checked)}
                 className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
               />
-              <label htmlFor="edit-is-active" className="text-sm font-medium text-slate-700">
+              <label htmlFor="edit-is-active" className="text-sm font-medium text-foreground cursor-pointer">
                 Course is active
               </label>
             </div>

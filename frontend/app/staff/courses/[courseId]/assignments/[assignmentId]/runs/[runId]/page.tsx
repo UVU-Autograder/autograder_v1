@@ -338,8 +338,8 @@ export default function RunDetailPage({ params }: PageProps) {
             <BackLink href={`/staff/courses/${courseId}/assignments`} variant="compact">
               Back to course details
             </BackLink>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Run #{runId} Details</h1>
-            <p className="text-slate-500">Grading results overview and student lists</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Run #{runId} Details</h1>
+            <p className="text-muted-foreground">Grading results overview and student lists</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -361,13 +361,13 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
         </div>
         {details && !details.exports_ready && (
-          <p className="-mt-4 mb-6 text-right text-xs text-amber-700">
+          <p className="-mt-4 mb-6 text-right text-xs text-amber-600 dark:text-amber-400 font-medium">
             Exports unlock after every manual rubric item has a score.
           </p>
         )}
 
         {/* Zero-Retention Warning Banner */}
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-600 dark:text-amber-400">
           <div className="flex gap-2 items-start font-semibold mb-1">
             <AwardIcon className="size-4 shrink-0 mt-0.5 animate-pulse text-amber-600" />
             <span>Zero-Retention Policy Active</span>
@@ -410,17 +410,17 @@ export default function RunDetailPage({ params }: PageProps) {
                       : "No manual grading required"}
                   </p>
                 </div>
-                <div className="flex justify-between border-t border-slate-100 pt-3 text-sm">
-                  <span className="text-green-600 font-semibold">Passed</span>
-                  <span className="font-bold text-slate-700">{summary?.success_count}</span>
+                <div className="flex justify-between border-t border-border pt-3 text-sm">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Passed</span>
+                  <span className="font-bold text-foreground">{summary?.success_count}</span>
                 </div>
-                <div className="flex justify-between border-t border-slate-100 pt-3 text-sm">
-                  <span className="text-red-500 font-semibold">Failed</span>
-                  <span className="font-bold text-slate-700">{summary?.failure_count}</span>
+                <div className="flex justify-between border-t border-border pt-3 text-sm">
+                  <span className="text-rose-600 dark:text-rose-400 font-semibold">Failed</span>
+                  <span className="font-bold text-foreground">{summary?.failure_count}</span>
                 </div>
-                <div className="flex justify-between border-t border-slate-100 pt-3 text-sm">
-                  <span className="text-amber-600 font-semibold">Warnings</span>
-                  <span className="font-bold text-slate-700">{summary?.warning_count}</span>
+                <div className="flex justify-between border-t border-border pt-3 text-sm">
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">Warnings</span>
+                  <span className="font-bold text-foreground">{summary?.warning_count}</span>
                 </div>
               </CardContent>
             </Card>
@@ -435,7 +435,7 @@ export default function RunDetailPage({ params }: PageProps) {
               </CardHeader>
               <CardContent>
                 {!details || details.students.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-6">No student details returned.</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">No student details returned.</p>
                 ) : (
                   <div className="space-y-3">
                     {details.students.map((student) => {
@@ -444,27 +444,27 @@ export default function RunDetailPage({ params }: PageProps) {
                       return (
                         <div
                           key={student.canvas_id}
-                          className="rounded-lg border border-slate-100 p-4 hover:shadow-sm transition-shadow bg-white"
+                          className="rounded-lg border border-border p-4 hover:shadow-xs transition-shadow bg-card text-card-foreground"
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div className="space-y-0.5">
-                              <p className="font-semibold text-slate-800">{student.student_name}</p>
-                              <p className="text-xs text-slate-400">
+                              <p className="font-semibold text-foreground">{student.student_name}</p>
+                              <p className="text-xs text-muted-foreground">
                                 Canvas ID: {student.canvas_id} | File: {student.matched_file}
                               </p>
                             </div>
                             <div className="flex items-center gap-3">
-                              <div className="flex items-center text-slate-700 gap-1 text-sm font-semibold mr-1">
-                                <AwardIcon className="size-4 text-slate-400" />
+                              <div className="flex items-center text-foreground gap-1 text-sm font-semibold mr-1">
+                                <AwardIcon className="size-4 text-muted-foreground" />
                                 {student.score} / {student.max_score} pts
                               </div>
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
                                   student.status === "success"
-                                    ? "bg-green-50 text-green-700"
+                                    ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300"
                                     : student.status === "failure"
-                                      ? "bg-red-50 text-red-700"
-                                      : "bg-amber-50 text-amber-700"
+                                      ? "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300"
+                                      : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300"
                                 }`}
                               >
                                 {student.status}
@@ -473,8 +473,8 @@ export default function RunDetailPage({ params }: PageProps) {
                                 <span
                                   className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
                                     ungradedCount > 0
-                                      ? "bg-amber-100 text-amber-800 border border-amber-200"
-                                      : "bg-slate-100 text-slate-700 border border-slate-200"
+                                      ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                      : "bg-muted text-foreground border border-border"
                                   }`}
                                 >
                                   {ungradedCount > 0 ? `Ungraded (${ungradedCount})` : "Graded"}
@@ -557,12 +557,12 @@ export default function RunDetailPage({ params }: PageProps) {
               </div>
 
               <TabsContent value="feedback" className="flex-1 overflow-y-auto p-6 min-h-0">
-                <div className="bg-white text-slate-900 p-6 rounded-lg shadow-sm border border-slate-200 overflow-y-auto max-h-[70vh]">
+                <div className="bg-card text-card-foreground p-6 rounded-lg shadow-xs border border-border overflow-y-auto max-h-[70vh]">
                   {selectedStudent?.feedback_html ? (
                     // feedback_html is generated server-side; staff-only view
                     <div dangerouslySetInnerHTML={{ __html: selectedStudent.feedback_html }} />
                   ) : (
-                    <p className="text-slate-500 italic">No feedback HTML summary available.</p>
+                    <p className="text-muted-foreground italic">No feedback HTML summary available.</p>
                   )}
                 </div>
               </TabsContent>

@@ -13,6 +13,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 type LoginResponse = {
   access_token: string;
@@ -80,7 +81,7 @@ export default function StaffLogin() {
   };
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-slate-50 p-4">
+    <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
         <form onSubmit={handleSubmit}>
           <CardHeader className="space-y-1 text-center">
@@ -101,9 +102,9 @@ export default function StaffLogin() {
               </div>
             )}
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="email">
                 Email Address
-              </label>
+              </Label>
               <Input
                 id="email"
                 type="email"

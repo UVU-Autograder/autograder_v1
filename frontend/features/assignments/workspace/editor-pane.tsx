@@ -152,7 +152,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
           onValueChange={(filename) => setActiveTab(paneId, filename)}
           className="flex min-h-0 flex-1 flex-col gap-0 p-0"
         >
-          <TabsList className="w-full h-9 shrink-0 justify-start rounded-none p-0 overflow-x-auto overflow-y-hidden min-w-0 flex-nowrap border-b border-border bg-stone-100/80">
+          <TabsList className="w-full h-9 shrink-0 justify-start rounded-none p-0 overflow-x-auto overflow-y-hidden min-w-0 flex-nowrap border-b border-border bg-muted/80">
             {pane.tabs.map((filename) => (
               <div
                 key={filename}
@@ -163,7 +163,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
                   startTabDrag({ filename, sourcePaneId: paneId });
                 }}
                 onDragEnd={endTabDrag}
-                className="inline-flex items-center h-full border-r border-border last:border-r-0 data-[active=true]:bg-background"
+                className="inline-flex items-center h-full border-r border-border last:border-r-0 data-[active=true]:bg-background text-foreground"
                 data-active={activeTab === filename}
                 onMouseDown={(event) => {
                   if (event.button === 1) {
@@ -202,7 +202,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
                     assignment ? (
                       <ProblemOverview assignment={assignment} conceptMeta={conceptMeta} />
                     ) : (
-                      <div className="p-4 text-sm text-stone-500">{file.content}</div>
+                      <div className="p-4 text-sm text-slate-500">{file.content}</div>
                     )
                   ) : (
                     <MonacoEditor

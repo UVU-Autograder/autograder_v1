@@ -44,8 +44,8 @@ export default function MonitoringPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="animate-pulse font-medium text-slate-500">Loading system metrics...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="animate-pulse font-medium text-muted-foreground">Loading system metrics...</p>
       </div>
     );
   }
@@ -56,8 +56,8 @@ export default function MonitoringPage() {
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">System Monitoring</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Real-time status of grading queues and API token consumption</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">System Monitoring</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Real-time status of grading queues and API token consumption</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchStats} disabled={isRefreshing}>
           <RefreshCwIcon className={`mr-1 size-4 ${isRefreshing ? 'animate-spin' : ''}`} /> 
@@ -66,7 +66,7 @@ export default function MonitoringPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+        <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive font-medium">
           {error}
         </div>
       )}
@@ -76,16 +76,16 @@ export default function MonitoringPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-sm font-semibold text-slate-500 uppercase">Active Executions</CardTitle>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">Active Executions</CardTitle>
               <CardDescription>Grading tasks currently running</CardDescription>
             </div>
-            <ActivityIcon className="size-6 text-green-500" />
+            <ActivityIcon className="size-6 text-emerald-500" />
           </CardHeader>
           <CardContent className="pt-2">
-            <span className="text-4xl font-extrabold tracking-tight text-slate-900">
+            <span className="text-4xl font-extrabold tracking-tight text-foreground">
               {stats?.active_runs_count ?? 0}
             </span>
-            <span className="text-xs text-slate-500 ml-2">runs running now</span>
+            <span className="text-xs text-muted-foreground ml-2">runs running now</span>
           </CardContent>
         </Card>
 
@@ -93,16 +93,16 @@ export default function MonitoringPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-sm font-semibold text-slate-500 uppercase">Queued Executions</CardTitle>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">Queued Executions</CardTitle>
               <CardDescription>Grading tasks waiting in queue</CardDescription>
             </div>
             <HourglassIcon className="size-6 text-amber-500" />
           </CardHeader>
           <CardContent className="pt-2">
-            <span className="text-4xl font-extrabold tracking-tight text-slate-900">
+            <span className="text-4xl font-extrabold tracking-tight text-foreground">
               {stats?.queued_runs_count ?? 0}
             </span>
-            <span className="text-xs text-slate-500 ml-2">runs in waiting queue</span>
+            <span className="text-xs text-muted-foreground ml-2">runs in waiting queue</span>
           </CardContent>
         </Card>
 
@@ -110,16 +110,16 @@ export default function MonitoringPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-sm font-semibold text-slate-500 uppercase">Sandbox Upload Velocity</CardTitle>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">Sandbox Upload Velocity</CardTitle>
               <CardDescription>Public sandbox submissions in the last hour</CardDescription>
             </div>
-            <CpuIcon className="size-6 text-blue-500" />
+            <CpuIcon className="size-6 text-primary" />
           </CardHeader>
           <CardContent className="pt-2">
-            <span className="text-4xl font-extrabold tracking-tight text-slate-900">
+            <span className="text-4xl font-extrabold tracking-tight text-foreground">
               {stats?.sandbox_runs_last_hour ?? 0}
             </span>
-            <span className="text-xs text-slate-500 ml-2">uploads in past hour</span>
+            <span className="text-xs text-muted-foreground ml-2">uploads in past hour</span>
           </CardContent>
         </Card>
 
@@ -127,16 +127,16 @@ export default function MonitoringPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-sm font-semibold text-slate-500 uppercase">Local LLM Tokens</CardTitle>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">Local LLM Tokens</CardTitle>
               <CardDescription>Accumulated token counts for generated local AI feedback</CardDescription>
             </div>
-            <BarChart2Icon className="size-6 text-purple-500" />
+            <BarChart2Icon className="size-6 text-primary" />
           </CardHeader>
           <CardContent className="pt-2">
-            <span className="text-4xl font-extrabold tracking-tight text-slate-900">
+            <span className="text-4xl font-extrabold tracking-tight text-foreground">
               {stats?.total_token_usage?.toLocaleString() ?? 0}
             </span>
-            <span className="text-xs text-slate-500 ml-2">tokens total</span>
+            <span className="text-xs text-muted-foreground ml-2">tokens total</span>
           </CardContent>
         </Card>
       </div>

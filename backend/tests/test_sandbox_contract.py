@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.core.settings import get_settings
 from app.domains.sandbox.service import sandbox_service
 from app.main import create_app
 
@@ -153,7 +154,7 @@ def test_run_creation_returns_session_quota_urls_and_queue_state(client):
     assert response.headers["X-Sandbox-Session"] == body["sandbox_session"]
     assert body["status_url"] == f"/runs/{body['run_id']}/status"
     assert body["result_url"] == f"/sandbox/runs/{body['run_id']}/result"
-    assert body["upload_quota"]["remaining"] == 4
+    assert body["upload_quota"]["remaining"] == get_settings().sandbox_upload_limit - 1
     assert body["initial_status"]["state"] == "queue"
     assert body["initial_status"]["queue_position"] == 1
     assert body["initial_status"]["eta_band"] == "under_1_min"

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   createSandboxRun,
   pollRunUntilComplete,
@@ -34,6 +35,35 @@ function cleanTestMessage(message: string | null | undefined): string {
   return message;
 }
 
+function testStatusLabel(status: string): string {
+  switch (status) {
+    case "passed":
+      return "Passed";
+    case "failed":
+      return "Failed";
+    case "errored":
+      return "Error";
+    default:
+      return status;
+  }
+}
+
+function testStatusBadgeVariant(
+  status: string,
+): "success" | "destructive" | "warning" | "outline" {
+  switch (status) {
+    case "passed":
+      return "success";
+    case "failed":
+    case "errored":
+      return "destructive";
+    case "warning":
+      return "warning";
+    default:
+      return "outline";
+  }
+}
+
 type CodeResultsProps = {
   courseId: string;
   assignmentId: string;
@@ -44,33 +74,18 @@ type CodeResultsProps = {
 
 type RunPhase = "idle" | "submitting" | "running" | "complete" | "error";
 
-function testStatusLabel(
-  status: SandboxRunResultResponse["test_summaries"][number]["status"],
-) {
-  switch (status) {
-    case "passed":
-      return "Passed";
-    case "failed":
-      return "Failed";
-    case "warning":
-      return "Warning";
-    default:
-      return "Not run";
-  }
-}
-
 function testStatusContainerClass(
   status: SandboxRunResultResponse["test_summaries"][number]["status"],
 ) {
   switch (status) {
     case "passed":
-      return "border-green-300 bg-green-50";
+      return "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50";
     case "failed":
-      return "border-red-300 bg-red-50";
+      return "border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50";
     case "warning":
-      return "border-amber-300 bg-amber-50";
+      return "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50";
     default:
-      return "border-slate-300 bg-slate-50";
+      return "border-border bg-card";
   }
 }
 
@@ -237,16 +252,16 @@ export default function CodeResults({
       className={`p-3 mb-2 rounded-lg border ${testStatusContainerClass(test.status)}`}
     >
       <div className="flex justify-between items-center mb-2 gap-2">
-        <p className="font-semibold text-slate-900 text-sm">
+        <p className="font-semibold text-foreground text-sm">
           {test.label ? test.label : `Test Case #${index + 1}`}
         </p>
-        <span className={`text-xs ${testStatusTextClass(test.status)}`}>
+        <Badge variant={testStatusBadgeVariant(test.status)}>
           {testStatusLabel(test.status)}
-        </span>
+        </Badge>
       </div>
 
-      <div className="text-sm space-y-1 text-slate-700">
-        <p className="text-xs text-slate-600">
+      <div className="text-sm space-y-1 text-foreground">
+        <p className="text-xs text-muted-foreground">
           <span className="font-medium">Points:</span> {test.points_awarded} /{" "}
           {test.points_possible}
         </p>
@@ -288,18 +303,19 @@ export default function CodeResults({
           test.message &&
           !test.your_value &&
           !test.actual &&
-          cleanTestMessage(test.message).trim() !== (test.label || test.title || "").trim() && (
+          cleanTestMessage(test.message).trim() !== (test.label || "").trim() && (
             <p className="mt-2 text-xs text-red-700 bg-red-100/60 p-2 rounded font-sans">
               {cleanTestMessage(test.message).split("\n")[0]}
             </p>
           )}
 
-        {test.status !== "passed" &&
+        {isStaff &&
+          test.status !== "passed" &&
           (result?.raw_output ||
             (test.message && cleanTestMessage(test.message).includes("\n"))) && (
             <details className="mt-2 text-xs text-slate-500">
-              <summary className="cursor-pointer font-medium text-slate-600 hover:text-slate-900">
-                View Raw Terminal Output
+              <summary className="cursor-pointer font-semibold text-purple-700 hover:text-purple-900">
+                🔍 [Instructor Only] View Raw Terminal Output
               </summary>
               <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
                 {result?.raw_output || cleanTestMessage(test.message)}
@@ -311,15 +327,15 @@ export default function CodeResults({
   );
 
   return (
-    <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-slate-50 border-l border-slate-200">
-      <details className="mb-3 rounded-md border border-slate-200 bg-white text-xs">
-        <summary className="cursor-pointer select-none px-3 py-2 text-slate-500 font-medium hover:text-slate-800">
+    <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+      <details className="mb-3 rounded-md border border-border bg-card text-card-foreground text-xs">
+        <summary className="cursor-pointer select-none px-3 py-2 text-muted-foreground font-medium hover:text-foreground">
           Provide stdin{" "}
-          <span className="font-mono text-[10px] text-slate-400">
+          <span className="font-mono text-[10px] text-muted-foreground/70">
             (optional)
           </span>
         </summary>
-        <div className="border-t border-slate-200 px-3 pb-3 pt-2">
+        <div className="border-t border-border px-3 pb-3 pt-2">
           <textarea
             id="sandbox-stdin-input"
             aria-label="Console input / stdin"
@@ -329,27 +345,28 @@ export default function CodeResults({
               "Each line will be fed as keyboard input (Enter)\ne.g.\nAlice\n3"
             }
             rows={3}
-            className="w-full max-w-full resize-y rounded border border-slate-300 p-2 font-mono text-xs leading-relaxed focus:border-indigo-400 focus:outline-none"
+            className="w-full max-w-full resize-y rounded border border-input bg-background text-foreground p-2 font-mono text-xs leading-relaxed focus:border-primary focus:outline-none"
           />
         </div>
       </details>
       <Button
         onClick={handleRunCode}
         disabled={isLoading || isQuotaExceeded}
-        className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-md shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+        variant="default"
+        className="w-full text-sm font-semibold py-2.5 cursor-pointer"
       >
         {isLoading ? "Running Tests..." : "Run Code"}
       </Button>
 
       {isLoading && (
-        <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900 space-y-1.5">
+        <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 dark:bg-primary/10 p-3 text-xs text-foreground space-y-1.5">
           <div className="flex items-center justify-between font-semibold">
             <span>Status: {runStateLabel(runState)}</span>
             {runState === "queue" && activeRunId && (
               <button
                 type="button"
                 onClick={handleCancelRun}
-                className="text-xs text-red-600 hover:underline font-bold"
+                className="text-xs text-destructive hover:underline font-bold cursor-pointer"
               >
                 Cancel Run
               </button>
@@ -365,7 +382,7 @@ export default function CodeResults({
       )}
 
       {errorMessage && (
-        <p className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <p className="mt-3 rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
           {errorMessage}
         </p>
       )}
@@ -380,7 +397,7 @@ export default function CodeResults({
               </p>
               <div className="w-full bg-slate-200 rounded-full h-2 mt-3 overflow-hidden">
                 <div
-                  className="h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg"
+                  className={`h-2 rounded-lg transition-all ${percent >= 100 ? "bg-emerald-600" : "bg-indigo-600"}`}
                   style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
                 />
               </div>
@@ -388,12 +405,12 @@ export default function CodeResults({
 
             <div className="flex items-center justify-between flex-wrap gap-2 mb-3 mt-4">
               <p className="font-bold text-lg">Test Cases:</p>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer select-none">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={onlyFailing}
                   onChange={(e) => setOnlyFailing(e.target.checked)}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                 />
                 Only show failing tests
               </label>
@@ -484,22 +501,37 @@ export default function CodeResults({
       </div>
 
       <Button
+        variant="outline"
         onClick={() => {
           if (!aiFeedbackRequested) {
             setAiFeedbackRequested(true);
           }
           setShowFeedback((prev) => !prev);
         }}
-        className="w-full mt-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-md shadow-xs"
+        className="w-full mt-4 font-semibold text-sm cursor-pointer"
       >
         {showFeedback ? "Hide AI Feedback" : "Request AI Feedback"}
       </Button>
       {showFeedback && (
-        <div className="mt-3 p-3 rounded-lg border border-purple-200 bg-purple-50/50 text-xs text-purple-950">
-          <p className="font-semibold text-sm mb-1 text-purple-900">AI Feedback</p>
-          <p className="text-purple-800 leading-relaxed">
-            AI Feedback generation is coming soon.
-          </p>
+        <div className="mt-3 space-y-2">
+          <div className="p-3 rounded-lg border border-border bg-muted/60 text-xs text-foreground">
+            <p className="font-semibold text-sm mb-1 text-foreground">Feedback</p>
+            <p className="text-muted-foreground leading-relaxed">
+              {result?.sanitized_feedback ??
+                "Run tests to generate session-only projected feedback."}
+            </p>
+            {result?.retention_notice && (
+              <p className="mt-2 text-xs text-muted-foreground/70">
+                {result.retention_notice}
+              </p>
+            )}
+          </div>
+          <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 dark:bg-primary/10 text-xs text-foreground">
+            <p className="font-semibold text-sm mb-1 text-primary">AI Feedback</p>
+            <p className="text-muted-foreground leading-relaxed">
+              AI Feedback generation is coming soon.
+            </p>
+          </div>
         </div>
       )}
     </div>

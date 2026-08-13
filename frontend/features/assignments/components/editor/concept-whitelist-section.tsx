@@ -56,20 +56,20 @@ export function ConceptWhitelistSection() {
                     onClick={() => toggleConceptDenylist(key)}
                     className={`flex items-start gap-3 p-3.5 rounded-lg border text-left cursor-pointer transition-all ${
                       isBlacklisted
-                        ? "bg-red-50 border-red-300 text-red-900 hover:bg-red-100/70"
-                        : "bg-indigo-50/60 border-indigo-200 text-indigo-950 hover:bg-indigo-100/70"
+                        ? "bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 hover:bg-rose-100/70"
+                        : "bg-emerald-50/60 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200 hover:bg-emerald-100/70"
                     }`}
                   >
                     {isBlacklisted ? (
-                      <BanIcon className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                      <BanIcon className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                     ) : (
-                      <CheckCircle2Icon className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                      <CheckCircle2Icon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                     )}
 
                     <div className="space-y-1.5 grow">
                       <div
                         className={`text-sm font-bold tracking-tight ${
-                          isBlacklisted ? "line-through text-red-700" : "text-slate-900"
+                          isBlacklisted ? "line-through text-rose-700 dark:text-rose-400" : "text-foreground"
                         }`}
                       >
                         {displayTitle}
@@ -83,8 +83,8 @@ export function ConceptWhitelistSection() {
                               key={idx}
                               className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
                                 isBlacklisted
-                                  ? "bg-red-100/80 border-red-200 text-red-800"
-                                  : "bg-white/80 border-indigo-200 text-indigo-900"
+                                  ? "bg-rose-100/80 dark:bg-rose-900/60 border-rose-200 dark:border-rose-700 text-rose-800 dark:text-rose-200"
+                                  : "bg-white/80 dark:bg-slate-900 border-emerald-200 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200"
                               }`}
                             >
                               {pat}
@@ -97,11 +97,11 @@ export function ConceptWhitelistSection() {
                         <span
                           className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
                             isBlacklisted
-                              ? "bg-red-200 text-red-900"
-                              : "bg-indigo-100 text-indigo-800 border border-indigo-200"
+                              ? "bg-rose-200 dark:bg-rose-900/80 text-rose-900 dark:text-rose-100"
+                              : "bg-emerald-200 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100"
                           }`}
                         >
-                          {isBlacklisted ? "Blacklisted for Assignment" : `Allowed (${sourceLabel})`}
+                          {isBlacklisted ? "Disabled for assignment" : sourceLabel}
                         </span>
                       </div>
                     </div>

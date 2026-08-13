@@ -31,6 +31,8 @@ type ValidationStatus = {
   max_score: number;
 };
 
+import { Label } from "@/components/ui/label";
+
 export function ModelSolutionSection() {
   const {
     courseId,
@@ -194,13 +196,13 @@ export function ModelSolutionSection() {
             className="flex flex-col sm:flex-row gap-3 items-end"
           >
             <div className="space-y-1 grow">
-              <label className="text-xs font-semibold text-slate-700">
+              <Label className="text-xs">
                 Upload Solution File or ZIP Archive
-              </label>
+              </Label>
               <Input
                 type="file"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="text-xs cursor-pointer bg-white"
+                className="text-xs cursor-pointer"
               />
             </div>
             <Button type="submit" disabled={uploading}>
@@ -222,17 +224,17 @@ export function ModelSolutionSection() {
               return (
                 <div
                   key={art.artifact_key}
-                  className="flex items-center justify-between p-3.5 bg-stone-50 rounded-lg border border-stone-200"
+                  className="flex items-center justify-between p-3.5 bg-card rounded-lg border border-border text-card-foreground"
                 >
                   <div className="flex items-center gap-3">
-                    <FileCodeIcon className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <FileCodeIcon className="w-5 h-5 text-primary shrink-0" />
                     <div>
-                      <div className="font-mono text-sm font-bold text-slate-900">
+                      <div className="font-mono text-sm font-bold text-foreground">
                         {displayFilename}
                       </div>
                       {art.size_bytes !== null &&
                         art.size_bytes !== undefined && (
-                          <div className="text-xs text-stone-500 font-mono">
+                          <div className="text-xs text-muted-foreground font-mono">
                             {Math.round(art.size_bytes / 1024)} KB
                           </div>
                         )}
@@ -267,11 +269,12 @@ export function ModelSolutionSection() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      aria-label="Delete solution file"
                       onClick={() =>
                         handleDeleteSolution(art.artifact_key, displayFilename)
                       }
                     >
-                      <Trash2Icon className="w-4 h-4 text-red-500" />
+                      <Trash2Icon className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>
                 </div>
@@ -279,7 +282,7 @@ export function ModelSolutionSection() {
             })}
 
             {solutionArtifacts.length === 0 && (
-              <p className="text-xs text-stone-400 italic p-6 text-center border border-dashed rounded-lg">
+              <p className="text-xs text-muted-foreground italic p-6 text-center border border-dashed border-border rounded-lg">
                 No model solution files attached yet. Upload a Python solution
                 script or ZIP archive above.
               </p>

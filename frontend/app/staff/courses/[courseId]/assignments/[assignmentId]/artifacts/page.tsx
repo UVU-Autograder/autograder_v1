@@ -269,10 +269,10 @@ export default function ArtifactsPage({ params }: PageProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500">File</label>
+                    <label className="text-xs font-semibold text-muted-foreground">File</label>
                     <input
                       type="file"
-                      className="w-full text-xs text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+                      className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground hover:file:bg-muted/80"
                       required
                       onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                     />
@@ -297,21 +297,21 @@ export default function ArtifactsPage({ params }: PageProps) {
               </CardHeader>
               <CardContent>
                 {artifacts.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-6">No assets uploaded yet.</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">No assets uploaded yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {artifacts.map((art) => (
                       <div
                         key={art.artifact_key}
-                        className="flex items-center justify-between rounded-lg border border-slate-100 p-3 hover:bg-slate-50"
+                        className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted/50"
                       >
                         <div className="flex items-center space-x-3">
-                          <FileIcon className="size-8 text-slate-400" />
+                          <FileIcon className="size-8 text-muted-foreground" />
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-700">
+                            <p className="truncate text-sm font-semibold text-foreground">
                               {art.display_filename || art.artifact_key}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               Key: {art.artifact_key} | Type: {art.artifact_type}
                             </p>
                           </div>

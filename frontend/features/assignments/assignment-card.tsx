@@ -31,7 +31,7 @@ export default function AssignmentCard({
   return (
     <Card
       onClick={() => router.push(linkHref)}
-      className="cursor-pointer py-3 transition-shadow hover:shadow-md hover:bg-slate-50/50"
+      className="cursor-pointer py-3 transition-shadow hover:shadow-md hover:bg-muted/50"
     >
       <CardContent className="flex items-center justify-between py-0 gap-3">
         <div className="flex items-center gap-3 min-w-0">
