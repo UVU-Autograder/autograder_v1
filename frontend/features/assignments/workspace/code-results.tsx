@@ -8,6 +8,8 @@ import {
   pollRunUntilComplete,
   getRunResult,
   cancelSandboxRun,
+  getSandboxAiFeedback,
+  streamSandboxAiFeedback,
 } from "@/features/assignments/api";
 import { ApiError } from "@/lib/api-client";
 import type {
@@ -18,6 +20,8 @@ import type {
   SandboxTestSummary,
 } from "@/features/assignments/types";
 import VisualDiffViewer from "@/components/visual-diff-viewer";
+import MarkdownRenderer from "@/components/markdown-renderer";
+import { Sparkles, Loader2, RefreshCw, Bot } from "lucide-react";
 import { useAssignmentFile } from "./assignment-file-context";
 import { createSubmissionBundle } from "./file-utils";
 
@@ -79,28 +83,13 @@ function testStatusContainerClass(
 ) {
   switch (status) {
     case "passed":
-      return "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50";
+      return "border-success/30 bg-success/5 dark:bg-success/10";
     case "failed":
-      return "border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50";
+      return "border-destructive/30 bg-destructive/5 dark:bg-destructive/10";
     case "warning":
-      return "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50";
+      return "border-warning/30 bg-warning/5 dark:bg-warning/10";
     default:
       return "border-border bg-card";
-  }
-}
-
-function testStatusTextClass(
-  status: SandboxRunResultResponse["test_summaries"][number]["status"],
-) {
-  switch (status) {
-    case "passed":
-      return "text-green-600 font-bold";
-    case "failed":
-      return "text-red-600 font-bold";
-    case "warning":
-      return "text-amber-700 font-bold";
-    default:
-      return "text-slate-600 font-bold";
   }
 }
 
@@ -139,7 +128,8 @@ export default function CodeResults({
   const { files } = useAssignmentFile();
   const [showCheckCode] = useState(true);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [aiFeedbackRequested, setAiFeedbackRequested] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const [phase, setPhase] = useState<RunPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<SandboxRunResultResponse | null>(null);
@@ -149,6 +139,8 @@ export default function CodeResults({
   const [prevInitialQuota, setPrevInitialQuota] = useState(initialQuota);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
+  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
   const [runState, setRunState] = useState<string>("queue");
   const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
   const [onlyFailing, setOnlyFailing] = useState(false);
@@ -163,6 +155,52 @@ export default function CodeResults({
     setPrevInitialQuota(initialQuota);
   }
 
+  const requestAiFeedback = async () => {
+    const targetRunId = lastRunId;
+    const targetSessionId = lastSessionId;
+    if (isAiLoading) return;
+    if (!targetRunId || !targetSessionId) {
+      setAiFeedback(
+        "Please run your tests first to generate AI feedback based on your results.",
+      );
+      return;
+    }
+    setIsAiLoading(true);
+    setAiFeedback("");
+    try {
+      await streamSandboxAiFeedback(targetRunId, targetSessionId, (chunk) => {
+        setAiFeedback((prev) => (prev ? prev + chunk : chunk));
+      });
+    } catch (err) {
+      try {
+        const res = await getSandboxAiFeedback(targetRunId, targetSessionId);
+        setAiFeedback(res.ai_feedback);
+      } catch {
+        setAiFeedback(
+          err instanceof Error
+            ? `Could not generate AI feedback: ${err.message}`
+            : "Could not generate AI feedback at this time.",
+        );
+      }
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleToggleAiFeedback = async () => {
+    if (showFeedback) {
+      setShowFeedback(false);
+      return;
+    }
+    setShowFeedback(true);
+    if (aiFeedback || isAiLoading) return;
+    await requestAiFeedback();
+  };
+
+  const handleForceRegenerateAiFeedback = async () => {
+    await requestAiFeedback();
+  };
+
   const handleRunCode = async () => {
     setPhase("submitting");
     setErrorMessage(null);
@@ -170,7 +208,7 @@ export default function CodeResults({
     setRunStatus(null);
     setRunState("queue");
     setShowFeedback(false);
-    setAiFeedbackRequested(false);
+    setAiFeedback(null);
 
     try {
       const bundleBlob = await createSubmissionBundle(files);
@@ -186,6 +224,8 @@ export default function CodeResults({
       const runId = run.run_id;
       setActiveRunId(runId);
       setActiveSessionId(sessionId);
+      setLastRunId(runId);
+      setLastSessionId(sessionId);
       setRunStatus(run.initial_status);
       setRunState(run.initial_status.state);
       setPhase("running");
@@ -272,20 +312,20 @@ export default function CodeResults({
             test.expected_value != null ||
             test.expected != null) && (
             <div className="mt-2.5 space-y-2">
-              <div className="p-3 rounded-md border border-red-200 bg-red-100/60 space-y-1.5 text-xs font-sans">
+              <div className="p-3 rounded-md border border-border bg-muted/40 space-y-1.5 text-xs font-sans">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-red-900 w-28 shrink-0">
+                  <span className="font-semibold text-destructive w-28 shrink-0">
                     Your value:
                   </span>
-                  <code className="bg-red-200/70 text-red-950 px-2 py-0.5 rounded font-mono break-all">
+                  <code className="bg-destructive/15 text-destructive px-2 py-0.5 rounded font-mono break-all font-medium">
                     {test.your_value ?? test.actual ?? "false"}
                   </code>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-emerald-900 w-28 shrink-0">
+                  <span className="font-semibold text-success w-28 shrink-0">
                     Expected value:
                   </span>
-                  <code className="bg-emerald-200/70 text-emerald-950 px-2 py-0.5 rounded font-mono break-all">
+                  <code className="bg-success/15 text-success px-2 py-0.5 rounded font-mono break-all font-medium">
                     {test.expected_value ?? test.expected ?? "true"}
                   </code>
                 </div>
@@ -303,8 +343,9 @@ export default function CodeResults({
           test.message &&
           !test.your_value &&
           !test.actual &&
-          cleanTestMessage(test.message).trim() !== (test.label || "").trim() && (
-            <p className="mt-2 text-xs text-red-700 bg-red-100/60 p-2 rounded font-sans">
+          cleanTestMessage(test.message).trim() !==
+            (test.label || "").trim() && (
+            <p className="mt-2 text-xs text-destructive bg-destructive/10 p-2 rounded border border-destructive/20 font-sans">
               {cleanTestMessage(test.message).split("\n")[0]}
             </p>
           )}
@@ -312,12 +353,13 @@ export default function CodeResults({
         {isStaff &&
           test.status !== "passed" &&
           (result?.raw_output ||
-            (test.message && cleanTestMessage(test.message).includes("\n"))) && (
-            <details className="mt-2 text-xs text-slate-500">
-              <summary className="cursor-pointer font-semibold text-purple-700 hover:text-purple-900">
-                🔍 [Instructor Only] View Raw Terminal Output
+            (test.message &&
+              cleanTestMessage(test.message).includes("\n"))) && (
+            <details className="mt-2 text-xs text-muted-foreground">
+              <summary className="cursor-pointer font-semibold text-primary hover:underline">
+                View Raw Terminal Output
               </summary>
-              <pre className="mt-1 bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
+              <pre className="mt-1 bg-muted text-foreground p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60 border border-border">
                 {result?.raw_output || cleanTestMessage(test.message)}
               </pre>
             </details>
@@ -327,11 +369,11 @@ export default function CodeResults({
   );
 
   return (
-    <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+    <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-background border-l border-border text-foreground">
       <details className="mb-3 rounded-md border border-border bg-card text-card-foreground text-xs">
         <summary className="cursor-pointer select-none px-3 py-2 text-muted-foreground font-medium hover:text-foreground">
           Provide stdin{" "}
-          <span className="font-mono text-[10px] text-muted-foreground/70">
+          <span className="font-mono text-xs text-muted-foreground/70">
             (optional)
           </span>
         </summary>
@@ -382,7 +424,7 @@ export default function CodeResults({
       )}
 
       {errorMessage && (
-        <p className="mt-3 rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+        <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive font-medium">
           {errorMessage}
         </p>
       )}
@@ -392,12 +434,12 @@ export default function CodeResults({
           <>
             <div className="mt-4">
               <p className="font-bold text-lg mb-2">Score:</p>
-              <p>
+              <p className="text-foreground font-semibold">
                 {score} / {totalScore}
               </p>
-              <div className="w-full bg-slate-200 rounded-full h-2 mt-3 overflow-hidden">
+              <div className="w-full bg-muted rounded-full h-2 mt-3 overflow-hidden">
                 <div
-                  className={`h-2 rounded-lg transition-all ${percent >= 100 ? "bg-emerald-600" : "bg-indigo-600"}`}
+                  className={`h-2 rounded-lg transition-all ${percent >= 100 ? "bg-success" : "bg-primary"}`}
                   style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
                 />
               </div>
@@ -410,7 +452,7 @@ export default function CodeResults({
                   type="checkbox"
                   checked={onlyFailing}
                   onChange={(e) => setOnlyFailing(e.target.checked)}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
                 />
                 Only show failing tests
               </label>
@@ -427,13 +469,13 @@ export default function CodeResults({
                     return (
                       <div
                         key={group.group_key}
-                        className="mb-4 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm"
+                        className="mb-4 border border-border rounded-lg overflow-hidden bg-card shadow-xs"
                       >
-                        <div className="flex justify-between items-center bg-slate-100 px-3 py-2 border-b border-slate-200">
-                          <span className="font-bold text-slate-800 text-xs">
+                        <div className="flex justify-between items-center bg-muted/50 px-3 py-2 border-b border-border">
+                          <span className="font-bold text-foreground text-xs">
                             {group.label}
                           </span>
-                          <span className="text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-full">
+                          <span className="text-xs font-semibold px-2 py-0.5 bg-muted text-muted-foreground rounded-full">
                             {group.points_earned} / {group.points_possible} pts
                           </span>
                         </div>
@@ -453,7 +495,7 @@ export default function CodeResults({
                       : result.test_summaries;
                     if (displaySummaries.length === 0) {
                       return (
-                        <p className="text-sm text-slate-600">
+                        <p className="text-sm text-muted-foreground">
                           {onlyFailing
                             ? "No failing tests found 🎉"
                             : "No test summaries returned."}
@@ -473,12 +515,12 @@ export default function CodeResults({
                   {result.warnings.map((warning, index) => (
                     <div
                       key={`${warning.code}-${index}`}
-                      className="border-l-4 border-amber-500 bg-amber-50 rounded-md p-4"
+                      className="border-l-4 border-warning bg-warning/10 rounded-md p-3 text-foreground"
                     >
-                      <p className="text-amber-800 font-semibold">
+                      <p className="text-warning font-semibold text-sm">
                         {warning.code}
                       </p>
-                      <p className="text-sm text-amber-700 mt-2">
+                      <p className="text-sm text-foreground/90 mt-1">
                         {warning.message}
                       </p>
                     </div>
@@ -488,7 +530,7 @@ export default function CodeResults({
             )}
           </>
         ) : (
-          <p className="mt-4 text-sm text-slate-600">
+          <p className="mt-4 text-sm text-muted-foreground">
             {isLoading
               ? runState === "queue"
                 ? "Your submission is queued. Position and ETA update as capacity clears."
@@ -502,35 +544,77 @@ export default function CodeResults({
 
       <Button
         variant="outline"
-        onClick={() => {
-          if (!aiFeedbackRequested) {
-            setAiFeedbackRequested(true);
-          }
-          setShowFeedback((prev) => !prev);
-        }}
-        className="w-full mt-4 font-semibold text-sm cursor-pointer"
+        onClick={handleToggleAiFeedback}
+        disabled={isAiLoading}
+        className="w-full mt-4 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 border-primary/30 hover:border-primary/50 transition-colors"
       >
-        {showFeedback ? "Hide AI Feedback" : "Request AI Feedback"}
+        {isAiLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Consulting Local AI...</span>
+          </>
+        ) : showFeedback ? (
+          <>
+            <Bot className="h-4 w-4 text-muted-foreground" />
+            <span>Hide AI Feedback</span>
+          </>
+        ) : aiFeedback ? (
+          <>
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>Show AI Feedback</span>
+          </>
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>Request AI Feedback</span>
+          </>
+        )}
       </Button>
       {showFeedback && (
         <div className="mt-3 space-y-2">
-          <div className="p-3 rounded-lg border border-border bg-muted/60 text-xs text-foreground">
-            <p className="font-semibold text-sm mb-1 text-foreground">Feedback</p>
-            <p className="text-muted-foreground leading-relaxed">
-              {result?.sanitized_feedback ??
-                "Run tests to generate session-only projected feedback."}
-            </p>
-            {result?.retention_notice && (
-              <p className="mt-2 text-xs text-muted-foreground/70">
-                {result.retention_notice}
+          <div className="p-4 rounded-xl border border-primary/25 bg-primary/[0.04] dark:bg-primary/[0.08] text-foreground transition-all">
+            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-primary/15">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded bg-primary/10 text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </div>
+                <p className="font-semibold text-xs text-primary tracking-wide uppercase">
+                  Local AI Tutor
+                </p>
+              </div>
+              {aiFeedback && !isAiLoading && (
+                <button
+                  onClick={handleForceRegenerateAiFeedback}
+                  title="Regenerate feedback from local model"
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors px-1.5 py-0.5 rounded hover:bg-muted/50"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  <span>Regenerate</span>
+                </button>
+              )}
+            </div>
+            {isAiLoading ? (
+              <div className="space-y-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-primary font-medium">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>
+                    Analyzing code and test outputs on local Qwen 2.5...
+                  </span>
+                </div>
+                <div className="space-y-2 pt-1 opacity-70 animate-pulse">
+                  <div className="h-2.5 bg-primary/20 rounded w-4/5" />
+                  <div className="h-2.5 bg-primary/15 rounded w-full" />
+                  <div className="h-2.5 bg-primary/15 rounded w-2/3" />
+                </div>
+              </div>
+            ) : aiFeedback ? (
+              <MarkdownRenderer content={aiFeedback} />
+            ) : (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Click &quot;Request AI Feedback&quot; to receive Socratic
+                guidance and hints from your local model.
               </p>
             )}
-          </div>
-          <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 dark:bg-primary/10 text-xs text-foreground">
-            <p className="font-semibold text-sm mb-1 text-primary">AI Feedback</p>
-            <p className="text-muted-foreground leading-relaxed">
-              AI Feedback generation is coming soon.
-            </p>
           </div>
         </div>
       )}

@@ -157,6 +157,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
+    network_mode: "host"
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,10 +168,10 @@ services:
       judge0-language-seed:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
+      JUDGE0_URL: ${JUDGE0_URL:-http://127.0.0.1:2358}
       JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
       JUDGE0_LANGUAGE_ID: ${JUDGE0_LANGUAGE_ID:-711}
       JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
@@ -188,10 +189,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
-      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-}
-      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-}
-    ports:
-      - "8000:8000"
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
     volumes:
       - backend_data:/data
 
@@ -200,6 +199,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
+    network_mode: "host"
     depends_on:
       postgres:
         condition: service_healthy
@@ -210,10 +210,10 @@ services:
       judge0-language-seed:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@postgres:5432/autograder}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
+      JUDGE0_URL: ${JUDGE0_URL:-http://127.0.0.1:2358}
       JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
       JUDGE0_LANGUAGE_ID: ${JUDGE0_LANGUAGE_ID:-711}
       JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
@@ -231,8 +231,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
-      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-}
-      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
     command: ["celery", "-A", "app.integrations.celery.app", "worker", "--loglevel=info", "-Q", "sandbox,official,default"]
     volumes:
       - backend_data:/data

@@ -202,7 +202,7 @@ export function EditorPane({ paneId }: { paneId: string }) {
                     assignment ? (
                       <ProblemOverview assignment={assignment} conceptMeta={conceptMeta} />
                     ) : (
-                      <div className="p-4 text-sm text-slate-500">{file.content}</div>
+                      <div className="p-4 text-sm text-muted-foreground">{file.content}</div>
                     )
                   ) : (
                     <MonacoEditor

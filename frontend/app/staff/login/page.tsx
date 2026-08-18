@@ -92,12 +92,12 @@ export default function StaffLogin() {
           </CardHeader>
           <CardContent className="space-y-4">
             {infoMessage && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning font-medium">
                 {infoMessage}
               </div>
             )}
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive font-medium">
                 {error}
               </div>
             )}

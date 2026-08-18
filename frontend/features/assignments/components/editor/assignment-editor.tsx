@@ -75,12 +75,12 @@ export function AssignmentEditor() {
 
         <div className="flex items-center gap-2 flex-wrap">
           {saveSuccess && (
-            <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+            <span className="flex items-center gap-1 text-xs text-success font-medium">
               <CheckCircle2Icon className="w-4 h-4" /> Saved successfully
             </span>
           )}
           {dirty && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+            <span className="text-xs text-warning font-medium">
               Unsaved changes
             </span>
           )}
@@ -92,7 +92,7 @@ export function AssignmentEditor() {
           >
             {copiedLink ? (
               <>
-                <CheckIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckIcon className="w-4 h-4 text-success" />
                 <span>Copied!</span>
               </>
             ) : (
@@ -131,8 +131,8 @@ export function AssignmentEditor() {
       )}
 
       {successMessage && (
-        <div className="flex items-center gap-2 p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm border border-emerald-500/30">
-          <CheckCircle2Icon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        <div className="flex items-center gap-2 p-3 bg-success/10 text-success rounded-lg text-sm border border-success/30">
+          <CheckCircle2Icon className="w-5 h-5 text-success shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
@@ -190,7 +190,7 @@ export function AssignmentEditor() {
 
             <div className="grow bg-muted overflow-hidden relative flex items-center justify-center">
               {isLoadingCode ? (
-                <p className="text-xs text-slate-400 animate-pulse font-mono">
+                <p className="text-xs text-muted-foreground animate-pulse font-mono">
                   Fetching file content from server...
                 </p>
               ) : (
@@ -204,7 +204,7 @@ export function AssignmentEditor() {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 rounded-b-lg">
+            <div className="p-4 border-t border-border flex justify-end gap-2 bg-muted/40 rounded-b-lg">
               <Button
                 variant="outline"
                 size="sm"

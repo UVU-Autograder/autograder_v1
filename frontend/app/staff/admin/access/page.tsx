@@ -152,8 +152,8 @@ export default function AccessPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="animate-pulse font-medium text-slate-500">Loading staff access data...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="animate-pulse font-medium text-muted-foreground">Loading staff access data...</p>
       </div>
     );
   }
@@ -164,8 +164,8 @@ export default function AccessPage() {
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Staff Access Management</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage administrative, instructor, and IA access roles</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Staff Access Management</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage administrative, instructor, and IA access roles</p>
         </div>
         <Button onClick={openGrantDialog}>
           <PlusIcon className="mr-1 size-4" /> Grant Access
@@ -173,7 +173,7 @@ export default function AccessPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 flex items-start gap-2">
+        <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-start gap-2">
           <ShieldAlertIcon className="size-4 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
@@ -186,12 +186,12 @@ export default function AccessPage() {
         </CardHeader>
         <CardContent>
           {accessList.length === 0 ? (
-            <p className="text-slate-400 text-center py-6 text-sm">No staff access permissions found.</p>
+            <p className="text-muted-foreground text-center py-6 text-sm">No staff access permissions found.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 font-semibold">
+                  <tr className="border-b border-border text-muted-foreground font-semibold">
                     <th className="py-2.5">User</th>
                     <th className="py-2.5">Role</th>
                     <th className="py-2.5">Course</th>
@@ -200,32 +200,26 @@ export default function AccessPage() {
                     <th className="py-2.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-border">
                   {accessList.map((access) => (
                     <tr key={access.id} className={!access.is_active ? "opacity-50" : ""}>
-                      <td className="py-3 font-medium text-slate-800">
+                      <td className="py-3 font-medium text-foreground">
                         <div>{access.user_name || "Guest"}</div>
-                        <div className="text-xs text-slate-400 font-normal">{access.user_email}</div>
+                        <div className="text-xs text-muted-foreground font-normal">{access.user_email}</div>
                       </td>
                       <td className="py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          access.role_name === 'admin' 
-                            ? 'bg-purple-50 text-purple-700' 
-                            : access.role_name === 'instructor' 
-                              ? 'bg-blue-50 text-blue-700' 
-                              : 'bg-indigo-50 text-indigo-700'
-                        }`}>
+                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-primary/10 text-primary border border-primary/20">
                           {access.role_name}
                         </span>
                       </td>
-                      <td className="py-3 uppercase font-semibold text-slate-600">
+                      <td className="py-3 uppercase font-semibold text-foreground">
                         {access.course_code || "All"}
                       </td>
-                      <td className="py-3 text-slate-500 font-mono text-xs">
+                      <td className="py-3 text-muted-foreground font-mono text-xs">
                         {access.section_crn || "All"}
                       </td>
                       <td className="py-3">
-                        <span className={`text-xs ${access.is_active ? 'text-green-600 font-semibold' : 'text-slate-400'}`}>
+                        <span className={`text-xs ${access.is_active ? 'text-success font-semibold' : 'text-muted-foreground'}`}>
                           {access.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -234,7 +228,7 @@ export default function AccessPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8"
+                            className="text-destructive hover:bg-destructive/10 h-8"
                             onClick={() => handleRevoke(access.id)}
                           >
                             Revoke
@@ -261,7 +255,7 @@ export default function AccessPage() {
           </DialogHeader>
           <form onSubmit={handleGrantSubmit} className="space-y-4 py-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">UVU Email Address</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">UVU Email Address</label>
               <Input
                 type="email"
                 placeholder="e.g., green.scholar@uvu.edu"
@@ -272,7 +266,7 @@ export default function AccessPage() {
             </div>
             
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Display Name (optional)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Display Name (optional)</label>
               <Input
                 placeholder="e.g., Professor Green"
                 value={displayName}
@@ -281,9 +275,9 @@ export default function AccessPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">System Role</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">System Role</label>
               <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
               >
@@ -296,9 +290,9 @@ export default function AccessPage() {
             {roleName !== "admin" && (
               <>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Course Scope</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Course Scope</label>
                   <select
-                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     value={selectedCourseId}
                     onChange={(e) => setSelectedCourseId(e.target.value)}
                   >
@@ -313,9 +307,9 @@ export default function AccessPage() {
 
                 {selectedCourseId !== "none" && (
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Section Scope</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">Section Scope</label>
                     <select
-                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       value={selectedSectionId}
                       onChange={(e) => setSelectedSectionId(e.target.value)}
                     >
@@ -331,7 +325,7 @@ export default function AccessPage() {
               </>
             )}
 
-            {formError && <p className="text-xs text-red-500 font-medium">{formError}</p>}
+            {formError && <p className="text-xs text-destructive font-medium">{formError}</p>}
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>

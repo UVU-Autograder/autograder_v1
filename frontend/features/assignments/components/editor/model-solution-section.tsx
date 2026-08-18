@@ -315,18 +315,18 @@ export function ModelSolutionSection() {
         </CardHeader>
         <CardContent>
           {validation.status !== "idle" && (
-            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-xs space-y-4 text-card-foreground">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-slate-900 text-sm">
+                <h4 className="font-semibold text-foreground text-sm">
                   Validation Run Status
                 </h4>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
                     validation.status === "success"
-                      ? "bg-emerald-100 text-emerald-800"
+                      ? "bg-success/15 text-success"
                       : validation.status === "failure"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-amber-100 text-amber-800 animate-pulse"
+                        ? "bg-destructive/15 text-destructive"
+                        : "bg-warning/15 text-warning-foreground animate-pulse"
                   }`}
                 >
                   {validation.status}
@@ -335,15 +335,15 @@ export function ModelSolutionSection() {
 
               {(validation.status === "queue" ||
                 validation.status === "run") && (
-                <p className="text-xs text-slate-500 animate-pulse font-mono">
+                <p className="text-xs text-muted-foreground animate-pulse font-mono">
                   Executing model solution against tests.py in sandbox
                   container...
                 </p>
               )}
 
               {validation.status === "success" && (
-                <div className="flex items-center text-emerald-700 gap-2 text-xs font-semibold p-3 bg-emerald-50 rounded-lg">
-                  <CheckCircle2Icon className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div className="flex items-center text-success gap-2 text-xs font-semibold p-3 bg-success/10 rounded-lg border border-success/20">
+                  <CheckCircle2Icon className="w-5 h-5 text-success shrink-0" />
                   <span>
                     Parity Confirmed. Model Solution scored {validation.score} /{" "}
                     {validation.max_score} pts.
@@ -352,12 +352,12 @@ export function ModelSolutionSection() {
               )}
 
               {validation.status === "failure" && (
-                <div className="space-y-2 p-3 bg-red-50 rounded-lg border border-red-200">
-                  <div className="flex items-center text-red-700 gap-2 text-xs font-semibold">
-                    <ShieldAlertIcon className="w-5 h-5 text-red-600 shrink-0" />
+                <div className="space-y-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30 text-destructive">
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    <ShieldAlertIcon className="w-5 h-5 text-destructive shrink-0" />
                     <span>Preflight validation errors found:</span>
                   </div>
-                  <ul className="list-disc pl-5 text-xs text-red-800 font-mono space-y-1">
+                  <ul className="list-disc pl-5 text-xs font-mono space-y-1">
                     {validation.errors.map((err, idx) => (
                       <li key={idx}>{err}</li>
                     ))}

@@ -175,7 +175,7 @@ export default function RunsPage({ params }: PageProps) {
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+          <div className="mb-4 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success font-medium">
             {success}
           </div>
         )}
@@ -236,26 +236,26 @@ export default function RunsPage({ params }: PageProps) {
           </Card>
 
           {activeStatus && (
-            <Card className="border-amber-200 bg-amber-50">
+            <Card className="border-warning/30 bg-warning/10 text-card-foreground">
               <CardHeader>
-                <CardTitle className="text-sm text-amber-800">Processing Active Run</CardTitle>
+                <CardTitle className="text-sm text-warning font-semibold">Processing Active Run</CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-amber-700 space-y-2">
+              <CardContent className="text-xs text-muted-foreground space-y-2">
                 <p>
-                  <span className="font-semibold">Run ID:</span> {activeStatus.run_id}
+                  <span className="font-semibold text-foreground">Run ID:</span> {activeStatus.run_id}
                 </p>
                 <p>
-                  <span className="font-semibold">State:</span>{" "}
-                  <span className="uppercase font-bold">{activeStatus.state}</span>
+                  <span className="font-semibold text-foreground">State:</span>{" "}
+                  <span className="uppercase font-bold text-warning">{activeStatus.state}</span>
                 </p>
                 {activeStatus.queue_position !== null && (
                   <p>
-                    <span className="font-semibold">Queue Position:</span>{" "}
+                    <span className="font-semibold text-foreground">Queue Position:</span>{" "}
                     {activeStatus.queue_position}
                   </p>
                 )}
                 {activeStatus.message && (
-                  <p className="mt-1 border-t border-amber-200 pt-2 italic">
+                  <p className="mt-1 border-t border-warning/20 pt-2 italic">
                     {activeStatus.message}
                   </p>
                 )}

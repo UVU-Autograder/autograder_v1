@@ -61,7 +61,7 @@ export function AssignmentSidebar({
 
   return (
     <div
-      className={`flex flex-col h-full w-full min-w-0 p-3 space-y-4 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 ${className || ""}`}
+      className={`flex flex-col h-full w-full min-w-0 p-3 space-y-4 overflow-y-auto overflow-x-hidden bg-card border-r border-border ${className || ""}`}
     >
       {/* Header / BackLink */}
       <div className="px-1 pt-1">
@@ -99,7 +99,7 @@ export function AssignmentSidebar({
       {/* Direct Files List */}
       <div className="space-y-2 px-1 pt-1 flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between pb-1 border-b border-border/50">
-          <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <FolderIcon className="size-3.5" />
             <span>Files</span>
           </div>

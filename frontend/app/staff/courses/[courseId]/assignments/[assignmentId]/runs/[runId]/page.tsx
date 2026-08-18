@@ -324,14 +324,14 @@ export default function RunDetailPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500 font-medium animate-pulse">Loading run details...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground font-medium animate-pulse">Loading run details...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10">
+    <div className="min-h-screen bg-background p-6 md:p-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
@@ -361,29 +361,29 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
         </div>
         {details && !details.exports_ready && (
-          <p className="-mt-4 mb-6 text-right text-xs text-amber-600 dark:text-amber-400 font-medium">
+          <p className="-mt-4 mb-6 text-right text-xs text-warning font-medium">
             Exports unlock after every manual rubric item has a score.
           </p>
         )}
 
         {/* Zero-Retention Warning Banner */}
-        <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-600 dark:text-amber-400">
-          <div className="flex gap-2 items-start font-semibold mb-1">
-            <AwardIcon className="size-4 shrink-0 mt-0.5 animate-pulse text-amber-600" />
+        <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-foreground">
+          <div className="flex gap-2 items-start font-semibold mb-1 text-warning">
+            <AwardIcon className="size-4 shrink-0 mt-0.5 animate-pulse" />
             <span>Zero-Retention Policy Active</span>
           </div>
-          <p className="text-xs text-amber-700 leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             Important: Leaving, refreshing, or closing this page will permanently purge all student submissions, grades CSVs, and feedback ZIPs from the server workspace. Make sure to download your exports first!
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive font-medium">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-600">
+          <div className="mb-4 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success font-medium">
             {success}
           </div>
         )}
@@ -393,33 +393,33 @@ export default function RunDetailPage({ params }: PageProps) {
           <div className="md:col-span-1 space-y-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-500 uppercase">Run Summary</CardTitle>
+                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Run Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{summary?.total_submission_count}</p>
-                  <p className="text-xs text-slate-500">Total Submissions Processed</p>
+                  <p className="text-2xl font-bold text-foreground">{summary?.total_submission_count}</p>
+                  <p className="text-xs text-muted-foreground">Total Submissions Processed</p>
                 </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-2xl font-bold text-slate-900">
+                <div className="border-t border-border pt-3">
+                  <p className="text-2xl font-bold text-foreground">
                     {details?.completed_students ?? 0} / {details?.total_students ?? 0}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {details?.requires_manual_grading
                       ? "Manual grading complete"
                       : "No manual grading required"}
                   </p>
                 </div>
                 <div className="flex justify-between border-t border-border pt-3 text-sm">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Passed</span>
+                  <span className="text-success font-semibold">Passed</span>
                   <span className="font-bold text-foreground">{summary?.success_count}</span>
                 </div>
                 <div className="flex justify-between border-t border-border pt-3 text-sm">
-                  <span className="text-rose-600 dark:text-rose-400 font-semibold">Failed</span>
+                  <span className="text-destructive font-semibold">Failed</span>
                   <span className="font-bold text-foreground">{summary?.failure_count}</span>
                 </div>
                 <div className="flex justify-between border-t border-border pt-3 text-sm">
-                  <span className="text-amber-600 dark:text-amber-400 font-semibold">Warnings</span>
+                  <span className="text-warning font-semibold">Warnings</span>
                   <span className="font-bold text-foreground">{summary?.warning_count}</span>
                 </div>
               </CardContent>
@@ -459,22 +459,22 @@ export default function RunDetailPage({ params }: PageProps) {
                                 {student.score} / {student.max_score} pts
                               </div>
                               <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase ${
                                   student.status === "success"
-                                    ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300"
+                                    ? "bg-success/15 text-success"
                                     : student.status === "failure"
-                                      ? "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300"
-                                      : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300"
+                                      ? "bg-destructive/15 text-destructive"
+                                      : "bg-warning/15 text-warning-foreground"
                                 }`}
                               >
                                 {student.status}
                               </span>
                               {totalManualCount > 0 && (
                                 <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                  className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${
                                     ungradedCount > 0
-                                      ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                                      : "bg-muted text-foreground border border-border"
+                                      ? "bg-warning/15 text-warning-foreground border border-warning/30"
+                                      : "bg-muted text-muted-foreground border border-border"
                                   }`}
                                 >
                                   {ungradedCount > 0 ? `Ungraded (${ungradedCount})` : "Graded"}
@@ -493,8 +493,8 @@ export default function RunDetailPage({ params }: PageProps) {
                           </div>
 
                           {student.feedback_preview && (
-                            <div className="mt-3 rounded border border-slate-50 bg-slate-50 p-2.5 text-xs text-slate-600">
-                              <span className="font-bold block text-slate-500 mb-1">Feedback Summary:</span>
+                            <div className="mt-3 rounded border border-border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                              <span className="font-semibold block text-foreground mb-1">Feedback Summary:</span>
                               <p className="line-clamp-2">{student.feedback_preview}</p>
                             </div>
                           )}
@@ -525,14 +525,14 @@ export default function RunDetailPage({ params }: PageProps) {
             }
           }}
         >
-          <SheetContent className="sm:max-w-5xl w-[85vw] p-0 flex flex-col h-full bg-slate-900 border-slate-800 text-slate-100">
-            <SheetHeader className="p-6 border-b border-slate-800 shrink-0">
+          <SheetContent className="sm:max-w-5xl w-[85vw] p-0 flex flex-col h-full bg-card border-border text-card-foreground">
+            <SheetHeader className="p-6 border-b border-border shrink-0">
               <div className="flex justify-between items-start">
                 <div>
-                  <SheetTitle className="text-xl font-bold text-slate-100">
+                  <SheetTitle className="text-xl font-bold text-foreground">
                     {selectedStudent?.student_name}
                   </SheetTitle>
-                  <SheetDescription className="text-xs text-slate-400 mt-1">
+                  <SheetDescription className="text-xs text-muted-foreground mt-1">
                     Canvas ID: {selectedStudent?.canvas_id} | Score: {selectedStudent?.score} / {selectedStudent?.max_score} pts
                   </SheetDescription>
                 </div>
@@ -540,16 +540,16 @@ export default function RunDetailPage({ params }: PageProps) {
             </SheetHeader>
 
             <Tabs defaultValue="feedback" className="flex-1 flex flex-col min-h-0">
-              <div className="px-6 border-b border-slate-800 shrink-0">
-                <TabsList className="bg-slate-950 border border-slate-800 text-slate-400">
-                  <TabsTrigger value="feedback" className="data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100">
+              <div className="px-6 border-b border-border shrink-0">
+                <TabsList className="bg-muted border border-border text-muted-foreground">
+                  <TabsTrigger value="feedback" className="data-[state=active]:bg-background data-[state=active]:text-foreground">
                     Feedback Preview
                   </TabsTrigger>
-                  <TabsTrigger value="code" className="data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100">
+                  <TabsTrigger value="code" className="data-[state=active]:bg-background data-[state=active]:text-foreground">
                     Code Explorer
                   </TabsTrigger>
                   {selectedStudent && Object.keys(selectedStudent.manual_results).length > 0 && (
-                    <TabsTrigger value="manual" className="data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100">
+                    <TabsTrigger value="manual" className="data-[state=active]:bg-background data-[state=active]:text-foreground">
                       Manual Grading
                     </TabsTrigger>
                   )}
@@ -568,14 +568,14 @@ export default function RunDetailPage({ params }: PageProps) {
               </TabsContent>
 
               <TabsContent value="code" className="flex-1 flex min-h-0 data-[state=active]:flex">
-                <div className="flex flex-1 min-h-0 divide-x divide-slate-800">
+                <div className="flex flex-1 min-h-0 divide-x divide-border">
                   {/* Left Sidebar - File Tree */}
-                  <div className="w-64 shrink-0 flex flex-col bg-slate-950/40 overflow-y-auto p-4 space-y-2">
-                    <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Submission Files</h5>
+                  <div className="w-64 shrink-0 flex flex-col bg-muted/40 overflow-y-auto p-4 space-y-2">
+                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Submission Files</h5>
                     {isLoadingFiles ? (
-                      <p className="text-xs text-slate-500 animate-pulse">Loading file list...</p>
+                      <p className="text-xs text-muted-foreground animate-pulse">Loading file list...</p>
                     ) : studentFiles.length === 0 ? (
-                      <p className="text-xs text-slate-500 italic">No files found.</p>
+                      <p className="text-xs text-muted-foreground italic">No files found.</p>
                     ) : (
                       <div className="space-y-1">
                         {studentFiles.map((file) => {
@@ -587,8 +587,8 @@ export default function RunDetailPage({ params }: PageProps) {
                               onClick={() => selectedStudent && handleSelectFile(selectedStudent.canvas_id, file)}
                               className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left text-xs font-mono transition-colors ${
                                 isSelected
-                                  ? "bg-indigo-600 text-white"
-                                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                                  ? "bg-primary text-primary-foreground font-semibold"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
                               }`}
                             >
                               <FileIcon className="size-3.5 shrink-0" />
@@ -601,27 +601,27 @@ export default function RunDetailPage({ params }: PageProps) {
                   </div>
 
                   {/* Right Content - Monaco Editor */}
-                  <div className="flex-1 flex flex-col min-h-0 bg-slate-950">
+                  <div className="flex-1 flex flex-col min-h-0 bg-background">
                     {selectedFilepath ? (
                       <div className="flex-1 flex flex-col min-h-0">
-                        <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center text-xs shrink-0">
-                          <span className="font-mono text-slate-300 truncate">{selectedFilepath}</span>
-                          <span className="text-slate-500 font-mono">
+                        <div className="px-4 py-2 bg-muted/50 border-b border-border flex justify-between items-center text-xs shrink-0">
+                          <span className="font-mono text-foreground truncate">{selectedFilepath}</span>
+                          <span className="text-muted-foreground font-mono">
                             {selectedFile?.size_bytes} bytes
                           </span>
                         </div>
 
                         <div className="flex-1 min-h-0 relative">
                           {isLoadingContent ? (
-                            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/80 z-10">
-                              <p className="text-xs text-slate-400 animate-pulse">Loading file contents...</p>
+                            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                              <p className="text-xs text-muted-foreground animate-pulse">Loading file contents...</p>
                             </div>
                           ) : contentError ? (
-                            <div className="p-6 text-center text-red-400 text-xs">
+                            <div className="p-6 text-center text-destructive text-xs">
                               {contentError}
                             </div>
                           ) : !selectedFile?.previewable ? (
-                            <div className="p-6 text-center text-slate-500 text-xs italic">
+                            <div className="p-6 text-center text-muted-foreground text-xs italic">
                               Preview not available for binary or large files.
                             </div>
                           ) : (
@@ -639,7 +639,7 @@ export default function RunDetailPage({ params }: PageProps) {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center text-slate-500 text-xs italic">
+                      <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs italic">
                         Select a file from the explorer to preview code.
                       </div>
                     )}
@@ -650,24 +650,24 @@ export default function RunDetailPage({ params }: PageProps) {
               <TabsContent value="manual" className="flex-1 overflow-y-auto p-6 min-h-0">
                 <div className="max-w-3xl mx-auto space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-100">Manual Rubric Grading</h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <h3 className="text-lg font-semibold text-foreground">Manual Rubric Grading</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
                       Score each criterion and add optional student-facing feedback.
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="rounded-lg border border-border bg-card p-4">
                     <div className="mb-3 flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-slate-200">Automated results</h4>
-                      <span className="text-xs font-mono text-slate-400">
+                      <h4 className="text-sm font-semibold text-foreground">Automated results</h4>
+                      <span className="text-xs font-mono text-muted-foreground">
                         {selectedStudent?.automated_score} / {selectedStudent?.automated_max_score}
                       </span>
                     </div>
                     <div className="space-y-2">
                       {selectedStudent?.automated_results.map((item) => (
                         <div key={item.key} className="flex justify-between gap-3 text-xs">
-                          <span className="text-slate-300">{item.label}</span>
-                          <span className={item.passed ? "text-green-400" : "text-red-400"}>
+                          <span className="text-muted-foreground">{item.label}</span>
+                          <span className={item.passed ? "text-success font-semibold" : "text-destructive font-semibold"}>
                             {item.points_awarded} / {item.points}
                           </span>
                         </div>
@@ -679,9 +679,9 @@ export default function RunDetailPage({ params }: PageProps) {
                     {Object.entries(selectedStudent?.manual_results ?? {}).map(([key, item]) => {
                       const draft = manualGradesDraft[key] ?? { score: item.score, comments: item.comments || "" };
                       return (
-                        <div key={key} className="p-4 rounded-lg bg-slate-950/60 border border-slate-800 space-y-3">
+                        <div key={key} className="p-4 rounded-lg bg-card border border-border space-y-3">
                           <div className="flex justify-between items-center">
-                            <span className="font-semibold text-slate-200 text-sm">{item.label}</span>
+                            <span className="font-semibold text-foreground text-sm">{item.label}</span>
                             <div className="flex items-center gap-2">
                               <Input
                                 type="number"
@@ -700,9 +700,9 @@ export default function RunDetailPage({ params }: PageProps) {
                                     [key]: { ...prev[key], score, comments: prev[key]?.comments ?? "" },
                                   }));
                                 }}
-                                className="w-20 bg-slate-900 border-slate-800 text-slate-100 font-mono text-center text-xs h-8"
+                                className="w-20 bg-background border-input text-foreground font-mono text-center text-xs h-8"
                               />
-                              <span className="text-xs text-slate-400">/ {item.points} pts</span>
+                              <span className="text-xs text-muted-foreground">/ {item.points} pts</span>
                             </div>
                           </div>
 
@@ -716,7 +716,7 @@ export default function RunDetailPage({ params }: PageProps) {
                             }}
                             placeholder="Feedback comments for this item..."
                             rows={2}
-                            className="w-full rounded border border-slate-800 bg-slate-900 p-2.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none placeholder-slate-600"
+                            className="w-full rounded border border-input bg-background p-2.5 text-xs text-foreground focus:border-primary focus:outline-none placeholder-muted-foreground"
                           />
                         </div>
                       );
@@ -724,7 +724,7 @@ export default function RunDetailPage({ params }: PageProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-200" htmlFor="overall-comment">
+                    <label className="text-sm font-semibold text-foreground" htmlFor="overall-comment">
                       Overall student feedback
                     </label>
                     <textarea
@@ -733,7 +733,7 @@ export default function RunDetailPage({ params }: PageProps) {
                       onChange={(event) => setOverallCommentDraft(event.target.value)}
                       placeholder="Optional feedback included in the final HTML report..."
                       rows={3}
-                      className="w-full rounded border border-slate-800 bg-slate-900 p-2.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none placeholder-slate-600"
+                      className="w-full rounded border border-input bg-background p-2.5 text-xs text-foreground focus:border-primary focus:outline-none placeholder-muted-foreground"
                     />
                   </div>
 
@@ -751,7 +751,7 @@ export default function RunDetailPage({ params }: PageProps) {
                       type="button"
                       disabled={isSavingGrades}
                       onClick={() => void handleSaveManualGrades(true)}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2"
+                      className="text-xs px-4 py-2"
                     >
                       {isSavingGrades ? "Saving..." : "Save & Next Ungraded"}
                     </Button>

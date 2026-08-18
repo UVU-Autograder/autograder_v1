@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { CheckCircle2Icon, BanIcon } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
 
@@ -32,7 +33,7 @@ export function ConceptWhitelistSection() {
           </div>
           <Link
             href={`/staff/courses/${courseId}/settings`}
-            className="text-xs text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
           >
             Manage Course Modules &rarr;
           </Link>
@@ -56,20 +57,20 @@ export function ConceptWhitelistSection() {
                     onClick={() => toggleConceptDenylist(key)}
                     className={`flex items-start gap-3 p-3.5 rounded-lg border text-left cursor-pointer transition-all ${
                       isBlacklisted
-                        ? "bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 hover:bg-rose-100/70"
-                        : "bg-emerald-50/60 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200 hover:bg-emerald-100/70"
+                        ? "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/15"
+                        : "bg-success/10 border-success/30 text-success hover:bg-success/15"
                     }`}
                   >
                     {isBlacklisted ? (
-                      <BanIcon className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                      <BanIcon className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
                     ) : (
-                      <CheckCircle2Icon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <CheckCircle2Icon className="w-5 h-5 text-success shrink-0 mt-0.5" />
                     )}
 
                     <div className="space-y-1.5 grow">
                       <div
                         className={`text-sm font-bold tracking-tight ${
-                          isBlacklisted ? "line-through text-rose-700 dark:text-rose-400" : "text-foreground"
+                          isBlacklisted ? "line-through text-destructive" : "text-foreground"
                         }`}
                       >
                         {displayTitle}
@@ -81,10 +82,10 @@ export function ConceptWhitelistSection() {
                           {syntaxPatterns.slice(0, 3).map((pat, idx) => (
                             <code
                               key={idx}
-                              className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${
                                 isBlacklisted
-                                  ? "bg-rose-100/80 dark:bg-rose-900/60 border-rose-200 dark:border-rose-700 text-rose-800 dark:text-rose-200"
-                                  : "bg-white/80 dark:bg-slate-900 border-emerald-200 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200"
+                                  ? "bg-destructive/15 border-destructive/30 text-destructive font-medium"
+                                  : "bg-background/80 border-border text-foreground font-medium"
                               }`}
                             >
                               {pat}
@@ -94,15 +95,12 @@ export function ConceptWhitelistSection() {
                       )}
 
                       <div className="pt-1 flex items-center gap-1.5">
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
-                            isBlacklisted
-                              ? "bg-rose-200 dark:bg-rose-900/80 text-rose-900 dark:text-rose-100"
-                              : "bg-emerald-200 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100"
-                          }`}
+                        <Badge
+                          variant={isBlacklisted ? "destructive" : "success"}
+                          className="text-xs"
                         >
                           {isBlacklisted ? "Disabled for assignment" : sourceLabel}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   </button>
@@ -110,11 +108,11 @@ export function ConceptWhitelistSection() {
               })}
             </div>
           ) : (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center space-y-2">
-              <div className="text-sm font-semibold text-slate-700">
+            <div className="rounded-lg border border-border bg-muted/40 p-6 text-center space-y-2">
+              <div className="text-sm font-semibold text-foreground">
                 {moduleId === null ? "No Course Module Assigned" : "No Concepts Configured for Assigned Module"}
               </div>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
                 Assign a Course Module in the General & Files tab to automatically inherit syntax boundaries across assignments.
               </p>
             </div>

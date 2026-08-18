@@ -235,7 +235,7 @@ export function MetadataSection() {
                           placeholder="e.g. *.py"
                           className="font-mono text-xs max-w-md"
                         />
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           Evaluated using Python&apos;s{" "}
                           <code className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">
                             Path.glob()

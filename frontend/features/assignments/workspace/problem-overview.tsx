@@ -40,7 +40,7 @@ export function ProblemOverview({
             <span className="text-xs text-muted-foreground block uppercase font-medium">
               Max Score
             </span>
-            <span className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+            <span className="text-lg font-bold font-mono text-success">
               {assignment.max_score} pts
             </span>
           </div>
@@ -49,19 +49,19 @@ export function ProblemOverview({
 
       {/* Constraints & Submission Rules */}
       {constraints.length > 0 && (
-        <Card className="border-amber-500/30 bg-amber-500/10">
+        <Card className="border-warning/30 bg-warning/10 text-card-foreground">
           <CardHeader className="py-3 px-4 flex flex-row items-center gap-2">
-            <AlertCircleIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <CardTitle className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+            <AlertCircleIcon className="w-4 h-4 text-warning" />
+            <CardTitle className="text-sm font-semibold text-warning">
               Submission Rules & Constraints
             </CardTitle>
           </CardHeader>
-          <CardContent className="py-2 px-4 space-y-1.5 text-xs text-amber-700 dark:text-amber-300">
+          <CardContent className="py-2 px-4 space-y-1.5 text-xs text-muted-foreground">
             {constraints.map((c, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <span className="w-1.5 h-1.5 rounded-full bg-warning" />
                 <span>
-                  <strong className="font-semibold">{c.label}:</strong>{" "}
+                  <strong className="font-semibold text-foreground">{c.label}:</strong>{" "}
                   {c.value}
                 </span>
               </div>

@@ -79,7 +79,7 @@ export default function MonitoringPage() {
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">Active Executions</CardTitle>
               <CardDescription>Grading tasks currently running</CardDescription>
             </div>
-            <ActivityIcon className="size-6 text-emerald-500" />
+            <ActivityIcon className="size-6 text-success" />
           </CardHeader>
           <CardContent className="pt-2">
             <span className="text-4xl font-extrabold tracking-tight text-foreground">
@@ -96,7 +96,7 @@ export default function MonitoringPage() {
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">Queued Executions</CardTitle>
               <CardDescription>Grading tasks waiting in queue</CardDescription>
             </div>
-            <HourglassIcon className="size-6 text-amber-500" />
+            <HourglassIcon className="size-6 text-warning" />
           </CardHeader>
           <CardContent className="pt-2">
             <span className="text-4xl font-extrabold tracking-tight text-foreground">

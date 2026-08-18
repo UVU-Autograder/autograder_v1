@@ -53,7 +53,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
       aria-label="Toggle theme"
-      className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100 cursor-pointer"
+      className="text-muted-foreground hover:text-foreground cursor-pointer"
     >
       {theme === "light" ? (
         <MoonIcon className="size-4" />

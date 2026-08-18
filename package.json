@@ -3,13 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "setup:backend": "cd backend && python -m venv venv && .\\venv\\Scripts\\pip install -r requirements.txt",
+    "setup:backend": "node -e \"const {execSync}=require('child_process');const isWin=process.platform==='win32';const pip=isWin?'venv\\\\Scripts\\\\pip':'venv/bin/pip';const pyCmd=isWin?'python':'python3';execSync(pyCmd+' -m venv venv',{cwd:'backend',stdio:'inherit'});execSync(pip+' install -r requirements.txt',{cwd:'backend',stdio:'inherit'});\"",
     "predev:backend": "node -e \"const fs=require('fs');const p=process.platform==='win32'?'backend/venv/Scripts/python.exe':'backend/venv/bin/python';if(!fs.existsSync(p)){console.error('\\nBackend venv not found. Run: npm run setup:backend\\n');process.exit(1)}\"",
     "install:frontend": "cd frontend && npm install",
-    "dev:backend": "cd backend && .\\venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app",
+    "dev:backend": "node -e \"const {spawn}=require('child_process');const isWin=process.platform==='win32';const py=isWin?'venv\\\\Scripts\\\\python':'venv/bin/python';const p=spawn(py,['-m','uvicorn','app.main:app','--host','127.0.0.1','--port','8000','--reload','--reload-dir','app'],{cwd:'backend',stdio:'inherit'});p.on('exit',code=>process.exit(code||0));\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "openapi:generate": "cd backend && python scripts/generate_openapi.py"
+    "openapi:generate": "cd backend && python scripts/generate_openapi.py",
+    "docker:build": "docker compose --env-file .env.local -f docker-compose.poc.yml build judge0",
+    "docker:up": "docker compose --env-file .env.local -f docker-compose.poc.yml up -d --build",
+    "docker:down": "docker compose -f docker-compose.poc.yml down",
+    "docker:logs": "docker compose -f docker-compose.poc.yml logs -f",
+    "docker:clean": "docker compose -f docker-compose.poc.yml down -v"
   },
   "devDependencies": {
     "concurrently": "^10.0.4"

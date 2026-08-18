@@ -147,8 +147,8 @@ export default function CourseConceptsPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500 font-medium animate-pulse">
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground font-medium animate-pulse">
           Loading course concepts...
         </p>
       </div>
@@ -156,7 +156,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10">
+    <div className="min-h-screen bg-background p-6 md:p-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 space-y-1">
           <BackLink
@@ -165,22 +165,22 @@ export default function CourseConceptsPage({ params }: PageProps) {
           >
             Back to course details
           </BackLink>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Course Default Concepts
           </h1>
-          <p className="text-slate-500">
+          <p className="text-muted-foreground">
             Configure default whitelisting rules that apply to all assignments
             in {courseId}.
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive font-medium">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-600">
+          <div className="mb-4 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success font-medium">
             {success}
           </div>
         )}
@@ -198,14 +198,14 @@ export default function CourseConceptsPage({ params }: PageProps) {
               {Object.values(metadata).map((item) => (
                 <div
                   key={item.key}
-                  className="flex items-start space-x-3 border rounded-md p-3 bg-white hover:bg-slate-50 cursor-pointer"
+                  className="flex items-start space-x-3 border border-border rounded-md p-3 bg-card hover:bg-muted/50 cursor-pointer"
                 >
                   <input
                     type="checkbox"
                     id={`concept-${item.key}`}
                     checked={concepts.includes(item.key)}
                     onChange={() => handleCheckboxChange(item.key)}
-                    className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-1"
+                    className="size-4 rounded border-input text-primary focus:ring-ring mt-1"
                   />
                   <div className="space-y-0.5 flex-1">
                     <label
@@ -249,28 +249,28 @@ export default function CourseConceptsPage({ params }: PageProps) {
                   value={mod.name}
                   onChange={(e) => handleModuleRename(modIdx, e.target.value)}
                   placeholder="e.g. Module 1: Basics"
-                  className="font-semibold text-slate-800 text-sm"
+                  className="font-semibold text-foreground text-sm"
                 />
               </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                className="text-destructive hover:bg-destructive/10 cursor-pointer"
                 onClick={() => handleRemoveModule(modIdx)}
               >
                 Delete Module
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs font-medium text-slate-500">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">
                 Concepts covered in this module:
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {Object.values(metadata).map((item) => (
                   <label
                     key={item.key}
-                    className="flex items-center space-x-2 border border-border rounded-md p-2 bg-card hover:bg-muted/50 cursor-pointer text-xs"
+                    className="flex items-center space-x-2 border border-border rounded-md p-2 bg-card hover:bg-muted/50 cursor-pointer text-xs text-card-foreground"
                   >
                     <input
                       type="checkbox"
@@ -294,7 +294,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
           <Button
             type="button"
             variant="outline"
-            className="w-full border-dashed py-6 hover:bg-indigo-50/50 hover:text-indigo-600 cursor-pointer"
+            className="w-full border-dashed py-6 hover:bg-primary/10 hover:text-primary cursor-pointer"
             onClick={handleAddModule}
           >
             + Add Course Module

@@ -14,7 +14,7 @@ function getBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BASE_URL;
 }
 
-function resolveUrl(path: string): string {
+export function resolveUrl(path: string): string {
     if (path.startsWith("http://") || path.startsWith("https://")) {
         return path;
     }

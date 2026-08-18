@@ -288,7 +288,7 @@ export default function AllCoursesPage({
       ) : (
         <div className="flex w-full flex-col gap-2">
           {courses.map((course) => (
-            <Card key={course.id} className={`py-3 transition-shadow hover:shadow-md ${!course.is_active ? 'opacity-60 bg-slate-50' : ''}`}>
+            <Card key={course.id} className={`py-3 transition-shadow hover:shadow-md ${!course.is_active ? 'opacity-60 bg-muted/40' : ''}`}>
               <CardContent className="flex items-center gap-3 py-0">
                 <Link
                   href={`/staff/courses/${course.code}`}
@@ -298,7 +298,7 @@ export default function AllCoursesPage({
                     <CardTitle className="truncate text-base flex items-center gap-2">
                       {course.title}
                       {!course.is_active && (
-                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase">
+                        <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground uppercase">
                           Inactive
                         </span>
                       )}
@@ -348,7 +348,7 @@ export default function AllCoursesPage({
           </DialogHeader>
           <form onSubmit={handleAddSubmit} className="space-y-4 py-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Code</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Code</label>
               <Input
                 placeholder="e.g., cs1400"
                 value={code}
@@ -357,7 +357,7 @@ export default function AllCoursesPage({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Title</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Title</label>
               <Input
                 placeholder="e.g., Fundamentals of Programming"
                 value={title}
@@ -366,7 +366,7 @@ export default function AllCoursesPage({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Term</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Term</label>
               <Input
                 placeholder="e.g., Fall 2026"
                 value={term}
@@ -375,7 +375,7 @@ export default function AllCoursesPage({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Default Concepts (comma-separated)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Default Concepts (comma-separated)</label>
               <Input
                 placeholder="e.g., variables, loops, lists"
                 value={concepts}
@@ -384,9 +384,9 @@ export default function AllCoursesPage({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Instructor</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Instructor</label>
               <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={instructorId}
                 onChange={(e) => setInstructorId(e.target.value)}
               >
@@ -401,9 +401,9 @@ export default function AllCoursesPage({
             </div>
 
             {instructorId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor UVU Email</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor UVU Email</label>
                   <Input
                     type="email"
                     placeholder="e.g. green.scholar@uvu.edu"
@@ -413,7 +413,7 @@ export default function AllCoursesPage({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor Display Name (Optional)</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor Display Name (Optional)</label>
                   <Input
                     placeholder="e.g. Professor Green"
                     value={instructorName}
@@ -424,9 +424,9 @@ export default function AllCoursesPage({
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">IA (Teaching Assistant)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">IA (Teaching Assistant)</label>
               <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={iaId}
                 onChange={(e) => setIaId(e.target.value)}
               >
@@ -441,9 +441,9 @@ export default function AllCoursesPage({
             </div>
 
             {iaId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA UVU Email</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA UVU Email</label>
                   <Input
                     type="email"
                     placeholder="e.g. assistant.ta@uvu.edu"
@@ -453,7 +453,7 @@ export default function AllCoursesPage({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA Display Name (Optional)</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA Display Name (Optional)</label>
                   <Input
                     placeholder="e.g. John TA"
                     value={iaName}
@@ -463,7 +463,7 @@ export default function AllCoursesPage({
               </div>
             )}
 
-            {formError && <p className="text-xs text-red-500 font-medium">{formError}</p>}
+            {formError && <p className="text-xs text-destructive font-medium">{formError}</p>}
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -488,7 +488,7 @@ export default function AllCoursesPage({
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Code</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Code</label>
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -496,7 +496,7 @@ export default function AllCoursesPage({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Title</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Title</label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -504,7 +504,7 @@ export default function AllCoursesPage({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Term</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Term</label>
               <Input
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
@@ -512,7 +512,7 @@ export default function AllCoursesPage({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Default Concepts (comma-separated)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Default Concepts (comma-separated)</label>
               <Input
                 value={concepts}
                 onChange={(e) => setConcepts(e.target.value)}
@@ -520,9 +520,9 @@ export default function AllCoursesPage({
             </div>
             
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Instructor</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Instructor</label>
               <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={instructorId}
                 onChange={(e) => setInstructorId(e.target.value)}
               >
@@ -537,9 +537,9 @@ export default function AllCoursesPage({
             </div>
 
             {instructorId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor UVU Email</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor UVU Email</label>
                   <Input
                     type="email"
                     placeholder="e.g. green.scholar@uvu.edu"
@@ -549,7 +549,7 @@ export default function AllCoursesPage({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor Display Name (Optional)</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor Display Name (Optional)</label>
                   <Input
                     placeholder="e.g. Professor Green"
                     value={instructorName}
@@ -560,9 +560,9 @@ export default function AllCoursesPage({
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">IA (Teaching Assistant)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">IA (Teaching Assistant)</label>
               <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={iaId}
                 onChange={(e) => setIaId(e.target.value)}
               >
@@ -577,9 +577,9 @@ export default function AllCoursesPage({
             </div>
 
             {iaId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
+              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA UVU Email</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA UVU Email</label>
                   <Input
                     type="email"
                     placeholder="e.g. assistant.ta@uvu.edu"
@@ -589,7 +589,7 @@ export default function AllCoursesPage({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA Display Name (Optional)</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA Display Name (Optional)</label>
                   <Input
                     placeholder="e.g. John TA"
                     value={iaName}
@@ -605,14 +605,14 @@ export default function AllCoursesPage({
                 id="edit-is-active"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                className="rounded border-input text-primary focus:ring-primary"
               />
               <label htmlFor="edit-is-active" className="text-sm font-medium text-foreground cursor-pointer">
                 Course is active
               </label>
             </div>
 
-            {formError && <p className="text-xs text-red-500 font-medium">{formError}</p>}
+            {formError && <p className="text-xs text-destructive font-medium">{formError}</p>}
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
@@ -631,8 +631,8 @@ export default function AllCoursesPage({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Deactivate Course</DialogTitle>
-            <DialogDescription className="py-2 text-sm text-slate-600 block">
-              Are you sure you want to deactivate <span className="font-semibold text-slate-900">&quot;{selectedCourse?.title}&quot; ({selectedCourse?.code})</span>?
+            <DialogDescription className="py-2 text-sm text-muted-foreground block">
+              Are you sure you want to deactivate <span className="font-semibold text-foreground">&quot;{selectedCourse?.title}&quot; ({selectedCourse?.code})</span>?
               This will hide the course from normal staff and sandbox views, but historical records will be preserved.
             </DialogDescription>
           </DialogHeader>

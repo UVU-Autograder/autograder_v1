@@ -4,6 +4,7 @@ export type Constraint = {
 };
 
 export type RubricItem = {
+    id?: string;
     key: string;
     label: string;
     points: number;
@@ -155,7 +156,7 @@ export type SandboxRunResultResponse = {
     test_summaries: SandboxTestSummary[];
     rubric_groups?: RubricGroupResultResponse[];
     sanitized_feedback: string;
-    retention_notice: string;
+    retention_notice?: string | null;
     raw_output?: string | null;
 };
 
@@ -163,6 +164,12 @@ export type SandboxCancelResponse = {
     run_id: string;
     state: string;
     message: string;
+};
+
+export type SandboxAiFeedbackResponse = {
+    run_id: string;
+    ai_feedback: string;
+    model: string;
 };
 
 export type ConceptMetadata = {

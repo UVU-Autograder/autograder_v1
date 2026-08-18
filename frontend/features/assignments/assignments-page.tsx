@@ -65,7 +65,7 @@ export default function AssignmentsPage({
         <div className="space-y-8">
           {sortedGroupKeys.map((groupKey) => (
             <div key={groupKey} className="space-y-3">
-              <h2 className="text-xs font-semibold tracking-wider text-slate-500 uppercase border-b pb-1">
+              <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase border-b border-border pb-1">
                 {groupKey}
               </h2>
               <div className="flex w-full flex-col gap-2">

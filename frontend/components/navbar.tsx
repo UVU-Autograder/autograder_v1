@@ -103,7 +103,7 @@ export default function Navbar() {
             unoptimized
             className="h-14 w-14 shrink-0 rounded-md object-contain"
           />
-          <span className="font-bold text-xl text-slate-900 dark:text-slate-100 tracking-tight">
+          <span className="font-bold text-xl text-foreground tracking-tight">
             Autograder
           </span>
         </Link>

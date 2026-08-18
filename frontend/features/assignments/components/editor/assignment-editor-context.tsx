@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
-import { slugifyKey } from "@/lib/slugify";
+import { slugifyKey, makeUniqueKey } from "@/lib/slugify";
 import {
   deleteStaffAssignment,
   getConceptsMetadata,
@@ -248,7 +248,12 @@ export function AssignmentEditorProvider({
         setFileRequirements([{ label: "Main Entrypoint Script", paths: [bundle.entrypoint || "main.py"] }]);
       }
 
-      setScoringItems(cfg.scoring_items || setupData.scoring_items || []);
+      const rawItems = cfg.scoring_items || setupData.scoring_items || [];
+      const loadedItems = rawItems.map((item: RubricItem, idx: number) => ({
+        ...item,
+        id: item.id || `item_${item.key || idx}_${Math.random().toString(36).slice(2, 9)}`,
+      }));
+      setScoringItems(loadedItems);
       setRubricGroups(cfg.rubric_groups || setupData.rubric_groups || []);
       setDependencies(cfg.dependencies || []);
       const legacyConcepts = cfg.concepts as Record<string, string[]> | undefined;
@@ -368,29 +373,32 @@ export function AssignmentEditorProvider({
 
   const addScoringItem = (itemType: "pytest" | "manual") => {
     const nextId = scoringItems.length + 1;
-    const baseKey = `${itemType}_item_${nextId}`;
+    const basePrefix = itemType === "pytest" ? `pytest_criterion_${nextId}` : `manual_criterion_${nextId}`;
+    const uniqueKey = makeUniqueKey(basePrefix, scoringItems.map((i) => i.key));
     const newItem: RubricItem = {
-      key: baseKey,
+      id: `rubric_item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      key: uniqueKey,
       label: itemType === "pytest" ? `Pytest Criterion ${nextId}` : `Manual Rubric Item ${nextId}`,
       points: 10,
       extra_credit: false,
       item_type: itemType,
-      pytest_marker: itemType === "pytest" ? `ag_${baseKey}` : null,
+      pytest_marker: itemType === "pytest" ? `ag_${uniqueKey}` : null,
       rubric_group_key: null,
     };
     setScoringItems((prev) => [...prev, newItem]);
     markDirty();
   };
 
-  const removeScoringItem = (key: string) => {
-    setScoringItems((prev) => prev.filter((item) => item.key !== key));
+  const removeScoringItem = (keyOrId: string) => {
+    setScoringItems((prev) => prev.filter((item) => item.id !== keyOrId && item.key !== keyOrId));
     markDirty();
   };
 
-  const updateScoringItemField = (key: string, field: keyof RubricItem, val: unknown) => {
-    setScoringItems((prev) =>
-      prev.map((item) => {
-        if (item.key === key) {
+  const updateScoringItemField = (keyOrId: string, field: keyof RubricItem, val: unknown) => {
+    setScoringItems((prev) => {
+      const existingKeys = prev.map((i) => i.key);
+      return prev.map((item) => {
+        if (item.id === keyOrId || item.key === keyOrId) {
           const updated = { ...item, [field]: val };
           if (field === "key") {
             const raw = String(val).toLowerCase().replace(/[^a-z0-9_]/g, "");
@@ -398,31 +406,38 @@ export function AssignmentEditorProvider({
             if (updated.item_type === "pytest") {
               updated.pytest_marker = `ag_${raw}`;
             }
+          } else if (field === "label" && item.item_type === "manual") {
+            const derived = slugifyKey(String(val));
+            if (derived) {
+              updated.key = makeUniqueKey(derived, existingKeys, item.key);
+            }
           }
           return updated;
         }
         return item;
-      })
-    );
+      });
+    });
     markDirty();
   };
 
   const autoGenerateKeyFromLabel = (key: string) => {
-    setScoringItems((prev) =>
-      prev.map((item) => {
+    setScoringItems((prev) => {
+      const existingKeys = prev.map((i) => i.key);
+      return prev.map((item) => {
         if (item.key === key) {
           const derived = slugifyKey(item.label);
           if (derived) {
-            const updated = { ...item, key: derived };
+            const uniqueKey = makeUniqueKey(derived, existingKeys, item.key);
+            const updated = { ...item, key: uniqueKey };
             if (updated.item_type === "pytest") {
-              updated.pytest_marker = `ag_${derived}`;
+              updated.pytest_marker = `ag_${uniqueKey}`;
             }
             return updated;
           }
         }
         return item;
-      })
-    );
+      });
+    });
     markDirty();
   };
 
@@ -519,6 +534,7 @@ export function AssignmentEditorProvider({
           addedCount++;
           const parsed = parseExpectedIO(sourceCode, k);
           newItems.push({
+            id: `marker_${k}_${Math.random().toString(36).slice(2, 7)}`,
             key: k,
             label: `${k.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} Test`,
             points: 10,

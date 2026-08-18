@@ -1,6 +1,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ from app.domains.runs.schemas import (
 from app.domains.sandbox.schemas import (
     FilePreviewMetadata,
     RubricGroupResultResponse,
+    SandboxAiFeedbackResponse,
     SandboxCancelResponse,
     SandboxRunCreateResponse,
     SandboxRunRecord,
@@ -187,6 +189,7 @@ class SandboxService:
                 if redis_state is not None:
                     state = redis_state.get("state", "queue")
                     queue_pos = redis_state.get("queue_position")
+                    message = redis_state.get("failure_message") or self._message_for(state)
                     return RunStatusResponse(
                         run_id=run_id,
                         state=state,
@@ -196,7 +199,7 @@ class SandboxService:
                         else None,
                         counters=self._counters(),
                         backpressure=self._backpressure(),
-                        message=self._message_for(state),
+                        message=message,
                     )
             except Exception:
                 pass
@@ -253,6 +256,96 @@ class SandboxService:
             backpressure=self._backpressure(),
             message="Queued sandbox run cancelled before execution started.",
         )
+
+    def _prepare_ai_feedback_context(self, record: SandboxRunRecord) -> dict[str, Any]:
+        # Extract files from stored submission zip
+        code_files: dict[str, str] = {}
+        if record.zip_data_b64:
+            try:
+                import base64
+                import io
+                import zipfile
+
+                raw_zip = base64.b64decode(record.zip_data_b64)
+                with zipfile.ZipFile(io.BytesIO(raw_zip)) as zf:
+                    for name in zf.namelist():
+                        if name.endswith(".py") and not name.startswith("__MACOSX"):
+                            try:
+                                code_files[name] = zf.read(name).decode("utf-8", errors="replace")
+                            except Exception:
+                                pass
+            except Exception:
+                pass
+
+        # Retrieve test results and execution failure details
+        test_results = []
+        warnings = []
+        failure_message = None
+
+        if self._use_celery:
+            try:
+                from app.domains.runs.tasks import get_run_result
+
+                redis_result = get_run_result(record.run_id)
+                if redis_result:
+                    test_results = redis_result.get("test_results", [])
+                    failure_message = redis_result.get("failure_message")
+                    for w in redis_result.get("warnings", []):
+                        if isinstance(w, dict):
+                            warnings.append(w)
+            except Exception:
+                pass
+
+        if not test_results and record.result:
+            test_results = record.result.get("test_results", [])
+            failure_message = record.result.get("failure_message")
+
+        assignment_title = record.assignment_id
+        if record.config_json and isinstance(record.config_json, dict):
+            assignment_title = record.config_json.get("title") or record.assignment_id
+
+        return {
+            "assignment_title": assignment_title,
+            "code_files": code_files,
+            "test_results": test_results,
+            "allowed_concepts": record.allowed_concepts,
+            "warnings": warnings,
+            "failure_message": failure_message,
+        }
+
+    def generate_ai_feedback(
+        self, run_id: str, session_id: str | None
+    ) -> SandboxAiFeedbackResponse | str | None:
+        self._expire_old_runs()
+        record = self._store.get_run(run_id)
+        if record is None or record.session_id != session_id:
+            return None
+
+        ctx = self._prepare_ai_feedback_context(record)
+        from app.integrations.llm.client import LocalLLMClient
+
+        llm_client = LocalLLMClient()
+        feedback_text = llm_client.generate_sandbox_feedback(**ctx)
+
+        return SandboxAiFeedbackResponse(
+            run_id=run_id,
+            ai_feedback=feedback_text,
+            model=llm_client.model,
+        )
+
+    def generate_ai_feedback_stream(
+        self, run_id: str, session_id: str | None
+    ):
+        self._expire_old_runs()
+        record = self._store.get_run(run_id)
+        if record is None or record.session_id != session_id:
+            return None
+
+        ctx = self._prepare_ai_feedback_context(record)
+        from app.integrations.llm.client import LocalLLMClient
+
+        llm_client = LocalLLMClient()
+        return llm_client.generate_sandbox_feedback_stream(**ctx)
 
     def get_result(
         self, run_id: str, session_id: str | None

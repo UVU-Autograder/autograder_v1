@@ -38,13 +38,13 @@ function ResizableHandle({
     <ResizablePrimitive.Separator
       data-slot="resizable-handle"
       className={cn(
-        "relative flex w-1.5 shrink-0 items-center justify-center bg-stone-300 hover:bg-indigo-500 active:bg-indigo-600 transition-colors cursor-col-resize [&[aria-orientation=horizontal]]:h-1.5 [&[aria-orientation=horizontal]]:w-full [&[aria-orientation=horizontal]]:cursor-row-resize z-10",
+        "relative flex w-1.5 shrink-0 items-center justify-center bg-border hover:bg-primary/70 active:bg-primary transition-colors cursor-col-resize [&[aria-orientation=horizontal]]:h-1.5 [&[aria-orientation=horizontal]]:w-full [&[aria-orientation=horizontal]]:cursor-row-resize z-10",
         className
       )}
       {...props}
     >
       {withHandle && (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-600 shadow-xs">
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs">
           <ArrowLeftRight className="h-2.5 w-2.5" />
         </div>
       )}
