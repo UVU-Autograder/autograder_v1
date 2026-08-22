@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { apiClient } from "@/lib/api-client";
 
 function getOppositePath(pathname: string): string | null {
   if (pathname.startsWith("/staff")) {
@@ -60,6 +61,40 @@ function getStaffAuthServerSnapshot(): boolean {
   return false;
 }
 
+function readStoredRoles(): string[] {
+  try {
+    const raw = localStorage.getItem("roles");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((r) => typeof r === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function subscribeRoles(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener("roles-updated", onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener("roles-updated", onStoreChange);
+  };
+}
+
+function getRolesSnapshot(): string {
+  return JSON.stringify(readStoredRoles());
+}
+
+function getRolesServerSnapshot(): string {
+  return "[]";
+}
+
+type AuthMeResponse = {
+  email: string;
+  display_name: string | null;
+  roles: string[];
+};
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -68,6 +103,33 @@ export default function Navbar() {
     getStaffAuthSnapshot,
     getStaffAuthServerSnapshot
   );
+  const rolesJson = useSyncExternalStore(
+    subscribeRoles,
+    getRolesSnapshot,
+    getRolesServerSnapshot,
+  );
+  const roles: string[] = JSON.parse(rolesJson);
+  const isAdmin = hasStaffToken && roles.includes("admin");
+
+  useEffect(() => {
+    if (!hasStaffToken) return;
+
+    let cancelled = false;
+    apiClient
+      .get<AuthMeResponse>("/auth/me")
+      .then((me) => {
+        if (cancelled) return;
+        localStorage.setItem("roles", JSON.stringify(me.roles ?? []));
+        window.dispatchEvent(new Event("roles-updated"));
+      })
+      .catch(() => {
+        // Keep whatever roles are already in localStorage.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasStaffToken]);
 
   const isStaffArea = pathname.startsWith("/staff");
   const isStaffLoggedIn = hasStaffToken;
@@ -84,7 +146,9 @@ export default function Navbar() {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
     localStorage.removeItem("displayName");
+    localStorage.removeItem("roles");
     sessionStorage.removeItem("token");
+    window.dispatchEvent(new Event("roles-updated"));
     router.push("/staff/login");
   };
 
@@ -93,7 +157,6 @@ export default function Navbar() {
   return (
     <div className="sticky top-0 z-50 flex h-18 w-full items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-6">
-        {/* UVU Logo Link */}
         <Link href={homeHref} className="flex items-center gap-2 hover:opacity-90 transition-opacity">
           <Image
             src="/uvu-logo.png"
@@ -108,13 +171,12 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation Menu for Admin */}
-        {hasStaffToken && (
+        {hasStaffToken && isAdmin && (
           <NavigationMenu>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <NavigationMenuLink href="/staff/courses">
-                  Admin
+                <NavigationMenuLink asChild>
+                  <Link href="/staff/admin">Admin</Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>

@@ -19,7 +19,7 @@ function sandboxSessionKey(courseId: string, assignmentId: string) {
   return `sandbox-session:${courseId}:${assignmentId}`;
 }
 
-export function getStoredSandboxSession(
+function getStoredSandboxSession(
   courseId: string,
   assignmentId: string
 ): string | null {
@@ -35,18 +35,18 @@ function storeSandboxSession(
   sessionStorage.setItem(sandboxSessionKey(courseId, assignmentId), sessionId);
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /** Adaptive fast-polling schedule for rapid local grading feedback (150ms -> 250ms -> 400ms -> 750ms). */
-function getAdaptivePollDelayMs(attempt: number): number {
+export function getAdaptivePollDelayMs(attempt: number): number {
   if (attempt === 0) return 150;
   if (attempt === 1) return 250;
   if (attempt === 2) return 350;
   if (attempt <= 5) return 500;
   if (attempt <= 12) return 750;
   return 1000;
+}
+
+export function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Staff assignment lists reuse the sandbox endpoint for a student-parity view. */

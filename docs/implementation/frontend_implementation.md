@@ -50,7 +50,7 @@ Frontend mockup preview: https://autograder-frontend-mockup.vercel.app/
 - The assignment artifacts surface owns one or more pytest files, model solution files, and support files through the backend `assignment_artifacts` storage-reference model.
 - UI-visible "test cases" are scoring items from the assignment setup/config, not separate physical test files.
 - Admin monitoring is admin-only and should summarize local LLM token usage, sandbox upload-limit state, and worker/capacity status without exposing student code or detailed student artifacts.
-- The `/staff/courses/[courseId]/assignments/[assignmentId]/runs/[runId]` surface supports official review and export: derived results, per-student feedback, ephemeral Monaco previews while files remain (≤24h or until cleanup), separate CSV and feedback-ZIP downloads. **In-app manual rubric grading** (usable end-to-end grader workflow) remains active backlog even though the backend save/export-regeneration path exists.
+- The `/staff/courses/[courseId]/assignments/[assignmentId]/runs/[runId]` surface supports official review and export: derived results, per-student feedback, ephemeral Monaco previews while files remain (≤24h or until cleanup), separate CSV and feedback-ZIP downloads. Monaco/file-tree APIs expose **sanitized assignment-local filenames** only (see [technical_specs.md §7](../core/technical_specs.md#7-canvas-zip-format-and-filename-mapping)). **In-app manual rubric grading** (usable end-to-end grader workflow) remains active backlog even though the backend save/export-regeneration path exists.
 - Active review UX backlog (keep wording broad where undecided): per-student feedback preview, Monaco previews, and result filtering.
 
 ## Frontend Constraints

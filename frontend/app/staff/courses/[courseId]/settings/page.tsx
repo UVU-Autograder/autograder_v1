@@ -226,7 +226,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button onClick={handleSave} disabled={isSaving}>
-              <SaveIcon className="mr-2 size-4" /> Save Whitelist & Modules
+              <SaveIcon className="mr-2 size-4" /> Apply Whitelist
             </Button>
           </CardFooter>
         </Card>
@@ -236,8 +236,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
             Course Modules & Concept Coverages
           </h2>
           <p className="text-muted-foreground">
-            Define course modules. Map specific allowed concepts to each module.
-            Assignments will inherit these whitelisted concepts.
+            Define which topics are available for each module.
           </p>
         </div>
 

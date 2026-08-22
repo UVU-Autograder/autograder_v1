@@ -5,8 +5,15 @@ retry policies, and concurrency alignment with the Judge0/Kata
 execution-slot cap.
 """
 from celery import Celery
+from celery.signals import worker_process_init
 
+from app.core.audit_log import configure_audit_logging
 from app.core.settings import get_settings
+
+
+@worker_process_init.connect
+def _configure_worker_audit_logging(**kwargs: object) -> None:
+    configure_audit_logging()
 
 
 def create_celery_app() -> Celery:

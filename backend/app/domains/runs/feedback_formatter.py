@@ -3,6 +3,7 @@
 Formats student test execution details, AST warnings, manual rubric scores, and comments
 into a self-contained, clean HTML feedback package for staff downloads and Canvas exports.
 """
+
 from __future__ import annotations
 
 from html import escape
@@ -50,7 +51,7 @@ def generate_pedagogical_feedback_html(
                 <h3 style="margin: 0; font-size: 1.1em; color: #1f2937;">{safe_label}</h3>
                 <span style="color: {status_color}; font-weight: bold; font-size: 0.9em; background-color: {status_color}15; padding: 2px 8px; border-radius: 4px;">{status_text}</span>
             </div>
-            <p style="margin: 4px 0; font-size: 0.95em; color: #374151;"><strong>Points:</strong> {test.get('points_awarded', 0)} / {test.get('points', 0)}</p>
+            <p style="margin: 4px 0; font-size: 0.95em; color: #374151;"><strong>Points:</strong> {test.get("points_awarded", 0)} / {test.get("points", 0)}</p>
             {sub_tests_html}
         </div>
         """
@@ -89,7 +90,11 @@ def generate_pedagogical_feedback_html(
         ]
         for key, item in manual_results.items():
             score_val = item.get("score")
-            score_text = f"{score_val} / {item.get('points')}" if score_val is not None else f"Pending / {item.get('points')}"
+            score_text = (
+                f"{score_val} / {item.get('points')}"
+                if score_val is not None
+                else f"Pending / {item.get('points')}"
+            )
             status_color = "#16a34a" if score_val is not None else "#d97706"
             safe_label = escape(str(item.get("label", key)))
             safe_comments = escape(str(item.get("comments", "")))
@@ -137,7 +142,7 @@ def generate_pedagogical_feedback_html(
             <h1>Autograder Feedback</h1>
             <div class="summary-card">
                 <div>
-                    <h2>Pedagogical Report</h2>
+                    <h2>Overall Score</h2>
                     <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 0.9em;">Student: {safe_student_identifier}</p>
                 </div>
                 <div class="score">{total_score} / {result.max_score}</div>

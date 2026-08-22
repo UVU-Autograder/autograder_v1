@@ -69,7 +69,7 @@
     },
     {
       "key": "part1_output",
-      "label": "bears2.jpg opens successfully as a valid image with modified pixel values",
+      "label": "bears2.py filters bears_copy.jpg into a valid non-trivial bears2.jpg",
       "points": 15,
       "extra_credit": false,
       "rubric_group_key": "part1",
@@ -85,7 +85,7 @@
     },
     {
       "key": "part2_output",
-      "label": "bears3.jpg opens successfully as a valid image with balloon overlay pixels",
+      "label": "Submitted bears3.jpg opens as a valid non-trivial composite image",
       "points": 15,
       "extra_credit": false,
       "rubric_group_key": "part2",
@@ -93,7 +93,7 @@
     },
     {
       "key": "part1_visual",
-      "label": "Photo filter visual quality and red/blue/green color channel conversion accuracy",
+      "label": "Photo filter visual quality (grayscale or black-and-white conversion)",
       "points": 20,
       "extra_credit": false,
       "rubric_group_key": "part1",
@@ -101,7 +101,7 @@
     },
     {
       "key": "part2_visual",
-      "label": "Balloon overlay image placement, transparency blending, and visual composite quality",
+      "label": "Balloon composite placement and visual quality",
       "points": 20,
       "extra_credit": false,
       "rubric_group_key": "part2",

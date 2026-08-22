@@ -47,7 +47,7 @@ def _seed_cs1400(
 ) -> None:
     course = Course(
         code="cs1400",
-        title="CS 1400: Fundamentals of Programming",
+        title="Fundamentals of Programming",
         term="Spring 2026",
         default_concepts=["variables", "conditionals"],
         instructor=staff_user,
@@ -96,7 +96,7 @@ def _seed_cs1410(
     catalog = load_cs1410_catalog()
     course = Course(
         code="cs1410",
-        title="CS 1410: Object-Oriented Programming",
+        title="Object-Oriented Programming",
         term="Spring 2026",
         default_concepts=["variables", "conditionals", "loops", "functions"],
         instructor=staff_user,

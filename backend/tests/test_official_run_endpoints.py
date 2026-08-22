@@ -109,7 +109,6 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
             "11111": {
                 "student_identifier": "studenta",
                 "submission_id": "90123",
-                "matched_file": "student_functions.py",
                 "success": True,
                 "score": 100,
                 "max_score": 100,
@@ -147,11 +146,12 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     assert body["students"][0] == {
         "student_name": "studenta",
         "canvas_id": "11111",
-        "matched_file": "student_functions.py",
+        "bundle_files": [],
+        "bundle_file_count": 0,
         "score": 100,
         "max_score": 100,
         "status": "success",
-        "feedback_preview": "All tests passed successfully.",
+        "feedback_preview": "All automated tests passed successfully.",
         "feedback_html": "<html></html>",
         "manual_results": {},
         "overall_comment": "",
@@ -205,6 +205,63 @@ def test_run_details_not_found(client, headers):
     )
     assert response.status_code == 404
     assert response.json()["detail"] == "Run not found."
+
+
+def test_partial_run_details_while_running(client, db_session, temp_workspaces, headers):
+    run = RunSummary(
+        workflow_type="official",
+        assignment_id=1,
+        status="run",
+        total_submission_count=2,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
+    run_dir = workspaces_dir / f"official_{run.id}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "run_details.json").write_text(
+        json.dumps({
+            "unmatched_files": [],
+            "run_status": "running",
+            "student_results": {
+                "11111": {
+                    "student_identifier": "studenta",
+                    "submission_id": "1",
+                    "bundle_files": ["student_functions.py"],
+                    "bundle_file_count": 1,
+                    "success": True,
+                    "score": 100,
+                    "max_score": 100,
+                    "automated_max_score": 100,
+                    "test_results": [],
+                    "warnings": [],
+                    "failure_category": None,
+                    "failure_message": None,
+                    "feedback_html": "<html></html>",
+                    "manual_results": {},
+                    "overall_comment": "",
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
+
+    response = client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/details",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "run"
+    assert len(body["students"]) == 1
+    assert body["students"][0]["student_name"] == "studenta"
+    assert body["students"][0]["bundle_file_count"] == 1
+    assert body["exports_ready"] is False
 
 
 def test_official_run_status(client, db_session, headers):
@@ -262,7 +319,9 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     assert len(body["files"]) == 2
     files_by_path = {item["filepath"]: item for item in body["files"]}
     assert files_by_path["solution.py"]["previewable"] is True
-    assert files_by_path["diagram.png"]["previewable"] is False
+    assert files_by_path["solution.py"]["preview_kind"] == "text"
+    assert files_by_path["diagram.png"]["previewable"] is True
+    assert files_by_path["diagram.png"]["preview_kind"] == "image"
 
     # 2. Test reading content
     response = client.get(
@@ -270,7 +329,9 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
         headers=headers
     )
     assert response.status_code == 200
-    assert response.json()["content"] == "def test(): return 42"
+    text_body = response.json()
+    assert text_body["kind"] == "text"
+    assert text_body["content"] == "def test(): return 42"
 
     # 3. Test path traversal block
     response = client.get(
@@ -280,13 +341,16 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     assert response.status_code == 403
     assert "Access denied" in response.json()["detail"]
 
-    # 4. Non-previewable files are rejected by content endpoint
+    # 4. Image files return base64 preview payload
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/files/content?filepath=diagram.png",
         headers=headers,
     )
-    assert response.status_code == 400
-    assert "not previewable" in response.json()["detail"]
+    assert response.status_code == 200
+    image_body = response.json()
+    assert image_body["kind"] == "image"
+    assert image_body["content_type"].startswith("image/")
+    assert image_body["content_base64"]
 
     # 5. Wrong assignment is rejected
     response = client.get(
@@ -318,7 +382,6 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
             "11111": {
                 "student_identifier": "studenta",
                 "submission_id": "90123",
-                "matched_file": "solution.py",
                 "success": True,
                 "score": 40,
                 "max_score": 50,
@@ -448,4 +511,16 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
         headers=headers,
     ).status_code == 409
+
+    # 6. Overall feedback can be saved without changing manual scores.
+    response = client.post(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
+        json={"grades": {}, "overall_comment": "Standalone instructor note."},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["overall_comment"] == "Standalone instructor note."
+    assert "Standalone instructor note." in body["feedback_html"]
+    assert body["manual_results"]["style"]["score"] is None
 

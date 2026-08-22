@@ -59,6 +59,37 @@ class GradingResult:
         return data
 
 
+@dataclass(frozen=True)
+class PreloadedArtifacts:
+    """Assignment artifacts loaded once per official run."""
+
+    files: dict[str, bytes]
+    pytest_filenames: list[str]
+
+
+def preload_grading_artifacts(
+    config: AssignmentConfigV1,
+    artifact_refs: dict[str, str],
+) -> PreloadedArtifacts:
+    """Load non-model-solution artifact bytes once for reuse across students."""
+    files: dict[str, bytes] = {}
+    pytest_filenames: list[str] = []
+    for artifact_key, storage_ref in artifact_refs.items():
+        artifact_config = config.artifacts.get(artifact_key)
+        if artifact_config is None or artifact_config.type == "model_solution":
+            continue
+        try:
+            content = load_artifact_content(storage_ref)
+        except (FileNotFoundError, ValueError) as exc:
+            logger.warning("Could not preload artifact %s: %s", artifact_key, exc)
+            continue
+        filename = Path(artifact_config.display_filename or artifact_key).name
+        files[filename] = content
+        if artifact_config.type == "pytest_file":
+            pytest_filenames.append(filename)
+    return PreloadedArtifacts(files=files, pytest_filenames=pytest_filenames)
+
+
 class GradingEngine:
     """Deep domain engine for executing Python submission grading.
 
@@ -71,15 +102,19 @@ class GradingEngine:
         config: AssignmentConfigV1,
         artifact_refs: dict[str, str],
         allowed_concepts: list[str],
+        preloaded_artifacts: PreloadedArtifacts | None = None,
     ) -> None:
         self.config = config
         self.artifact_refs = artifact_refs
         self.allowed_concepts = allowed_concepts
+        self.preloaded_artifacts = preloaded_artifacts
         self.settings = get_settings()
 
     def grade_submission_sync(
         self,
-        zip_data: bytes,
+        zip_data: bytes | None = None,
+        *,
+        bundle_dir: Path | None = None,
         stdin: str | None = None,
     ) -> GradingResult:
         """Synchronous convenience entrypoint for Celery workers and offline execution."""
@@ -91,35 +126,45 @@ class GradingEngine:
             loop = None
 
         if loop and loop.is_running():
-            import nest_asyncio
+            import nest_asyncio  # type: ignore[import-not-found]
 
             nest_asyncio.apply()
-            return loop.run_until_complete(self.grade_submission(zip_data, stdin=stdin))
-        return asyncio.run(self.grade_submission(zip_data, stdin=stdin))
+            return loop.run_until_complete(
+                self.grade_submission(zip_data, bundle_dir=bundle_dir, stdin=stdin)
+            )
+        return asyncio.run(
+            self.grade_submission(zip_data, bundle_dir=bundle_dir, stdin=stdin)
+        )
 
     async def grade_submission(
         self,
-        zip_data: bytes,
+        zip_data: bytes | None = None,
+        *,
+        bundle_dir: Path | None = None,
         stdin: str | None = None,
     ) -> GradingResult:
-
         """Execute the full grading pipeline for a single student submission bundle.
 
-        :param zip_data: Raw byte array of the student submission ZIP archive.
-        :param stdin: Optional raw stdin text passed to the execution environment.
-        :return: Structured GradingResult containing score, test details, and failure reasons.
+        Provide exactly one of ``zip_data`` or ``bundle_dir``.
         """
+        if (zip_data is None) == (bundle_dir is None):
+            raise ValueError("Provide exactly one of zip_data or bundle_dir")
+
         workspace = Path(tempfile.mkdtemp(prefix="ag_grade_"))
         result = GradingResult(max_score=self.config.base_points)
 
         try:
             exec_dir = workspace / "execution"
-            try:
-                safe_extract_zip(zip_data, exec_dir)
-            except ExtractionError as exc:
-                result.failure_category = "unsafe_zip"
-                result.failure_message = str(exc)
-                return result
+            if bundle_dir is not None:
+                shutil.copytree(bundle_dir, exec_dir)
+            else:
+                assert zip_data is not None
+                try:
+                    safe_extract_zip(zip_data, exec_dir)
+                except ExtractionError as exc:
+                    result.failure_category = "unsafe_zip"
+                    result.failure_message = str(exc)
+                    return result
 
             try:
                 validate_submission_bundle(exec_dir, self.config)
@@ -132,7 +177,6 @@ class GradingEngine:
                 result.failure_message = msg
                 return result
 
-            # Audit submission directory using ASTCodeInspector
             inspector = ASTCodeInspector(allowed_concepts=self.allowed_concepts)
             ast_result = inspector.inspect_directory(exec_dir)
             result.ast_result = ast_result
@@ -146,33 +190,20 @@ class GradingEngine:
                 result.failure_message = "; ".join(blocked_msgs)
                 return result
 
-            test_filenames: list[str] = []
-            for artifact_key, storage_ref in self.artifact_refs.items():
-                artifact_config = self.config.artifacts.get(artifact_key)
-                if artifact_config is None:
-                    continue
+            test_filenames = self._inject_artifacts(exec_dir)
 
-                if artifact_config.type == "model_solution":
-                    continue
-
-                try:
-                    content = load_artifact_content(storage_ref)
-                except (FileNotFoundError, ValueError) as exc:
-                    logger.warning("Could not load artifact %s: %s", artifact_key, exc)
-                    continue
-
-                raw_filename = artifact_config.display_filename or artifact_key
-                filename = Path(raw_filename).name
-                (exec_dir / filename).write_bytes(content)
-
-                if artifact_config.type == "pytest_file":
-                    test_filenames.append(filename)
-
-            # Auto-inject universal python_autograder_helpers.py if not present
             helpers_target = exec_dir / "python_autograder_helpers.py"
             if not helpers_target.exists():
-                domain_helpers = Path(__file__).resolve().parent / "resources" / "python_autograder_helpers.py"
-                shared_helpers = Path(__file__).resolve().parents[2] / "db" / "seeds" / "shared" / "python_autograder_helpers.py"
+                domain_helpers = (
+                    Path(__file__).resolve().parent / "resources" / "python_autograder_helpers.py"
+                )
+                shared_helpers = (
+                    Path(__file__).resolve().parents[2]
+                    / "db"
+                    / "seeds"
+                    / "shared"
+                    / "python_autograder_helpers.py"
+                )
                 source_path = domain_helpers if domain_helpers.exists() else shared_helpers
                 if source_path.exists():
                     helpers_target.write_bytes(source_path.read_bytes())
@@ -217,3 +248,29 @@ class GradingEngine:
             shutil.rmtree(workspace, ignore_errors=True)
 
         return result
+
+    def _inject_artifacts(self, exec_dir: Path) -> list[str]:
+        """Write assignment artifacts into exec_dir; return pytest filenames."""
+        if self.preloaded_artifacts is not None:
+            for filename, content in self.preloaded_artifacts.files.items():
+                (exec_dir / filename).write_bytes(content)
+            return list(self.preloaded_artifacts.pytest_filenames)
+
+        test_filenames: list[str] = []
+        for artifact_key, storage_ref in self.artifact_refs.items():
+            artifact_config = self.config.artifacts.get(artifact_key)
+            if artifact_config is None or artifact_config.type == "model_solution":
+                continue
+
+            try:
+                content = load_artifact_content(storage_ref)
+            except (FileNotFoundError, ValueError) as exc:
+                logger.warning("Could not load artifact %s: %s", artifact_key, exc)
+                continue
+
+            filename = Path(artifact_config.display_filename or artifact_key).name
+            (exec_dir / filename).write_bytes(content)
+            if artifact_config.type == "pytest_file":
+                test_filenames.append(filename)
+
+        return test_filenames

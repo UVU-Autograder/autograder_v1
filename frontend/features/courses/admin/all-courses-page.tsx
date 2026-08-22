@@ -24,6 +24,8 @@ import {
   deleteAdminCourse,
   getAdminUsers,
 } from "@/features/courses/api";
+import { getConceptsMetadata } from "@/features/assignments/api";
+import type { ConceptMetadata } from "@/features/assignments/types";
 
 type UserSummary = {
   id: number;
@@ -31,6 +33,69 @@ type UserSummary = {
   display_name: string | null;
   is_active: boolean;
 };
+
+function DefaultConceptsPicker({
+  metadata,
+  selected,
+  onToggle,
+}: {
+  metadata: Record<string, ConceptMetadata>;
+  selected: string[];
+  onToggle: (key: string) => void;
+}) {
+  const items = Object.values(metadata);
+  if (items.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground italic">
+        Loading concept catalog…
+      </p>
+    );
+  }
+
+  return (
+    <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-border bg-muted/20 p-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {items.map((item) => {
+          const checked = selected.includes(item.key);
+          return (
+            <label
+              key={item.key}
+              className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 text-left transition-colors ${
+                checked
+                  ? "border-success/40 bg-success/10"
+                  : "border-border bg-card hover:bg-muted/50"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(item.key)}
+                className="mt-0.5 size-3.5 rounded border-input text-primary focus:ring-ring"
+              />
+              <span className="min-w-0 space-y-1">
+                <span className="block text-xs font-semibold text-foreground uppercase">
+                  {item.title}
+                </span>
+                {(item.syntax_patterns || []).length > 0 && (
+                  <span className="flex flex-wrap gap-1">
+                    {item.syntax_patterns.slice(0, 3).map((pattern) => (
+                      <code
+                        key={pattern}
+                        className="rounded border border-border bg-background px-1 py-0.5 font-mono text-[10px] text-muted-foreground"
+                      >
+                        {pattern}
+                      </code>
+                    ))}
+                  </span>
+                )}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function AllCoursesPage({
   initialCourses,
@@ -41,7 +106,10 @@ export default function AllCoursesPage({
 }) {
   const [courses, setCourses] = useState<CourseAdminDetail[]>(initialCourses);
   const [users, setUsers] = useState<UserSummary[]>([]);
-  
+  const [conceptMetadata, setConceptMetadata] = useState<
+    Record<string, ConceptMetadata>
+  >({});
+
   // Keep track of the prop we synchronized to avoid useEffect setState warning
   const [prevInitialCourses, setPrevInitialCourses] = useState(initialCourses);
   if (initialCourses !== prevInitialCourses) {
@@ -61,7 +129,7 @@ export default function AllCoursesPage({
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
   const [term, setTerm] = useState("");
-  const [concepts, setConcepts] = useState("");
+  const [concepts, setConcepts] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
   const [instructorId, setInstructorId] = useState<string>("none");
   const [iaId, setIaId] = useState<string>("none");
@@ -75,18 +143,26 @@ export default function AllCoursesPage({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load user list for dropdowns when edit dialog is active
   useEffect(() => {
     getAdminUsers()
       .then((data) => setUsers(data))
       .catch((err) => console.error("Failed to load users", err));
+    getConceptsMetadata()
+      .then((data) => setConceptMetadata(data))
+      .catch((err) => console.error("Failed to load concept metadata", err));
   }, []);
+
+  const toggleConcept = (key: string) => {
+    setConcepts((prev) =>
+      prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key],
+    );
+  };
 
   const openAddDialog = () => {
     setCode("");
     setTitle("");
     setTerm("");
-    setConcepts("");
+    setConcepts([]);
     setInstructorId("none");
     setIaId("none");
     setInstructorEmail("");
@@ -102,7 +178,7 @@ export default function AllCoursesPage({
     setCode(course.code);
     setTitle(course.title);
     setTerm(course.term);
-    setConcepts(course.default_concepts.join(", "));
+    setConcepts([...course.default_concepts]);
     setIsActive(course.is_active);
     setInstructorId(course.instructor_id ? String(course.instructor_id) : "none");
     setIaId(course.ia_id ? String(course.ia_id) : "none");
@@ -138,11 +214,6 @@ export default function AllCoursesPage({
     setFormError(null);
     setIsSubmitting(true);
     try {
-      const conceptsList = concepts
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-
       const payload: {
         code: string;
         title: string;
@@ -158,7 +229,7 @@ export default function AllCoursesPage({
         code: code.trim(),
         title: title.trim(),
         term: term.trim(),
-        default_concepts: conceptsList,
+        default_concepts: concepts,
       };
 
       if (instructorId === "custom" && instructorEmail.trim()) {
@@ -206,11 +277,6 @@ export default function AllCoursesPage({
     setFormError(null);
     setIsSubmitting(true);
     try {
-      const conceptsList = concepts
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-
       const payload: {
         code: string;
         title: string;
@@ -227,7 +293,7 @@ export default function AllCoursesPage({
         code: code.trim(),
         title: title.trim(),
         term: term.trim(),
-        default_concepts: conceptsList,
+        default_concepts: concepts,
         is_active: isActive,
       };
 
@@ -339,7 +405,7 @@ export default function AllCoursesPage({
 
       {/* --- ADD COURSE DIALOG --- */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Course</DialogTitle>
             <DialogDescription>
@@ -374,12 +440,22 @@ export default function AllCoursesPage({
                 required
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Default Concepts (comma-separated)</label>
-              <Input
-                placeholder="e.g., variables, loops, lists"
-                value={concepts}
-                onChange={(e) => setConcepts(e.target.value)}
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                  Default Concepts
+                </label>
+                <span className="text-[10px] text-muted-foreground">
+                  {concepts.length} selected
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select default allowed structures for assignments in this course.
+              </p>
+              <DefaultConceptsPicker
+                metadata={conceptMetadata}
+                selected={concepts}
+                onToggle={toggleConcept}
               />
             </div>
 
@@ -479,7 +555,7 @@ export default function AllCoursesPage({
 
       {/* --- EDIT COURSE DIALOG --- */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
             <DialogDescription>
@@ -511,11 +587,22 @@ export default function AllCoursesPage({
                 required
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Default Concepts (comma-separated)</label>
-              <Input
-                value={concepts}
-                onChange={(e) => setConcepts(e.target.value)}
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                  Default Concepts
+                </label>
+                <span className="text-[10px] text-muted-foreground">
+                  {concepts.length} selected
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select default allowed structures for assignments in this course.
+              </p>
+              <DefaultConceptsPicker
+                metadata={conceptMetadata}
+                selected={concepts}
+                onToggle={toggleConcept}
               />
             </div>
             

@@ -168,7 +168,8 @@ Kata Containers is host-level execution isolation. The repository cannot configu
 - Docker/containerd uses the Kata-capable runtime expected by the Judge0 execution path.
 - Judge0 submissions execute under the expected isolated runtime.
 - `DELETE /submissions/{token}` works and deleted submissions are no longer retrievable.
-- Temporary app workspaces are removed after success, failure, timeout, and cancellation.
+- Temporary **execution** workspaces (`ag_grade_*`, Judge0 payloads) are removed after success, failure, timeout, and cancellation.
+- Temporary **official review** workspaces (`workspaces/official_{run_id}/`, including per-student directories for Monaco preview) are retained ≤24h or until staff cleanup, then removed by `cleanup_expired_workspaces` or `POST .../runs/{run_id}/cleanup`.
 
 ## Environment Notes
 
@@ -179,6 +180,8 @@ Use plain environment files for now, but do not commit real secrets. The existin
 ## FERPA/Local LLM Scope
 
 The current documentation says the technical design reduces FERPA risk, but live official grading still depends on institutional approval and direct-control requirements. Use this POC with synthetic, fake, or approved anonymized data unless UVU approval has been explicitly documented for live student data.
+
+**Project status:** UVU Software Approval for live official grading is in progress. Local/on-prem POC use of real Canvas ZIPs is acceptable for authorized staff debugging when student-identifying data remains ephemeral only (≤24h), Postgres/logs stay aggregate-only, and exports are not committed to the repository. See [ferpa_analysis.md](../core/ferpa_analysis.md).
 
 Local LLM credentials can be supplied through environment variables, but AI feedback for live, pseudonymous, or real student-derived code should remain disabled unless the UVU approval checklist is complete.
 

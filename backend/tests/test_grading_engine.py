@@ -115,3 +115,98 @@ async def test_grading_engine_success(base_config: AssignmentConfigV1, tmp_path:
     assert result.score == 10
     assert result.max_score == 10
     assert result.pytest_result.passed == 1
+
+
+@pytest.mark.anyio
+async def test_grading_engine_from_bundle_dir(base_config: AssignmentConfigV1, tmp_path: Path) -> None:
+    tests_file = tmp_path / "tests.py"
+    tests_file.write_text("def test_pass(): pass", encoding="utf-8")
+    artifact_refs = {"assignment_tests": f"file://{tests_file.as_posix()}"}
+
+    bundle_dir = tmp_path / "student_bundle"
+    bundle_dir.mkdir()
+    (bundle_dir / "main.py").write_text("def main(): pass", encoding="utf-8")
+
+    engine = GradingEngine(
+        config=base_config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=["functions"],
+    )
+    mock_outcome = ExecutionOutcome(
+        success=True,
+        pytest_result=PytestRunResult(
+            tests=[
+                PytestTestResult(
+                    nodeid="test_pass",
+                    outcome="passed",
+                    markers=["ag_test_pass"],
+                    duration=0.01,
+                    message=None,
+                )
+            ],
+            total=1,
+            passed=1,
+            failed=0,
+            errors=0,
+            duration=0.05,
+            exit_code=0,
+        ),
+    )
+    with patch("app.domains.grading.engine.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_exec:
+        mock_exec.return_value = mock_outcome
+        result = await engine.grade_submission(bundle_dir=bundle_dir)
+
+    assert result.success
+    assert result.score == 10
+
+
+@pytest.mark.anyio
+async def test_grading_engine_uses_preloaded_artifacts(base_config: AssignmentConfigV1, tmp_path: Path) -> None:
+    from app.domains.grading.engine import preload_grading_artifacts
+
+    tests_file = tmp_path / "tests.py"
+    tests_file.write_text("def test_pass(): pass", encoding="utf-8")
+    artifact_refs = {"assignment_tests": f"file://{tests_file.as_posix()}"}
+    preloaded = preload_grading_artifacts(base_config, artifact_refs)
+    assert "tests.py" in preloaded.files
+    assert preloaded.pytest_filenames == ["tests.py"]
+
+    bundle_dir = tmp_path / "student_bundle"
+    bundle_dir.mkdir()
+    (bundle_dir / "main.py").write_text("def main(): pass", encoding="utf-8")
+
+    engine = GradingEngine(
+        config=base_config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=["functions"],
+        preloaded_artifacts=preloaded,
+    )
+    mock_outcome = ExecutionOutcome(
+        success=True,
+        pytest_result=PytestRunResult(
+            tests=[
+                PytestTestResult(
+                    nodeid="test_pass",
+                    outcome="passed",
+                    markers=["ag_test_pass"],
+                    duration=0.01,
+                    message=None,
+                )
+            ],
+            total=1,
+            passed=1,
+            failed=0,
+            errors=0,
+            duration=0.05,
+            exit_code=0,
+        ),
+    )
+    with (
+        patch("app.domains.grading.engine.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_exec,
+        patch("app.domains.grading.engine.load_artifact_content") as mock_load,
+    ):
+        mock_exec.return_value = mock_outcome
+        result = await engine.grade_submission(bundle_dir=bundle_dir)
+
+    assert result.success
+    mock_load.assert_not_called()

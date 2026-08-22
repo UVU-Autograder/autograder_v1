@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,7 +69,6 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
     handleSubmit,
     control,
     setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateAssignmentFormValues>({
     defaultValues: {
@@ -82,7 +81,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
     },
   });
 
-  const titleValue = watch("title");
+  const titleValue = useWatch({ control, name: "title" });
 
   useEffect(() => {
     if (!isSlugCustomized && titleValue) {

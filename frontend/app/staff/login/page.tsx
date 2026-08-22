@@ -11,7 +11,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 
@@ -20,6 +19,7 @@ type LoginResponse = {
   token_type: string;
   email: string;
   display_name: string | null;
+  roles?: string[];
 };
 
 export default function StaffLogin() {
@@ -67,6 +67,8 @@ export default function StaffLogin() {
 
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("email", data.email);
+      localStorage.setItem("roles", JSON.stringify(data.roles ?? []));
+      window.dispatchEvent(new Event("roles-updated"));
       if (data.display_name) {
         localStorage.setItem("displayName", data.display_name);
       }
@@ -83,7 +85,7 @@ export default function StaffLogin() {
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">Staff Portal Sign In</CardTitle>
             <CardDescription>
@@ -115,12 +117,10 @@ export default function StaffLogin() {
                 disabled={isLoading}
               />
             </div>
-          </CardContent>
-          <CardFooter>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing In..." : "Sign In"}
             </Button>
-          </CardFooter>
+          </CardContent>
         </form>
       </Card>
     </div>

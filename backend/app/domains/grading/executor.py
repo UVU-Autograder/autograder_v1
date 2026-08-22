@@ -13,6 +13,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.core.audit_log import audit_event
 from app.domains.grading.result_parser import PytestRunResult, parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
 from app.integrations.judge0.client import (
@@ -117,9 +118,13 @@ async def execute_pytest_in_judge0(
                     await judge0.delete_submission(token)
                 except Judge0CleanupError:
                     logger.error(
-                        "CLEANUP FAILURE: Could not delete Judge0 submission %s. "
-                        "This is a launch-blocking violation of the zero-retention contract.",
-                        token,
+                        "CLEANUP FAILURE: Could not delete Judge0 submission. "
+                        "This is a launch-blocking violation of the zero-retention contract."
+                    )
+                    audit_event(
+                        "judge0.cleanup_failed",
+                        failure_category="cleanup_failure",
+                        workflow_type="official",
                     )
                     outcome.failure_category = "cleanup_failure"
                     outcome.failure_message = (

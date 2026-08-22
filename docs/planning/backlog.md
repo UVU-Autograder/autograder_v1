@@ -71,8 +71,12 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
   - Degrade under high load; log token usage in non-sensitive run metadata.
 - [ ] Canvas automated feedback upload / distribution (manual Canvas grade CSV import remains assumed).
 - [ ] Multi-language or compiled-language execution pipelines beyond current Python Judge0 path.
-- [ ] Official-run Local LLM feedback. Before approval:
-  - generated comments must remain editable HTML-only drafts and never replace pytest truth;
+- [ ] Official-run Local LLM feedback (deferred; planned shape when unblocked):
+  - **Entry:** opt-in checkbox on the Official Runs start/upload page only (per new run).
+  - **Timing:** generate during grading, after each student’s tests, and bake into that student’s feedback HTML.
+  - **Posture:** POC-style like sandbox AI — staff opt-in, strip identifiers where possible; keep behind institutional approval / FERPA gates before enabling by default.
+  - **HTML shape:** separate “AI coaching” section alongside the existing score/test report (never replaces pytest truth).
+  - generated comments must remain editable HTML-only drafts;
   - deterministically remove names, Canvas/submission identifiers, identifying paths, and identifiers in source comments/string literals;
   - use run-local pseudonyms only and skip feedback when anonymization confidence is insufficient;
   - prove with tests that raw identifiers never reach the Local LLM client.

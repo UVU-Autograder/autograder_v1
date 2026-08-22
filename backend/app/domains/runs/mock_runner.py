@@ -73,7 +73,8 @@ def run_mock_official_run(run_id: int) -> None:
             student_results[canvas_id] = {
                 "student_identifier": name,
                 "submission_id": sub_id,
-                "matched_file": "mock_file.py",
+                "bundle_files": ["mock_file.py"],
+                "bundle_file_count": 1,
                 "success": success,
                 "score": score,
                 "max_score": max_score,

@@ -14,7 +14,9 @@ import {
   CheckIcon,
   FileTextIcon,
   XIcon,
+  PlayIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { MetadataSection } from "./metadata-section";
 import { ScoringRulesSection } from "./scoring-rules-section";
@@ -101,6 +103,16 @@ export function AssignmentEditor() {
                 <span>Copy Student Link</span>
               </>
             )}
+          </Button>
+
+          <Button variant="outline" asChild className="cursor-pointer">
+            <Link
+              href={`/staff/courses/${courseId}/assignments/${assignmentId}/runs`}
+              className="flex items-center gap-1.5"
+            >
+              <PlayIcon className="w-4 h-4" />
+              <span>Grade Now</span>
+            </Link>
           </Button>
 
           <Button

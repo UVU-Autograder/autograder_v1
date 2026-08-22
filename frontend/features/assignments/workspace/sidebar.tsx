@@ -198,7 +198,7 @@ export function AssignmentSidebar({
                     onClick={(e) => {
                       e.stopPropagation();
                       if (files[filename]) {
-                        downloadFile(filename, files[filename].content);
+                        downloadFile(filename, files[filename].content, files[filename].kind);
                       }
                     }}
                     className="text-muted-foreground hover:text-foreground"

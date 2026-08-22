@@ -14,15 +14,24 @@ __pycache__/
 .pytest_cache/
 .pytest-tmp/
 backend/data/
+.ruff_cache/
 
 # Logs
 *.log
 npm-debug.log*
 
 node_modules/
+.vscode/
 
 # Agentic Configuration Ignores
 .agents/
+.scratch/
+
+# Accidental local tooling artifacts
+/uv.lock
 
 # Student submission datasets
 cs1410/
+/cs1410.zip
+*.zip
+!backend/app/db/seeds/**/*.zip

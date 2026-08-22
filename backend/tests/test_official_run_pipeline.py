@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import sys
 import zipfile
 from pathlib import Path
@@ -147,6 +148,15 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
         result = grade_official_run(run.id)
 
         assert mock_pipeline.call_count == 2  # 2 students in zip
+        assert all(
+            call.kwargs.get("bundle_dir") is not None or (
+                len(call.args) == 0 and "bundle_dir" in call.kwargs
+            )
+            for call in mock_pipeline.call_args_list
+        )
+        for call in mock_pipeline.call_args_list:
+            assert call.kwargs.get("zip_data") is None
+            assert call.kwargs.get("bundle_dir") is not None
         assert "student_results" in result
 
     # 4. Verify DB and files
@@ -159,6 +169,62 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
     assert (run_dir / "run_details.json").exists()
     assert (run_dir / "grades.csv").exists()
     assert (run_dir / "feedback.zip").exists()
+    details = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    assert details["run_status"] == "complete"
+    assert len(details["student_results"]) == 2
+
+
+def test_grade_official_run_writes_incremental_details(
+    db_session: Session,
+    temp_workspaces: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "judge0_max_concurrent", 1)
+
+    run = RunSummary(
+        workflow_type="official",
+        assignment_id=1,
+        status="queue",
+        total_submission_count=2,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
+    workspaces_dir.mkdir(parents=True, exist_ok=True)
+    zip_dest = workspaces_dir / f"official_{run.id}.zip"
+    zip_dest.write_bytes(
+        create_zip_bytes({
+            "studenta_11111_67890_student_functions.py": b"print('hello')",
+            "studentb_22222_67891_student_functions.py": b"print('hello')",
+        })
+    )
+
+    mock_result = GradingResult(success=True, score=100, max_score=100, test_results=[], warnings=[])
+    seen_counts: list[int] = []
+    run_dir = workspaces_dir / f"official_{run.id}"
+
+    async def grade_and_observe(*args, **kwargs):
+        details_file = run_dir / "run_details.json"
+        assert details_file.exists()
+        payload = json.loads(details_file.read_text(encoding="utf-8"))
+        seen_counts.append(len(payload.get("student_results", {})))
+        return mock_result
+
+    with patch(
+        "app.domains.grading.engine.GradingEngine.grade_submission",
+        new_callable=AsyncMock,
+        side_effect=grade_and_observe,
+    ):
+        grade_official_run(run.id)
+
+    assert seen_counts[0] == 0
+    assert 1 in seen_counts
+    final = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    assert len(final["student_results"]) == 2
+    assert final["run_status"] == "complete"
 
 
 def test_cleanup_expired_workspaces(db_session: Session, temp_workspaces: Path) -> None:

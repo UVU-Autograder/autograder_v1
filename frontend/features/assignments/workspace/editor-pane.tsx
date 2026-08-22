@@ -1,6 +1,7 @@
 import MonacoEditor from '@/components/monaco-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { XIcon } from 'lucide-react';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useAssignmentFile } from './assignment-file-context';
 import ProblemOverview from './problem-overview';
@@ -204,6 +205,17 @@ export function EditorPane({ paneId }: { paneId: string }) {
                     ) : (
                       <div className="p-4 text-sm text-muted-foreground">{file.content}</div>
                     )
+                  ) : file.kind === 'image' ? (
+                    <div className="relative flex h-full w-full items-center justify-center overflow-auto bg-muted/20 p-4">
+                      <Image
+                        src={file.content}
+                        alt={filename}
+                        width={1200}
+                        height={900}
+                        unoptimized
+                        className="max-h-full max-w-full h-auto w-auto object-contain"
+                      />
+                    </div>
                   ) : (
                     <MonacoEditor
                       key={`${paneId}-${filename}`}

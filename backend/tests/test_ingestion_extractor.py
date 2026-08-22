@@ -302,6 +302,7 @@ def test_file_requirement_schema_validation():
 from app.domains.ingestion.extractor import (
     count_canvas_submissions,
     group_canvas_files,
+    normalize_canvas_original_filename,
     parse_canvas_filename,
     prepare_student_bundle,
 )
@@ -320,7 +321,47 @@ def test_parse_canvas_filename():
         "13579",
         "project.zip",
     )
+    assert parse_canvas_filename("clarklandon_LATE_1972516_133846039_test_sundae-6.py") == (
+        "clarklandon",
+        "1972516",
+        "133846039",
+        "test_sundae-6.py",
+    )
     assert parse_canvas_filename("invalid_filename.py") is None
+
+
+def test_normalize_canvas_original_filename():
+    assert normalize_canvas_original_filename("dessert.py") == "dessert.py"
+    assert normalize_canvas_original_filename("test_candy-6.py") == "test_candy.py"
+    assert (
+        normalize_canvas_original_filename(
+            "dessert-bccde8b7-b9d3-4fb7-b04c-3e48ba38dfa2.py"
+        )
+        == "dessert.py"
+    )
+    assert normalize_canvas_original_filename("payment-2.py") == "payment.py"
+
+
+def test_prepare_student_bundle_strips_canvas_suffixes(tmp_path: Path):
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    files = {
+        "allenandrew_2051945_133817322_dessert-bccde8b7-b9d3-4fb7-b04c-3e48ba38dfa2.py": "dessert",
+        "allenandrew_2051945_133817320_test_candy-6.py": "candy",
+        "allenandrew_2051945_133817328_dessertshop-4a4c0b24-38ad-42e7-bf72-5175385834e0.py": "shop",
+    }
+    paths = []
+    for name, content in files.items():
+        path = src_dir / name
+        path.write_text(content)
+        paths.append(path)
+
+    student_dir = tmp_path / "student_2051945"
+    prepare_student_bundle(paths, student_dir)
+
+    assert (student_dir / "dessert.py").read_text() == "dessert"
+    assert (student_dir / "test_candy.py").read_text() == "candy"
+    assert (student_dir / "dessertshop.py").read_text() == "shop"
 
 
 def test_count_canvas_submissions():
