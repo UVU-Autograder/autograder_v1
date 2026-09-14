@@ -70,6 +70,31 @@
         }
       }
     },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Me",
+        "description": "Return the authenticated staff user's profile and active role names.",
+        "operationId": "get_me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/staff/admin/courses": {
       "get": {
         "tags": [
@@ -992,6 +1017,62 @@
                 "schema": {
                   "$ref": "#/components/schemas/SandboxAiFeedbackResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sandbox/runs/{run_id}/ai-feedback/stream": {
+      "post": {
+        "tags": [
+          "sandbox"
+        ],
+        "summary": "Generate Ai Feedback Stream Endpoint",
+        "operationId": "generate_ai_feedback_stream_endpoint_sandbox_runs__run_id__ai_feedback_stream_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "x-sandbox-session",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sandbox-Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -4474,9 +4555,15 @@
             "$ref": "#/components/schemas/FilePreviewMetadata"
           },
           "retention_notice": {
-            "type": "string",
-            "title": "Retention Notice",
-            "default": "Sandbox results are session-only and are not retained as student submissions."
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Notice"
           },
           "raw_output": {
             "anyOf": [

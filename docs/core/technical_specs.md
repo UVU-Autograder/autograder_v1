@@ -161,7 +161,7 @@ classDiagram
 - `assignments` are course-linked, while section-level edit authority is enforced through staff access rules.
 - `assignment_configs` store the app-owned `config_json`, which is the canonical internal grading configuration; the frontend wizard is the authoring surface for that config.
 - `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
-- `modules` store module-specific learning concepts; runtime-effective whitelist is course defaults ∪ module concepts. Per-assignment concept additions were removed.
+- `modules` store module-specific learning concepts; runtime-effective whitelist is course defaults ∪ cumulative module concepts. Per-assignment concept additions were removed, but assignment configs may specify a `concepts.denylist` to forbid specific inherited constructs (e.g. built-in sorting).
 - `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
 - `scoring_items` are derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
 - `scoring_items` are derived projections of both automated test keys and manual rubric items, used for grading display and configuration checking.
@@ -173,11 +173,12 @@ classDiagram
 
 - The course-level baseline is teacher-authored and stored with the course settings.
 - Module concepts represent additional learning concepts defined on the module.
-- The effective concept allow-list is computed at runtime as `course defaults ∪ module concepts`.
+- The effective concept allow-list is computed at runtime as `(course defaults ∪ cumulative module concepts 1..N) \ config_json.concepts.denylist`.
 - Runtime merge rules:
   - course defaults appear first
   - module concepts appear after course defaults
   - duplicate concepts are removed automatically
+  - assignment-level `concepts.denylist` removes matching concepts from the effective allowed list
 - AST enforcement and any UI display of allowed concepts must use the same merged effective list.
 - Existing assignments always reflect the current course defaults and module concepts at runtime.
 - Reusing the same assignment config shape in a different course/module may produce a different effective concept list because course defaults and module concepts are owned by the course and module.
@@ -206,6 +207,7 @@ classDiagram
   - `artifacts`
   - `scoring_items`
 - Optional top-level v1 sections:
+  - `concepts` (`allowlist` and `denylist` to subtract inherited constructs)
   - `completion_requirements`
   - `dependencies`
   - `rubric_groups`
@@ -543,6 +545,7 @@ Notes:
 - Kata-backed VM isolation is required for the planned production execution model (Dell validation still pending).
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
 - Sandbox Local LLM: may process student code only when the payload is not personally traceable (no PII/identifiers); official AI deferred
+- Local LLM prompt ceilings: `max_file_chars = 4000`, `max_total_chars = 8000`. Individual files exceeding 4,000 characters are truncated with explicit markers (`... [file truncated]`); multi-file submissions exceeding 8,000 total characters omit remaining files with notices (`... [additional files omitted: ...]`).
 - Local LLM logging: token usage only, stored as sanitized aggregate metadata
 
 ### Service targets and reliability guardrails

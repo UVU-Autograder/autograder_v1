@@ -65,9 +65,10 @@ This file tracks current product and implementation decisions.
 | Grading Workspace Isolation              | Skip copying model_solution artifacts to execution directory                                                                                           | Prevents student submissions from having their code overwritten by the instructor's reference solution during grading                                          |
 | File I/O and Asset Injection             | Define input_file artifacts in config_json that are automatically copied to the student's sandbox directory                                            | Enables assignments to reference external static data files (like CSVs or text files) without requiring students to upload them                              |
 | Multi-language / compiled pipelines      | Deferred                                                                                                                                               | Python Judge0 path only for now                                                                                                                                |
+| Local LLM Prompt Character Ceilings     | 4,000 chars per file, 8,000 chars total prompt limit with truncation notices                                                                           | Prevents OOM and context window exhaustion on on-prem workstation while preserving critical student code sections                                               |
 
 ## Architecture notes (current)
 
-- Official upload: [ingestion/router.py](../../backend/app/domains/ingestion/router.py) → [ingestion/service.py](../../backend/app/domains/ingestion/service.py).
+- Official upload: [ingestion/router.py](../../backend/app/domains/ingestion/router.py) → [ingestion/engine.py](../../backend/app/domains/ingestion/engine.py) (`SubmissionIngestionEngine`).
 - Grading: [grading/engine.py](../../backend/app/domains/grading/engine.py) (`GradingEngine`) orchestrates intake, AST inspection, runner packaging, Judge0 pytest execution via [grading/executor.py](../../backend/app/domains/grading/executor.py), and zero-retention cleanup.
 - AST checking: [integrations/ast_checker/validator.py](../../backend/app/integrations/ast_checker/validator.py) provides `ASTCodeInspector` for directory-level auditing and concept whitelisting.

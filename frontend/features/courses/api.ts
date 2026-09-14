@@ -87,8 +87,38 @@ export function revokeAdminAccess(accessId: number) {
     return apiClient.delete<void>(`/staff/admin/access/${accessId}`);
 }
 
+export type SectionAdminDetail = {
+  id: number;
+  course_id: number;
+  crn: string;
+  is_active: boolean;
+};
+
 export function getCourseSections(courseId: number) {
-    return apiClient.get<{ id: number; course_id: number; crn: string; is_active: boolean }[]>(`/staff/admin/courses/${courseId}/sections`);
+  return apiClient.get<SectionAdminDetail[]>(
+    `/staff/admin/courses/${courseId}/sections`,
+  );
+}
+
+export function createAdminSection(courseId: number, payload: { crn: string }) {
+  return apiClient.post<SectionAdminDetail>(
+    `/staff/admin/courses/${courseId}/sections`,
+    payload,
+  );
+}
+
+export function updateAdminSection(
+  sectionId: number,
+  payload: { crn?: string; is_active?: boolean },
+) {
+  return apiClient.put<SectionAdminDetail>(
+    `/staff/admin/sections/${sectionId}`,
+    payload,
+  );
+}
+
+export function deleteAdminSection(sectionId: number) {
+  return apiClient.delete<void>(`/staff/admin/sections/${sectionId}`);
 }
 
 export type MonitoringStats = {

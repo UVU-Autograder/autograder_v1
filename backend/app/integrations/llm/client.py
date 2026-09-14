@@ -19,9 +19,16 @@ def sanitize_code_and_text(text: str) -> str:
     sanitized = re.sub(r"[\w\.-]+@[\w\.-]+\.\w+", "[REDACTED_EMAIL]", text)
     # Strip UVU-style IDs (e.g., 10123456 or U10123456 or A12345678)
     sanitized = re.sub(r"\b[AUau]?\d{7,8}\b", "[REDACTED_ID]", sanitized)
-    # Strip common name/author header patterns
+    # Strip common name/author header patterns in comments or metadata lines without corrupting code variables
     sanitized = re.sub(
-        r"(?i)(author|student|name|by)\s*[:=]\s*[^\n\r]+", r"\1: [REDACTED_NAME]", sanitized
+        r"(?im)^([ \t]*(?:#|//|/\*|\*)\s*)(author|student(?:\s*name)?|name|submitted\s*by)\s*[:=]\s*[^\n\r]+",
+        r"\1\2: [REDACTED_NAME]",
+        sanitized,
+    )
+    sanitized = re.sub(
+        r"(?im)^([ \t]*)(author|student(?:\s*name)?|submitted\s*by)\s*[:=]\s*[^\n\r]+",
+        r"\1\2: [REDACTED_NAME]",
+        sanitized,
     )
     return sanitized
 
@@ -43,9 +50,6 @@ class LocalLLMClient:
         self.api_key = api_key or settings.local_llm_api_key or "ollama"
         self.model = model or settings.local_llm_model or "qwen2.5:3b"
         self.timeout = timeout_seconds
-
-    def is_configured(self) -> bool:
-        return bool(self.endpoint)
 
     def generate_chat_completion(
         self,
@@ -71,8 +75,8 @@ class LocalLLMClient:
                 response = client.post(url, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
-                content = data["choices"][0]["message"]["content"]
-                return content.strip()
+                content = data["choices"][0]["message"].get("content")
+                return (content or "").strip()
         except httpx.ConnectError:
             logger.warning("Failed to connect to Local LLM at %s", self.endpoint)
             return (
@@ -87,7 +91,7 @@ class LocalLLMClient:
             )
         except Exception as exc:
             logger.exception("Unexpected error communicating with local LLM: %s", exc)
-            return f"⚠️ An error occurred while generating AI feedback: {exc!s}"
+            return "⚠️ An error occurred while generating AI feedback. Please try again later."
 
     def generate_chat_completion_stream(
         self,
@@ -192,11 +196,20 @@ class LocalLLMClient:
 
         if code_files:
             user_content_parts.append("**Student Code:**")
+            total_code_chars = 0
+            max_file_chars = 4000
+            max_total_chars = 8000
             for fname, code in code_files.items():
+                if total_code_chars >= max_total_chars:
+                    user_content_parts.append("... [additional files truncated due to context limits] ...\n")
+                    break
                 sanitized_fname = sanitize_code_and_text(fname)
                 sanitized_code = sanitize_code_and_text(code).replace("```", "'''")
-                if len(sanitized_code) > 4000:
-                    sanitized_code = sanitized_code[:4000] + "\n... [truncated] ..."
+                remaining_budget = max_total_chars - total_code_chars
+                max_chars = min(max_file_chars, remaining_budget)
+                if len(sanitized_code) > max_chars:
+                    sanitized_code = sanitized_code[:max_chars] + "\n... [truncated] ..."
+                total_code_chars += len(sanitized_code)
                 user_content_parts.append(f"```{sanitized_fname}\n{sanitized_code}\n```\n")
 
         user_content_parts.append("Provide concise Socratic hints to help me fix my code.")

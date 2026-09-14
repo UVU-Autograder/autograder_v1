@@ -21,32 +21,6 @@ Refer to [delivery_controls.md](delivery_controls.md) for Definition of Done (Do
 
 ## Active — Product
 
-
-### Manual grading UX
-
-- [ ] Add coarse status/manual-completion filters and queue polish without introducing a bulk grading grid (runs & exports remain isolated per staff upload session).
-
-### Student sandbox UX
-
-- [x] Fix student sandbox sidebar (removed `mt-15` offset, aligned flush with shell header, added Problem Overview button).
-- [x] Refactor problem description rendering to structured layout instead of raw text file views (implemented minimal `<ProblemOverview />` tab component).
-
-### Expected I/O extraction and visual diff
-
-- [x] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`) — verified via unit tests in `backend/tests/test_io_parser.py`.
-- [x] Expose extracted expected fields in the sandbox run results API — integrated in `runner_gen.py` & verified via contract tests.
-- [x] Wire sandbox visual diff to real expected vs actual output (`VisualDiffViewer` integrated into `code-results.tsx` with Vitest unit tests).
-- [x] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel (implemented via `parseExpectedIO` & `scoring-rules-section.tsx` badges).
-
-
----
-
-## Active — Correctness / platform gaps
-
-- [x] **Add a custom Judge0 Python runtime** — Judge0 CE `1.13.1` retains custom Python 3.11.9 image specification (`judge0.Dockerfile`), language ID `711` registered (`scripts/seed_judge0_language_311.sql`), preinstalled allowlisted dependencies (`pillow`, `pygame`, `tabulate`, `pytest`), and verified contract tests (`backend/tests/test_judge0_custom_runtime.py`).
-
----
-
 ## Active — Ops and workstation validation
 
 Waiting on real Dell workstation access. Do not mark complete without host evidence.
@@ -55,6 +29,7 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
 - [ ] Validate ~200 official submissions complete within ~40 min on the Dell workstation.
 - [ ] Validate export packaging overhead under ~2 min for ~200 submissions after grading completes.
 - [ ] Validate Kata-backed VM isolation is active in the planned execution environment.
+- [ ] Validate on-prem local LLM serving (Ollama/vLLM) on the Dell workstation.
 - [ ] Smoke test on the Dell-workstation deployment.
 - [ ] Review deployment configuration.
 - [ ] Update README with deployment and operating notes.
@@ -65,10 +40,6 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
 
 - [ ] Configuration Schema Versioning & Migration Pipeline (Deferred while in testing stage without active live assignments).
 - [ ] Staff Microsoft OAuth through NextAuth (mock JWT remains current).
-- [ ] Sandbox Local LLM feedback. (Deferred)
-  - Send submission source (+ grounded test/AST context) only when payload is not personally traceable.
-  - Generate rubric-context explanations without re-grading (hallucination guard).
-  - Degrade under high load; log token usage in non-sensitive run metadata.
 - [ ] Canvas automated feedback upload / distribution (manual Canvas grade CSV import remains assumed).
 - [ ] Multi-language or compiled-language execution pipelines beyond current Python Judge0 path.
 - [ ] Official-run Local LLM feedback (deferred; planned shape when unblocked):

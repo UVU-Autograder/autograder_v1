@@ -26,76 +26,10 @@ import {
 } from "@/features/courses/api";
 import { getConceptsMetadata } from "@/features/assignments/api";
 import type { ConceptMetadata } from "@/features/assignments/types";
+import { CourseSectionsDialog } from "./course-sections-dialog";
+import { CourseForm, CourseFormUser } from "./course-form";
 
-type UserSummary = {
-  id: number;
-  email: string;
-  display_name: string | null;
-  is_active: boolean;
-};
-
-function DefaultConceptsPicker({
-  metadata,
-  selected,
-  onToggle,
-}: {
-  metadata: Record<string, ConceptMetadata>;
-  selected: string[];
-  onToggle: (key: string) => void;
-}) {
-  const items = Object.values(metadata);
-  if (items.length === 0) {
-    return (
-      <p className="text-xs text-muted-foreground italic">
-        Loading concept catalog…
-      </p>
-    );
-  }
-
-  return (
-    <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-border bg-muted/20 p-2">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {items.map((item) => {
-          const checked = selected.includes(item.key);
-          return (
-            <label
-              key={item.key}
-              className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 text-left transition-colors ${
-                checked
-                  ? "border-success/40 bg-success/10"
-                  : "border-border bg-card hover:bg-muted/50"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => onToggle(item.key)}
-                className="mt-0.5 size-3.5 rounded border-input text-primary focus:ring-ring"
-              />
-              <span className="min-w-0 space-y-1">
-                <span className="block text-xs font-semibold text-foreground uppercase">
-                  {item.title}
-                </span>
-                {(item.syntax_patterns || []).length > 0 && (
-                  <span className="flex flex-wrap gap-1">
-                    {item.syntax_patterns.slice(0, 3).map((pattern) => (
-                      <code
-                        key={pattern}
-                        className="rounded border border-border bg-background px-1 py-0.5 font-mono text-[10px] text-muted-foreground"
-                      >
-                        {pattern}
-                      </code>
-                    ))}
-                  </span>
-                )}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+type UserSummary = CourseFormUser;
 
 export default function AllCoursesPage({
   initialCourses,
@@ -121,8 +55,9 @@ export default function AllCoursesPage({
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isSectionsOpen, setIsSectionsOpen] = useState(false);
 
-  // Selected course for Edit / Delete
+  // Selected course for Edit / Delete / Sections
   const [selectedCourse, setSelectedCourse] = useState<CourseAdminDetail | null>(null);
 
   // Form states
@@ -178,7 +113,7 @@ export default function AllCoursesPage({
     setCode(course.code);
     setTitle(course.title);
     setTerm(course.term);
-    setConcepts([...course.default_concepts]);
+    setConcepts([...(course.default_concepts ?? [])]);
     setIsActive(course.is_active);
     setInstructorId(course.instructor_id ? String(course.instructor_id) : "none");
     setIaId(course.ia_id ? String(course.ia_id) : "none");
@@ -193,6 +128,11 @@ export default function AllCoursesPage({
   const openDeleteDialog = (course: CourseAdminDetail) => {
     setSelectedCourse(course);
     setIsDeleteOpen(true);
+  };
+
+  const openSectionsDialog = (course: CourseAdminDetail) => {
+    setSelectedCourse(course);
+    setIsSectionsOpen(true);
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -221,10 +161,8 @@ export default function AllCoursesPage({
         default_concepts: string[];
         instructor_email?: string | null;
         instructor_name?: string | null;
-        instructor_id?: number | null;
         ia_email?: string | null;
         ia_name?: string | null;
-        ia_id?: number | null;
       } = {
         code: code.trim(),
         title: title.trim(),
@@ -236,14 +174,20 @@ export default function AllCoursesPage({
         payload.instructor_email = instructorEmail.trim().toLowerCase();
         payload.instructor_name = instructorName.trim() || null;
       } else if (instructorId !== "none" && instructorId !== "custom") {
-        payload.instructor_id = Number(instructorId);
+        const found = users.find((u) => String(u.id) === instructorId);
+        if (found) {
+          payload.instructor_email = found.email;
+        }
       }
 
       if (iaId === "custom" && iaEmail.trim()) {
         payload.ia_email = iaEmail.trim().toLowerCase();
         payload.ia_name = iaName.trim() || null;
       } else if (iaId !== "none" && iaId !== "custom") {
-        payload.ia_id = Number(iaId);
+        const found = users.find((u) => String(u.id) === iaId);
+        if (found) {
+          payload.ia_email = found.email;
+        }
       }
 
       await createAdminCourse(payload);
@@ -388,6 +332,9 @@ export default function AllCoursesPage({
                   </div>
                 </Link>
                 <div className="flex shrink-0 gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openSectionsDialog(course)}>
+                    Sections
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
                     Edit
                   </Button>
@@ -412,144 +359,39 @@ export default function AllCoursesPage({
               Fill out the details below to register a new course in the system.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddSubmit} className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Code</label>
-              <Input
-                placeholder="e.g., cs1400"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Title</label>
-              <Input
-                placeholder="e.g., Fundamentals of Programming"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Term</label>
-              <Input
-                placeholder="e.g., Fall 2026"
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-baseline justify-between gap-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                  Default Concepts
-                </label>
-                <span className="text-[10px] text-muted-foreground">
-                  {concepts.length} selected
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Select default allowed structures for assignments in this course.
-              </p>
-              <DefaultConceptsPicker
-                metadata={conceptMetadata}
-                selected={concepts}
-                onToggle={toggleConcept}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Instructor</label>
-              <select
-                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={instructorId}
-                onChange={(e) => setInstructorId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {instructorId === "custom" && (
-              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. green.scholar@uvu.edu"
-                    value={instructorEmail}
-                    onChange={(e) => setInstructorEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. Professor Green"
-                    value={instructorName}
-                    onChange={(e) => setInstructorName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">IA (Teaching Assistant)</label>
-              <select
-                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={iaId}
-                onChange={(e) => setIaId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {iaId === "custom" && (
-              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. assistant.ta@uvu.edu"
-                    value={iaEmail}
-                    onChange={(e) => setIaEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. John TA"
-                    value={iaName}
-                    onChange={(e) => setIaName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {formError && <p className="text-xs text-destructive font-medium">{formError}</p>}
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Course"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <CourseForm
+            code={code}
+            setCode={setCode}
+            title={title}
+            setTitle={setTitle}
+            term={term}
+            setTerm={setTerm}
+            concepts={concepts}
+            toggleConcept={toggleConcept}
+            conceptMetadata={conceptMetadata}
+            users={users}
+            instructorId={instructorId}
+            setInstructorId={setInstructorId}
+            instructorEmail={instructorEmail}
+            setInstructorEmail={setInstructorEmail}
+            instructorName={instructorName}
+            setInstructorName={setInstructorName}
+            iaId={iaId}
+            setIaId={setIaId}
+            iaEmail={iaEmail}
+            setIaEmail={setIaEmail}
+            iaName={iaName}
+            setIaName={setIaName}
+            formError={formError}
+            isSubmitting={isSubmitting}
+            submitLabel="Create Course"
+            submittingLabel="Creating..."
+            onSubmit={handleAddSubmit}
+            onCancel={() => setIsAddOpen(false)}
+            codePlaceholder="e.g., cs1400"
+            titlePlaceholder="e.g., Fundamentals of Programming"
+            termPlaceholder="e.g., Fall 2026"
+          />
         </DialogContent>
       </Dialog>
 
@@ -562,154 +404,39 @@ export default function AllCoursesPage({
               Update course details, active status, or assign instructors and IAs.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Code</label>
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Course Title</label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Term</label>
-              <Input
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-baseline justify-between gap-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                  Default Concepts
-                </label>
-                <span className="text-[10px] text-muted-foreground">
-                  {concepts.length} selected
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Select default allowed structures for assignments in this course.
-              </p>
-              <DefaultConceptsPicker
-                metadata={conceptMetadata}
-                selected={concepts}
-                onToggle={toggleConcept}
-              />
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Instructor</label>
-              <select
-                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={instructorId}
-                onChange={(e) => setInstructorId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {instructorId === "custom" && (
-              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. green.scholar@uvu.edu"
-                    value={instructorEmail}
-                    onChange={(e) => setInstructorEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New Instructor Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. Professor Green"
-                    value={instructorName}
-                    onChange={(e) => setInstructorName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">IA (Teaching Assistant)</label>
-              <select
-                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={iaId}
-                onChange={(e) => setIaId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {iaId === "custom" && (
-              <div className="border border-border bg-muted/30 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. assistant.ta@uvu.edu"
-                    value={iaEmail}
-                    onChange={(e) => setIaEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">New IA Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. John TA"
-                    value={iaName}
-                    onChange={(e) => setIaName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="edit-is-active"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="rounded border-input text-primary focus:ring-primary"
-              />
-              <label htmlFor="edit-is-active" className="text-sm font-medium text-foreground cursor-pointer">
-                Course is active
-              </label>
-            </div>
-
-            {formError && <p className="text-xs text-destructive font-medium">{formError}</p>}
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <CourseForm
+            code={code}
+            setCode={setCode}
+            title={title}
+            setTitle={setTitle}
+            term={term}
+            setTerm={setTerm}
+            concepts={concepts}
+            toggleConcept={toggleConcept}
+            conceptMetadata={conceptMetadata}
+            users={users}
+            instructorId={instructorId}
+            setInstructorId={setInstructorId}
+            instructorEmail={instructorEmail}
+            setInstructorEmail={setInstructorEmail}
+            instructorName={instructorName}
+            setInstructorName={setInstructorName}
+            iaId={iaId}
+            setIaId={setIaId}
+            iaEmail={iaEmail}
+            setIaEmail={setIaEmail}
+            iaName={iaName}
+            setIaName={setIaName}
+            showActiveToggle={true}
+            isActive={isActive}
+            setIsActive={setIsActive}
+            formError={formError}
+            isSubmitting={isSubmitting}
+            submitLabel="Save Changes"
+            submittingLabel="Saving..."
+            onSubmit={handleEditSubmit}
+            onCancel={() => setIsEditOpen(false)}
+          />
         </DialogContent>
       </Dialog>
 
@@ -733,6 +460,13 @@ export default function AllCoursesPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* --- COURSE SECTIONS DIALOG --- */}
+      <CourseSectionsDialog
+        isOpen={isSectionsOpen}
+        onOpenChange={setIsSectionsOpen}
+        course={selectedCourse}
+      />
     </div>
   );
 }
