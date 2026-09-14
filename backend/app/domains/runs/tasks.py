@@ -6,10 +6,7 @@ through Judge0, storing transient results in Redis.
 from __future__ import annotations
 
 import asyncio
-import io
-import json
 import logging
-import zipfile
 from datetime import UTC, datetime
 
 from app.db.base import import_domain_models
@@ -42,6 +39,7 @@ from app.domains.runs.queue_admission import (
     release_execution_slots,
     reserve_execution_slots,
 )
+from app.core.audit_log import audit_event
 from app.integrations.celery.app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -129,7 +127,9 @@ def validate_assignment_model_solution(
                 raise ValueError("Assignment config not found.")
             config = AssignmentConfigV1.model_validate(assignment.config.config_json)
             max_score = sum(
-                item.points for item in config.tests if not item.extra_credit
+                item.points
+                for item in config.scoring_items
+                if item.item_type == "pytest" and not item.extra_credit
             )
 
             # 2. Retrieve every file in the instructor model bundle.
@@ -174,7 +174,7 @@ def validate_assignment_model_solution(
 
             # 3. Package only real instructor files; required paths may not be empty.
             zip_data = build_model_solution_zip(
-                config.bundle.required_files,
+                config.bundle.derived_required_files(),
                 model_files,
             )
 
@@ -289,7 +289,11 @@ def grade_official_run(self, run_id: int) -> dict:
     from app.db.session import SessionLocal
     from app.domains.assignments.models import Assignment
     from app.domains.assignments.schemas import AssignmentConfigV1
-    from app.domains.grading.engine import GradingEngine, GradingResult
+    from app.domains.grading.engine import (
+        GradingEngine,
+        GradingResult,
+        preload_grading_artifacts,
+    )
     from app.domains.ingestion.extractor import (
         group_canvas_files,
         parse_canvas_filename,
@@ -299,9 +303,11 @@ def grade_official_run(self, run_id: int) -> dict:
     from app.domains.runs.models import RunSummary
     from app.domains.runs.service import (
         init_manual_results,
+        list_bundle_files,
         official_run_dir,
         official_run_zip_path,
         write_feedback_zip,
+        write_run_details_json,
         write_run_grades_csv,
     )
     settings = get_settings()
@@ -350,10 +356,12 @@ def grade_official_run(self, run_id: int) -> dict:
             from app.domains.assignments.service import effective_allowed_concepts
 
             allowed_concepts = effective_allowed_concepts(assignment)
+            preloaded = preload_grading_artifacts(config, artifact_refs)
             grading_engine = GradingEngine(
                 config=config,
                 artifact_refs=artifact_refs,
                 allowed_concepts=allowed_concepts,
+                preloaded_artifacts=preloaded,
             )
         except Exception as exc:
             run.status = "failure"
@@ -364,9 +372,23 @@ def grade_official_run(self, run_id: int) -> dict:
 
     tracker = RunLifecycleTracker(run_id, total_submissions)
     tracker.set_running("Official run executing.")
+    audit_event(
+        "official.run_started",
+        run_id=run_id,
+        assignment_id=run.assignment_id,
+        submission_count=total_submissions,
+        workflow_type="official",
+    )
 
     if not zip_path.exists():
-        logger.error("ZIP path %s not found.", zip_path)
+        logger.error("Official ZIP not found for run %d.", run_id)
+        audit_event(
+            "official.run_failed",
+            run_id=run_id,
+            assignment_id=run.assignment_id,
+            failure_category="zip_not_found",
+            workflow_type="official",
+        )
         tracker.mark_failure("Official ZIP not found", "zip_not_found")
         tracker.release_remaining_slots()
         return {"error": "Official ZIP not found"}
@@ -379,7 +401,14 @@ def grade_official_run(self, run_id: int) -> dict:
     try:
         safe_extract_zip(zip_path.read_bytes(), extract_dir)
     except Exception as e:
-        logger.exception("Failed to extract official ZIP: %s", e)
+        logger.exception("Failed to extract official ZIP for run %d", run_id)
+        audit_event(
+            "official.run_failed",
+            run_id=run_id,
+            assignment_id=run.assignment_id,
+            failure_category="zip_extract_error",
+            workflow_type="official",
+        )
         tracker.mark_failure("Failed to extract ZIP", type(e).__name__)
         tracker.release_remaining_slots()
         return {"error": "Failed to extract ZIP"}
@@ -391,23 +420,37 @@ def grade_official_run(self, run_id: int) -> dict:
         if unused_slots:
             tracker.release_slots(unused_slots)
 
-        student_results = {}
+        student_results: dict = {}
         success_count = 0
         warning_count = 0
         failure_count = 0
         timeout_count = 0
-        failure_summary_counts = {}
+        failure_summary_counts: dict = {}
+        unmatched_names = [p.name for p in unmatched]
+        details_lock = asyncio.Lock()
+
+        def flush_run_details(*, run_status: str = "running") -> None:
+            write_run_details_json(
+                run_dir,
+                {
+                    "unmatched_files": unmatched_names,
+                    "student_results": student_results,
+                    "run_status": run_status,
+                },
+            )
+
+        flush_run_details(run_status="running")
 
         async def grade_student_async(canvas_user_id: str, paths: list[Path], semaphore: asyncio.Semaphore):
             nonlocal success_count, warning_count, failure_count, timeout_count
 
             student_identifier = "unknown"
             submission_id = "unknown"
-            original_filename = "unknown"
+            bundle_files: list[str] = []
             for p in paths:
                 parsed = parse_canvas_filename(p.name)
                 if parsed:
-                    student_identifier, _, submission_id, original_filename = parsed
+                    student_identifier, _, submission_id, _ = parsed
                     break
 
             student_temp_dir = run_dir / f"student_{canvas_user_id}"
@@ -417,39 +460,46 @@ def grade_official_run(self, run_id: int) -> dict:
             try:
                 try:
                     prepare_student_bundle(paths, student_temp_dir)
+                    bundle_files = list_bundle_files(student_temp_dir)
                 except Exception as e:
-                    failure_count += 1
-                    failure_summary_counts["preparation_error"] = failure_summary_counts.get("preparation_error", 0) + 1
-                    student_results[canvas_user_id] = {
-                        "student_identifier": student_identifier,
-                        "submission_id": submission_id,
-                        "matched_file": original_filename,
-                        "success": False,
-                        "score": 0,
-                        "max_score": max_score,
-                        "automated_max_score": automated_max_score,
-                        "test_results": [],
-                        "warnings": [],
-                        "failure_category": "preparation_error",
-                        "failure_message": f"Failed to prepare submission bundle: {e!s}",
-                        "feedback_html": f"<html><body><p>Error preparing submission: {e!s}</p></body></html>",
-                        "manual_results": manual_results,
-                        "overall_comment": "",
-                    }
-                    tracker.update_progress(success_count, warning_count, failure_count, timeout_count, failure_summary_counts)
+                    async with details_lock:
+                        failure_count += 1
+                        failure_summary_counts["preparation_error"] = (
+                            failure_summary_counts.get("preparation_error", 0) + 1
+                        )
+                        student_results[canvas_user_id] = {
+                            "student_identifier": student_identifier,
+                            "submission_id": submission_id,
+                            "bundle_files": [],
+                            "bundle_file_count": 0,
+                            "success": False,
+                            "score": 0,
+                            "max_score": max_score,
+                            "automated_max_score": automated_max_score,
+                            "test_results": [],
+                            "warnings": [],
+                            "failure_category": "preparation_error",
+                            "failure_message": f"Failed to prepare submission bundle: {e!s}",
+                            "feedback_html": (
+                                f"<html><body><p>Error preparing submission: {e!s}</p></body></html>"
+                            ),
+                            "manual_results": manual_results,
+                            "overall_comment": "",
+                        }
+                        flush_run_details()
+                        tracker.update_progress(
+                            success_count,
+                            warning_count,
+                            failure_count,
+                            timeout_count,
+                            failure_summary_counts,
+                        )
                     return
-
-                student_zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(student_zip_buffer, "w", zipfile.ZIP_DEFLATED) as sz:
-                    for filepath in student_temp_dir.rglob("*"):
-                        if filepath.is_file():
-                            sz.write(filepath, filepath.relative_to(student_temp_dir))
-                student_zip_bytes = student_zip_buffer.getvalue()
 
                 try:
                     async with semaphore:
                         grading_result = await grading_engine.grade_submission(
-                            zip_data=student_zip_bytes,
+                            bundle_dir=student_temp_dir,
                         )
                 except Exception as exc:
                     logger.exception("Grading pipeline crashed during student submission execution")
@@ -457,44 +507,55 @@ def grade_official_run(self, run_id: int) -> dict:
                         success=False,
                         failure_category="internal_error",
                         failure_message=f"Grading error: {type(exc).__name__}",
-                        max_score=max_score
+                        max_score=max_score,
                     )
 
-                feedback_html = generate_pedagogical_feedback_html(student_identifier, grading_result, manual_results)
+                feedback_html = generate_pedagogical_feedback_html(
+                    student_identifier, grading_result, manual_results
+                )
 
-                if grading_result.success:
-                    if grading_result.warnings:
-                        warning_count += 1
+                async with details_lock:
+                    if grading_result.success:
+                        if grading_result.warnings:
+                            warning_count += 1
+                        elif grading_result.score < automated_max_score:
+                            warning_count += 1
+                        else:
+                            success_count += 1
                     else:
-                        success_count += 1
-                else:
-                    if grading_result.failure_category == "timeout":
-                        timeout_count += 1
-                    else:
-                        failure_count += 1
-                    cat = grading_result.failure_category or "unknown_failure"
-                    failure_summary_counts[cat] = failure_summary_counts.get(cat, 0) + 1
+                        if grading_result.failure_category == "timeout":
+                            timeout_count += 1
+                        else:
+                            failure_count += 1
+                        cat = grading_result.failure_category or "unknown_failure"
+                        failure_summary_counts[cat] = failure_summary_counts.get(cat, 0) + 1
 
-                student_results[canvas_user_id] = {
-                    "student_identifier": student_identifier,
-                    "submission_id": submission_id,
-                    "matched_file": original_filename,
-                    "success": grading_result.success,
-                    "score": grading_result.score,
-                    "max_score": grading_result.max_score,
-                    "automated_max_score": automated_max_score,
-                    "test_results": grading_result.test_results,
-                    "warnings": [dict(w) for w in grading_result.warnings],
-                    "failure_category": grading_result.failure_category,
-                    "failure_message": grading_result.failure_message,
-                    "feedback_html": feedback_html,
-                    "manual_results": manual_results,
-                    "overall_comment": "",
-                }
-
-                tracker.update_progress(success_count, warning_count, failure_count, timeout_count, failure_summary_counts)
+                    student_results[canvas_user_id] = {
+                        "student_identifier": student_identifier,
+                        "submission_id": submission_id,
+                        "bundle_files": bundle_files,
+                        "bundle_file_count": len(bundle_files),
+                        "success": grading_result.success,
+                        "score": grading_result.score,
+                        "max_score": grading_result.max_score,
+                        "automated_max_score": automated_max_score,
+                        "test_results": grading_result.test_results,
+                        "warnings": [dict(w) for w in grading_result.warnings],
+                        "failure_category": grading_result.failure_category,
+                        "failure_message": grading_result.failure_message,
+                        "feedback_html": feedback_html,
+                        "manual_results": manual_results,
+                        "overall_comment": "",
+                    }
+                    flush_run_details()
+                    tracker.update_progress(
+                        success_count,
+                        warning_count,
+                        failure_count,
+                        timeout_count,
+                        failure_summary_counts,
+                    )
             finally:
-                shutil.rmtree(student_temp_dir, ignore_errors=True)
                 tracker.release_slots(1)
 
         loop = asyncio.new_event_loop()
@@ -510,19 +571,30 @@ def grade_official_run(self, run_id: int) -> dict:
             asyncio.set_event_loop(None)
             loop.close()
 
-        # Clean up extraction workspace directory
         shutil.rmtree(extract_dir, ignore_errors=True)
 
-        # Save details, CSV and feedback packages
         details_payload = {
-            "unmatched_files": [p.name for p in unmatched],
-            "student_results": student_results
+            "unmatched_files": unmatched_names,
+            "student_results": student_results,
+            "run_status": "complete",
         }
-        (run_dir / "run_details.json").write_text(json.dumps(details_payload, indent=2))
+        write_run_details_json(run_dir, details_payload)
         write_run_grades_csv(run_dir, student_results)
         write_feedback_zip(run_dir, student_results)
 
         tracker.mark_complete(success_count, warning_count, failure_count + timeout_count, failure_summary_counts)
+        audit_event(
+            "official.run_completed",
+            run_id=run_id,
+            assignment_id=run.assignment_id,
+            submission_count=total_submissions,
+            success_count=success_count,
+            warning_count=warning_count,
+            failure_count=failure_count,
+            timeout_count=timeout_count,
+            unmatched_count=len(unmatched),
+            workflow_type="official",
+        )
         return details_payload
     finally:
         tracker.release_remaining_slots()
@@ -578,5 +650,11 @@ def cleanup_expired_workspaces() -> dict:
             if deleted_any:
                 cleaned_count += 1
 
+    audit_event(
+        "official.workspace_expired_cleanup",
+        cleaned_runs_count=cleaned_count,
+        error_count=len(errors),
+        workflow_type="official",
+    )
     return {"cleaned_runs_count": cleaned_count, "errors": errors}
 

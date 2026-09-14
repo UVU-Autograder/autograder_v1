@@ -24,13 +24,12 @@ import {
   deleteAdminCourse,
   getAdminUsers,
 } from "@/features/courses/api";
+import { getConceptsMetadata } from "@/features/assignments/api";
+import type { ConceptMetadata } from "@/features/assignments/types";
+import { CourseSectionsDialog } from "./course-sections-dialog";
+import { CourseForm, CourseFormUser } from "./course-form";
 
-type UserSummary = {
-  id: number;
-  email: string;
-  display_name: string | null;
-  is_active: boolean;
-};
+type UserSummary = CourseFormUser;
 
 export default function AllCoursesPage({
   initialCourses,
@@ -41,7 +40,10 @@ export default function AllCoursesPage({
 }) {
   const [courses, setCourses] = useState<CourseAdminDetail[]>(initialCourses);
   const [users, setUsers] = useState<UserSummary[]>([]);
-  
+  const [conceptMetadata, setConceptMetadata] = useState<
+    Record<string, ConceptMetadata>
+  >({});
+
   // Keep track of the prop we synchronized to avoid useEffect setState warning
   const [prevInitialCourses, setPrevInitialCourses] = useState(initialCourses);
   if (initialCourses !== prevInitialCourses) {
@@ -53,15 +55,16 @@ export default function AllCoursesPage({
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isSectionsOpen, setIsSectionsOpen] = useState(false);
 
-  // Selected course for Edit / Delete
+  // Selected course for Edit / Delete / Sections
   const [selectedCourse, setSelectedCourse] = useState<CourseAdminDetail | null>(null);
 
   // Form states
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
   const [term, setTerm] = useState("");
-  const [concepts, setConcepts] = useState("");
+  const [concepts, setConcepts] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
   const [instructorId, setInstructorId] = useState<string>("none");
   const [iaId, setIaId] = useState<string>("none");
@@ -75,18 +78,26 @@ export default function AllCoursesPage({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load user list for dropdowns when edit dialog is active
   useEffect(() => {
     getAdminUsers()
       .then((data) => setUsers(data))
       .catch((err) => console.error("Failed to load users", err));
+    getConceptsMetadata()
+      .then((data) => setConceptMetadata(data))
+      .catch((err) => console.error("Failed to load concept metadata", err));
   }, []);
+
+  const toggleConcept = (key: string) => {
+    setConcepts((prev) =>
+      prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key],
+    );
+  };
 
   const openAddDialog = () => {
     setCode("");
     setTitle("");
     setTerm("");
-    setConcepts("");
+    setConcepts([]);
     setInstructorId("none");
     setIaId("none");
     setInstructorEmail("");
@@ -102,7 +113,7 @@ export default function AllCoursesPage({
     setCode(course.code);
     setTitle(course.title);
     setTerm(course.term);
-    setConcepts(course.default_concepts.join(", "));
+    setConcepts([...(course.default_concepts ?? [])]);
     setIsActive(course.is_active);
     setInstructorId(course.instructor_id ? String(course.instructor_id) : "none");
     setIaId(course.ia_id ? String(course.ia_id) : "none");
@@ -117,6 +128,11 @@ export default function AllCoursesPage({
   const openDeleteDialog = (course: CourseAdminDetail) => {
     setSelectedCourse(course);
     setIsDeleteOpen(true);
+  };
+
+  const openSectionsDialog = (course: CourseAdminDetail) => {
+    setSelectedCourse(course);
+    setIsSectionsOpen(true);
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -138,11 +154,6 @@ export default function AllCoursesPage({
     setFormError(null);
     setIsSubmitting(true);
     try {
-      const conceptsList = concepts
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-
       const payload: {
         code: string;
         title: string;
@@ -150,29 +161,33 @@ export default function AllCoursesPage({
         default_concepts: string[];
         instructor_email?: string | null;
         instructor_name?: string | null;
-        instructor_id?: number | null;
         ia_email?: string | null;
         ia_name?: string | null;
-        ia_id?: number | null;
       } = {
         code: code.trim(),
         title: title.trim(),
         term: term.trim(),
-        default_concepts: conceptsList,
+        default_concepts: concepts,
       };
 
       if (instructorId === "custom" && instructorEmail.trim()) {
         payload.instructor_email = instructorEmail.trim().toLowerCase();
         payload.instructor_name = instructorName.trim() || null;
       } else if (instructorId !== "none" && instructorId !== "custom") {
-        payload.instructor_id = Number(instructorId);
+        const found = users.find((u) => String(u.id) === instructorId);
+        if (found) {
+          payload.instructor_email = found.email;
+        }
       }
 
       if (iaId === "custom" && iaEmail.trim()) {
         payload.ia_email = iaEmail.trim().toLowerCase();
         payload.ia_name = iaName.trim() || null;
       } else if (iaId !== "none" && iaId !== "custom") {
-        payload.ia_id = Number(iaId);
+        const found = users.find((u) => String(u.id) === iaId);
+        if (found) {
+          payload.ia_email = found.email;
+        }
       }
 
       await createAdminCourse(payload);
@@ -206,11 +221,6 @@ export default function AllCoursesPage({
     setFormError(null);
     setIsSubmitting(true);
     try {
-      const conceptsList = concepts
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-
       const payload: {
         code: string;
         title: string;
@@ -227,7 +237,7 @@ export default function AllCoursesPage({
         code: code.trim(),
         title: title.trim(),
         term: term.trim(),
-        default_concepts: conceptsList,
+        default_concepts: concepts,
         is_active: isActive,
       };
 
@@ -288,7 +298,7 @@ export default function AllCoursesPage({
       ) : (
         <div className="flex w-full flex-col gap-2">
           {courses.map((course) => (
-            <Card key={course.id} className={`py-3 transition-shadow hover:shadow-md ${!course.is_active ? 'opacity-60 bg-slate-50' : ''}`}>
+            <Card key={course.id} className={`py-3 transition-shadow hover:shadow-md ${!course.is_active ? 'opacity-60 bg-muted/40' : ''}`}>
               <CardContent className="flex items-center gap-3 py-0">
                 <Link
                   href={`/staff/courses/${course.code}`}
@@ -298,13 +308,13 @@ export default function AllCoursesPage({
                     <CardTitle className="truncate text-base flex items-center gap-2">
                       {course.title}
                       {!course.is_active && (
-                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase">
+                        <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground uppercase">
                           Inactive
                         </span>
                       )}
                     </CardTitle>
-                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                      <span className="font-semibold uppercase text-slate-700">{course.code}</span>
+                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <span className="font-semibold uppercase text-foreground">{course.code}</span>
                       <span>•</span>
                       <span>{course.term}</span>
                       <span>•</span>
@@ -322,6 +332,9 @@ export default function AllCoursesPage({
                   </div>
                 </Link>
                 <div className="flex shrink-0 gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openSectionsDialog(course)}>
+                    Sections
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
                     Edit
                   </Button>
@@ -339,290 +352,91 @@ export default function AllCoursesPage({
 
       {/* --- ADD COURSE DIALOG --- */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Course</DialogTitle>
             <DialogDescription>
               Fill out the details below to register a new course in the system.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddSubmit} className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Code</label>
-              <Input
-                placeholder="e.g., cs1400"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Title</label>
-              <Input
-                placeholder="e.g., Fundamentals of Programming"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Term</label>
-              <Input
-                placeholder="e.g., Fall 2026"
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Default Concepts (comma-separated)</label>
-              <Input
-                placeholder="e.g., variables, loops, lists"
-                value={concepts}
-                onChange={(e) => setConcepts(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Instructor</label>
-              <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                value={instructorId}
-                onChange={(e) => setInstructorId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {instructorId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. green.scholar@uvu.edu"
-                    value={instructorEmail}
-                    onChange={(e) => setInstructorEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. Professor Green"
-                    value={instructorName}
-                    onChange={(e) => setInstructorName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">IA (Teaching Assistant)</label>
-              <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                value={iaId}
-                onChange={(e) => setIaId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {iaId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. assistant.ta@uvu.edu"
-                    value={iaEmail}
-                    onChange={(e) => setIaEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. John TA"
-                    value={iaName}
-                    onChange={(e) => setIaName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {formError && <p className="text-xs text-red-500 font-medium">{formError}</p>}
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Course"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <CourseForm
+            code={code}
+            setCode={setCode}
+            title={title}
+            setTitle={setTitle}
+            term={term}
+            setTerm={setTerm}
+            concepts={concepts}
+            toggleConcept={toggleConcept}
+            conceptMetadata={conceptMetadata}
+            users={users}
+            instructorId={instructorId}
+            setInstructorId={setInstructorId}
+            instructorEmail={instructorEmail}
+            setInstructorEmail={setInstructorEmail}
+            instructorName={instructorName}
+            setInstructorName={setInstructorName}
+            iaId={iaId}
+            setIaId={setIaId}
+            iaEmail={iaEmail}
+            setIaEmail={setIaEmail}
+            iaName={iaName}
+            setIaName={setIaName}
+            formError={formError}
+            isSubmitting={isSubmitting}
+            submitLabel="Create Course"
+            submittingLabel="Creating..."
+            onSubmit={handleAddSubmit}
+            onCancel={() => setIsAddOpen(false)}
+            codePlaceholder="e.g., cs1400"
+            titlePlaceholder="e.g., Fundamentals of Programming"
+            termPlaceholder="e.g., Fall 2026"
+          />
         </DialogContent>
       </Dialog>
 
       {/* --- EDIT COURSE DIALOG --- */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
             <DialogDescription>
               Update course details, active status, or assign instructors and IAs.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Code</label>
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Course Title</label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Term</label>
-              <Input
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Default Concepts (comma-separated)</label>
-              <Input
-                value={concepts}
-                onChange={(e) => setConcepts(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Instructor</label>
-              <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                value={instructorId}
-                onChange={(e) => setInstructorId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {instructorId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. green.scholar@uvu.edu"
-                    value={instructorEmail}
-                    onChange={(e) => setInstructorEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New Instructor Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. Professor Green"
-                    value={instructorName}
-                    onChange={(e) => setInstructorName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase">IA (Teaching Assistant)</label>
-              <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                value={iaId}
-                onChange={(e) => setIaId(e.target.value)}
-              >
-                <option value="none">None</option>
-                <option value="custom">+ Add by email...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.email} {u.display_name ? `(${u.display_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {iaId === "custom" && (
-              <div className="border border-slate-100 bg-slate-50/50 rounded-md p-3 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA UVU Email</label>
-                  <Input
-                    type="email"
-                    placeholder="e.g. assistant.ta@uvu.edu"
-                    value={iaEmail}
-                    onChange={(e) => setIaEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">New IA Display Name (Optional)</label>
-                  <Input
-                    placeholder="e.g. John TA"
-                    value={iaName}
-                    onChange={(e) => setIaName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="edit-is-active"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-              />
-              <label htmlFor="edit-is-active" className="text-sm font-medium text-slate-700">
-                Course is active
-              </label>
-            </div>
-
-            {formError && <p className="text-xs text-red-500 font-medium">{formError}</p>}
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <CourseForm
+            code={code}
+            setCode={setCode}
+            title={title}
+            setTitle={setTitle}
+            term={term}
+            setTerm={setTerm}
+            concepts={concepts}
+            toggleConcept={toggleConcept}
+            conceptMetadata={conceptMetadata}
+            users={users}
+            instructorId={instructorId}
+            setInstructorId={setInstructorId}
+            instructorEmail={instructorEmail}
+            setInstructorEmail={setInstructorEmail}
+            instructorName={instructorName}
+            setInstructorName={setInstructorName}
+            iaId={iaId}
+            setIaId={setIaId}
+            iaEmail={iaEmail}
+            setIaEmail={setIaEmail}
+            iaName={iaName}
+            setIaName={setIaName}
+            showActiveToggle={true}
+            isActive={isActive}
+            setIsActive={setIsActive}
+            formError={formError}
+            isSubmitting={isSubmitting}
+            submitLabel="Save Changes"
+            submittingLabel="Saving..."
+            onSubmit={handleEditSubmit}
+            onCancel={() => setIsEditOpen(false)}
+          />
         </DialogContent>
       </Dialog>
 
@@ -631,8 +445,8 @@ export default function AllCoursesPage({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Deactivate Course</DialogTitle>
-            <DialogDescription className="py-2 text-sm text-slate-600 block">
-              Are you sure you want to deactivate <span className="font-semibold text-slate-900">&quot;{selectedCourse?.title}&quot; ({selectedCourse?.code})</span>?
+            <DialogDescription className="py-2 text-sm text-muted-foreground block">
+              Are you sure you want to deactivate <span className="font-semibold text-foreground">&quot;{selectedCourse?.title}&quot; ({selectedCourse?.code})</span>?
               This will hide the course from normal staff and sandbox views, but historical records will be preserved.
             </DialogDescription>
           </DialogHeader>
@@ -646,6 +460,13 @@ export default function AllCoursesPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* --- COURSE SECTIONS DIALOG --- */}
+      <CourseSectionsDialog
+        isOpen={isSectionsOpen}
+        onOpenChange={setIsSectionsOpen}
+        course={selectedCourse}
+      />
     </div>
   );
 }

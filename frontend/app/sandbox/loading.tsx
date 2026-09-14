@@ -1,7 +1,7 @@
 export default function Loading() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center" role="status">
-      <p className="animate-pulse font-medium text-slate-500">Loading sandbox...</p>
+      <p className="animate-pulse font-medium text-muted-foreground">Loading sandbox...</p>
     </div>
   );
 }

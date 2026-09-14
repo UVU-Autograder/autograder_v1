@@ -33,21 +33,21 @@
   "scoring_items": [
     {
       "key": "account_init",
-      "label": "Account class with default and custom values",
+      "label": "Account class initializes owner, balance, and account_number attributes",
       "points": 40,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "account_str",
-      "label": "Account __str__ string representation",
+      "label": "Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "demo_output",
-      "label": "demo.py manual testing module stdout output",
+      "label": "demo.py executes test deposits, withdrawals, and prints account summary to stdout",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"

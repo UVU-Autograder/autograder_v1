@@ -417,10 +417,10 @@ class Combinable(Protocol):
 | Marker | Label | Points |
 |--------|-------|--------|
 | `ag_part1_files` | Part 1 required files are present | 15 |
-| `ag_part1_output` | Part 1 output image opens and contains non-trivial pixels (execution check) | 15 |
+| `ag_part1_output` | Part 1 script regenerates a valid non-trivial `bears2.jpg` from `bears_copy.jpg` | 15 |
 | `ag_part2_files` | Part 2 required files are present | 15 |
-| `ag_part2_output` | Part 2 output image opens and contains non-trivial pixels (execution check) | 15 |
-| (manual) | Part 1: Subjective filter visual quality & color conversion | 20 |
+| `ag_part2_output` | Submitted `bears3.jpg` opens and contains non-trivial pixels | 15 |
+| (manual) | Part 1: Subjective filter visual quality | 20 |
 | (manual) | Part 2: Subjective balloon composite quality & placement | 20 |
 
 #### Testing Student Submissions
@@ -429,13 +429,14 @@ To test and verify student submissions locally or via automated sandbox test scr
 2. Run a grading run using the `lab-1-image-processing` configuration and `tests.py` as the test suite.
 3. Verify that:
    - A correct implementation passes all tests (60/60 automated points, 0 warnings/failures).
-   - The student files `bears2.py` and `bears3.py` are executed during the test run to produce `bears2.jpg` and `bears3.jpg` from `bears_copy.jpg` and `balloon.png`.
+   - Part 1 re-executes `bears2.py` against injected `bears_copy.jpg` (per lab writeup).
+   - Part 2 validates the submitted `bears3.jpg` only — students may use any online balloon image and are not required to submit it.
    - Incorrect implementations or missing files trigger test failures or blocked concepts (e.g. if they attempt to import blocked packages).
 4. Run verification tests against a representative set of actual student submissions (e.g. using `.agents/scratch/run_lab1_submissions.py`) to confirm that:
    - The allowed concepts list includes the course default concepts (`["variables", "conditionals", "loops", "functions"]`) in addition to module-level concepts, preventing false positive warnings.
    - Student submissions wrapping logic in `if __name__ == "__main__":` execute correctly by using `run_name="__main__"` in `runpy.run_path`.
    - Student submissions with security-restricted imports (e.g., `os`) are correctly blocked.
-   - Path-based discrepancies (e.g., hardcoded subdirectories or missing assets not part of the zipped files) are caught as test failures.
+   - Path-based discrepancies for Part 1 (e.g., hardcoded subdirectories or not using `bears_copy.jpg`) are caught as test failures.
 
 ---
 

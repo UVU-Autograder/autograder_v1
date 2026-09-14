@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
+from app.core.audit_log import audit_event
 from app.domains.assignments.service import get_assignment_for_course
 from app.domains.assignments.validation import run_preflight_validation
 from app.domains.courses.models import Course, Section
@@ -152,6 +153,17 @@ class SubmissionIngestionEngine:
 
                 run_mock_official_run(run.id)
                 db.refresh(run)
+
+            audit_event(
+                "official.ingest_queued",
+                run_id=run.id,
+                assignment_id=assignment.id,
+                course_id=course.id,
+                section_id=section.id,
+                actor_user_id=actor_user_id,
+                submission_count=submission_count,
+                workflow_type="official",
+            )
 
             return run
         except Exception as exc:

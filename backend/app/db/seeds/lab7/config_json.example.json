@@ -33,35 +33,35 @@
   "scoring_items": [
     {
       "key": "dataclass",
-      "label": "@dataclass(order=True) with correct typed fields and default_factory",
+      "label": "Student uses @dataclass(order=True) decorator with typed fields and field(default_factory=list)",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "methods",
-      "label": "enroll() and total_courses() methods",
+      "label": "Student defines enroll(course_name) to append courses and total_courses() count method",
       "points": 25,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "ordering",
-      "label": "Data class comparison operators and sorting by ID",
+      "label": "Student dataclass sort_index orders list of Student instances by student ID",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "main_output",
-      "label": "main() execution creates and tests Student objects",
+      "label": "main() entrypoint instantiates Student records, tests course enrollment, and outputs summary",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "reflection",
-      "label": "Reflection responses on default_factory and dataclass design",
+      "label": "Reflection markdown contains clear explanations of default_factory and dataclass decorators",
       "points": 15,
       "extra_credit": false,
       "item_type": "manual"

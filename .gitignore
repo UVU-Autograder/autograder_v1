@@ -13,6 +13,7 @@ __pycache__/
 .pytest_cache/
 .pytest-tmp/
 backend/data/
+.ruff_cache/
 
 # Env / secrets (keep *.example tracked)
 .env
@@ -29,10 +30,17 @@ node_modules/
 frontend/.next/
 frontend/tsconfig.tsbuildinfo
 frontend/out/
+.vscode/
 
 # Agentic / local agent memory
 .agents/
+.scratch/
+
+# Accidental local tooling artifacts
+/uv.lock
 
 # Student submission datasets (local-only; FERPA)
 cs1410/
-cs1410.zip
+/cs1410.zip
+*.zip
+!backend/app/db/seeds/**/*.zip

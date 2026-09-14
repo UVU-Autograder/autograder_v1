@@ -20,8 +20,8 @@ export default function Page() {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 p-6">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 max-w-md shadow-sm">
+      <div className="flex h-screen items-center justify-center bg-background p-6">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive max-w-md shadow-xs">
           <p className="font-semibold mb-1">Failed to load courses</p>
           <p className="text-xs opacity-90">{error}</p>
         </div>
@@ -31,8 +31,8 @@ export default function Page() {
 
   if (!data) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500 font-medium animate-pulse">Loading courses...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground font-medium animate-pulse">Loading courses...</p>
       </div>
     );
   }

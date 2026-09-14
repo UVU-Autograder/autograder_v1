@@ -75,35 +75,35 @@
   "scoring_items": [
     {
       "key": "combinable_protocol",
-      "label": "Combinable Protocol in combine.py (@runtime_checkable)",
+      "label": "Combinable protocol defined in combine.py with can_combine() and combine() methods",
       "points": 15,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "candy_combinable",
-      "label": "Candy can_combine + combine correct",
+      "label": "Candy implements Combinable protocol merging candy_weight for matching items",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "cookie_combinable",
-      "label": "Cookie can_combine + combine correct",
+      "label": "Cookie implements Combinable protocol merging cookie_quantity for matching items",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "order_combine",
-      "label": "Order.add() merges combinable items",
+      "label": "Order.add() automatically combines like items when matching item is present",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "ds9_regression",
-      "label": "DS9 sort + relational ops intact",
+      "label": "DS9 Order.sort() and relational comparison operators intact",
       "points": 25,
       "extra_credit": false,
       "item_type": "pytest"

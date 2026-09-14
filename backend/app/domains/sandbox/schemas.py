@@ -25,6 +25,12 @@ class SandboxRunRecord:
     warnings: int = 1
     max_score: int = 100
     celery_task_id: str | None = None
+    result: dict | None = None
+    zip_data_b64: str | None = None
+    config_json: dict | None = None
+    artifact_refs: dict | None = None
+    allowed_concepts: list | None = None
+    stdin: str | None = None
 
 
 
@@ -139,7 +145,7 @@ class SandboxWarning(BaseModel):
     message: str
 
 
-DEFAULT_RETENTION_NOTICE = "Sandbox results are session-only and are not retained as student submissions."
+DEFAULT_RETENTION_NOTICE = None
 
 
 class SandboxRunResultResponse(BaseModel):
@@ -151,9 +157,16 @@ class SandboxRunResultResponse(BaseModel):
     test_summaries: list[TestSummary]
     rubric_groups: list[RubricGroupResultResponse] = Field(default_factory=list)
     sanitized_feedback: str
+    ai_feedback: str | None = None
     file_preview: FilePreviewMetadata
-    retention_notice: str = DEFAULT_RETENTION_NOTICE
+    retention_notice: str | None = None
     raw_output: str | None = None
+
+
+class SandboxAiFeedbackResponse(BaseModel):
+    run_id: str
+    ai_feedback: str
+    model: str
 
 
 class SandboxCancelResponse(BaseModel):

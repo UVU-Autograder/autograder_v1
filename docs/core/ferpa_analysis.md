@@ -26,6 +26,8 @@ That change does not clear the whole system. The official grading workflow still
 
 FERPA can permit school-official or contractor access when the institution keeps direct control over the use and maintenance of education records. For this project, that means the official grading workflow needs more than a good retention design: it needs UVU approval, role-bounded access, approved infrastructure, and approved handling for any local AI model.
 
+**Current institutional status (project team):** UVU Software Approval (myUVU / ATSC) for live official grading is **in progress**. Until approval completes, treat production use of live Canvas exports as institutionally gated even when technical retention controls are in place.
+
 The current design supports that direction by keeping the sandbox public and non-student-specific, limiting persistent data to metadata, retaining official review/export artifacts only ≤24h (or until staff cleanup), and wiping sandbox artifacts immediately. Those controls reduce risk but do not by themselves authorize live official grading with education-record-linked data.
 
 Answered project questions incorporated into this analysis:
@@ -67,6 +69,19 @@ Pseudonymous labels with a retained mapping, even if the mapping stays outside t
 
 The app should treat fake and fully anonymized validation bundles with the same retention discipline used for student-code-bearing data.
 
+### Local POC / developer use of real Canvas exports
+
+Real Canvas bulk-download ZIPs may be used on local or on-prem POC hosts for debugging and integration testing **only when all of the following remain true**:
+
+- access is limited to authorized staff accounts (`@uvu.edu`) and section-scoped official routes
+- student code, Canvas identifiers, and student names exist only in **ephemeral** official workspaces (≤24h or staff cleanup)
+- PostgreSQL `RunSummary` and long-lived logs remain aggregate-only and non-identifying
+- Monaco/file-tree surfaces show **sanitized assignment-local filenames** only (for example `dessert.py`), not raw Canvas export names
+- exports (CSV, feedback ZIP) are treated as education-record artifacts and handled under instructor/institutional policy
+- real exports are not committed to git, attached to issues, or reused as long-lived fixtures without anonymization
+
+This posture is acceptable for POC engineering while institutional approval is in progress. It does **not** replace formal UVU approval for production/live-course deployment.
+
 Anonymization reduces validation risk, but it does not by itself authorize all downstream uses. Live official grading with education-record-linked data still requires formal institutional approval.
 
 ## Issues And Fixes Matrix
@@ -79,6 +94,30 @@ Anonymization reduces validation risk, but it does not by itself authorize all d
 | Validation with real or pseudonymous student data                                                        | Pseudonymous or re-identifiable datasets can still be linked back to students                                                                                                                                                                         | Partly. Retention limits persistence after intake                                           | Prefer fake/synthetic or completely anonymized validation data                                                                                                                                                                               | Treat pseudonymous workflows as future options only after formal approval                                                                                                                                                        |
 | Approved hardware does not equal approved workflow                                                       | FERPA compliance turns on institutional control and authorized use, not just device ownership or on-prem location                                                                                                                                     | Partly. Dell-workstation hosting assumed, full workflow approval may still be needed        | Formalize the tool's status through UVU's Software Approval Process (myUVU / ATSC and related bodies) before live student-record use                                                                                                         | Keep non-live workflows until institutional approval is obtained                                                                                                                                                                 |
 | Manual ZIP and CSV handling increases unmanaged disclosure risk                                          | Manual instructor export/import workflows create more opportunities for local copies and ad hoc sharing                                                                                                                                               | No                                                                                          | Prefer a governed Canvas integration path over manual ingest/export where feasible                                                                                                                                                           | Evaluate Canvas LTI 1.3 plus anonymous-grading support as a possible future architecture                                                                                                                                         |
+
+## Ephemeral vs persistent data boundary
+
+| Data | Allowed location | Max retention | FERPA notes |
+| :--- | :--- | :--- | :--- |
+| Student code files | Official review workspace (`student_{canvas_id}/`) | ≤24h or staff cleanup | Staff-auth, section-scoped; not in Postgres |
+| Canvas student name, Canvas user id, submission id | Ephemeral `run_details.json`, CSV export, feedback ZIP | ≤24h or staff cleanup | Required for staff review and Canvas CSV import; must not enter Postgres or long-lived logs |
+| Sanitized assignment-local filenames (`dessert.py`) | Monaco preview / file-tree API responses | ≤24h or staff cleanup | Preferred staff-facing filename shape |
+| Raw Canvas export filenames (`name_id_submission_dessert-uuid.py`) | Raw uploaded ZIP only | ≤24h or staff cleanup | Not shown in Monaco/file-tree surfaces after normalization |
+| Aggregate run counts / coarse failure categories | Postgres `RunSummary` | Persistent | Compliant when non-identifying |
+| Student code, tracebacks, Judge0 payloads | Judge0 + `ag_grade_*` execution workspace | Immediate delete after retrieval | Zero-retention execution boundary |
+
+Staff and developers must not copy ephemeral exports into tickets, logs, or repository fixtures without anonymization.
+
+### Structured audit logging
+
+Operational review relies on structured audit events emitted by `backend/app/core/audit_log.py`:
+
+- allowlisted JSON fields only (`run_id`, aggregate counts, coarse `failure_category`, staff actor id, and similar non-identifying metadata)
+- no student names, Canvas ids, raw Canvas filenames, student code, or Judge0 tokens in audit payloads
+- a process-wide `SensitiveDataFilter` redacts Canvas export filenames, `student_{canvas_id}` path segments, email addresses, and Judge0 tokens from all application logs
+- when redaction occurs, an `audit.pii_redacted` event is emitted for traceability
+
+Audit events cover official ingest, run lifecycle transitions, manual/expired workspace cleanup, and Judge0 cleanup failures. Audit logs are aggregate operational evidence and must not be treated as an education-record store.
 
 ## Preferred Path
 

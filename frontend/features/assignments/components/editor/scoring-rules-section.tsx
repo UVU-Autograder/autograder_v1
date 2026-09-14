@@ -157,11 +157,11 @@ export function ScoringRulesSection() {
             <CardDescription>
               Each description/label acts as the test group header for asserts
               under{" "}
-              <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-700">
+              <code className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">
                 tests.py
               </code>
               . Base Total:{" "}
-              <strong className="text-slate-900 font-mono">
+              <strong className="text-foreground font-mono">
                 {totalBasePoints} pts
               </strong>
             </CardDescription>
@@ -184,32 +184,32 @@ export function ScoringRulesSection() {
           <div className="space-y-3">
             {pytestItems.map((item) => (
               <div
-                key={item.key}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-stone-50 rounded-lg border border-stone-200 items-center text-sm"
+                key={item.id || item.key}
+                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm"
               >
                 {/* Key / Slug */}
                 <div className="md:col-span-4 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
                       Key / Pytest Marker
                     </span>
                     <button
                       type="button"
-                      onClick={() => autoGenerateKeyFromLabel(item.key)}
-                      className="text-[10px] flex items-center gap-1 text-indigo-600 font-semibold hover:text-indigo-800 hover:underline cursor-pointer"
+                      onClick={() => autoGenerateKeyFromLabel(item.id || item.key)}
+                      className="text-xs flex items-center gap-1 text-primary font-semibold hover:underline cursor-pointer"
                       title="Auto-generate key from description"
                     >
                       Auto-generate key
                     </button>
                   </div>
                   <div className="relative flex items-center">
-                    <span className="absolute left-2.5 text-xs font-mono font-bold text-stone-500 select-none pointer-events-none">
+                    <span className="absolute left-2.5 text-xs font-mono font-bold text-muted-foreground select-none pointer-events-none">
                       ag_
                     </span>
                     <Input
                       value={item.key}
                       onChange={(e) =>
-                        updateScoringItemField(item.key, "key", e.target.value)
+                        updateScoringItemField(item.id || item.key, "key", e.target.value)
                       }
                       className="font-mono text-xs pl-8"
                     />
@@ -218,13 +218,13 @@ export function ScoringRulesSection() {
 
                 {/* Label / Description Header */}
                 <div className="md:col-span-5 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
                     Description
                   </span>
                   <Input
                     value={item.label}
                     onChange={(e) =>
-                      updateScoringItemField(item.key, "label", e.target.value)
+                      updateScoringItemField(item.id || item.key, "label", e.target.value)
                     }
                     placeholder="e.g. Basic Calculator Operations"
                   />
@@ -232,7 +232,7 @@ export function ScoringRulesSection() {
 
                 {/* Points */}
                 <div className="md:col-span-2 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
                     Points
                   </span>
                   <Input
@@ -240,7 +240,7 @@ export function ScoringRulesSection() {
                     value={item.points}
                     onChange={(e) =>
                       updateScoringItemField(
-                        item.key,
+                        item.id || item.key,
                         "points",
                         parseInt(e.target.value, 10) || 0,
                       )
@@ -254,34 +254,48 @@ export function ScoringRulesSection() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeScoringItem(item.key)}
+                    aria-label="Remove test item"
+                    onClick={() => removeScoringItem(item.id || item.key)}
                   >
-                    <Trash2Icon className="w-4 h-4 text-red-500" />
+                    <Trash2Icon className="w-4 h-4 text-destructive" />
                   </Button>
                 </div>
 
                 {/* Expected I/O Preview */}
-                <div className="md:col-span-12 mt-1 pt-2 border-t border-stone-200 flex flex-wrap items-center gap-3 text-xs text-stone-600">
-                  <span className="font-semibold text-stone-700 flex items-center gap-1">
-                    <FileTextIcon className="w-3.5 h-3.5 text-indigo-600" />
+                <div className="md:col-span-12 mt-1 pt-2 border-t border-border flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground flex items-center gap-1">
+                    <FileTextIcon className="w-3.5 h-3.5 text-primary" />
                     Parsed Expected I/O:
                   </span>
-                  {((item.inputs && item.inputs.length > 0) || (item.outputs && item.outputs.length > 0)) ? (
+                  {(item.inputs && item.inputs.length > 0) ||
+                  (item.outputs && item.outputs.length > 0) ? (
                     <div className="flex flex-wrap items-center gap-2">
                       {item.inputs && item.inputs.length > 0 && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-blue-50 text-blue-700 border border-blue-200" title="Expected Input">
-                          <strong className="mr-1 font-sans font-semibold">Input:</strong> {item.inputs.join(", ")}
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-info/10 text-info border border-info/30"
+                          title="Expected Input"
+                        >
+                          <strong className="mr-1 font-sans font-semibold">
+                            Input:
+                          </strong>{" "}
+                          {item.inputs.join(", ")}
                         </span>
                       )}
                       {item.outputs && item.outputs.length > 0 && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200" title="Expected Output">
-                          <strong className="mr-1 font-sans font-semibold">Output:</strong> {item.outputs.join(", ")}
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-success/10 text-success border border-success/30"
+                          title="Expected Output"
+                        >
+                          <strong className="mr-1 font-sans font-semibold">
+                            Output:
+                          </strong>{" "}
+                          {item.outputs.join(", ")}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-[11px] text-stone-400 italic">
-                      No EXPECTED_INPUT or EXPECTED_OUTPUT constants detected in test code for marker ag_{item.key}.
+                    <span className="text-xs text-muted-foreground italic">
+                      No EXPECTED_INPUT or EXPECTED_OUTPUT in ag_{item.key}.
                     </span>
                   )}
                 </div>
@@ -289,7 +303,7 @@ export function ScoringRulesSection() {
             ))}
 
             {pytestItems.length === 0 && (
-              <p className="text-xs text-stone-400 italic p-4 text-center border border-dashed rounded-lg">
+              <p className="text-xs text-muted-foreground italic p-4 text-center border border-dashed border-border rounded-lg">
                 No autograded pytest criteria configured. Click &quot;Add Pytest
                 Item&quot; or &quot;Sync Markers from Code&quot;.
               </p>
@@ -319,42 +333,18 @@ export function ScoringRulesSection() {
           <div className="space-y-3">
             {manualItems.map((item) => (
               <div
-                key={item.key}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-purple-50/50 rounded-lg border border-purple-200 items-center text-sm"
+                key={item.id || item.key}
+                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm text-card-foreground"
               >
-                {/* Key / Slug */}
-                <div className="md:col-span-4 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase">
-                      Manual Key
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => autoGenerateKeyFromLabel(item.key)}
-                      className="text-[10px] flex items-center gap-1 text-purple-600 font-semibold hover:text-purple-800 hover:underline cursor-pointer"
-                      title="Auto-generate key from label"
-                    >
-                      Auto-generate key
-                    </button>
-                  </div>
-                  <Input
-                    value={item.key}
-                    onChange={(e) =>
-                      updateScoringItemField(item.key, "key", e.target.value)
-                    }
-                    className="font-mono text-xs"
-                  />
-                </div>
-
                 {/* Label / Description Header */}
-                <div className="md:col-span-5 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                <div className="md:col-span-9 space-y-1">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
                     Criterion Label
                   </span>
                   <Input
                     value={item.label}
                     onChange={(e) =>
-                      updateScoringItemField(item.key, "label", e.target.value)
+                      updateScoringItemField(item.id || item.key, "label", e.target.value)
                     }
                     placeholder="e.g. Code Formatting & Comments"
                   />
@@ -362,7 +352,7 @@ export function ScoringRulesSection() {
 
                 {/* Points */}
                 <div className="md:col-span-2 space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
                     Points
                   </span>
                   <Input
@@ -370,7 +360,7 @@ export function ScoringRulesSection() {
                     value={item.points}
                     onChange={(e) =>
                       updateScoringItemField(
-                        item.key,
+                        item.id || item.key,
                         "points",
                         parseInt(e.target.value, 10) || 0,
                       )
@@ -384,16 +374,17 @@ export function ScoringRulesSection() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeScoringItem(item.key)}
+                    aria-label="Remove manual rubric item"
+                    onClick={() => removeScoringItem(item.id || item.key)}
                   >
-                    <Trash2Icon className="w-4 h-4 text-red-500" />
+                    <Trash2Icon className="w-4 h-4 text-destructive" />
                   </Button>
                 </div>
               </div>
             ))}
 
             {manualItems.length === 0 && (
-              <p className="text-xs text-stone-400 italic p-4 text-center border border-dashed rounded-lg">
+              <p className="text-xs text-muted-foreground italic p-4 text-center border border-dashed border-border rounded-lg">
                 No manual rubric items configured.
               </p>
             )}
@@ -406,13 +397,13 @@ export function ScoringRulesSection() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <FileTextIcon className="w-5 h-5 text-indigo-600" />
+              <FileTextIcon className="w-5 h-5 text-primary" />
               <span>Assignment Test Suite</span>
             </CardTitle>
           </div>
           <div className="flex items-center gap-2">
             {saveSuccess && (
-              <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+              <span className="text-xs text-success font-semibold flex items-center gap-1">
                 <CheckCircle2Icon className="w-4 h-4" /> Saved tests.py & rubric
               </span>
             )}
@@ -430,9 +421,9 @@ export function ScoringRulesSection() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-[520px] rounded-lg border border-slate-200 overflow-hidden bg-slate-900">
+          <div className="h-[520px] rounded-lg border border-border overflow-hidden bg-card">
             {loadingCode ? (
-              <div className="flex items-center justify-center h-full text-xs text-slate-400 font-mono animate-pulse">
+              <div className="flex items-center justify-center h-full text-xs text-muted-foreground font-mono animate-pulse">
                 Fetching tests.py source code from server...
               </div>
             ) : (

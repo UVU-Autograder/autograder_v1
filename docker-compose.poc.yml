@@ -1,35 +1,21 @@
 name: uvu-autograder-poc
 
 services:
-  app-postgres:
+  postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-autograder}
       POSTGRES_USER: ${POSTGRES_USER:-autograder}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autograder_dev_password}
+      JUDGE0_POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
     ports:
       - "5432:5432"
     volumes:
-      - app_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_poc_databases.sh:/docker-entrypoint-initdb.d/01_init_poc_databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autograder} -d ${POSTGRES_DB:-autograder}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  judge0-postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: judge0
-      POSTGRES_USER: judge0
-      POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
-    volumes:
-      - judge0_postgres_data:/var/lib/postgresql/data
-      - ./scripts/seed_judge0_language_311.sql:/docker-entrypoint-initdb.d/01_seed_language_311.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -48,6 +34,8 @@ services:
       timeout: 5s
       retries: 10
 
+  # Local tag only: build once with `docker compose -f docker-compose.poc.yml build judge0`
+  # after judge0.Dockerfile changes; day-to-day `up` reuses uvu-autograder-judge0:latest.
   judge0:
     build:
       context: .
@@ -56,7 +44,7 @@ services:
     restart: unless-stopped
     privileged: true
     depends_on:
-      judge0-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -67,7 +55,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD:
-      POSTGRES_HOST: judge0-postgres
+      POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: judge0
       POSTGRES_USER: judge0
@@ -77,6 +65,9 @@ services:
       AUTHZ_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
       ENABLE_SUBMISSION_DELETE: "true"
       ALLOW_ENABLE_NETWORK: "false"
+      # Arch/systemd≥258 cannot force cgroup v1; skip isolate --cg and use rlimits instead.
+      ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT: "true"
+      ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
       CPU_TIME_LIMIT: "30"
       MAX_CPU_TIME_LIMIT: "35"
       WALL_TIME_LIMIT: "40"
@@ -90,6 +81,34 @@ services:
       timeout: 10s
       retries: 10
 
+  # Languages table is created by Judge0 on first boot, so seed after Judge0 is healthy.
+  judge0-language-seed:
+    image: postgres:16-alpine
+    restart: "no"
+    depends_on:
+      judge0:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
+    volumes:
+      - ./scripts/seed_judge0_language_311.sql:/seed.sql:ro
+    entrypoint:
+      [
+        "psql",
+        "-h",
+        "postgres",
+        "-U",
+        "judge0",
+        "-d",
+        "judge0",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/seed.sql",
+      ]
+
   judge0-worker:
     build:
       context: .
@@ -97,20 +116,21 @@ services:
     image: uvu-autograder-judge0:latest
     restart: unless-stopped
     privileged: true
-
     depends_on:
-      judge0-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       judge0:
         condition: service_healthy
+      judge0-language-seed:
+        condition: service_completed_successfully
     environment:
       REDIS_URL: redis://redis:6379/1
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD:
-      POSTGRES_HOST: judge0-postgres
+      POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: judge0
       POSTGRES_USER: judge0
@@ -120,6 +140,9 @@ services:
       AUTHZ_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
       ENABLE_SUBMISSION_DELETE: "true"
       ALLOW_ENABLE_NETWORK: "false"
+      # Same as judge0: skip isolate --cg on cgroup-v2-only hosts (see deployment docs).
+      ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT: "true"
+      ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
       CPU_TIME_LIMIT: "30"
       MAX_CPU_TIME_LIMIT: "35"
       WALL_TIME_LIMIT: "40"
@@ -134,18 +157,21 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
+    network_mode: "host"
     depends_on:
-      app-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       judge0:
         condition: service_healthy
+      judge0-language-seed:
+        condition: service_completed_successfully
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@app-postgres:5432/autograder}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
+      JUDGE0_URL: ${JUDGE0_URL:-http://127.0.0.1:2358}
       JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
       JUDGE0_LANGUAGE_ID: ${JUDGE0_LANGUAGE_ID:-711}
       JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
@@ -163,10 +189,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
-      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-}
-      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-}
-    ports:
-      - "8000:8000"
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
     volumes:
       - backend_data:/data
 
@@ -175,18 +199,21 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
+    network_mode: "host"
     depends_on:
-      app-postgres:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       judge0:
         condition: service_healthy
+      judge0-language-seed:
+        condition: service_completed_successfully
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@app-postgres:5432/autograder}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
+      JUDGE0_URL: ${JUDGE0_URL:-http://127.0.0.1:2358}
       JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
       JUDGE0_LANGUAGE_ID: ${JUDGE0_LANGUAGE_ID:-711}
       JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
@@ -204,15 +231,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
-      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-}
-      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
     command: ["celery", "-A", "app.integrations.celery.app", "worker", "--loglevel=info", "-Q", "sandbox,official,default"]
     volumes:
       - backend_data:/data
 
-
 volumes:
-  app_postgres_data:
-  judge0_postgres_data:
+  postgres_data:
   redis_data:
   backend_data:

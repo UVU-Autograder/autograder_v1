@@ -47,6 +47,7 @@ def test_mock_login_success(client, db_session):
     assert "access_token" in data
     assert data["email"] == email
     assert data["display_name"] == "New Staff"
+    assert data["roles"] == []
 
     # Verify user was provisioned
     user_after = db_session.scalar(select(User).where(User.email == email))
@@ -119,3 +120,46 @@ def test_get_current_user_dependency_inactive_user(client, db_session):
     response = client.get("/staff/courses", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
     assert "User is inactive" in response.json()["detail"]
+
+
+def test_auth_me_returns_admin_roles(client):
+    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["email"] == "dev.staff@uvu.edu"
+    assert "admin" in body["roles"]
+
+
+def test_auth_me_non_admin_has_no_admin_role(client, db_session):
+    from app.domains.auth.models import Role, StaffAccess
+
+    email = "instructor.only@uvu.edu"
+    user = db_session.scalar(select(User).where(User.email == email))
+    if user is None:
+        user = User(email=email, display_name="Instructor Only", is_active=True)
+        db_session.add(user)
+        db_session.flush()
+    instructor_role = db_session.scalar(select(Role).where(Role.name == "instructor"))
+    assert instructor_role is not None
+    existing = [
+        a for a in user.staff_access if a.role_id == instructor_role.id and a.is_active
+    ]
+    if not existing:
+        db_session.add(
+            StaffAccess(
+                user_id=user.id,
+                role_id=instructor_role.id,
+                course_id=None,
+                section_id=None,
+                is_active=True,
+            )
+        )
+    db_session.commit()
+
+    token = create_access_token(email=email, display_name="Instructor Only")
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    body = response.json()
+    assert "instructor" in body["roles"]
+    assert "admin" not in body["roles"]

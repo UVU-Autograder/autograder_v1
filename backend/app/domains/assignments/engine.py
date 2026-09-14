@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from sqlalchemy.orm import Session
+from pydantic import ValidationError
 
 from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
@@ -14,7 +15,6 @@ from app.domains.assignments.service import (
     get_artifact_content,
     get_assignment_for_course,
 )
-from app.domains.runs.orchestrator import build_model_solution_zip
 from app.integrations.artifacts.resolver import resolve_storage_ref
 
 logger = logging.getLogger(__name__)
@@ -77,13 +77,13 @@ class AssignmentSpecificationEngine:
 
         try:
             config = AssignmentConfigV1.model_validate(config_json)
+        except ValidationError as e:
+            for err in e.errors():
+                loc = " -> ".join(str(part) for part in err.get("loc", ()))
+                errors.append(f"Schema validation error at '{loc}': {err.get('msg')}")
+            return errors
         except Exception as e:
-            if hasattr(e, "errors"):
-                for err in e.errors():
-                    loc = " -> ".join(str(part) for part in err.get("loc", []))
-                    errors.append(f"Schema validation error at '{loc}': {err.get('msg')}")
-            else:
-                errors.append(f"Invalid configuration format: {e}")
+            errors.append(f"Invalid configuration format: {e}")
             return errors
 
         unsupported_deps = sorted(
@@ -210,7 +210,11 @@ class AssignmentSpecificationEngine:
             model_files[artifact.display_filename] = content[0]
             model_keys.add(key)
 
-        zip_data = build_model_solution_zip(config.bundle.required_files, model_files)
+        from app.domains.runs.orchestrator import build_model_solution_zip
+
+        zip_data = build_model_solution_zip(
+            config.bundle.derived_required_files(), model_files
+        )
 
         artifact_refs = {}
         for art in assignment.artifacts:

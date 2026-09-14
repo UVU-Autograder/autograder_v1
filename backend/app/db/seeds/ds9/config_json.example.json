@@ -71,28 +71,28 @@
   "scoring_items": [
     {
       "key": "relational_ops",
-      "label": "All 6 relational operators on DessertItem",
+      "label": "DessertItem defines all 6 relational operators (__eq__, __ne__, __lt__, __gt__, __le__, __ge__) comparing cost",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "order_sort",
-      "label": "Order.sort() sorts by cost ascending",
+      "label": "Order.sort() sorts items in ascending order based on calculate_cost()",
       "points": 25,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "student_sort_tests",
-      "label": "Student tests for operators + sort exist",
+      "label": "Student test suite includes test cases validating relational comparison operators and Order.sort()",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "ds8_regression",
-      "label": "DS8 payment + packaging intact",
+      "label": "DS8 payment interface, packaging protocols, and class hierarchy intact",
       "points": 25,
       "extra_credit": false,
       "item_type": "pytest"

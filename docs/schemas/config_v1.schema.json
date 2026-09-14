@@ -86,6 +86,26 @@
       "title": "CompletionRequirementConfig",
       "type": "object"
     },
+    "ConceptsConfig": {
+      "properties": {
+        "allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowlist",
+          "type": "array"
+        },
+        "denylist": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Denylist",
+          "type": "array"
+        }
+      },
+      "title": "ConceptsConfig",
+      "type": "object"
+    },
     "FileRequirementConfig": {
       "properties": {
         "label": {
@@ -250,6 +270,9 @@
       "minItems": 1,
       "title": "Scoring Items",
       "type": "array"
+    },
+    "concepts": {
+      "$ref": "#/$defs/ConceptsConfig"
     },
     "completion_requirements": {
       "items": {

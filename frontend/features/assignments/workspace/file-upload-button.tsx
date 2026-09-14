@@ -9,6 +9,10 @@ type FileUploadButtonProps = {
   multiple?: boolean;
   accept?: string;
   className?: string;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon" | "xs";
+  title?: string;
+  children?: React.ReactNode;
 };
 
 export function FileUploadButton({
@@ -16,6 +20,10 @@ export function FileUploadButton({
   multiple = true,
   accept,
   className,
+  variant = "outline",
+  size = "sm",
+  title,
+  children,
 }: FileUploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,13 +44,18 @@ export function FileUploadButton({
       />
       <Button
         type="button"
-        variant="outline"
-        size="sm"
+        variant={variant}
+        size={size}
         className={className}
+        title={title}
         onClick={() => inputRef.current?.click()}
       >
-        <UploadIcon />
-        Upload files
+        {children ?? (
+          <>
+            <UploadIcon className="size-3.5" />
+            <span>Upload files</span>
+          </>
+        )}
       </Button>
     </>
   );

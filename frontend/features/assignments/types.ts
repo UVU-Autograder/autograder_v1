@@ -4,6 +4,7 @@ export type Constraint = {
 };
 
 export type RubricItem = {
+    id?: string;
     key: string;
     label: string;
     points: number;
@@ -102,13 +103,28 @@ export type AssignmentsResponse = {
 
 export type RunState = "queue" | "run" | "complete" | "failure";
 
+export type RunCounters = {
+    total: number;
+    queued: number;
+    running: number;
+    completed: number;
+    failed: number;
+    warnings: number;
+};
+
 export type RunStatusResponse = {
     run_id: string;
     state: RunState;
     queue_position: number | null;
     eta_band: string | null;
     message: string | null;
+    counters?: RunCounters;
 };
+
+export function runProcessedCount(counters: RunCounters | undefined): number {
+    if (!counters) return 0;
+    return counters.completed + counters.failed;
+}
 
 export type SandboxRunCreateResponse = {
     run_id: string;
@@ -155,7 +171,7 @@ export type SandboxRunResultResponse = {
     test_summaries: SandboxTestSummary[];
     rubric_groups?: RubricGroupResultResponse[];
     sanitized_feedback: string;
-    retention_notice: string;
+    retention_notice?: string | null;
     raw_output?: string | null;
 };
 
@@ -163,6 +179,12 @@ export type SandboxCancelResponse = {
     run_id: string;
     state: string;
     message: string;
+};
+
+export type SandboxAiFeedbackResponse = {
+    run_id: string;
+    ai_feedback: string;
+    model: string;
 };
 
 export type ConceptMetadata = {

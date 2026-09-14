@@ -26,11 +26,11 @@ A checklist item or pull request is complete when:
 
 | Subsystem / Area | Verification Standard & Required Coverage |
 | :--- | :--- |
-| **Archive Ingestion & Bundle Safety** | Unit tests verifying safe path extraction, zip-slip rejection, malformed ZIP handling, assignment `config_json` schema validation, and Canvas filename matching. |
-| **Execution Engine & Runner** | Integration tests covering AST concept checking, `execute_pytest_in_judge0` runner generator, test timeouts (30s limit), and immediate `DELETE /submissions/{token}` execution. |
+| **Archive Ingestion & Bundle Safety** | Unit tests verifying safe path extraction, zip-slip rejection, malformed ZIP handling, assignment `config_json` schema validation, Canvas filename matching, `_LATE_` variants, and Canvas version suffix normalization. |
+| **Execution Engine & Runner** | Integration tests covering AST concept checking, `execute_pytest_in_judge0` runner generator, test timeouts (30s limit), immediate `DELETE /submissions/{token}` execution, and immediate deletion of `ag_grade_*` execution workspaces. |
 | **Student Sandbox Flow** | End-to-end tests for unauthenticated course/assignment discovery, rate-limiting (`warn@40` / `reject@50`), projected scoring results, `visual-diff-viewer`, and immediate post-run cleanup. |
-| **Official Batch Runs** | End-to-end tests for staff Canvas ZIP ingest, section permission checks, transient Redis run status (`GET /runs/{id}/status`), CSV grade exports, and ≤24h workspace cleanup. |
-| **FERPA & Privacy Guardrails** | Automated assertions confirming that persistent DB tables (`RunSummary`), long-lived logs, and AI payloads do not store student code, names, identifiers, or tracebacks. |
+| **Official Batch Runs** | End-to-end tests for staff Canvas ZIP ingest, section permission checks, transient Redis run status (`GET /runs/{id}/status`), CSV grade exports, per-student review workspace retention during the review window, and ≤24h workspace cleanup. |
+| **FERPA & Privacy Guardrails** | Automated assertions confirming that persistent DB tables (`RunSummary`), long-lived logs, and AI payloads do not store student code, names, identifiers, or tracebacks; ephemeral official workspaces may contain identifying review data only within the ≤24h window; structured audit logs use allowlisted fields plus log redaction filters. |
 | **Capacity & Backpressure** | Stress tests verifying queue admission limits (`warn@40` / `reject@50`), execution slot caps (default 2 slots, max 4), and Celery worker stability under load. |
 
 ---

@@ -5,6 +5,7 @@ export type OpenFile = {
   content: string;
   language: string;
   category: FileCategory;
+  kind?: 'text' | 'image';
 };
 
 export type PaneState = {

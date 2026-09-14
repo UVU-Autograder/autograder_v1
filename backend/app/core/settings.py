@@ -29,7 +29,7 @@ class Settings(BaseSettings):
         default="pillow,pygame,tabulate",
         validation_alias="JUDGE0_PREINSTALLED_DEPENDENCIES",
     )
-    sandbox_upload_limit: int = Field(default=5, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
+    sandbox_upload_limit: int = Field(default=999999, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
     sandbox_upload_window_seconds: int = Field(
         default=3600,
         ge=1,
@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     )
     local_llm_api_key: str | None = Field(default=None, validation_alias="LOCAL_LLM_API_KEY")
     local_llm_endpoint: str | None = Field(default=None, validation_alias="LOCAL_LLM_ENDPOINT")
+    local_llm_model: str = Field(default="qwen2.5:3b", validation_alias="LOCAL_LLM_MODEL")
     repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
 
     @property

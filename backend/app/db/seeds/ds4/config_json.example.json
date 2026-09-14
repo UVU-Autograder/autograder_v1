@@ -53,35 +53,35 @@
   "scoring_items": [
     {
       "key": "abstract_class",
-      "label": "DessertItem is ABC with abstract calculate_cost",
+      "label": "DessertItem inherits ABC and defines abstract @abstractmethod calculate_cost()",
       "points": 15,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "tax_percent",
-      "label": "tax_percent attribute defaults to 7.25",
+      "label": "DessertItem tax_percent attribute defaults to 7.25%",
       "points": 10,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "calculate_cost",
-      "label": "calculate_cost() correct for all subclasses",
+      "label": "calculate_cost() computes price per weight, dozen, and scoops for subclasses",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "calculate_tax",
-      "label": "calculate_tax() correct for all subclasses",
+      "label": "calculate_tax() computes tax based on item cost and tax_percent",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "order_totals",
-      "label": "order_cost() and order_tax() correct",
+      "label": "Order methods order_cost() and order_tax() aggregate total prices accurately",
       "points": 25,
       "extra_credit": false,
       "item_type": "pytest"

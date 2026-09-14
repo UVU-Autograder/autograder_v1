@@ -11,14 +11,15 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 type LoginResponse = {
   access_token: string;
   token_type: string;
   email: string;
   display_name: string | null;
+  roles?: string[];
 };
 
 export default function StaffLogin() {
@@ -66,6 +67,8 @@ export default function StaffLogin() {
 
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("email", data.email);
+      localStorage.setItem("roles", JSON.stringify(data.roles ?? []));
+      window.dispatchEvent(new Event("roles-updated"));
       if (data.display_name) {
         localStorage.setItem("displayName", data.display_name);
       }
@@ -80,9 +83,9 @@ export default function StaffLogin() {
   };
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-slate-50 p-4">
+    <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">Staff Portal Sign In</CardTitle>
             <CardDescription>
@@ -91,19 +94,19 @@ export default function StaffLogin() {
           </CardHeader>
           <CardContent className="space-y-4">
             {infoMessage && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning font-medium">
                 {infoMessage}
               </div>
             )}
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive font-medium">
                 {error}
               </div>
             )}
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="email">
                 Email Address
-              </label>
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -114,12 +117,10 @@ export default function StaffLogin() {
                 disabled={isLoading}
               />
             </div>
-          </CardContent>
-          <CardFooter>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing In..." : "Sign In"}
             </Button>
-          </CardFooter>
+          </CardContent>
         </form>
       </Card>
     </div>

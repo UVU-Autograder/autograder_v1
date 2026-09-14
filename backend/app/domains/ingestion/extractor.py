@@ -130,7 +130,12 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
 
 import re
 
-CANVAS_FILENAME_PATTERN = re.compile(r"^([a-zA-Z0-9\-]+)_([0-9]+)_([0-9]+)_(.*)$")
+CANVAS_FILENAME_PATTERN = re.compile(
+    r"^([a-zA-Z0-9\-]+)_(?:LATE_)?([0-9]+)_([0-9]+)_(.*)$"
+)
+CANVAS_FILE_SUFFIX_PATTERN = re.compile(
+    r"-(?:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|([0-9]+))$"
+)
 
 
 def parse_canvas_filename(filename: str) -> tuple[str, str, str, str] | None:
@@ -142,7 +147,37 @@ def parse_canvas_filename(filename: str) -> tuple[str, str, str, str] | None:
     match = CANVAS_FILENAME_PATTERN.match(filename)
     if not match:
         return None
-    return match.groups()
+    student_name, canvas_user_id, submission_id, original_filename = match.groups()
+    return student_name, canvas_user_id, submission_id, original_filename
+
+
+def normalize_canvas_original_filename(filename: str) -> str:
+    """Strip Canvas version suffixes like -6 or -uuid from a filename."""
+    path = Path(filename)
+    new_stem = CANVAS_FILE_SUFFIX_PATTERN.sub("", path.stem)
+    if new_stem == path.stem:
+        return filename
+    return f"{new_stem}{path.suffix}"
+
+
+def normalize_canvas_file_suffixes(directory: Path) -> None:
+    """Rename files in directory by stripping trailing Canvas suffixes."""
+    directory = Path(directory).resolve()
+    for path in sorted(directory.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+        if not path.is_file():
+            continue
+        new_name = normalize_canvas_original_filename(path.name)
+        if new_name == path.name:
+            continue
+        dest = path.parent / new_name
+        if dest.exists():
+            if path.stat().st_size >= dest.stat().st_size:
+                dest.unlink()
+                path.rename(dest)
+            else:
+                path.unlink()
+        else:
+            path.rename(dest)
 
 
 def count_canvas_submissions(
@@ -203,6 +238,22 @@ def group_canvas_files(extract_dir: Path) -> tuple[dict[str, list[Path]], list[P
     return grouped_files, unmatched_files
 
 
+def _copy_canvas_file(source: Path, student_dir: Path, original_filename: str) -> None:
+    normalized_filename = normalize_canvas_original_filename(original_filename)
+    dest = (student_dir / normalized_filename).resolve()
+    try:
+        dest.relative_to(student_dir)
+    except ValueError as exc:
+        raise ValueError(f"Unsafe Canvas filename '{original_filename}'") from exc
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        if source.stat().st_size >= dest.stat().st_size:
+            dest.unlink()
+            shutil.copy2(source, dest)
+        return
+    shutil.copy2(source, dest)
+
+
 def prepare_student_bundle(student_files: list[Path], student_dir: Path) -> None:
     """Prepare a student's submission workspace directory.
 
@@ -223,10 +274,7 @@ def prepare_student_bundle(student_files: list[Path], student_dir: Path) -> None
             except Exception as e:
                 raise ValueError(f"Failed to extract student ZIP '{original_filename}': {e}")
         else:
-            dest = (student_dir / original_filename).resolve()
-            try:
-                dest.relative_to(student_dir)
-            except ValueError as exc:
-                raise ValueError(f"Unsafe Canvas filename '{original_filename}'") from exc
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(path, dest)
+            _copy_canvas_file(path, student_dir, original_filename)
+
+    normalize_canvas_file_suffixes(student_dir)
+    normalize_root_directory(student_dir)

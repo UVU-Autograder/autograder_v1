@@ -53,28 +53,28 @@
   "scoring_items": [
     {
       "key": "ds5_regression",
-      "label": "DS5 classes + DessertShop intact",
+      "label": "DS5 classes and DessertShop main entrypoint intact",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "str_methods",
-      "label": "__str__ defined on all dessert classes",
+      "label": "__str__() string representation defined for all DessertItem subclasses",
       "points": 25,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "to_list",
-      "label": "Order.to_list() returns correct 2D list",
+      "label": "Order.to_list() returns 2D row list for tabulate receipt generation",
       "points": 25,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "output_format",
-      "label": "Receipt formatting matches spec",
+      "label": "Receipt formatting using tabulate matches specification",
       "points": 30,
       "extra_credit": false,
       "item_type": "manual"

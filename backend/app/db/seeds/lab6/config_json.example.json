@@ -37,21 +37,21 @@
   "scoring_items": [
     {
       "key": "part1_ast_execution",
-      "label": "Part 1 headless execution & uses x/y variables (no Rect)",
+      "label": "Part 1 (lab6_part1.py) moves sprite using scalar x/y coordinate variables without Rect",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "part2_ast_execution",
-      "label": "Part 2 headless execution & uses pygame.Rect",
+      "label": "Part 2 (lab6_part2.py) uses pygame.Rect object methods for bounding box position tracking",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "visual_movement",
-      "label": "Animal bounces off borders smoothly & loops correctly",
+      "label": "Animal sprite bounces off window screen boundaries smoothly and updates inside event loop",
       "points": 40,
       "extra_credit": false,
       "item_type": "manual"

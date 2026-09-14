@@ -47,6 +47,50 @@ def manual_score_sum(manual_results: dict | None) -> int:
     )
 
 
+def is_listable_student_file(path: Path, student_dir: Path) -> bool:
+    rel_parts = path.relative_to(student_dir).parts
+    return not any(part in EXCLUDED_WORKSPACE_PARTS for part in rel_parts)
+
+
+def list_bundle_files(student_dir: Path) -> list[str]:
+    student_dir = Path(student_dir).resolve()
+    return sorted(
+        str(path.relative_to(student_dir)).replace("\\", "/")
+        for path in student_dir.rglob("*")
+        if path.is_file() and is_listable_student_file(path, student_dir)
+    )
+
+
+def automated_review_status(res: dict) -> tuple[str, str]:
+    """Return UI status and preview text for an automated grading outcome."""
+    if not res.get("success", False):
+        return "failure", res.get("failure_message") or "Grading execution failed."
+
+    warnings = res.get("warnings", [])
+    if warnings:
+        preview = "; ".join(message for message in (w.get("message") for w in warnings) if message)
+        return "warning", preview or "Grading completed with warnings."
+
+    automated_score = res.get("score", 0)
+    automated_max = res.get("automated_max_score", res.get("max_score", 0))
+    if automated_max > 0 and automated_score < automated_max:
+        failed_labels = [
+            item.get("label") or item.get("key")
+            for item in res.get("test_results", [])
+            if not item.get("passed")
+        ]
+        if failed_labels:
+            shown = ", ".join(label for label in failed_labels[:3] if label)
+            suffix = f" (+{len(failed_labels) - 3} more)" if len(failed_labels) > 3 else ""
+            return "warning", (
+                f"Partial automated score ({automated_score}/{automated_max} pts). "
+                f"Did not pass: {shown}{suffix}."
+            )
+        return "warning", f"Partial automated score ({automated_score}/{automated_max} pts)."
+
+    return "success", "All automated tests passed successfully."
+
+
 def init_manual_results(scoring_items) -> dict:
     return {
         item.key: {
@@ -60,7 +104,11 @@ def init_manual_results(scoring_items) -> dict:
     }
 
 
-def manual_grading_progress(student_results: dict) -> dict[str, int | bool]:
+def manual_grading_progress(
+    student_results: dict,
+    *,
+    run_status: str | None = None,
+) -> dict[str, int | bool]:
     total = len(student_results)
     requires_manual = any(
         bool(result.get("manual_results")) for result in student_results.values()
@@ -73,11 +121,13 @@ def manual_grading_progress(student_results: dict) -> dict[str, int | bool]:
             for item in (result.get("manual_results") or {}).values()
         )
     )
+    manual_complete = not requires_manual or completed == total
+    run_complete = run_status is None or run_status == "complete"
     return {
         "requires_manual_grading": requires_manual,
         "completed_students": completed,
         "total_students": total,
-        "exports_ready": not requires_manual or completed == total,
+        "exports_ready": bool(run_complete and manual_complete),
     }
 
 
@@ -162,21 +212,8 @@ def student_detail_from_result(
     *,
     feedback_html: str | None = None,
 ) -> dict:
-    success = res.get("success", False)
-    warnings = res.get("warnings", [])
-    if not success:
-        status_val = "failure"
-        feedback_preview = res.get("failure_message") or "Grading execution failed."
-    elif warnings:
-        status_val = "warning"
-        feedback_preview = "; ".join(
-            w.get("message") for w in warnings if w.get("message")
-        )
-    else:
-        status_val = "success"
-        feedback_preview = "All tests passed successfully."
-
     manual_results = res.get("manual_results") or {}
+    status_val, feedback_preview = automated_review_status(res)
     automated_results = [
         {
             "key": item.get("key"),
@@ -188,10 +225,12 @@ def student_detail_from_result(
         }
         for item in res.get("test_results", [])
     ]
+    bundle_files = res.get("bundle_files") or []
     return {
         "student_name": res.get("student_identifier", "Unknown"),
         "canvas_id": canvas_id,
-        "matched_file": res.get("matched_file") or "student_functions.py",
+        "bundle_files": bundle_files,
+        "bundle_file_count": res.get("bundle_file_count", len(bundle_files)),
         "score": res.get("score", 0) + manual_score_sum(manual_results),
         "max_score": res.get("max_score", 100),
         "status": status_val,
@@ -214,6 +253,14 @@ def load_run_details_json(details_file: Path) -> dict:
         return json.loads(details_file.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         raise HTTPException(status_code=500, detail="Failed to load run details.")
+
+
+def write_run_details_json(run_dir: Path, payload: dict) -> None:
+    """Atomically write ephemeral official run details."""
+    details_file = run_dir / "run_details.json"
+    temp_file = details_file.with_suffix(".json.tmp")
+    temp_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    os.replace(temp_file, details_file)
 
 
 def write_run_grades_csv(run_dir: Path, student_results: dict) -> None:
@@ -241,11 +288,6 @@ def write_feedback_zip(run_dir: Path, student_results: dict) -> None:
             filename = f"{res['student_identifier']}_{canvas_id}_feedback.html"
             z_out.writestr(filename, res["feedback_html"])
     os.replace(temp, output)
-
-
-def is_listable_student_file(path: Path, student_dir: Path) -> bool:
-    rel_parts = path.relative_to(student_dir).parts
-    return not any(part in EXCLUDED_WORKSPACE_PARTS for part in rel_parts)
 
 
 def require_official_run_for_assignment(

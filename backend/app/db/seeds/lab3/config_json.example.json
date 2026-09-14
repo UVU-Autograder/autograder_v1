@@ -33,28 +33,28 @@
   "scoring_items": [
     {
       "key": "encapsulation",
-      "label": "_ and __ attribute encapsulation",
+      "label": "YouTubeChannel protects attributes using private (_ and __) naming encapsulation",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "getters_setters",
-      "label": "Getter and setter methods with negative guard",
+      "label": "Getter and setter methods enforce validation guards against negative counts",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "type_hints",
-      "label": "Type hint annotations on constructor and __str__",
+      "label": "Explicit type hints added to parameters and return types on constructor and __str__()",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "reflection",
-      "label": "Reflection responses on encapsulation and name mangling",
+      "label": "Lab 3 reflection markdown contains clear responses explaining encapsulation and name mangling",
       "points": 30,
       "extra_credit": false,
       "item_type": "manual"

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, Form, Header, HTTPException, Response, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.core.dependencies import DbSession
 from app.core.settings import get_settings
@@ -14,6 +15,7 @@ from app.domains.sandbox.catalog import (
 )
 from app.domains.sandbox.schemas import (
     ConceptMetadata,
+    SandboxAiFeedbackResponse,
     SandboxAssignmentDetail,
     SandboxAssignmentListResponse,
     SandboxCancelResponse,
@@ -169,8 +171,39 @@ def get_result(
     return result
 
 
+@router.post("/runs/{run_id}/ai-feedback", response_model=SandboxAiFeedbackResponse)
+def generate_ai_feedback_endpoint(
+    run_id: str,
+    x_sandbox_session: str | None = Header(default=None),
+) -> SandboxAiFeedbackResponse:
+    feedback = sandbox_service.generate_ai_feedback(run_id, x_sandbox_session)
+    if feedback is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return feedback
+
+
+@router.post("/runs/{run_id}/ai-feedback/stream")
+def generate_ai_feedback_stream_endpoint(
+    run_id: str,
+    x_sandbox_session: str | None = Header(default=None),
+) -> StreamingResponse:
+    generator = sandbox_service.generate_ai_feedback_stream(run_id, x_sandbox_session)
+    if generator is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return StreamingResponse(
+        generator,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
 @router.get("/concepts/metadata", response_model=dict[str, ConceptMetadata])
 def get_concepts_metadata_endpoint():
     from app.integrations.ast_checker.validator import get_concepts_metadata
     return get_concepts_metadata()
+
 

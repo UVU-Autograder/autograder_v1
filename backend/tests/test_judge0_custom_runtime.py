@@ -32,7 +32,9 @@ def test_seed_sql_file_validity():
     content = sql_file.read_text(encoding="utf-8")
     assert "711" in content
     assert "Python (3.11.9)" in content
-    assert "/usr/local/python-3.11.9/bin/python3.11 main.py" in content
+    assert "/usr/local/python-3.11.9/bin/python3.11" in content
+    assert "compile_cmd" in content
+    assert "run_cmd" in content
 
 
 def test_judge0_dockerfile_runtime():
@@ -56,6 +58,23 @@ def test_docker_compose_seed_mount_and_timeouts():
     assert compose_file.is_file()
 
     content = compose_file.read_text(encoding="utf-8")
-    assert "./scripts/seed_judge0_language_311.sql:/docker-entrypoint-initdb.d/01_seed_language_311.sql:ro" in content
+    assert "judge0-language-seed:" in content
+    assert "./scripts/seed_judge0_language_311.sql:/seed.sql:ro" in content
+    assert "./scripts/init_poc_databases.sh:/docker-entrypoint-initdb.d/01_init_poc_databases.sh:ro" in content
+    assert "image: uvu-autograder-judge0:latest" in content
+    assert "POSTGRES_HOST: postgres" in content
+    assert "app-postgres" not in content
+    assert "judge0-postgres" not in content
     assert 'CPU_TIME_LIMIT: "30"' in content
     assert 'TEST_EXECUTION_TIMEOUT_SECONDS: ${TEST_EXECUTION_TIMEOUT_SECONDS:-30}' in content
+
+
+def test_judge0_dockerfile_skips_pgo():
+    """POC Judge0 builds skip --enable-optimizations for faster local compiles."""
+    repo_root = Path(__file__).resolve().parents[2]
+    content = (repo_root / "judge0.Dockerfile").read_text(encoding="utf-8")
+    assert "--enable-optimizations" not in content
+    assert "USER root" in content
+    assert "USER judge0" in content
+    assert "archive.debian.org" in content
+    assert "chmod 777" not in content

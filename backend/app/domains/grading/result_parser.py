@@ -192,6 +192,15 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
 # ---------------------------------------------------------------------------
 
 
+def _clean_assertion_target(match: re.Match) -> tuple[str, str]:
+    act_str = match.group(1).strip().strip("'\"")
+    exp_str = match.group(3).strip().strip("'\"")
+    msg_match = re.search(r"^(.+?),\s*([\"'].*[\"'])$", exp_str)
+    if msg_match:
+        exp_str = msg_match.group(1).strip().strip("'\"")
+    return act_str, exp_str
+
+
 def _extract_assertion_values(message: str | None, actual: str | None = None, expected: str | None = None) -> tuple[str | None, str | None]:
     """Extract your_value (actual) and expected_value (expected) from failure message or result attributes."""
     if actual is not None or expected is not None:
@@ -200,14 +209,21 @@ def _extract_assertion_values(message: str | None, actual: str | None = None, ex
     if not message:
         return None, None
 
+    # Priority 1: Pytest evaluated failure line (e.g. "E       assert -1.0 == 0.0")
+    for line in message.splitlines():
+        line_str = line.strip()
+        if line_str.startswith("E ") and "assert " in line_str:
+            match = re.search(r"E\s+assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
+            if match:
+                return _clean_assertion_target(match)
+
+    # Priority 2: Standard assert statement line in traceback
     for line in message.splitlines():
         line_str = line.strip()
         if "AssertionError:" in line_str or "assert " in line_str:
             match = re.search(r"assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
             if match:
-                act_str = match.group(1).strip().strip("'\"")
-                exp_str = match.group(3).strip().strip("'\"")
-                return act_str, exp_str
+                return _clean_assertion_target(match)
 
             if "assert False" in line_str or "assert false" in line_str:
                 return "false", "true"
