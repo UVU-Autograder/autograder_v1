@@ -15,7 +15,15 @@ For a grading workload characterized by short-lived, high-frequency executions, 
 - **Swapiness**: Reduce `vm.swappiness` (e.g., to 10) to prevent the host from swapping out active VM memory to disk, which would cause massive latency spikes in grading.
 
 ### CPU Optimization
-- **CPU Pinning**: Use `cpuset` to isolate cores for Kata VMs, preventing them from competing with the FastAPI/Celery orchestration layer.
+- **CPU Pinning**: The Dell Pro Max Tower T2 provides 20 cores (Intel Core Ultra 7 265, 40 threads). Use `cpuset` to pin cores for Kata VMs if needed, preventing them from competing with the FastAPI/Celery orchestration layer.
+
+### Privileged Container Passthrough
+Judge0 requires `privileged: true` to run its internal `isolate` sandbox. In Kata (especially `runtime-rs`), enable:
+```toml
+# /etc/kata-containers/configuration.toml
+privileged_without_host_devices = true
+```
+This gives Judge0 namespace and cgroup permissions inside the microVM without failing on host `/dev` hardware device mapping.
 
 ## 3. Guest OS & Image Optimization
 - **Minimal Rootfs**: Use a stripped-down guest image (e.g., based on Alpine or a custom minimal Linux) to keep the base memory footprint below 128MB.

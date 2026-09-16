@@ -74,15 +74,36 @@ curl -fL "${release_url}" -o "${tmp_dir}/kata-static.tar.zst"
 echo "Installing Kata static payload into /opt/kata..."
 tar --zstd -xf "${tmp_dir}/kata-static.tar.zst" -C /
 
-if [ ! -x "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" ]; then
-  echo "containerd-shim-kata-v2 was not found at ${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2 after extraction." >&2
+shim_binary=""
+if [ -x "${KATA_INSTALL_DIR}/runtime-rs/bin/containerd-shim-kata-v2" ]; then
+  shim_binary="${KATA_INSTALL_DIR}/runtime-rs/bin/containerd-shim-kata-v2"
+elif [ -x "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" ]; then
+  shim_binary="${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2"
+else
+  echo "containerd-shim-kata-v2 was not found under ${KATA_INSTALL_DIR} after extraction." >&2
   echo "If the release asset layout changed, find the current kata-static asset URL and rerun with:" >&2
   echo "  sudo KATA_RELEASE_URL=<asset-url> $0" >&2
   exit 1
 fi
 
-ln -sf "${KATA_INSTALL_DIR}/bin/kata-runtime" /usr/local/bin/kata-runtime
-ln -sf "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" /usr/local/bin/containerd-shim-kata-v2
+ln -sf "${shim_binary}" /usr/local/bin/containerd-shim-kata-v2
+ln -sf "${shim_binary}" /usr/bin/containerd-shim-kata-v2
+if [ -x "${KATA_INSTALL_DIR}/bin/kata-runtime" ]; then
+  ln -sf "${KATA_INSTALL_DIR}/bin/kata-runtime" /usr/local/bin/kata-runtime
+fi
+
+mkdir -p /etc/kata-containers
+if [ -f "${KATA_INSTALL_DIR}/share/defaults/kata-containers/configuration.toml" ] && [ ! -f /etc/kata-containers/configuration.toml ]; then
+  cp "${KATA_INSTALL_DIR}/share/defaults/kata-containers/configuration.toml" /etc/kata-containers/configuration.toml
+fi
+if [ -f /etc/kata-containers/configuration.toml ]; then
+  echo "Configuring privileged_without_host_devices = true for Kata..."
+  if grep -q "privileged_without_host_devices" /etc/kata-containers/configuration.toml; then
+    sed -i "s/^#*privileged_without_host_devices.*/privileged_without_host_devices = true/" /etc/kata-containers/configuration.toml
+  else
+    echo "privileged_without_host_devices = true" >> /etc/kata-containers/configuration.toml
+  fi
+fi
 
 mkdir -p /etc/docker
 if [ ! -f /etc/docker/daemon.json ]; then

@@ -1,6 +1,6 @@
-# Local POC Deployment (Ubuntu 24.x target; other Linux OK for light use)
+# Local POC & Workstation Deployment (Ubuntu 24.04 LTS / Dell Workstation)
 
-This document wires the current repository into a fully functional local proof-of-concept stack. The long-term execution target is the Ubuntu 24.x / Dell workstation with Kata. The same compose file can run on other Linux hosts (e.g. a developer laptop) for backend and single-job grading smoke tests—see [Host capacity](#host-capacity).
+This document wires the current repository into a fully functional local proof-of-concept stack. The long-term execution target is the **Dell Pro Max Tower T2 (Intel Core Ultra 7 265, 20 cores / 40 threads, 32GB RAM, NVIDIA RTX PRO 4500 Blackwell, Ubuntu 24.04.5 LTS)** with Kata Containers. The same compose file can run on other Linux hosts (e.g. a developer laptop) for backend and single-job grading smoke tests—see [Host capacity](#host-capacity).
 
 This is not a live-student production approval document. Use synthetic, fake, or approved anonymized test code while validating the end-to-end autograder path.
 
@@ -60,7 +60,7 @@ docker compose -f docker-compose.poc.yml down
 
 ### Host capacity
 
-Capacity planning in the specs assumes the **32GB Dell** workstation (default execution-slot cap `2`). A typical developer laptop (~8GB RAM, few cores) can idle the POC stack for API work and **one grading job at a time**, but will thrash under concurrent Judge0 work, heavy pygame runs, Kata, or IDE + browser + frontend together.
+Capacity planning in the specs is benchmarked on the Dell workstation (execution-slot cap `2-4`). A typical developer laptop (~8GB RAM, few cores) can idle the POC stack for API work and **one grading job at a time**, but will thrash under concurrent Judge0 work, heavy pygame runs, Kata, or IDE + browser + frontend together.
 
 On small hosts:
 
@@ -85,11 +85,14 @@ Kata is host-level infrastructure, not a FastAPI dependency. Install and registe
 sudo scripts/install-kata-docker-runtime-ubuntu.sh
 ```
 
-The script downloads the Kata static release, installs it under `/opt/kata`, registers Docker runtime `kata-runtime`, restarts Docker, and verifies:
+The script downloads the Kata static release, installs it under `/opt/kata`, links the Rust runtime shim (`/opt/kata/runtime-rs/bin/containerd-shim-kata-v2`) to `/usr/local/bin` and `/usr/bin`, configures `privileged_without_host_devices = true` in `/etc/kata-containers/configuration.toml` for Judge0 compatibility, registers Docker runtime `kata-runtime`, restarts Docker, and verifies:
 
 ```bash
 docker run --rm --runtime kata-runtime busybox uname -a
 ```
+
+> [!IMPORTANT]
+> When running containers with `privileged: true` under `kata-runtime`, ensure `/etc/kata-containers/configuration.toml` contains `privileged_without_host_devices = true`. Without this, Kata attempts to map non-existent host `/dev` paths into the microVM, failing with `get host path failed (os error 2)`.
 
 Then start the POC stack with the Kata override:
 
@@ -184,6 +187,8 @@ The current documentation says the technical design reduces FERPA risk, but live
 **Project status:** UVU Software Approval for live official grading is in progress. Local/on-prem POC use of real Canvas ZIPs is acceptable for authorized staff debugging when student-identifying data remains ephemeral only (≤24h), Postgres/logs stay aggregate-only, and exports are not committed to the repository. See [ferpa_analysis.md](../core/ferpa_analysis.md).
 
 Local LLM credentials can be supplied through environment variables, but AI feedback for live, pseudonymous, or real student-derived code should remain disabled unless the UVU approval checklist is complete.
+
+On the Dell Pro Max Tower T2 workstation with the **NVIDIA RTX PRO 4500 Blackwell GPU**, the recommended model is **`qwen2.5-coder:7b`** (VRAM footprint ~4.7 GB) or **`qwen2.5-coder:14b`** (~9 GB VRAM) served via Ollama (`LOCAL_LLM_ENDPOINT=http://127.0.0.1:11434/v1`). The default `qwen2.5:3b` remains a low-RAM CPU fallback.
 
 ## Celery Beat Scheduler (Periodic Tasks)
 
