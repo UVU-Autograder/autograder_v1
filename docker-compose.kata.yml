@@ -1,10 +1,37 @@
 services:
   judge0:
-    # Dev-machine Kata wiring: run the Judge0 API container with the host's
-    # registered Kata Docker runtime. Remove this override for non-Kata hosts.
     runtime: ${KATA_DOCKER_RUNTIME:-kata-runtime}
+    privileged: false
+    extra_hosts:
+      - "postgres:host-gateway"
+      - "redis:host-gateway"
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - SYS_CHROOT
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - MKNOD
+      - CHOWN
+      - FOWNER
+      - KILL
 
   judge0-worker:
-    # Dev-machine Kata wiring: run the Judge0 worker container with the host's
-    # registered Kata Docker runtime. Remove this override for non-Kata hosts.
     runtime: ${KATA_DOCKER_RUNTIME:-kata-runtime}
+    privileged: false
+    extra_hosts:
+      - "postgres:host-gateway"
+      - "redis:host-gateway"
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - SYS_CHROOT
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - MKNOD
+      - CHOWN
+      - FOWNER
+      - KILL
+

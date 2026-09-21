@@ -65,10 +65,27 @@ npm run docker:build
 # Launch on-prem stack (Postgres, Redis, Judge0, Celery, Backend)
 npm run docker:up
 
+# Launch on-prem stack with Kata microVM isolation (Linux hosts with /dev/kvm)
+npm run docker:up:kata
+
 # Stream logs or stop stack
 npm run docker:logs
 npm run docker:down
 ```
+
+## Workstation & Production Operating Notes
+
+- **Workstation IP / Endpoints:**
+  - Frontend: `http://10.115.20.200:3000` (managed via `autograder-frontend.service`)
+  - Backend API: `http://10.115.20.200:8000`
+  - Health check: `http://10.115.20.200:8000/health`
+- **Default Seeded Staff User:** `dev.staff@uvu.edu` (admin role)
+- **Frontend Systemd Service:**
+  ```bash
+  sudo systemctl status autograder-frontend
+  sudo systemctl restart autograder-frontend
+  ```
+- **Local LLM (Ollama):** Managed via `ollama` systemd service running `qwen2.5-coder:7b` on NVIDIA GPU (port 11434).
 
 ## Frontend
 

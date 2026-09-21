@@ -85,14 +85,29 @@ Kata is host-level infrastructure, not a FastAPI dependency. Install and registe
 sudo scripts/install-kata-docker-runtime-ubuntu.sh
 ```
 
-The script downloads the Kata static release, installs it under `/opt/kata`, links the Rust runtime shim (`/opt/kata/runtime-rs/bin/containerd-shim-kata-v2`) to `/usr/local/bin` and `/usr/bin`, configures `privileged_without_host_devices = true` in `/etc/kata-containers/configuration.toml` for Judge0 compatibility, registers Docker runtime `kata-runtime`, restarts Docker, and verifies:
+The script downloads the Kata static release, installs it under `/opt/kata`, links the Rust runtime shim (`/opt/kata/runtime-rs/bin/containerd-shim-kata-v2`) to `/usr/local/bin` and `/usr/bin`, installs an editable config at `/etc/kata-containers/runtime-rs/configuration.toml`, registers Docker runtime `kata-runtime`, restarts Docker, and verifies:
 
 ```bash
 docker run --rm --runtime kata-runtime busybox uname -a
 ```
 
 > [!IMPORTANT]
-> When running containers with `privileged: true` under `kata-runtime`, ensure `/etc/kata-containers/configuration.toml` contains `privileged_without_host_devices = true`. Without this, Kata attempts to map non-existent host `/dev` paths into the microVM, failing with `get host path failed (os error 2)`.
+> **Do not run Judge0 with `privileged: true` under `kata-runtime`.** Kata responds to the
+> privileged flag by hot-plugging every host `/dev` entry into the guest, which fails on this
+> workstation with `get host path failed (os error 2)` (NVMe + ~20 snap loop devices).
+> `privileged_without_host_devices = true` does **not** fix this: it is a containerd-CRI /
+> CRI-O option with no equivalent under standalone Docker Engine, and is not a field in Kata's
+> config schema — writing it to `configuration.toml` is silently discarded (confirmed on this
+> host by inspecting the shim's parsed `Runtime` struct). `docker-compose.kata.yml` instead
+> sets `privileged: false` with an explicit `cap_add` list, which is verified working.
+
+> [!NOTE]
+> `runtime-rs` reads `/etc/kata-containers/runtime-rs/configuration.toml`. The
+> `/etc/kata-containers/configuration.toml` path belongs to the deprecated Go runtime and is
+> ignored. Confirm which file is live before relying on any host tuning:
+> ```bash
+> sudo journalctl -u containerd --since "2 minutes ago" --no-pager | grep "load configuration from"
+> ```
 
 Then start the POC stack with the Kata override:
 
@@ -108,6 +123,40 @@ If the dev machine uses a different Docker runtime name, set it in `.env.local`:
 ```bash
 KATA_DOCKER_RUNTIME=kata-runtime
 ```
+
+### Networking under Kata (required)
+
+Docker's embedded DNS (`127.0.0.11`) does not reach into a Kata guest — the VM has its own
+kernel and loopback, so Compose service names do not resolve. Two consequences, both already
+handled but easy to reintroduce:
+
+1. **Judge0 containers** need `extra_hosts` in `docker-compose.kata.yml` so `postgres` and
+   `redis` resolve to the host gateway:
+   ```yaml
+   extra_hosts:
+     - "postgres:host-gateway"
+     - "redis:host-gateway"
+   ```
+   Without this, Judge0 boots but fails `db:create` with
+   `could not translate host name "postgres" to address`, never passes its healthcheck, and
+   blocks everything with `depends_on: judge0: service_healthy`.
+
+2. **`backend` and `celery-worker` use `network_mode: "host"`**, so they are outside the
+   Compose network entirely and service names never resolve for them. `extra_hosts` does not
+   help here (host-network containers use the host's own `/etc/hosts`). Their `.env.local`
+   values must use published ports on loopback:
+   ```bash
+   DATABASE_URL=postgresql+psycopg://autograder:<password>@127.0.0.1:5432/autograder
+   REDIS_URL=redis://127.0.0.1:6379/0
+   CELERY_BROKER_URL=redis://127.0.0.1:6379/0
+   JUDGE0_URL=http://127.0.0.1:2358
+   ```
+   Note `.env.example` ships the container-network hostnames (`@postgres:5432`, `redis://redis`,
+   `http://judge0:2358`), which **will not work** on this deployment. Symptom is
+   `failed to resolve host 'postgres'` in the backend logs and nothing listening on port 8000.
+
+Backend startup also runs Alembic migrations and seeding, so `:8000` refuses connections for a
+while after `docker compose up` returns. Wait before concluding it failed.
 
 ## Database Behavior
 
@@ -131,7 +180,9 @@ Judge0 uses the same Postgres container on database `judge0`. Custom language `7
 
 The compose file starts Judge0 CE and its worker locally. The app sends zipped student work to Judge0 through the existing backend grading pipeline and deletes Judge0 submissions after result retrieval.
 
-`judge0` and `judge0-worker` use `privileged: true`. That matches official Judge0 CE (isolate sandbox) and is expected for local POC; do not treat removing it as a simple hardening step without proving isolate still works. Long-term isolation on the Dell host is Kata (`docker-compose.kata.yml`), not dropping privileges alone.
+Upstream Judge0 CE uses `privileged: true` for its isolate sandbox, and `docker-compose.poc.yml` keeps that for the plain (runc) POC path. **The Kata path does not**: `docker-compose.kata.yml` overrides it to `privileged: false` plus an explicit `cap_add` list, because privileged mode makes Kata fail to start the container at all (see the Kata section above). This was verified working end to end — submissions return `Accepted` on stock language 71 and custom 711, with pytest/Pillow/pygame imports intact.
+
+If a capability turns out to be missing for some workload, add the specific capability rather than reverting to `privileged: true`, which does not function under Kata on this host.
 
 Judge0 CE `1.13.1` is Debian Buster (EOL). `judge0.Dockerfile` retargets apt to `archive.debian.org` and builds as `USER root` during install, then switches back to `judge0`.
 
@@ -152,6 +203,15 @@ ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
 ```
 
 on both `judge0` and `judge0-worker`. That makes Judge0 omit isolate’s `--cg` flag and use process rlimits instead, which works on cgroup v2. Isolation is weaker than cgroup accounting; fine for laptop POC, not a substitute for Kata on the Dell workstation.
+
+> [!IMPORTANT]
+> **Keep these enabled on the Dell workstation too — including on the Kata path.** Forcing
+> cgroup v1 on the host via GRUB does work on Ubuntu 24.04.5 (systemd 255.4, below the ≥258
+> threshold where forcing was removed), but it does not help here: isolate runs *inside* the
+> Kata guest, which boots its own kernel with `cgroup_no_v1=all
+> systemd.unified_cgroup_hierarchy=1` baked into the shipped runtime-rs config. The guest is
+> cgroup-v2-only regardless of the host hierarchy, so the rlimits fallback is required on any
+> Kata host, not just on cgroup-v2-only ones like Arch.
 
 **Longer-term:** upgrade to isolate v2 + Judge0 cgroup-v2 entrypoint changes (upstream PR discussion), or run on a host that still supports cgroup v1 / Kata validation path.
 
@@ -194,11 +254,18 @@ On the Dell Pro Max Tower T2 workstation with the **NVIDIA RTX PRO 4500 Blackwel
 
 The autograder stack utilizes **Celery Beat** to schedule periodic background tasks such as the hourly workspace cleanup (`cleanup_expired_workspaces`).
 
-`docker-compose.poc.yml` does not include a Celery Beat service. Run Beat separately when you need periodic cleanup:
+`docker-compose.poc.yml` includes a `celery-beat` service that mirrors `celery-worker`'s
+environment and dependencies, running Beat with its schedule file on the persistent
+`backend_data` volume (`--schedule=/data/celerybeat-schedule`). It starts with the rest of the
+stack — no separate process to remember.
+
+Confirm it is scheduling:
 
 ```bash
-# From the backend venv / container shell:
-celery -A app.integrations.celery.app beat --loglevel=info
+docker compose -f docker-compose.poc.yml -f docker-compose.kata.yml logs celery-beat --tail 30
+# expect: "Scheduler: Sending due task cleanup_expired_workspaces"
 ```
 
-Make sure the Celery Beat scheduler process is running to guarantee that temporary student workspaces and grade review exports are cleaned up after their 24-hour expiration window.
+The cleanup task is hourly, so a freshly started stack will only show the startup banner until
+the first interval elapses. Since the zero-retention contract depends on this task, verify an
+actual dispatch — not just that the container is up — before treating retention as enforced.

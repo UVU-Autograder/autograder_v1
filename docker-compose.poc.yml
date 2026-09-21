@@ -191,6 +191,8 @@ services:
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
       LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://10.115.20.200:3000,https://autograder-frontend-mockup.vercel.app}
     volumes:
       - backend_data:/data
 
@@ -233,7 +235,54 @@ services:
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
       LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}
     command: ["celery", "-A", "app.integrations.celery.app", "worker", "--loglevel=info", "-Q", "sandbox,official,default"]
+    volumes:
+      - backend_data:/data
+
+  # Schedules periodic tasks (e.g. cleanup_expired_workspaces) for the zero-retention
+  # policy. Mirrors celery-worker's env/deps; only the command differs.
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    network_mode: "host"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      judge0:
+        condition: service_healthy
+      judge0-language-seed:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
+      JUDGE0_URL: ${JUDGE0_URL:-http://127.0.0.1:2358}
+      JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-judge0-testing-token}
+      JUDGE0_LANGUAGE_ID: ${JUDGE0_LANGUAGE_ID:-711}
+      JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
+      SANDBOX_USE_CELERY: ${SANDBOX_USE_CELERY:-true}
+      SANDBOX_UPLOAD_LIMIT: ${SANDBOX_UPLOAD_LIMIT:-5}
+      SANDBOX_UPLOAD_WINDOW_SECONDS: ${SANDBOX_UPLOAD_WINDOW_SECONDS:-3600}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
+      DEFAULT_MAX_FILES: ${DEFAULT_MAX_FILES:-100}
+      DEFAULT_MAX_ZIP_SIZE: ${DEFAULT_MAX_ZIP_SIZE:-52428800}
+      TEST_EXECUTION_TIMEOUT_SECONDS: ${TEST_EXECUTION_TIMEOUT_SECONDS:-30}
+      ARTIFACT_STORAGE_DIR: ${ARTIFACT_STORAGE_DIR:-/data/artifacts}
+      RUN_ALEMBIC_MIGRATIONS: "false"
+      SEED_DATABASE: "false"
+      ENABLE_MOCK_LOGIN: ${ENABLE_MOCK_LOGIN:-true}
+      JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}
+    command: ["celery", "-A", "app.integrations.celery.app", "beat", "--loglevel=info", "--schedule=/data/celerybeat-schedule"]
     volumes:
       - backend_data:/data
 

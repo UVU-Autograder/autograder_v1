@@ -12,6 +12,7 @@
     "openapi:generate": "cd backend && python scripts/generate_openapi.py",
     "docker:build": "docker compose --env-file .env.local -f docker-compose.poc.yml build judge0",
     "docker:up": "docker compose --env-file .env.local -f docker-compose.poc.yml up -d --build",
+    "docker:up:kata": "docker compose --env-file .env.local -f docker-compose.poc.yml -f docker-compose.kata.yml up -d --build",
     "docker:down": "docker compose -f docker-compose.poc.yml down",
     "docker:logs": "docker compose -f docker-compose.poc.yml logs -f",
     "docker:clean": "docker compose -f docker-compose.poc.yml down -v"
