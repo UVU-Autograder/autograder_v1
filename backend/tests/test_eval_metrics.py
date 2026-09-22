@@ -244,9 +244,29 @@ def test_seed_cases_render_into_messages():
             failures=case.failures,
             concept_violations=case.concept_violations,
             student_code=case.student_code,
+            code_files=case.code_files or None,
+            passing_labels=case.passing_labels or None,
         )
         assert messages[0]["role"] == "system"
         user = messages[1]["content"]
         assert "STUDENT_CODE" in user
         for failure in case.failures:
             assert failure["key"] in user, f"{case.case_id}: {failure['key']} missing from prompt"
+
+
+def test_generated_cases_cite_real_scoring_keys():
+    """Generated cases came from the real grader: every failure key must be a
+    scoring item of that assignment (or the execution_error the runtime adds)."""
+    import json as _json
+
+    from app.integrations.ai.prompts import EXECUTION_ERROR_KEY
+
+    seeds = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
+    generated = [c for c in load_cases(CASES_DIR) if c.case_id.startswith("gen_")]
+    assert len(generated) >= 40, "run: python -m eval.build_cases"
+    for case in generated:
+        config = _json.loads((seeds / case.assignment_slug.replace("-", "_") / "config_json.example.json").read_text())
+        keys = {item["key"] for item in config["scoring_items"]} | {EXECUTION_ERROR_KEY}
+        cited = {f["key"] for f in case.failures}
+        assert cited <= keys, f"{case.case_id}: unknown keys {cited - keys}"
+        assert case.code_files, f"{case.case_id}: generated cases carry the bundle's files"

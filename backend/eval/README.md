@@ -63,6 +63,59 @@ Helpfulness is deliberately not scored here. It needs a human or a judge model
 and does not belong in a deterministic scorer. Grade it blind, 1–5, from the
 `results/<label>.json` transcript.
 
+## Generated cases (`gen_*`)
+
+`python -m eval.build_cases` builds cases from `eval/mutations.py`: each entry
+applies one realistic student bug to a seed's model solution, then grades it
+with the production `GradingEngine` (AST concept checks, test injection, the
+generated runner script, `calculate_scores`). Only the Judge0 call is replaced,
+by a local subprocess running the same runner. The prompt input is then built
+exactly as the live sandbox builds it. So failure messages, keys and concept
+warnings are real grader output, and all code is synthetic.
+
+A mutation the grader doesn't catch is dropped, not written. `--check`
+validates without writing. Needs the Judge0 image's extra packages locally
+(`pip install tabulate pillow`; pygame seeds are skipped on machines without it).
+
+The same generator is the starting point for a Phase 2 training set: identical
+inputs, with reviewed target responses instead of rubric scores.
+
+### Grader gaps it found
+
+These mutations produced **no failing test**, i.e. the real autograder lets the
+bug through. Worth an instructor look:
+
+| Assignment | Bug that passes | Item that should catch it |
+| --- | --- | --- |
+| lab2 | balance printed without 2 decimals | `account_str` |
+| lab2 | `demo.py` never prints | `demo_output` |
+| lab5 | exactly 100 cents not carried | `normalize` |
+| ds2 | total label changed to `"Total items:"` | `main_output` |
+| ds2 | `__iter__` never resets its index | `order_class` |
+| ds5 | tax rate changed to 7.5% | `ds4_regression` |
+| ds10 | candies with different prices combined | `candy_combinable` |
+
+Also: the **lab4 model solution** uses `raise` (exceptions, Module 7) in a
+Module 3 lab, so the AST concept check warns on the reference solution itself.
+
+## Reviewing quality
+
+Hard metrics can't tell you whether feedback is *good*. After a run:
+
+```bash
+python -m eval.review stock-12b-dell
+```
+
+```bash
+python -m eval.review smoke-lora --against stock-12b-dell
+```
+
+This writes `results/<label>-review.md`: per case, what the grader reported,
+what the model said (as the sandbox would render it), the automatic verdicts,
+and a rubric (accurate / helpful / tone / would-you-show-a-student). Cases the
+stock model already handles well need no training data; the weak ones are
+where Phase 2 examples should go.
+
 ## Growing the case set
 
 The seven seed cases are synthetic and cover one assignment (DS2). They exercise

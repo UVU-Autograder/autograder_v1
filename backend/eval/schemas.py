@@ -39,7 +39,11 @@ class EvalCase(BaseModel):
     # grading.result_parser.calculate_scores, so captures pass straight through.
     failures: list[dict[str, Any]] = Field(default_factory=list)
     concept_violations: list[str] = Field(default_factory=list)
-    student_code: str
+    student_code: str = ""
+    # Multi-file bundles, rendered exactly as the live sandbox renders them.
+    # When set, it replaces student_code in the prompt.
+    code_files: dict[str, str] = Field(default_factory=dict)
+    passing_labels: list[str] = Field(default_factory=list)
 
     # --- expectations ---------------------------------------------------
     forbidden_identifiers: list[str] = Field(

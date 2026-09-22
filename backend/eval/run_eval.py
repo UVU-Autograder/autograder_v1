@@ -71,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
                 failures=case.failures,
                 concept_violations=case.concept_violations,
                 student_code=case.student_code,
+                code_files=case.code_files or None,
+                passing_labels=case.passing_labels or None,
             )
             try:
                 completion = client.complete(messages)
