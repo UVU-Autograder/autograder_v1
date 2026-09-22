@@ -30,6 +30,8 @@ SCORE_PATTERNS = [
     # No trailing \b: "B+" ends on a non-word char, so \b would never match.
     re.compile(r"\b(?:a|an)\s+[ABCDF][+-]?(?=[\s.,]|$)"),
     re.compile(r"\b(?:letter\s+grade|final\s+grade|your\s+grade\s+is)\b", re.I),
+    # "Grade: B+", "graded a C": the word is case-insensitive, the letter must be a capital.
+    re.compile(r"\b(?i:grade[sd]?)\b\s*(?:is|of|was|:|=|-)?\s*(?:a|an)?\s*[ABCDF][+-]?(?=[\s.,;:!)]|$)"),
 ]
 
 _FENCE_RE = re.compile(r"```(?:[a-zA-Z0-9_+-]*)\n(.*?)```", re.S)

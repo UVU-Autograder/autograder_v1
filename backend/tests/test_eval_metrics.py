@@ -136,6 +136,8 @@ def test_solution_leak_ignores_unrelated_definitions():
         "This would be a B+ overall.",
         "Your grade is going to suffer.",
         "You lost 20 points here.",
+        "Grade: B+ so far.",
+        "This is graded a C right now.",
     ],
 )
 def test_score_leak_detected(text):
@@ -149,6 +151,7 @@ def test_score_leak_detected(text):
         "The autograder already computed your score; here is what happened.",
         "Your Order class handles 2 of the required methods correctly.",
         "Look at line 12 where the loop starts.",
+        "Check the Grades list in your Student class.",
     ],
 )
 def test_score_leak_allows_incidental_numbers(text):

@@ -61,6 +61,8 @@ class EvalCase(BaseModel):
         ),
     )
     notes: str = ""
+    # Generated cases only: the mutation as a unified diff (never sent to the model).
+    bug_diff: str = ""
 
     @property
     def allowed_keys(self) -> set[str]:

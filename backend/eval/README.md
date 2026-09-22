@@ -95,6 +95,26 @@ bug through. Worth an instructor look:
 | ds5 | tax rate changed to 7.5% | `ds4_regression` |
 | ds10 | candies with different prices combined | `candy_combinable` |
 
+The Phase 2 set (`TRAIN_MUTATIONS`) found 23 more. Each was dropped from the
+training list because the grader reports nothing:
+
+| Assignment | Bug that passes |
+| --- | --- |
+| lab2 | `__str__` drops the comma between owner and balance |
+| lab3 | constructor accepts a negative count; `set_video_count(0)` is ignored (`> 0`) |
+| lab4 | `__init__` writes `_title` directly, skipping validation |
+| lab7 | `main` sorts in reverse; `main` never prints the total-courses line |
+| ds1 | `Cookie` inherits `Candy` instead of `DessertItem` |
+| ds2 | `order` list shared as a class attribute; Candy stores weight as price (DS1 regression) |
+| ds3 | `Order.__len__` deleted (DS2 regression) |
+| ds5 | empty candy name accepted; weight 0 accepted; header `Item` for `Name`; menu uses `int(choice)` |
+| ds8 | `PayType` without `PHONE`; `Payable` not a `Protocol`; **the student's own failing test still passes `student_order_tests`** |
+| ds9 | **same for `student_sort_tests`**; `__eq__` without the type check; `set_pay_type` validation removed (DS8 regression) |
+| ds10 | `Cookie.can_combine` ignores price; `Candy.combine` returns `None`; `sort` reversed (DS9 regression) |
+
+Not gaps, checked: lab1 Part 2 validates the submitted `bears3.jpg` by design,
+and deleting `__lt__` still sorts because Python falls back to `__gt__`.
+
 Also: the **lab4 model solution** uses `raise` (exceptions, Module 7) in a
 Module 3 lab, so the AST concept check warns on the reference solution itself.
 

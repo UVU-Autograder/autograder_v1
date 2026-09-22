@@ -1,0 +1,76 @@
+{
+  "case_id": "p2_lab7_default_before_required",
+  "category": "import_error",
+  "assignment_slug": "lab7",
+  "assignment_title": "Lab 7: Modeling College Students with Data Classes",
+  "requirements": "Automatically checked items:\n- Student uses @dataclass(order=True) decorator with typed fields and field(default_factory=list)\n- Student defines enroll(course_name) to append courses and total_courses() count method\n- Student dataclass sort_index orders list of Student instances by student ID\n- main() entrypoint instantiates Student records, tests course enrollment, and outputs summary",
+  "allowed_concepts": [
+    "variables",
+    "conditionals",
+    "loops",
+    "functions",
+    "image-processing",
+    "classes",
+    "type-hints",
+    "inheritance",
+    "properties",
+    "operator-overloading",
+    "generators",
+    "testing",
+    "abstract-classes",
+    "exceptions",
+    "protocols",
+    "pygame",
+    "dataclasses",
+    "file-io"
+  ],
+  "failures": [
+    {
+      "key": "dataclass",
+      "label": "Student uses @dataclass(order=True) decorator with typed fields and field(default_factory=list)",
+      "message": "tests.py:13: in test_dataclass\n    (student_mod,) = import_student_modules(\"student\")\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1406: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1371: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1342: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:938: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:759: in exec_module\n    ???\n<frozen importlib._bootstrap>:491: in _call_with_frames_removed\n    ???\nstudent.py:6: in <module>\n    @dataclass(order=True)\n     ^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1440: in wrap\n    return _process_class(cls, init, repr, eq, order, unsafe_hash,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1136: in _process_class\n    _init_fn(all_init_fields,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:687: in _init_fn\n    raise TypeError(f'non-default argument {f.name!r} '\nE   TypeError: non-default argument 'major' follows default argument 'courses'",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    },
+    {
+      "key": "methods",
+      "label": "Student defines enroll(course_name) to append courses and total_courses() count method",
+      "message": "tests.py:30: in test_methods\n    (student_mod,) = import_student_modules(\"student\")\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1406: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1371: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1342: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:938: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:759: in exec_module\n    ???\n<frozen importlib._bootstrap>:491: in _call_with_frames_removed\n    ???\nstudent.py:6: in <module>\n    @dataclass(order=True)\n     ^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1440: in wrap\n    return _process_class(cls, init, repr, eq, order, unsafe_hash,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1136: in _process_class\n    _init_fn(all_init_fields,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:687: in _init_fn\n    raise TypeError(f'non-default argument {f.name!r} '\nE   TypeError: non-default argument 'major' follows default argument 'courses'",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    },
+    {
+      "key": "ordering",
+      "label": "Student dataclass sort_index orders list of Student instances by student ID",
+      "message": "tests.py:46: in test_ordering\n    (student_mod,) = import_student_modules(\"student\")\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1406: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1371: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1342: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:938: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:759: in exec_module\n    ???\n<frozen importlib._bootstrap>:491: in _call_with_frames_removed\n    ???\nstudent.py:6: in <module>\n    @dataclass(order=True)\n     ^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1440: in wrap\n    return _process_class(cls, init, repr, eq, order, unsafe_hash,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1136: in _process_class\n    _init_fn(all_init_fields,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:687: in _init_fn\n    raise TypeError(f'non-default argument {f.name!r} '\nE   TypeError: non-default argument 'major' follows default argument 'courses'",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    },
+    {
+      "key": "main_output",
+      "label": "main() entrypoint instantiates Student records, tests course enrollment, and outputs summary",
+      "message": "tests.py:63: in test_main_output\n    (student_mod,) = import_student_modules(\"student\")\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1406: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1371: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1342: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:938: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:759: in exec_module\n    ???\n<frozen importlib._bootstrap>:491: in _call_with_frames_removed\n    ???\nstudent.py:6: in <module>\n    @dataclass(order=True)\n     ^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1440: in wrap\n    return _process_class(cls, init, repr, eq, order, unsafe_hash,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:1136: in _process_class\n    _init_fn(all_init_fields,\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/dataclasses.py:687: in _init_fn\n    raise TypeError(f'non-default argument {f.name!r} '\nE   TypeError: non-default argument 'major' follows default argument 'courses'",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    }
+  ],
+  "passing_labels": [],
+  "concept_violations": [],
+  "student_code": "",
+  "code_files": {
+    "student.py": "\"\"\"Student Dataclass - Lab 7 Model Solution.\"\"\"\n\nfrom dataclasses import dataclass, field\n\n\n@dataclass(order=True)\nclass Student:\n    \"\"\"Models a college student using a dataclass with ID ordering.\"\"\"\n\n    id: int\n    name: str\n    courses: list[str] = field(default_factory=list, compare=False)\n    major: str\n\n    def enroll(self, course: str) -> None:\n        \"\"\"Enroll student in a course by adding course number to list.\"\"\"\n        self.courses.append(course)\n\n    def total_courses(self) -> int:\n        \"\"\"Return total number of enrolled courses.\"\"\"\n        return len(self.courses)\n\n\ndef main() -> None:\n    \"\"\"Main testing entrypoint.\"\"\"\n    s1 = Student(101, \"Alice Smith\", \"Computer Science\")\n    s2 = Student(102, \"Bob Jones\", \"Software Engineering\")\n    s3 = Student(100, \"Charlie Brown\", \"Data Science\")\n\n    s1.enroll(\"CS 1410\")\n    s1.enroll(\"CS 2300\")\n    s2.enroll(\"CS 1400\")\n\n    print(s1)\n    print(f\"{s1.name} total courses: {s1.total_courses()}\")\n    print(s2)\n\n    print(f\"s1 > s2: {s1 > s2}\")\n    print(f\"s3 < s1: {s3 < s1}\")\n\n    students = [s1, s2, s3]\n    sorted_students = sorted(students)\n    print(\"Sorted students by ID:\", [s.id for s in sorted_students])\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  },
+  "forbidden_identifiers": [
+    "Student",
+    "enroll",
+    "main",
+    "total_courses"
+  ],
+  "injection_canaries": [],
+  "notes": "generated by eval.build_cases: courses field (with a default) declared before major (no default): TypeError at import",
+  "bug_diff": "--- model/student.py\n+++ student/student.py\n@@ -10,6 +10,6 @@\n     id: int\n     name: str\n+    courses: list[str] = field(default_factory=list, compare=False)\n     major: str\n-    courses: list[str] = field(default_factory=list, compare=False)\n \n     def enroll(self, course: str) -> None:\n"
+}

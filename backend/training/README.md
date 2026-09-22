@@ -145,6 +145,42 @@ only dependencies (`pydantic`, `httpx`):
 Paste back `eval/results/scoreboard.csv`. Two rows, same server, same prompt
 version: that's the comparison every future adapter gets measured against.
 
+## Phase 2 — the reviewed dataset
+
+The smoke adapter proved the pipeline; Phase 2 is the real training set. Every
+input is a realistic bug in a seed's model solution, graded by the real
+autograder (`eval/mutations.py` → `TRAIN_MUTATIONS`, held out from the eval
+set). Every target is a stock-model draft **edited by a person**.
+
+| Step | Where | Command |
+| --- | --- | --- |
+| 1. Build inputs (already committed) | Mac | `python -m eval.build_cases --split train` → `training/p2/cases/` |
+| 2. Draft | Dell, vLLM up on :8001 | `~/venvs/train/bin/python -m training.draft_p2 --model gemma4-12b-qat` |
+| 3. Copy drafts to the Mac | Mac | `scp -r 'dev@10.115.20.200:autograder_v1-dev/backend/training/p2/review' backend/training/p2/` |
+| 4. Edit | Mac, VS Code | each `training/p2/review/<case>.md` |
+| 5. Check progress / build | Mac or Dell | `python -m training.build_p2_dataset --status`, then without `--status` |
+| 6. Train | Dell | `train_lora --data training/data/p2 --out training/output/p2 --max-length 4096` |
+
+**Editing a review file.** Read the diff (the actual bug) and what the grader
+reported, then fix the JSON at the bottom and change `status: todo` to
+`approved`, or to `rejected` to leave the case out. The checklist is in each
+file. Keep each `test_key`; all-pass cases keep `"items": []`. Commit as you
+go: the review files are the dataset, and git is its history.
+
+**The build is strict on purpose.** An approved target must pass the same gate
+the sandbox applies before a student sees feedback (grounded keys, no score, no
+solution code), plus at most 3 items, no repeated key, under 150 words, no
+injection canary. Any bad file stops the build and names the file and reason.
+
+**Re-drafting is safe.** `draft_p2` never touches an existing review file;
+`--redraft-todo` re-drafts only files still at `todo`. When the prompt changes,
+inputs are rebuilt at build time with the new prompt; the build notes which
+targets were drafted under an older version so you can re-read them.
+
+**Six cases are flagged "changed lines are cut off".** Large DS8–DS10 bundles
+exceed the prompt's code budget, so the model sees the failure but not the
+`Order` class. Feedback there has to reason from the assertion.
+
 ## Troubleshooting
 
 See the table in `docs/deployment/blackwell_training_setup.md`. The short version:
