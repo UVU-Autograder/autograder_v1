@@ -148,7 +148,10 @@ def main(argv: list[str] | None = None) -> int:
     (args.out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
     print(f"wrote {len(rows['train'])} train / {len(rows['valid'])} valid rows to {args.out}")
     print(f"by category: {dict(sorted(by_category.items()))}")
-    print(f"longest prompt: {longest} chars (~{longest // 3} tokens); train with --max-length 4096 so none are dropped")
+    estimate = longest // 3  # rough and on the high side; the real tokenizer runs in train_lora
+    max_length = 4096 if estimate + 700 <= 4096 else 6144  # prompt + room for the response
+    print(f"longest prompt: {longest} chars (~{estimate} tokens, rough estimate). train_lora drops rows over "
+          f"--max-length and reports how many; use --max-length {max_length}.")
     if stale_prompt:
         print(f"note: some targets were drafted under prompt {sorted(stale_prompt)}, inputs are rebuilt with "
               f"{PROMPT_VERSION}. Re-read those targets if the rules changed.")

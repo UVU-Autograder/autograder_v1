@@ -35,6 +35,7 @@ CASES_DIR = P2_DIR / "cases"
 REVIEW_DIR = P2_DIR / "review"
 
 STATUSES = ("todo", "approved", "rejected")
+STATUS_ALIASES = {"accepted": "approved", "accept": "approved", "approve": "approved", "reject": "rejected"}
 HEADER_RE = re.compile(r"^<!-- p2-review \| case=(?P<case>\S+) \| drafted_by=(?P<model>\S+) \| prompt=(?P<prompt>\S+) -->")
 STATUS_RE = re.compile(r"^status:\s*(\S+)\s*$", re.MULTILINE)
 EDIT_MARKER = "## Your version"
@@ -181,6 +182,7 @@ def parse_review(path: Path) -> Review:
     if len(statuses) != 1:
         raise ValueError(f"expected exactly one 'status:' line under {EDIT_MARKER}, found {len(statuses)}")
     status = statuses[0].strip().lower()
+    status = STATUS_ALIASES.get(status, status)
     if status not in STATUSES:
         raise ValueError(f"status must be one of {', '.join(STATUSES)}, got {status!r}")
     blocks = re.findall(r"```json\n(.*?)\n```", tail, flags=re.DOTALL)

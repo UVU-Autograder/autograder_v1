@@ -81,6 +81,11 @@ def test_review_round_trip(tmp_path):
     assert parse_target(review).items[0].test_key == "mul"
 
 
+def test_review_accepts_status_synonyms(tmp_path):
+    path = _write_review(tmp_path, _case(), GOOD, status="accepted")
+    assert parse_review(path).status == "approved"
+
+
 def test_review_rejects_ambiguous_status(tmp_path):
     path = _write_review(tmp_path, _case(), GOOD)
     path.write_text(path.read_text().replace("status: approved", "status: approved\nstatus: todo"))
