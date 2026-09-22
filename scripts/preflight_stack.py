@@ -28,6 +28,7 @@ import argparse
 import io
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -221,6 +222,19 @@ def check_proxy(proxy: str) -> None:
     )
 
 
+_FAILED_ITEM_RE = re.compile(r"Test case '([^']+)' failed")
+
+
+def manual_item_keys(assignment_id: str) -> set[str]:
+    """Scoring-item keys the seed config marks as manual (staff-graded, no pytest)."""
+    config_path = SEEDS_DIR / assignment_id.replace("-", "_") / "config_json.example.json"
+    try:
+        items = json.loads(config_path.read_text()).get("scoring_items", [])
+    except (OSError, ValueError):
+        return set()
+    return {item["key"] for item in items if item.get("item_type") == "manual"}
+
+
 def staff_token(api: str, email: str) -> str | None:
     status, body, _ = http_json("POST", f"{api}/auth/mock-login", {"email": email})
     token = body.get("access_token") if isinstance(body, dict) else None
@@ -263,6 +277,7 @@ def check_model_solutions(api: str, token: str, concurrency: int, timeout_s: flo
         return f"{api}/staff/courses/{course_id}/assignments/{assignment_id}"
 
     passed = 0
+    stale_worker = 0
     for start in range(0, len(targets), concurrency):
         batch = targets[start : start + concurrency]
         started: dict[tuple[str, str], float] = {}
@@ -284,12 +299,28 @@ def check_model_solutions(api: str, token: str, concurrency: int, timeout_s: flo
                 if state in ("success", "complete", "failure"):
                     score, max_score = body.get("score", 0), body.get("max_score", 0)
                     ok = state != "failure" and max_score > 0 and score == max_score
+                    errors = [str(e) for e in body.get("errors", [])]
+                    flagged = set(_FAILED_ITEM_RE.findall(" ".join(errors)))
+                    manual = manual_item_keys(assignment_id)
+                    # Full automated score, and every "failed" item is a manual rubric
+                    # item: the signature of a worker built before 7d70a9f, which
+                    # counted manual items as automated failures.
+                    only_manual = (
+                        not ok and max_score > 0 and score == max_score and flagged and flagged <= manual
+                    )
+                    detail = f"{score}/{max_score} in {elapsed:.0f}s"
                     if ok:
                         passed += 1
-                    detail = f"{score}/{max_score} in {elapsed:.0f}s"
-                    if not ok and body.get("errors"):
-                        detail += " -- " + " | ".join(str(e) for e in body["errors"])[:500]
-                    record("grading", "PASS" if ok else "FAIL", f"model solution {course_id}/{assignment_id}", detail)
+                        status_word = "PASS"
+                    elif only_manual:
+                        stale_worker += 1
+                        status_word = "WARN"
+                        detail += f" -- only manual items flagged ({', '.join(sorted(flagged))})"
+                    else:
+                        status_word = "FAIL"
+                        if errors:
+                            detail += " -- " + " | ".join(errors)[:500]
+                    record("grading", status_word, f"model solution {course_id}/{assignment_id}", detail)
                     del pending[key]
                 elif elapsed > timeout_s:
                     record(
@@ -302,12 +333,22 @@ def check_model_solutions(api: str, token: str, concurrency: int, timeout_s: flo
             if pending:
                 time.sleep(2)
 
-    record(
-        "grading",
-        "PASS" if passed == len(targets) else "FAIL",
-        "all model solutions at full score",
-        f"{passed}/{len(targets)}",
-    )
+    real_failures = len(targets) - passed - stale_worker
+    if real_failures == 0 and stale_worker:
+        record(
+            "grading",
+            "WARN",
+            "all model solutions at full score",
+            f"{passed}/{len(targets)} clean; {stale_worker} flagged only on manual rubric items -- the running "
+            "celery-worker predates the 7d70a9f fix. Rebuild backend + celery-worker to clear.",
+        )
+    else:
+        record(
+            "grading",
+            "PASS" if real_failures == 0 else "FAIL",
+            "all model solutions at full score",
+            f"{passed}/{len(targets)}" + (f" ({stale_worker} manual-only, see above)" if stale_worker else ""),
+        )
 
 
 def check_sandbox(api: str, seed: str, timeout_s: float) -> None:
