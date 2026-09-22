@@ -6,9 +6,12 @@
 #   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu129
 #   pip install -r backend/training/requirements-train.txt
 #
-# Pins are the combination reported working for Gemma 4 QLoRA on 32GB sm_120.
+# trl/bitsandbytes pins are the combination reported working for Gemma 4 QLoRA on
+# 32GB sm_120. transformers is newer than that report: Gemma 4 12B is "Unified"
+# (model_type gemma4_unified), which only exists from transformers 5.10.1; 5.17.0
+# is verified with trl 0.23.1 + peft 0.21 on the real Gemma4Unified classes.
 # If anything here tries to bump torch to a cu130 build, bitsandbytes breaks.
-transformers==5.5.3
+transformers==5.17.0
 trl==0.23.1
 bitsandbytes==0.49.2
 peft>=0.17,<1

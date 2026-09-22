@@ -6,11 +6,15 @@ Defaults are the pipeline smoke run: ~20 synthetic rows, 30 steps. The output is
 a standard PEFT adapter (adapter_config.json + adapter_model.safetensors) that
 vLLM loads directly with --enable-lora -- no fuse, no GGUF, no MLX conversion.
 
-Gemma 4 specifics baked in:
-- attn_implementation="sdpa": the 512-dim global attention layers exceed
+Gemma 4 12B specifics baked in:
+- It is "Gemma 4 Unified" (model_type gemma4_unified, transformers >= 5.10.1),
+  loaded with AutoModelForMultimodalLM as the model card does. It has no vision
+  or audio tower -- raw inputs go through small projections (embed_vision,
+  embed_audio) straight into model.language_model.
+- attn_implementation="sdpa": Gemma 4's wide global-attention heads exceed
   FlashAttention's 256 head-dim limit and fail outright.
-- LoRA targets only language-model projections. Gemma 4 is multimodal; adapting
-  the vision/audio towers wastes memory and the feedback path is text-only.
+- LoRA targets only model.language_model.layers.* projections; the multimodal
+  projections are excluded. The feedback path is text-only.
 - Loss on the assistant turn only (prompt/completion split), so the model learns
   the response, not to reproduce the system prompt.
 """
@@ -44,30 +48,40 @@ def to_prompt_completion(row: dict) -> dict:
     return {"prompt": messages[:-1], "completion": messages[-1:]}
 
 
-def load_model_and_tokenizer(base: str):
+def load_model_and_tokenizer(base: str, quantize: bool = True):
+    """Load the checkpoint in NF4 (QLoRA). ``quantize=False`` is for CPU checks only."""
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-
-    quant = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoModelForMultimodalLM,
+        AutoTokenizer,
+        BitsAndBytesConfig,
     )
-    kwargs = dict(
-        quantization_config=quant,
-        dtype=torch.bfloat16,
-        attn_implementation="sdpa",
-        device_map={"": 0},
-    )
-    try:
-        model = AutoModelForCausalLM.from_pretrained(base, **kwargs)
-    except (ValueError, KeyError) as exc:
-        # Multimodal checkpoints may only register the image-text-to-text head.
-        from transformers import AutoModelForImageTextToText
 
-        print(f"AutoModelForCausalLM rejected the checkpoint ({exc}); using AutoModelForImageTextToText")
-        model = AutoModelForImageTextToText.from_pretrained(base, **kwargs)
+    kwargs: dict = {"attn_implementation": "sdpa", "dtype": torch.bfloat16 if quantize else torch.float32}
+    if quantize:
+        kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+        kwargs["device_map"] = {"": 0}
+    # Gemma 4 Unified registers under the multimodal-LM auto class (per the model
+    # card); plain causal-LM checkpoints fall through to the second loader.
+    errors = []
+    for loader in (AutoModelForMultimodalLM, AutoModelForCausalLM):
+        try:
+            model = loader.from_pretrained(base, **kwargs)
+            print(f"loaded {type(model).__name__} via {loader.__name__}")
+            break
+        except (ValueError, KeyError) as exc:
+            errors.append(f"{loader.__name__}: {str(exc).splitlines()[0]}")
+    else:
+        raise SystemExit(
+            "no transformers auto class can load this checkpoint -- is transformers too old for its "
+            "model_type? (Gemma 4 12B needs >= 5.10.1)\n  " + "\n  ".join(errors)
+        )
 
     tokenizer = AutoTokenizer.from_pretrained(base)
     if tokenizer.chat_template is None:
@@ -96,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     import transformers
     import trl
     from datasets import load_dataset
-    from peft import LoraConfig, prepare_model_for_kbit_training
+    from peft import LoraConfig
     from trl import SFTConfig, SFTTrainer
 
     for split in ("train", "valid"):
@@ -111,7 +125,9 @@ def main(argv: list[str] | None = None) -> int:
     started = time.time()
     torch.cuda.reset_peak_memory_stats()
     model, tokenizer = load_model_and_tokenizer(args.base)
-    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+    # No explicit prepare_model_for_kbit_training: SFTTrainer runs it for 4-bit
+    # models (and it upcasts non-4-bit weights -- here mainly the ~1B-param
+    # embedding table -- to fp32, ~+2GB; there are no per-layer embeddings).
     print(f"base loaded in {time.time() - started:.0f}s, {torch.cuda.memory_allocated() / 1024**3:.1f}GiB resident")
 
     lora = LoraConfig(
@@ -131,7 +147,8 @@ def main(argv: list[str] | None = None) -> int:
         gradient_accumulation_steps=args.grad_accum,
         learning_rate=args.lr,
         lr_scheduler_type="cosine",
-        warmup_ratio=0.1,
+        # warmup_ratio was removed in transformers 5.x; ~10% of steps, explicitly.
+        warmup_steps=max(1, args.max_steps // 10),
         bf16=True,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
@@ -156,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     trainer.model.print_trainable_parameters()
     adapted = [name for name, _ in trainer.model.named_modules() if name.endswith(".lora_A")]
     adapted_count = len(adapted)
-    leaked = [name for name in adapted if any(t in name for t in ("vision", "audio", "multi_modal"))]
+    leaked = [name for name in adapted if ".layers." not in name or any(t in name for t in ("vision", "audio", "multi_modal"))]
     if leaked:
         raise SystemExit(f"LoRA attached to non-language modules: {leaked[:5]}")
     print(f"LoRA attached to {adapted_count} language-model projections")

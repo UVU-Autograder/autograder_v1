@@ -205,20 +205,28 @@ pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu129
 ```
 
 ```bash
-pip install "transformers==5.5.3" "trl==0.23.1" "bitsandbytes==0.49.2" peft accelerate datasets huggingface_hub
+pip install -r backend/training/requirements-train.txt
 ```
 
-Known-good combination on 32GB Blackwell, from a Gemma 4 QLoRA run on an RTX 5090
-(same `sm_120`, same 32GB):
+Verified stack on this Dell (RTX PRO 4500, `sm_120`), 2026-09-22:
 
-| Component | Version |
-| --- | --- |
-| Python | 3.13 |
-| torch | 2.11.0+cu129 |
-| transformers | 5.5.3 |
-| trl | 0.23.1 |
-| bitsandbytes | 0.49.2 |
-| peft LoRA | r=8, alpha=16 |
+| Component | Version | Why |
+| --- | --- | --- |
+| Python | 3.12 (stock 24.04) | 3.13 not required |
+| torch | 2.11.0+cu129 | cu128 lacks working sm_120 cuBLAS kernels |
+| transformers | **5.17.0** | Gemma 4 12B is `gemma4_unified`, added in 5.10.1 |
+| trl | 0.23.1 | |
+| peft | 0.21.0 | |
+| bitsandbytes | 0.49.2 | |
+| LoRA | r=8, alpha=16 | |
+
+The trl/bitsandbytes pins come from a Gemma 4 **31B** QLoRA report on an RTX 5090
+(same `sm_120`, same 32GB). That report used transformers 5.5.3, which predates
+the 12B's architecture: **Gemma 4 12B is "Unified"** (`model_type:
+gemma4_unified`, no vision/audio tower, loads via `AutoModelForMultimodalLM`),
+and 5.5.3 fails with *"model type `gemma4_unified` ... does not recognize this
+architecture"*. Note transformers 5.x also removed `warmup_ratio` — `train_lora`
+uses `warmup_steps`.
 
 Re-run the preflight after installing. The `bitsandbytes NF4 forward` check is
 the one that matters — bitsandbytes `sm_120` support landed late, and an import
