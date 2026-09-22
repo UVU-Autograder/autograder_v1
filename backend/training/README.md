@@ -93,11 +93,18 @@ python3.12 -m venv ~/venvs/serve && ~/venvs/serve/bin/pip install -r backend/tra
 ```
 
 ```bash
-~/venvs/serve/bin/vllm serve /data/models/gemma4-12b-qat-w4a16 --served-model-name gemma4-12b-qat --port 8001 --max-model-len 8192 --gpu-memory-utilization 0.90 --enable-lora --lora-modules cs1410-smoke=backend/training/output/smoke --max-lora-rank 16 --limit-mm-per-prompt '{"image":0,"audio":0}'
+VLLM_USE_FLASHINFER_SAMPLER=0 ~/venvs/serve/bin/vllm serve /data/models/gemma4-12b-qat-w4a16 --served-model-name gemma4-12b-qat --port 8001 --max-model-len 8192 --gpu-memory-utilization 0.90 --enable-lora --lora-modules cs1410-smoke=backend/training/output/smoke --max-lora-rank 16 --limit-mm-per-prompt '{"image":0,"audio":0}'
 ```
 
 Port 8001 because the autograder backend owns 8000. Paste back the `Maximum
 concurrency for 8192 tokens per request` line from startup.
+
+`VLLM_USE_FLASHINFER_SAMPLER=0` is required on the Dell: FlashInfer's sampler
+JIT-compiles a CUDA kernel on first use, which needs `nvcc`, and the box has the
+NVIDIA driver but no CUDA toolkit. Without it the engine dies during warm-up with
+*"Could not find nvcc and default cuda_home='/usr/local/cuda' doesn't exist"*.
+The PyTorch/Triton sampler it falls back to needs no toolkit and the speed
+difference is negligible at our request volume.
 
 **Don't add `--chat-template`, `--reasoning-parser` or
 `--default-chat-template-kwargs`** even though vLLM's Gemma 4 recipe uses them.

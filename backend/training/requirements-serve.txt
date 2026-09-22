@@ -13,4 +13,7 @@
 # --default-chat-template-kwargs. train_lora renders prompts with that template
 # and its defaults, and a different template at serve time is exactly the
 # train/serve mismatch this pipeline exists to prevent.
+#
+# Start it with VLLM_USE_FLASHINFER_SAMPLER=0 (see training/README.md): the Dell
+# has no CUDA toolkit, and FlashInfer's sampler needs nvcc to JIT-compile.
 vllm==0.29.0

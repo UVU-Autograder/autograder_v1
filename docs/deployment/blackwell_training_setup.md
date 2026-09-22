@@ -339,6 +339,8 @@ right target — and it is also what you want to serve for 50 concurrent student
 | `FlashAttention forward only supports head dimension at most 256` | Gemma 4 hybrid attention | `attn_implementation="sdpa"` |
 | bitsandbytes import fine, forward pass fails | `sm_120` kernels missing | Pin `bitsandbytes==0.49.2` against a `cu129` torch; do not let another package bump torch to `cu130` |
 | 401 on download | Gated repo | Accept the license on the model page with the token's account |
+| vLLM: `Engine core initialization failed`, root cause `Could not find nvcc and default cuda_home='/usr/local/cuda'` | FlashInfer's sampler JIT-compiles with `nvcc`; the Dell has the driver but no CUDA toolkit | Start vLLM with `VLLM_USE_FLASHINFER_SAMPLER=0` |
+| vLLM crashed and only shows `See root cause above` | The real error is in the `(EngineCore pid=…)` lines, which scroll away | Run with `2>&1 \| tee /data/vllm.log`, then `grep EngineCore /data/vllm.log \| grep -vE 'INFO\|WARNING' \| tail -40` |
 
 ## After training
 
