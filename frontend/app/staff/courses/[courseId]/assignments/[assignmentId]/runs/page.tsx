@@ -192,6 +192,7 @@ export default function RunsPage({ params }: PageProps) {
             </div>
           )}
 
+          <p className="text-sm text-muted-foreground">Review access and downloads end 23 hours after upload. Export results before that deadline; automatic deletion then begins.</p>
           <Card>
             <form onSubmit={handleIngest}>
               <CardHeader>

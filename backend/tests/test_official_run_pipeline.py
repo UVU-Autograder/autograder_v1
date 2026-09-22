@@ -157,7 +157,9 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
         for call in mock_pipeline.call_args_list:
             assert call.kwargs.get("zip_data") is None
             assert call.kwargs.get("bundle_dir") is not None
-        assert "student_results" in result
+        assert result["state"] == "complete"
+        assert "student_results" not in result
+        assert grade_official_run.ignore_result is True
 
     # 4. Verify DB and files
     db_session.refresh(run)
@@ -275,7 +277,7 @@ def test_cleanup_expired_workspaces(db_session: Session, temp_workspaces: Path) 
     # 4. Run the cleanup task
     result = cleanup_expired_workspaces()
     assert result["cleaned_runs_count"] == 1
-    assert len(result["errors"]) == 0
+    assert result["error_count"] == 0
 
     # 5. Verify expired files are deleted
     assert not expired_run_dir.exists()

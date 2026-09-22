@@ -116,6 +116,11 @@ class MonitoringResponse(BaseModel):
     queued_runs_count: int
     sandbox_runs_last_hour: int
     total_token_usage: int
+    cleanup_service_healthy: bool = False
+    cleanup_last_checked_at: str | None = None
+    cleanup_failed_runs: int = 0
+    cleanup_overdue_runs: int = 0
+    cleanup_orphan_errors: int = 0
 
 
 # --- Routes ---

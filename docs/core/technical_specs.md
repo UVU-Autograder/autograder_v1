@@ -14,22 +14,31 @@
 - Backend: FastAPI in the current local/on-prem stack for routing, orchestration, and API contracts.
 - Backend language: Python `3.11+`.
 - Execution engine: Judge0 CE for sandboxed code execution with strict resource limits and network-disabled student runs.
-- Runtime isolation: Kata Containers remains the planned VM-based isolation layer for Judge0 executions (Dell validation pending).
+- Runtime isolation: Kata Containers is the required VM-based isolation layer for the intended deployment. The backlog records a successful Dell workstation spot-check; release-specific evidence is still required by the delivery controls.
 - Database: PostgreSQL in the current local/on-prem stack for non-sensitive metadata only.
 - ORM and migrations: SQLAlchemy plus Alembic.
 - Queue and broker: Celery with Redis for official and sandbox grading jobs.
-- AI inference (planned): Local LLM for pedagogical explanations grounded in pytest and AST results (sandbox wiring still active backlog).
+- AI inference: Sandbox Local LLM request/streaming endpoints and UI are implemented for explanations grounded in pytest and AST results. This does not establish approval for live student-derived inputs; official-run AI remains deferred.
 - HTTP client: `httpx` for FastAPI-to-Judge0 async REST calls.
 
 ## 2. Core Features
 
-- Staff authentication: mock JWT login restricted to `@uvu.edu` (NextAuth + Microsoft OAuth deferred).
+- Staff authentication: current mock JWT login accepts `@uvu.edu` addresses without verifying ownership. Institutional Microsoft authentication with explicit staff grants is active pilot-readiness work, not yet implemented.
 - Student sandbox access through globally visible sandbox-enabled assignments without student-specific authentication.
 - Progressive `Concepts Covered` enforcement using AST validation (LLM prompt context when sandbox Local LLM is enabled).
 - Retention-aware grading: sandbox wipe after results; official identifiable review/export artifacts ≤24h or until staff cleanup; Judge0/Kata artifacts deleted immediately after retrieval.
 - Multi-file support uses ZIP/project bundle uploads for both official staff runs and student sandbox runs.
 - Hallucination guardrails (when Local LLM is enabled): treat pytest and tracebacks as ground truth; LLM explains, does not re-grade (sandbox only).
 - Prefer fake/synthetic or completely anonymized validation data until live-data posture is confirmed for a workflow.
+
+### Implementation status and known gaps (2026-09-21)
+
+The contracts below describe required behavior, not a claim that all launch gates have passed. Core setup, sandbox grading, official review/manual grading, and exports are implemented. Existing tests and workstation reports do not replace release-specific integrated verification.
+
+- **Retention:** Official review access ends 23 hours after intake. The independent cleanup worker reconciles every 60 seconds, tombstones expired runs before deletion, verifies removal of the official ZIP and workspace, and reports retryable failures. A remaining file at 24 hours is a visible retention breach; host rollout and recovery evidence remain open.
+- **Batch capacity:** Official ingest reserves one waiting slot per submission against a global cap of 50, so a single upload above 50 submissions is rejected. The whole official batch also inherits Celery's 120s soft / 180s hard task limits. Bounded scheduling and an appropriate task lifecycle are required to meet the 200-submission target.
+- **Deployment:** The single-origin Nginx reverse proxy deployment is active on port 80 of the Dell workstation. The proxy reserves `/api/*` for backend requests, removing `/api` before forwarding to FastAPI routes on `127.0.0.1:8000`; Next.js on `127.0.0.1:3000` handles page routes including `/staff/*` and `/sandbox/*`. Frontend API client calls route through the single origin (`/api`) without port switching or cross-origin credentials.
+- **Evidence:** The backlog's 35-submission timing is a measurement; the 200-submission estimate is a projection. Use the evidence labels and launch gates in [delivery_controls.md](../planning/delivery_controls.md).
 
 ## 3. Architecture Patterns Reused
 
@@ -345,7 +354,7 @@ For **official** runs, the cleanup boundary at `M` means execution artifacts and
 ## Execution Engine Notes
 
 - Judge0 is the execution engine.
-- Kata Containers is the planned VM-based isolation layer for Judge0 and should be treated as part of the core execution design rather than optional hardening.
+- Kata Containers is the required VM-based isolation layer for Judge0 and should be treated as part of the core execution design rather than optional hardening. Dell host rollout evidence remains a separate operational gate.
 - The app uses Judge0's structured execution metadata, including status, execution time, memory usage, exit code, exit signal, and compile output when applicable.
 - The current deployment plan uses local/on-prem Docker on the Dell workstation rather than Railway or another hosted provider.
 - Railway-style hosted deployment is not viable for the current implementation because the Judge0 + Kata execution path depends on the local Docker and hardware/containerization model on the Dell workstation.
@@ -371,7 +380,7 @@ For **official** runs, the cleanup boundary at `M` means execution artifacts and
 
 - Monaco Editor is locally hosted with the app rather than fetched from a third-party CDN.
 - Monaco is a read-only preview and review surface.
-- Sandbox Local LLM feedback (planned / active backlog) would surface as a student-sandbox textbox adjacent to test results; explanation-only, sandbox-only, and must not receive personally traceable payloads.
+- Sandbox Local LLM feedback is implemented as an on-demand UI beside test results, with request and streaming API paths; explanation-only, sandbox-only, and must not receive personally traceable payloads. Implementation does not imply approval for live-data use.
 - Monaco does not change the persistent data model; it is a frontend/editor dependency and a review surface backed by structured app data rather than raw submission downloads.
 
 ## 6. Permissions Matrix
@@ -470,7 +479,7 @@ Notes:
 - Queue capacity policy must never raise the active Judge0/Kata execution slot cap.
 - Under high load, sandbox AI feedback may be delayed, skipped, or marked unavailable; grounded test results return first.
 
-**Current reality:** Shared Redis admission (`reserve_execution_slots` / `release_execution_slots`) enforces warn-at-40 / reject-at-50 for sandbox and official ingest. Workers listen to `-Q sandbox,official,default` for fair consume into `judge0_max_concurrent`.
+**Current reality:** Shared Redis admission (`reserve_execution_slots` / `release_execution_slots`) enforces warn-at-40 / reject-at-50 while Redis is available. Its process-local fallback does not preserve a global cap across processes during a Redis outage. Official ingest reserves the entire submission count, rejecting batches above 50 even with an empty queue. Workers listen to `-Q sandbox,official,default`, but whole-batch official tasks can occupy worker slots for their duration; listing queues alone is not proof of end-to-end fairness. Bounded batch dispatch, outage behavior, reservation recovery, and mixed-load fairness require implementation and verification.
 
 ### Run status delivery contract
 
@@ -525,9 +534,9 @@ Notes:
 ## 10. Deployment and Environment
 
 - The current deployment target is the Dell workstation running the full local/on-prem stack.
-- Docker Compose supports local development and integration-style testing through `docker compose -f docker-compose.testing.yml`.
-- The testing Compose stack is also the current deployment-shape reference for the on-prem stack, even if some teammate machines cannot fully reproduce the final Kata runtime locally.
-- Teammate machines may use reduced local or integration harnesses for development, but those do not replace the Dell workstation in the current hosting plan.
+- Docker Compose supports local development and workstation operations through `docker compose -f docker-compose.yml`.
+- The standard Compose stack (`docker-compose.yml`) is the unified deployment-shape reference for the on-prem workstation stack, optionally layered with `docker-compose.kata.yml` on the Kata-enabled host.
+- Teammate machines may run the standard Compose stack using default runc for development, but that does not replace the Dell workstation with Kata in the deployment plan.
 - Required environment configuration includes:
   - Local LLM credentials and endpoint
   - Judge0 URL and any required service auth token
@@ -542,7 +551,7 @@ Notes:
 - Judge0 timeout default: `30s` (`TEST_EXECUTION_TIMEOUT_SECONDS`)
 - Judge0 memory limit target: `256MB`
 - Judge0 student execution network access: disabled
-- Kata-backed VM isolation is required for the planned production execution model (Dell validation still pending).
+- Kata-backed VM isolation is required for the intended production execution model. A Dell workstation spot-check is recorded in the backlog; attach dated, commit-specific host evidence before release signoff.
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
 - Sandbox Local LLM: may process student code only when the payload is not personally traceable (no PII/identifiers); official AI deferred
 - Local LLM prompt ceilings: `max_file_chars = 4000`, `max_total_chars = 8000`. Individual files exceeding 4,000 characters are truncated with explicit markers (`... [file truncated]`); multi-file submissions exceeding 8,000 total characters omit remaining files with notices (`... [additional files omitted: ...]`).

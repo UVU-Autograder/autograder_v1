@@ -126,6 +126,11 @@ export type MonitoringStats = {
   queued_runs_count: number;
   sandbox_runs_last_hour: number;
   total_token_usage: number;
+  cleanup_service_healthy: boolean;
+  cleanup_last_checked_at: string | null;
+  cleanup_failed_runs: number;
+  cleanup_overdue_runs: number;
+  cleanup_orphan_errors: number;
 };
 
 export function getAdminMonitoring() {

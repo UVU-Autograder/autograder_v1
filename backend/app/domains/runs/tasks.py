@@ -1,13 +1,17 @@
 """Celery tasks for sandbox and official grading runs.
 
 These tasks are dispatched asynchronously and execute the grading pipeline
-through Judge0, storing transient results in Redis.
+through Judge0. Sandbox/model-validation results use transient Redis state;
+official review data stays in the governed workspace and official task results
+are ignored by Celery.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+
+from fastapi import HTTPException
+from app.domains.runs import retention
 
 from app.db.base import import_domain_models
 
@@ -275,8 +279,35 @@ def validate_assignment_model_solution(
     max_retries=3,
     default_retry_delay=5,
     acks_late=True,
+    ignore_result=True,
+    store_errors_even_if_ignored=False,
 )
 def grade_official_run(self, run_id: int) -> dict:
+    from app.db.session import SessionLocal
+
+    # Claim under the same lock as cleanup. Duplicate deliveries never release slots.
+    with SessionLocal() as db:
+        with retention.run_lock(run_id):
+            run = retention.load_run(db, run_id)
+            if run.status != "queue":
+                return {"run_id": run_id, "state": run.status}
+            if not retention.available(run):
+                run.status = "failure"
+                run.failure_summary = {"error": "review_expired"}
+                db.commit()
+                release_execution_slots(run.total_submission_count or 0)
+                return {"run_id": run_id, "state": "failure"}
+            run.status = "run"
+            db.commit()
+    try:
+        return _grade_official_run(run_id)
+    except HTTPException as exc:
+        category = "review_expired" if exc.status_code == 410 else "retention_unavailable"
+        RunLifecycleTracker(run_id).mark_failure("Official review is unavailable.", category)
+        return {"run_id": run_id, "state": "failure", "failure_category": category}
+
+
+def _grade_official_run(run_id: int) -> dict:
     """Execute official batch grading run asynchronously."""
     import asyncio
     import shutil
@@ -334,6 +365,7 @@ def grade_official_run(self, run_id: int) -> dict:
         if not assignment or not assignment.config:
             logger.error("Assignment or config not found for run %d", run_id)
             run.status = "failure"
+            db.commit()
             release_execution_slots(run.total_submission_count or 0)
             set_run_state(str(run_id), "failure", {"message": "Assignment or config not found"})
             return {"error": "Assignment or config not found"}
@@ -363,12 +395,12 @@ def grade_official_run(self, run_id: int) -> dict:
                 allowed_concepts=allowed_concepts,
                 preloaded_artifacts=preloaded,
             )
-        except Exception as exc:
+        except Exception:
             run.status = "failure"
             db.commit()
             release_execution_slots(run.total_submission_count or 0)
-            set_run_state(str(run_id), "failure", {"message": f"Setup error: {exc}"})
-            return {"error": str(exc)}
+            set_run_state(str(run_id), "failure", {"message": "Official run setup failed."})
+            return {"error": "setup_error"}
 
     tracker = RunLifecycleTracker(run_id, total_submissions)
     tracker.set_running("Official run executing.")
@@ -394,14 +426,18 @@ def grade_official_run(self, run_id: int) -> dict:
         return {"error": "Official ZIP not found"}
 
     run_dir = official_run_dir(run_id)
-    run_dir.mkdir(parents=True, exist_ok=True)
     extract_dir = run_dir / "extracted"
-    extract_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        safe_extract_zip(zip_path.read_bytes(), extract_dir)
+        with retention.access(run_id):
+            run_dir.mkdir(parents=True, exist_ok=True)
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            safe_extract_zip(zip_path.read_bytes(), extract_dir)
+    except HTTPException:
+        tracker.release_remaining_slots()
+        raise
     except Exception as e:
-        logger.exception("Failed to extract official ZIP for run %d", run_id)
+        logger.error("Failed to extract official ZIP for run %d", run_id)
         audit_event(
             "official.run_failed",
             run_id=run_id,
@@ -414,7 +450,8 @@ def grade_official_run(self, run_id: int) -> dict:
         return {"error": "Failed to extract ZIP"}
 
     try:
-        grouped_files, unmatched = group_canvas_files(extract_dir)
+        with retention.access(run_id):
+            grouped_files, unmatched = group_canvas_files(extract_dir)
 
         unused_slots = max(0, total_submissions - len(grouped_files))
         if unused_slots:
@@ -430,15 +467,15 @@ def grade_official_run(self, run_id: int) -> dict:
         details_lock = asyncio.Lock()
 
         def flush_run_details(*, run_status: str = "running") -> None:
-            write_run_details_json(
-                run_dir,
-                {
-                    "unmatched_files": unmatched_names,
-                    "student_results": student_results,
-                    "run_status": run_status,
-                },
-            )
-
+            with retention.access(run_id):
+                write_run_details_json(
+                    run_dir,
+                    {
+                        "unmatched_files": unmatched_names,
+                        "student_results": student_results,
+                        "run_status": run_status,
+                    },
+                )
         flush_run_details(run_status="running")
 
         async def grade_student_async(canvas_user_id: str, paths: list[Path], semaphore: asyncio.Semaphore):
@@ -454,13 +491,16 @@ def grade_official_run(self, run_id: int) -> dict:
                     break
 
             student_temp_dir = run_dir / f"student_{canvas_user_id}"
-            student_temp_dir.mkdir(parents=True, exist_ok=True)
             manual_results = init_manual_results(config.scoring_items)
 
             try:
                 try:
-                    prepare_student_bundle(paths, student_temp_dir)
-                    bundle_files = list_bundle_files(student_temp_dir)
+                    with retention.access(run_id):
+                        student_temp_dir.mkdir(parents=True, exist_ok=True)
+                        prepare_student_bundle(paths, student_temp_dir)
+                        bundle_files = list_bundle_files(student_temp_dir)
+                except HTTPException:
+                    raise
                 except Exception as e:
                     async with details_lock:
                         failure_count += 1
@@ -500,9 +540,12 @@ def grade_official_run(self, run_id: int) -> dict:
                     async with semaphore:
                         grading_result = await grading_engine.grade_submission(
                             bundle_dir=student_temp_dir,
+                            official_run_id=run_id,
                         )
+                except HTTPException:
+                    raise
                 except Exception as exc:
-                    logger.exception("Grading pipeline crashed during student submission execution")
+                    logger.error("Official submission execution failed")
                     grading_result = GradingResult(
                         success=False,
                         failure_category="internal_error",
@@ -566,21 +609,25 @@ def grade_official_run(self, run_id: int) -> dict:
                 grade_student_async(canvas_user_id, paths, semaphore)
                 for canvas_user_id, paths in grouped_files.items()
             ]
-            loop.run_until_complete(asyncio.gather(*tasks))
+            outcomes = loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+            for outcome in outcomes:
+                if isinstance(outcome, BaseException):
+                    raise outcome
         finally:
             asyncio.set_event_loop(None)
             loop.close()
 
-        shutil.rmtree(extract_dir, ignore_errors=True)
+        with retention.access(run_id):
+            shutil.rmtree(extract_dir)
 
-        details_payload = {
-            "unmatched_files": unmatched_names,
-            "student_results": student_results,
-            "run_status": "complete",
-        }
-        write_run_details_json(run_dir, details_payload)
-        write_run_grades_csv(run_dir, student_results)
-        write_feedback_zip(run_dir, student_results)
+            details_payload = {
+                "unmatched_files": unmatched_names,
+                "student_results": student_results,
+                "run_status": "complete",
+            }
+            write_run_details_json(run_dir, details_payload)
+            write_run_grades_csv(run_dir, student_results)
+            write_feedback_zip(run_dir, student_results)
 
         tracker.mark_complete(success_count, warning_count, failure_count + timeout_count, failure_summary_counts)
         audit_event(
@@ -595,66 +642,14 @@ def grade_official_run(self, run_id: int) -> dict:
             unmatched_count=len(unmatched),
             workflow_type="official",
         )
-        return details_payload
+        return {"run_id": run_id, "state": "complete", "total": total_submissions}
     finally:
         tracker.release_remaining_slots()
 
 
-@celery_app.task(name="app.domains.runs.tasks.cleanup_expired_workspaces")
 def cleanup_expired_workspaces() -> dict:
-    """Clean up workspaces and ZIP files for runs older than 24 hours."""
-    import shutil
-    from datetime import timedelta
-
-    from sqlalchemy import select
-
+    """Compatibility entry point; scheduling belongs to the dedicated service."""
     from app.db.session import SessionLocal
-    from app.domains.runs.models import RunSummary
-    from app.domains.runs.service import (
-        official_run_dir,
-        official_run_zip_path,
-    )
-
-    cutoff = datetime.now(UTC) - timedelta(hours=24)
-
-    cleaned_count = 0
-    errors = []
 
     with SessionLocal() as db:
-        # Select official runs older than 24 hours
-        stmt = select(RunSummary).where(
-            RunSummary.created_at < cutoff,
-            RunSummary.workflow_type == "official",
-        )
-        old_runs = db.scalars(stmt).all()
-
-        for run in old_runs:
-            run_dir = official_run_dir(run.id)
-            zip_file = official_run_zip_path(run.id)
-            deleted_any = False
-
-            if run_dir.exists():
-                try:
-                    shutil.rmtree(run_dir, ignore_errors=True)
-                    deleted_any = True
-                except Exception as e:
-                    errors.append(f"Failed to remove run_dir {run.id}: {e!s}")
-
-            if zip_file.exists():
-                try:
-                    zip_file.unlink(missing_ok=True)
-                    deleted_any = True
-                except Exception as e:
-                    errors.append(f"Failed to unlink ZIP {run.id}: {e!s}")
-
-            if deleted_any:
-                cleaned_count += 1
-
-    audit_event(
-        "official.workspace_expired_cleanup",
-        cleaned_runs_count=cleaned_count,
-        error_count=len(errors),
-        workflow_type="official",
-    )
-    return {"cleaned_runs_count": cleaned_count, "errors": errors}
-
+        return retention.reconcile(db)

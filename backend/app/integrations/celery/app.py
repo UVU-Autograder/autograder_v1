@@ -65,13 +65,8 @@ def create_celery_app() -> Celery:
         # Default queue for unrouted tasks
         task_default_queue="default",
 
-        # Periodic schedule for cleanup (runs every hour)
-        beat_schedule={
-            "cleanup-expired-workspaces-hourly": {
-                "task": "app.domains.runs.tasks.cleanup_expired_workspaces",
-                "schedule": 3600.0,
-            }
-        },
+        # Official retention is handled independently by cleanup_worker.
+
     )
 
     # Auto-discover tasks in domain modules

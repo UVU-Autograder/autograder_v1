@@ -74,15 +74,52 @@ curl -fL "${release_url}" -o "${tmp_dir}/kata-static.tar.zst"
 echo "Installing Kata static payload into /opt/kata..."
 tar --zstd -xf "${tmp_dir}/kata-static.tar.zst" -C /
 
-if [ ! -x "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" ]; then
-  echo "containerd-shim-kata-v2 was not found at ${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2 after extraction." >&2
+shim_binary=""
+if [ -x "${KATA_INSTALL_DIR}/runtime-rs/bin/containerd-shim-kata-v2" ]; then
+  shim_binary="${KATA_INSTALL_DIR}/runtime-rs/bin/containerd-shim-kata-v2"
+elif [ -x "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" ]; then
+  shim_binary="${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2"
+else
+  echo "containerd-shim-kata-v2 was not found under ${KATA_INSTALL_DIR} after extraction." >&2
   echo "If the release asset layout changed, find the current kata-static asset URL and rerun with:" >&2
   echo "  sudo KATA_RELEASE_URL=<asset-url> $0" >&2
   exit 1
 fi
 
-ln -sf "${KATA_INSTALL_DIR}/bin/kata-runtime" /usr/local/bin/kata-runtime
-ln -sf "${KATA_INSTALL_DIR}/bin/containerd-shim-kata-v2" /usr/local/bin/containerd-shim-kata-v2
+ln -sf "${shim_binary}" /usr/local/bin/containerd-shim-kata-v2
+ln -sf "${shim_binary}" /usr/bin/containerd-shim-kata-v2
+if [ -x "${KATA_INSTALL_DIR}/bin/kata-runtime" ]; then
+  ln -sf "${KATA_INSTALL_DIR}/bin/kata-runtime" /usr/local/bin/kata-runtime
+fi
+
+# runtime-rs reads /etc/kata-containers/runtime-rs/configuration.toml -- NOT the
+# /etc/kata-containers/configuration.toml path used by the (deprecated) Go runtime.
+# Writing to the wrong path is silently ignored; verify with:
+#   journalctl -u containerd | grep "load configuration from"
+KATA_ETC_DIR="/etc/kata-containers"
+if [ -n "${shim_binary##*runtime-rs*}" ]; then
+  kata_default_config="${KATA_INSTALL_DIR}/share/defaults/kata-containers/configuration.toml"
+  kata_etc_config="${KATA_ETC_DIR}/configuration.toml"
+else
+  kata_default_config="${KATA_INSTALL_DIR}/share/defaults/kata-containers/runtime-rs/configuration-qemu-runtime-rs.toml"
+  kata_etc_config="${KATA_ETC_DIR}/runtime-rs/configuration.toml"
+  KATA_ETC_DIR="${KATA_ETC_DIR}/runtime-rs"
+fi
+
+mkdir -p "${KATA_ETC_DIR}"
+if [ -f "${kata_default_config}" ] && [ ! -f "${kata_etc_config}" ]; then
+  echo "Installing editable Kata config at ${kata_etc_config}..."
+  cp "${kata_default_config}" "${kata_etc_config}"
+elif [ ! -f "${kata_default_config}" ]; then
+  echo "WARNING: expected default config not found at ${kata_default_config}." >&2
+  echo "Kata will run from its built-in defaults; host tuning will have no effect." >&2
+fi
+
+# NOTE: privileged_without_host_devices is deliberately NOT set here.
+# It is a containerd-CRI / CRI-O runtime option and has no equivalent under
+# standalone Docker Engine -- it is not a field in Kata's own config schema and
+# is silently discarded if written to configuration.toml. Judge0 runs under Kata
+# via a bounded capability set instead of --privileged; see docker-compose.kata.yml.
 
 mkdir -p /etc/docker
 if [ ! -f /etc/docker/daemon.json ]; then
@@ -110,15 +147,51 @@ docker info --format '{{json .Runtimes}}'
 echo "Testing Kata runtime with busybox..."
 docker run --rm --runtime "${KATA_RUNTIME_NAME}" busybox uname -a
 
+echo ""
+echo "Verifying the config file Kata actually loads..."
+loaded_config="$(journalctl -u containerd --since '1 minute ago' --no-pager 2>/dev/null \
+  | grep -o 'load configuration from: .*' | tail -1)"
+if [ -n "${loaded_config}" ]; then
+  echo "  ${loaded_config}"
+  case "${loaded_config}" in
+    *"${kata_etc_config}"*)
+      echo "OK: host tuning in ${kata_etc_config} is being honored."
+      ;;
+    *)
+      echo "WARNING: Kata is loading its built-in defaults, not ${kata_etc_config}." >&2
+      echo "Any vCPU/memory/hugepage tuning placed there will silently do nothing." >&2
+      ;;
+  esac
+else
+  echo "  (no 'load configuration' line found; check journalctl -u containerd manually)"
+fi
+
+echo ""
+echo "Verifying Judge0's capability set works under Kata (no --privileged)..."
+if docker run --rm \
+  --cap-add SYS_ADMIN --cap-add SYS_RESOURCE --cap-add SYS_CHROOT \
+  --cap-add SETUID --cap-add SETGID --cap-add DAC_OVERRIDE --cap-add MKNOD \
+  --runtime "${KATA_RUNTIME_NAME}" busybox true; then
+  echo "OK: capability-based container starts under Kata."
+else
+  cat >&2 <<'EOF'
+
+WARNING: A capability-scoped container failed to start under Kata. Judge0 needs
+this to work, since running it with --privileged makes Kata attempt to hot-plug
+every host /dev entry into the guest, which fails with:
+  "get host path failed / No such file or directory (os error 2)"
+EOF
+fi
+
 cat <<EOF
 
 Kata is registered as Docker runtime: ${KATA_RUNTIME_NAME}
 
-Start the autograder POC with the optional Kata compose override:
+Start the autograder with the Kata compose override:
 
-  docker compose --env-file .env.local \\
-    -f docker-compose.poc.yml \\
-    -f docker-compose.kata.yml \\
-    up --build
+  docker compose --env-file .env.local \
+    -f docker-compose.yml \
+    -f docker-compose.kata.yml \
+    up -d --build
 
 EOF

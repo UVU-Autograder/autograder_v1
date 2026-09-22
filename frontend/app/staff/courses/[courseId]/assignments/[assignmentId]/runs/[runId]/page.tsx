@@ -2,9 +2,10 @@
 
 import { DownloadIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
-import { use, useState, useEffect, useMemo } from "react";
+import { use, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { reviewAvailable, retentionMessage } from "@/features/runs/lib/retention";
 import { apiClient } from "@/lib/api-client";
 import type { RunStatusResponse } from "@/features/assignments/types";
 import { runProcessedCount } from "@/features/assignments/types";
@@ -43,7 +44,7 @@ export default function RunDetailPage({ params }: PageProps) {
   const { courseId, assignmentId, runId } = use(params);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
-  const [details, setDetails] = useState<RunDetailsResponse | null>(null);
+  const [details, setDetailsState] = useState<RunDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -54,6 +55,68 @@ export default function RunDetailPage({ params }: PageProps) {
   const [selectedCanvasId, setSelectedCanvasId] = useState<string | null>(null);
   const [isInspectOpen, setIsInspectOpen] = useState(false);
   const [isSavingGrades, setIsSavingGrades] = useState(false);
+
+  const summaryRef = useRef<RunSummary | null>(null);
+  const blockedRef = useRef(false);
+  const [reviewUnavailable, setReviewUnavailable] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
+  const basePath = `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}`;
+
+  const clearReview = useCallback(() => {
+    blockedRef.current = true;
+    setReviewUnavailable(true);
+    setDetailsState(null);
+    setSelectedCanvasId(null);
+    setIsInspectOpen(false);
+  }, []);
+
+  const setDetails = useCallback((value: RunDetailsResponse | null) => {
+    if (value && (blockedRef.current || !reviewAvailable(summaryRef.current))) return;
+    setDetailsState(value);
+  }, []);
+
+  const acceptSummary = useCallback((value: RunSummary) => {
+    summaryRef.current = value;
+    setSummary(value);
+    if (!reviewAvailable(value)) clearReview();
+  }, [clearReview]);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const value = await apiClient.get<RunSummary>(basePath);
+        if (active) acceptSummary(value);
+      } catch { /* Existing summary/error handling owns connection errors. */ }
+    };
+    const timer = setInterval(() => {
+      if (summaryRef.current && !reviewAvailable(summaryRef.current)) clearReview();
+    }, 1000);
+    const poll = setInterval(() => void refresh(), 15000);
+    const expired = (event: Event) => {
+      const path = (event as CustomEvent<string>).detail;
+      if (path.startsWith(`${basePath}/`)) clearReview();
+    };
+    window.addEventListener("official-review-expired", expired);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      clearInterval(poll);
+      window.removeEventListener("official-review-expired", expired);
+    };
+  }, [basePath, acceptSummary, clearReview]);
+
+  const handleCleanup = async () => {
+    setIsCleaning(true);
+    try {
+      await apiClient.post(`${basePath}/cleanup`, {});
+      clearReview();
+      acceptSummary(await apiClient.get<RunSummary>(basePath));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cleanup failed.");
+      try { acceptSummary(await apiClient.get<RunSummary>(basePath)); } catch { clearReview(); }
+    } finally { setIsCleaning(false); }
+  };
 
   const selectedStudent = useMemo(
     () =>
@@ -169,6 +232,10 @@ export default function RunDetailPage({ params }: PageProps) {
     let active = true;
     Promise.resolve().then(() => {
       if (active) {
+        blockedRef.current = false;
+        summaryRef.current = null;
+        setReviewUnavailable(false);
+        setDetailsState(null);
         setIsLoading(true);
         setError(null);
       }
@@ -180,7 +247,7 @@ export default function RunDetailPage({ params }: PageProps) {
           `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}`,
         );
         if (!active) return;
-        setSummary(summaryData);
+        acceptSummary(summaryData);
 
         try {
           const detailsData = await apiClient.get<RunDetailsResponse>(
@@ -212,7 +279,7 @@ export default function RunDetailPage({ params }: PageProps) {
     return () => {
       active = false;
     };
-  }, [courseId, assignmentId, runId]);
+  }, [courseId, assignmentId, runId, acceptSummary, setDetails]);
 
   useEffect(() => {
     const status = summary?.status;
@@ -234,7 +301,7 @@ export default function RunDetailPage({ params }: PageProps) {
           : Promise.resolve(null),
       ]);
       if (cancelled) return;
-      setSummary(summaryData);
+      acceptSummary(summaryData);
       if (detailsData) {
         setDetails({
           ...detailsData,
@@ -285,7 +352,7 @@ export default function RunDetailPage({ params }: PageProps) {
     return () => {
       cancelled = true;
     };
-  }, [summary?.status, courseId, assignmentId, runId]);
+  }, [summary?.status, courseId, assignmentId, runId, acceptSummary, setDetails]);
 
   const handleCsvExport = async () => {
     setError(null);
@@ -340,10 +407,14 @@ export default function RunDetailPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={handleCleanup}
+              disabled={isCleaning || !summary || summary.status === "queue" || summary.status === "run" || summary.retention_state === "deleted"}>
+              {isCleaning ? "Cleaning…" : "Delete review data"}
+            </Button>
             <Button
               variant="outline"
               onClick={handleCsvExport}
-              disabled={!details?.exports_ready}
+              disabled={reviewUnavailable || !details?.exports_ready}
               title={
                 details?.exports_ready
                   ? undefined
@@ -355,7 +426,7 @@ export default function RunDetailPage({ params }: PageProps) {
             <Button
               variant="outline"
               onClick={handleFeedbackExport}
-              disabled={!details?.exports_ready}
+              disabled={reviewUnavailable || !details?.exports_ready}
               title={
                 details?.exports_ready
                   ? undefined
@@ -366,6 +437,7 @@ export default function RunDetailPage({ params }: PageProps) {
             </Button>
           </div>
         </div>
+        <p role="status" className="mb-6 text-sm text-muted-foreground">{retentionMessage(summary)}</p>
         {details && !details.exports_ready && (
           <p className="-mt-4 mb-6 text-right text-xs text-warning font-medium">
             Exports unlock after every manual rubric item has a score.
@@ -387,7 +459,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 {runStatus.counters.failed > 0 &&
                   `, ${runStatus.counters.failed} failed`}
                 {runStatus.counters.running > 0 &&
-                  ` · ${runStatus.counters.running} in progress`}
+                  ` Â· ${runStatus.counters.running} in progress`}
               </p>
             </div>
           )}
@@ -432,7 +504,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 {!details || details.students.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">
                     {summary?.status === "queue" || summary?.status === "run"
-                      ? "Grading in progress… student results will appear here as they finish."
+                      ? "Grading in progressâ€¦ student results will appear here as they finish."
                       : "No student details returned."}
                   </p>
                 ) : filteredStudents.length === 0 ? (
@@ -455,7 +527,7 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <StudentInspectDialog
+        {!reviewUnavailable && <StudentInspectDialog
           isOpen={isInspectOpen}
           onOpenChange={handleInspectOpenChange}
           student={selectedStudent}
@@ -464,7 +536,7 @@ export default function RunDetailPage({ params }: PageProps) {
           runId={runId}
           onSaveManualGrades={handleSaveManualGrades}
           isSavingGrades={isSavingGrades}
-        />
+        />}
       </div>
     </div>
   );

@@ -1,12 +1,11 @@
-# MacOS being funny
+# OS
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# Python & other AI based fragments
+# Python
 env
 venv
-.env.local
 backend/venv/
 .idea
 __pycache__/
@@ -16,21 +15,31 @@ __pycache__/
 backend/data/
 .ruff_cache/
 
+# Env / secrets (keep *.example tracked)
+.env
+.env.local
+backend/.env
+frontend/.env.local
+
 # Logs
 *.log
 npm-debug.log*
 
+# Node / Next.js
 node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+frontend/out/
 .vscode/
 
-# Agentic Configuration Ignores
+# Agentic / local agent memory
 .agents/
 .scratch/
 
 # Accidental local tooling artifacts
 /uv.lock
 
-# Student submission datasets
+# Student submission datasets (local-only; FERPA)
 cs1410/
 # Preflight output (host details, no secrets)
 preflight-report-*.txt

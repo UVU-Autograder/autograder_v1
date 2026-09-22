@@ -27,7 +27,7 @@ This file is the canonical plan for assignment config storage, grading assets, p
 - Assignments that require "complete at least X of these Y objectives" use an optional `completion_requirements` section that names existing scoring-item keys and a `minimum_passed` count. Completion requirements report whether the objective threshold is met; they do not replace scoring-item points.
 - All scoring entries are visible in staff and sandbox result surfaces.
 - `scoring_items` rows are derived projections used for UI, validation, and query convenience. They are regenerated from canonical config and are never editable grading truth.
-- Manual rubric items (non-executed) are supported; backend persist + export regeneration exist; completing the in-app staff grader workflow is an active backlog item (see [backlog.md](../planning/backlog.md)).
+- Manual rubric items (non-executed), in-app staff review, export regeneration, and export gating on completion of snapshotted manual items are implemented. Manual scores/comments remain in the ephemeral official review workspace. Integrated pilot acceptance remains separate from implementation status (see [backlog.md](../planning/backlog.md)).
 
 Example optional completion requirement:
 

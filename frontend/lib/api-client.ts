@@ -11,7 +11,21 @@ export class ApiError extends Error {
 }
 
 function getBaseUrl(): string {
-    return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BASE_URL;
+    const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (typeof window !== "undefined" && window.location.hostname) {
+        const hasCustomConfig = configured && !configured.includes("localhost") && !configured.includes("127.0.0.1");
+        if (hasCustomConfig) {
+            return configured;
+        }
+        if (!window.location.port || window.location.port === "80" || window.location.port === "443") {
+            return `${window.location.protocol}//${window.location.hostname}/api`;
+        }
+        const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        if (!isLocalHost) {
+            return `${window.location.protocol}//${window.location.hostname}:8000`;
+        }
+    }
+    return configured ?? DEFAULT_BASE_URL;
 }
 
 export function resolveUrl(path: string): string {
@@ -38,6 +52,18 @@ async function parseErrorMessage(response: Response): Promise<string> {
         // Fall back to status text below.
     }
     return response.statusText;
+}
+
+function handleResponseError(response: Response, path: string): void {
+    if (typeof window === "undefined") return;
+    if (response.status === 410) {
+        window.dispatchEvent(new CustomEvent("official-review-expired", { detail: path }));
+    } else if (response.status === 401) {
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
+        localStorage.removeItem("lastActivity");
+        window.dispatchEvent(new Event("unauthorized-api-call"));
+    }
 }
 
 function getAuthToken(): string | null {
@@ -79,12 +105,7 @@ async function apiFetch<T>(
 
     if (!response.ok) {
         const message = await parseErrorMessage(response);
-        if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
-            localStorage.removeItem("token");
-            sessionStorage.removeItem("token");
-            localStorage.removeItem("lastActivity");
-            window.dispatchEvent(new Event("unauthorized-api-call"));
-        }
+        handleResponseError(response, path);
         throw new ApiError(response.status, message);
     }
 
@@ -157,12 +178,7 @@ export const apiClient = {
         const response = await fetch(resolveUrl(path), { method: "GET", headers });
         if (!response.ok) {
             const message = await parseErrorMessage(response);
-            if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
-                localStorage.removeItem("token");
-                sessionStorage.removeItem("token");
-                localStorage.removeItem("lastActivity");
-                window.dispatchEvent(new Event("unauthorized-api-call"));
-            }
+            handleResponseError(response, path);
             throw new ApiError(response.status, message);
         }
 
@@ -173,7 +189,9 @@ export const apiClient = {
         const link = document.createElement("a");
         link.href = url;
         link.download = filename;
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(url);
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     },
 };

@@ -10,11 +10,12 @@
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "openapi:generate": "cd backend && python scripts/generate_openapi.py",
-    "docker:build": "docker compose --env-file .env.local -f docker-compose.poc.yml build judge0",
-    "docker:up": "docker compose --env-file .env.local -f docker-compose.poc.yml up -d --build",
-    "docker:down": "docker compose -f docker-compose.poc.yml down",
-    "docker:logs": "docker compose -f docker-compose.poc.yml logs -f",
-    "docker:clean": "docker compose -f docker-compose.poc.yml down -v"
+    "docker:build": "docker compose --env-file .env.local build judge0",
+    "docker:up": "docker compose --env-file .env.local up -d --build",
+    "docker:up:kata": "docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.kata.yml up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker compose down -v"
   },
   "devDependencies": {
     "concurrently": "^10.0.4"

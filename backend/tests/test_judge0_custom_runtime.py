@@ -52,15 +52,15 @@ def test_judge0_dockerfile_runtime():
 
 
 def test_docker_compose_seed_mount_and_timeouts():
-    """Verify docker-compose.poc.yml mounts seed SQL script and configures 30s timeouts."""
+    """Verify docker-compose.yml mounts seed SQL script and configures 30s timeouts."""
     repo_root = Path(__file__).resolve().parents[2]
-    compose_file = repo_root / "docker-compose.poc.yml"
+    compose_file = repo_root / "docker-compose.yml"
     assert compose_file.is_file()
 
     content = compose_file.read_text(encoding="utf-8")
     assert "judge0-language-seed:" in content
     assert "./scripts/seed_judge0_language_311.sql:/seed.sql:ro" in content
-    assert "./scripts/init_poc_databases.sh:/docker-entrypoint-initdb.d/01_init_poc_databases.sh:ro" in content
+    assert "./scripts/init_databases.sh:/docker-entrypoint-initdb.d/01_init_databases.sh:ro" in content
     assert "image: uvu-autograder-judge0:latest" in content
     assert "POSTGRES_HOST: postgres" in content
     assert "app-postgres" not in content

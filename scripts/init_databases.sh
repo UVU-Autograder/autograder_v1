@@ -1,6 +1,6 @@
 #!/bin/sh
-# Creates the Judge0 database/role alongside the app DB from POSTGRES_DB.
-# Runs only on first Postgres data-volume init.
+# Creates the Judge0 database and role alongside the application database.
+# Runs on initial initialization of an empty Postgres data volume.
 # CREATEDB is required so Judge0's Rails `db:create` entrypoint step succeeds.
 set -eu
 

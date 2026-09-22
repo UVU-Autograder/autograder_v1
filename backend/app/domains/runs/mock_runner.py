@@ -12,6 +12,7 @@ from app.db.session import SessionLocal
 from app.domains.assignments.models import Assignment
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.runs.models import RunSummary
+from app.domains.runs import retention
 from app.domains.runs.orchestrator import set_run_state
 from app.domains.runs.queue_admission import release_execution_slots
 from app.domains.runs.service import (
@@ -29,8 +30,11 @@ def run_mock_official_run(run_id: int) -> None:
         if not run:
             return
 
-        run.status = "run"
-        db.commit()
+        with retention.access(run_id, db):
+            if run.status != "queue":
+                return
+            run.status = "run"
+            db.commit()
 
         assignment = db.scalar(select(Assignment).where(Assignment.id == run.assignment_id))
         max_score = 100
@@ -90,24 +94,25 @@ def run_mock_official_run(run_id: int) -> None:
                 "overall_comment": "",
             }
 
-        run_dir = official_run_dir(run_id)
-        run_dir.mkdir(parents=True, exist_ok=True)
-
-        details_payload = {
-            "unmatched_files": ["unrecognized_export_file.txt"],
-            "student_results": student_results,
-        }
-        (run_dir / "run_details.json").write_text(json.dumps(details_payload, indent=2))
-        write_run_grades_csv(run_dir, student_results)
-        write_feedback_zip(run_dir, student_results)
-
         try:
-            run.success_count = success_count
-            run.warning_count = warning_count
-            run.failure_count = failure_count
-            run.status = "complete"
-            run.failure_summary = {"missing_required_file": 1} if failure_count else {}
-            db.commit()
+            with retention.access(run_id, db):
+                run_dir = official_run_dir(run_id)
+                run_dir.mkdir(parents=True, exist_ok=True)
+
+                details_payload = {
+                    "unmatched_files": ["unrecognized_export_file.txt"],
+                    "student_results": student_results,
+                }
+                (run_dir / "run_details.json").write_text(json.dumps(details_payload, indent=2))
+                write_run_grades_csv(run_dir, student_results)
+                write_feedback_zip(run_dir, student_results)
+
+                run.success_count = success_count
+                run.warning_count = warning_count
+                run.failure_count = failure_count
+                run.status = "complete"
+                run.failure_summary = {"missing_required_file": 1} if failure_count else {}
+                db.commit()
 
             set_run_state(
                 str(run_id),

@@ -17,6 +17,7 @@ from app.domains.ingestion.extractor import (
     count_canvas_submissions,
 )
 from app.domains.runs.models import RunSummary
+from app.domains.runs import retention
 from app.domains.runs.orchestrator import set_run_state
 from app.domains.runs.queue_admission import (
     QueueFullError,
@@ -123,8 +124,9 @@ class SubmissionIngestionEngine:
             db.commit()
             db.refresh(run)
 
-            get_workspaces_dir().mkdir(parents=True, exist_ok=True)
-            official_run_zip_path(run.id).write_bytes(content)
+            with retention.access(run.id, db):
+                get_workspaces_dir().mkdir(parents=True, exist_ok=True)
+                official_run_zip_path(run.id).write_bytes(content)
 
             queue_position = max(1, waiting - submission_count + 1)
             set_run_state(
@@ -170,9 +172,10 @@ class SubmissionIngestionEngine:
             release_execution_slots(submission_count)
             if "run" in locals() and isinstance(run, RunSummary):
                 try:
-                    official_run_zip_path(run.id).unlink(missing_ok=True)
+                    with retention.run_lock(run.id):
+                        official_run_zip_path(run.id).unlink(missing_ok=True)
                     run.status = "failure"
-                    run.failure_summary = {"error": f"Ingestion error: {exc}"}
+                    run.failure_summary = {"error": "ingestion_error"}
                     db.commit()
                 except Exception:
                     pass
