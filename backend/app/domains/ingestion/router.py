@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from app.core.dependencies import DbSession, assert_course_section_access, require_staff
 from app.domains.auth.models import User
 from app.domains.ingestion.schemas import OfficialRunResponse
-from app.domains.ingestion.service import IngestError, ingest_official_canvas_zip
+from app.domains.ingestion import IngestError, ingestion_engine
 
 router = APIRouter(
     prefix="/staff/courses/{course_id}/assignments/{assignment_id}/submissions",
@@ -27,7 +27,7 @@ async def ingest_canvas_submissions(
 
     content = await file.read()
     try:
-        run = ingest_official_canvas_zip(
+        run = ingestion_engine.ingest_canvas_upload(
             db,
             course_id=course_id,
             assignment_id=assignment_id,

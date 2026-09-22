@@ -1,4 +1,5 @@
-from dessert import Order, Candy, Cookie, IceCream, Sundae
+from dessert import Candy, Cookie, IceCream, Order, Sundae
+
 
 def main() -> None:
     order = Order()

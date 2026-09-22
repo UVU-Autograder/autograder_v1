@@ -1,8 +1,9 @@
-import sys
-import os
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -10,9 +11,9 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.domains.assignments.schemas import ScoringItemConfig
-from app.domains.sandbox.schemas import SandboxRubricItem
 from app.domains.grading.result_parser import parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
+from app.domains.sandbox.schemas import SandboxRubricItem
 
 
 def test_test_item_config_validation():
@@ -148,7 +149,7 @@ def test_runner_execution_passing(tmp_path):
     assert outcomes["summary"]["total"] == 2
     assert outcomes["summary"]["passed"] == 2
     assert outcomes["summary"]["failed"] == 0
-    
+
     # Check individual outcomes
     tests = outcomes["tests"]
     assert len(tests) == 2
@@ -206,7 +207,7 @@ def test_runner_execution_failing(tmp_path):
     assert outcomes["summary"]["total"] == 2
     assert outcomes["summary"]["passed"] == 0
     assert outcomes["summary"]["failed"] == 2
-    
+
     tests = outcomes["tests"]
     assert len(tests) == 2
     assert tests[0]["outcome"] == "failed"

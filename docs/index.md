@@ -26,7 +26,7 @@
 ---
 
 ## 🚀 DevOps & Host Deployment (`docs/deployment/`)
-* **[ubuntu_poc_deployment.md](./deployment/ubuntu_poc_deployment.md):** Step-by-step local POC deployment on Ubuntu 24.x for hypervisors, Docker Compose, and Celery workers.
+* **[ubuntu_poc_deployment.md](./deployment/ubuntu_poc_deployment.md):** Local POC Docker Compose stack (Ubuntu/Dell target; laptop notes, Judge0 image build, single Postgres, capacity).
 * **[kata_optimization.md](./deployment/kata_optimization.md):** Low-latency host tuning strategies (Hugepages, CPU pinning, microVMs) for Kata Containers backing Judge0.
 
 ---

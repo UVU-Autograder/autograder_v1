@@ -50,27 +50,39 @@ export default function ArtifactsPage({ params }: PageProps) {
   const [artifactKey, setArtifactKey] = useState("");
   const [artifactType, setArtifactType] = useState<"pytest_file" | "model_solution" | "support_file">("pytest_file");
 
-  const fetchArtifacts = async () => {
-    setIsLoading(true);
-    setError(null);
+  useEffect(() => {
+    let active = true;
+    apiClient
+      .get<ArtifactListResponse>(
+        `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`
+      )
+      .then((data) => {
+        if (active) {
+          setArtifacts(data.artifacts);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load artifacts.");
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [courseId, assignmentId]);
+
+  const reloadArtifacts = async () => {
     try {
       const data = await apiClient.get<ArtifactListResponse>(
         `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`
       );
       setArtifacts(data.artifacts);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load artifacts.");
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // ignore reload errors
     }
   };
-
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      fetchArtifacts();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, assignmentId]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +112,7 @@ export default function ArtifactsPage({ params }: PageProps) {
       setSuccess(`Artifact '${artifactKey}' uploaded successfully.`);
       setUploadFile(null);
       setArtifactKey("");
-      fetchArtifacts();
+      await reloadArtifacts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -118,7 +130,7 @@ export default function ArtifactsPage({ params }: PageProps) {
         `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`
       );
       setSuccess(`Artifact '${key}' deleted.`);
-      fetchArtifacts();
+      await reloadArtifacts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deletion failed.");
     }
@@ -137,18 +149,7 @@ export default function ArtifactsPage({ params }: PageProps) {
   };
 
   const fetchArtifactText = async (key: string): Promise<string> => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-    const url = `${baseUrl.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`;
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["authorization"] = `Bearer ${token}`;
-    }
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch artifact content: ${res.statusText}`);
-    }
-    return res.text();
+    return apiClient.getText(staffArtifactPath(courseId, assignmentId, key));
   };
 
   const openCodeEditor = async (key: string, type: string, filename: string) => {
@@ -190,7 +191,7 @@ export default function ArtifactsPage({ params }: PageProps) {
       );
       setIsCodeModalOpen(false);
       setSuccess(`Code saved successfully for '${editArtifactFilename}'.`);
-      fetchArtifacts();
+      await reloadArtifacts();
     } catch (err) {
       setCodeEditorError(err instanceof Error ? err.message : "Failed to save code changes.");
     } finally {
@@ -200,30 +201,30 @@ export default function ArtifactsPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500 font-medium animate-pulse">Loading artifacts...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground font-medium animate-pulse">Loading artifacts...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10">
+    <div className="min-h-screen bg-background p-6 md:p-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 space-y-1">
           <BackLink href={`/staff/courses/${courseId}/assignments/${assignmentId}`} variant="compact">
             Back to assignment
           </BackLink>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Grading Assets</h1>
-          <p className="text-slate-500">Upload and manage test suites or reference solutions.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Grading Assets</h1>
+          <p className="text-muted-foreground">Upload and manage test suites or reference solutions.</p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive font-medium">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-600">
+          <div className="mb-4 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success font-medium">
             {success}
           </div>
         )}
@@ -239,9 +240,9 @@ export default function ArtifactsPage({ params }: PageProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500">Asset Type</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">Asset Type</label>
                     <select
-                      className="w-full rounded-md border border-slate-200 p-2 text-sm focus:border-indigo-500"
+                      className="w-full rounded-md border border-input bg-background text-foreground p-2 text-sm focus:border-primary"
                       value={artifactType}
                       onChange={(e) => {
                         const val = e.target.value as "pytest_file" | "model_solution" | "support_file";
@@ -258,7 +259,7 @@ export default function ArtifactsPage({ params }: PageProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500">Unique Key</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">Unique Key</label>
                     <Input
                       placeholder="e.g. pytest_file"
                       required
@@ -268,10 +269,10 @@ export default function ArtifactsPage({ params }: PageProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500">File</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">File</label>
                     <input
                       type="file"
-                      className="w-full text-xs text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+                      className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground hover:file:bg-muted/80"
                       required
                       onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                     />
@@ -296,21 +297,21 @@ export default function ArtifactsPage({ params }: PageProps) {
               </CardHeader>
               <CardContent>
                 {artifacts.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-6">No assets uploaded yet.</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">No assets uploaded yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {artifacts.map((art) => (
                       <div
                         key={art.artifact_key}
-                        className="flex items-center justify-between rounded-lg border border-slate-100 p-3 hover:bg-slate-50"
+                        className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted/50 text-card-foreground"
                       >
                         <div className="flex items-center space-x-3">
-                          <FileIcon className="size-8 text-slate-400" />
+                          <FileIcon className="size-8 text-muted-foreground" />
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-700">
+                            <p className="truncate text-sm font-semibold text-foreground">
                               {art.display_filename || art.artifact_key}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               Key: {art.artifact_key} | Type: {art.artifact_type}
                             </p>
                           </div>
@@ -323,7 +324,7 @@ export default function ArtifactsPage({ params }: PageProps) {
                               openCodeEditor(art.artifact_key, art.artifact_type, art.display_filename || art.artifact_key)
                             }
                           >
-                            <EditIcon className="size-4 text-indigo-600" />
+                            <EditIcon className="size-4 text-primary" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -332,14 +333,14 @@ export default function ArtifactsPage({ params }: PageProps) {
                               handleDownload(art.artifact_key, art.display_filename)
                             }
                           >
-                            <DownloadIcon className="size-4 text-slate-600" />
+                            <DownloadIcon className="size-4 text-muted-foreground" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(art.artifact_key)}
                           >
-                            <TrashIcon className="size-4 text-red-500" />
+                            <TrashIcon className="size-4 text-destructive" />
                           </Button>
                         </div>
                       </div>
@@ -354,31 +355,31 @@ export default function ArtifactsPage({ params }: PageProps) {
 
       {/* Code Editor Modal Overlay */}
       {isCodeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-xl w-full max-w-5xl h-[85vh] flex flex-col">
-            <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-card rounded-lg border border-border shadow-xl w-full max-w-5xl h-[85vh] flex flex-col text-card-foreground">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/50 rounded-t-lg">
               <div className="flex items-center gap-2">
-                <FileTextIcon className="size-5 text-indigo-600 animate-pulse" />
+                <FileTextIcon className="size-5 text-primary animate-pulse" />
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Editing Grading Asset: {editArtifactFilename}</h3>
-                  <p className="text-xs text-slate-400">Directly modify the asset content on the server.</p>
+                  <h3 className="font-bold text-foreground text-sm">Editing Grading Asset: {editArtifactFilename}</h3>
+                  <p className="text-xs text-muted-foreground">Directly modify the asset content on the server.</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setIsCodeModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+              <button type="button" onClick={() => setIsCodeModalOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                 <XIcon className="size-5" />
               </button>
             </div>
 
             {codeEditorError && (
-              <div className="bg-red-50 text-red-600 p-3 text-xs border-b border-red-100 flex items-center gap-2">
+              <div className="bg-destructive/10 text-destructive p-3 text-xs border-b border-destructive/30 flex items-center gap-2">
                 <ShieldAlertIcon className="size-4 shrink-0" />
                 <span>{codeEditorError}</span>
               </div>
             )}
 
-            <div className="grow bg-slate-900 overflow-hidden relative flex items-center justify-center">
+            <div className="grow bg-muted overflow-hidden relative flex items-center justify-center">
               {isLoadingCode ? (
-                <p className="text-xs text-slate-400 animate-pulse font-mono">Fetching file content from server...</p>
+                <p className="text-xs text-muted-foreground animate-pulse font-mono">Fetching file content from server...</p>
               ) : (
                 <MonacoEditor
                   height="100%"
@@ -390,7 +391,7 @@ export default function ArtifactsPage({ params }: PageProps) {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 rounded-b-lg">
+            <div className="p-4 border-t border-border flex justify-end gap-2 bg-muted/40 rounded-b-lg">
               <Button variant="outline" size="sm" onClick={() => setIsCodeModalOpen(false)} disabled={isSavingCode}>
                 Cancel
               </Button>

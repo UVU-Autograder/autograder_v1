@@ -7,21 +7,20 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.integrations.judge0.client import (  # noqa: E402
+from app.integrations.judge0.client import (
     JUDGE0_STATUS_MAP,
     Judge0CleanupError,
     Judge0Client,
     Judge0TimeoutError,
     judge0_failure_for_status,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

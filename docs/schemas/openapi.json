@@ -70,6 +70,31 @@
         }
       }
     },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Me",
+        "description": "Return the authenticated staff user's profile and active role names.",
+        "operationId": "get_me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/staff/admin/courses": {
       "get": {
         "tags": [
@@ -934,6 +959,120 @@
                 "schema": {
                   "$ref": "#/components/schemas/SandboxRunResultResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sandbox/runs/{run_id}/ai-feedback": {
+      "post": {
+        "tags": [
+          "sandbox"
+        ],
+        "summary": "Generate Ai Feedback Endpoint",
+        "operationId": "generate_ai_feedback_endpoint_sandbox_runs__run_id__ai_feedback_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "x-sandbox-session",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sandbox-Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxAiFeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sandbox/runs/{run_id}/ai-feedback/stream": {
+      "post": {
+        "tags": [
+          "sandbox"
+        ],
+        "summary": "Generate Ai Feedback Stream Endpoint",
+        "operationId": "generate_ai_feedback_stream_endpoint_sandbox_runs__run_id__ai_feedback_stream_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "x-sandbox-session",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Sandbox-Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -2241,7 +2380,7 @@
     "/staff/courses/{course_id}/assignments/{assignment_id}/artifacts": {
       "get": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Get Assignment Artifacts",
         "operationId": "get_assignment_artifacts_staff_courses__course_id__assignments__assignment_id__artifacts_get",
@@ -2295,7 +2434,7 @@
       },
       "post": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Upload Assignment Artifact",
         "operationId": "upload_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts_post",
@@ -2361,7 +2500,7 @@
     "/staff/courses/{course_id}/assignments/{assignment_id}/artifacts/{artifact_key}": {
       "delete": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Delete Assignment Artifact",
         "operationId": "delete_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts__artifact_key__delete",
@@ -2422,7 +2561,7 @@
       },
       "get": {
         "tags": [
-          "staff-artifacts"
+          "staff-assignments"
         ],
         "summary": "Download Assignment Artifact",
         "operationId": "download_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts__artifact_key__get",
@@ -2658,7 +2797,7 @@
         ],
         "title": "ArtifactMetadata"
       },
-      "AssignmentConfigV1-Input": {
+      "AssignmentConfigV1": {
         "properties": {
           "bundle": {
             "$ref": "#/components/schemas/BundleConfig"
@@ -2679,56 +2818,8 @@
             "minItems": 1,
             "title": "Scoring Items"
           },
-          "completion_requirements": {
-            "items": {
-              "$ref": "#/components/schemas/CompletionRequirementConfig"
-            },
-            "type": "array",
-            "title": "Completion Requirements"
-          },
-          "dependencies": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Dependencies"
-          },
-          "rubric_groups": {
-            "items": {
-              "$ref": "#/components/schemas/RubricGroupConfig"
-            },
-            "type": "array",
-            "title": "Rubric Groups"
-          }
-        },
-        "type": "object",
-        "required": [
-          "bundle",
-          "artifacts",
-          "scoring_items"
-        ],
-        "title": "AssignmentConfigV1"
-      },
-      "AssignmentConfigV1-Output": {
-        "properties": {
-          "bundle": {
-            "$ref": "#/components/schemas/BundleConfig"
-          },
-          "artifacts": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/ArtifactConfig"
-            },
-            "type": "object",
-            "minProperties": 1,
-            "title": "Artifacts"
-          },
-          "scoring_items": {
-            "items": {
-              "$ref": "#/components/schemas/ScoringItemConfig"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Scoring Items"
+          "concepts": {
+            "$ref": "#/components/schemas/ConceptsConfig"
           },
           "completion_requirements": {
             "items": {
@@ -2816,7 +2907,7 @@
         "properties": {
           "bundle": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Bundle"
           },
           "stdin": {
@@ -2841,7 +2932,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           },
           "section_id": {
@@ -2868,7 +2959,7 @@
           },
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -3000,6 +3091,26 @@
           "nodes"
         ],
         "title": "ConceptMetadata"
+      },
+      "ConceptsConfig": {
+        "properties": {
+          "allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowlist"
+          },
+          "denylist": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Denylist"
+          }
+        },
+        "type": "object",
+        "title": "ConceptsConfig"
       },
       "CourseAdminDetail": {
         "properties": {
@@ -3916,6 +4027,29 @@
         ],
         "title": "RunSummaryResponse"
       },
+      "SandboxAiFeedbackResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "ai_feedback": {
+            "type": "string",
+            "title": "Ai Feedback"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "ai_feedback",
+          "model"
+        ],
+        "title": "SandboxAiFeedbackResponse"
+      },
       "SandboxAssignmentDetail": {
         "properties": {
           "id": {
@@ -4406,11 +4540,29 @@
             "type": "string",
             "title": "Sanitized Feedback"
           },
+          "ai_feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Feedback"
+          },
           "file_preview": {
             "$ref": "#/components/schemas/FilePreviewMetadata"
           },
           "retention_notice": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Retention Notice"
           },
           "raw_output": {
@@ -4434,8 +4586,7 @@
           "warnings",
           "test_summaries",
           "sanitized_feedback",
-          "file_preview",
-          "retention_notice"
+          "file_preview"
         ],
         "title": "SandboxRunResultResponse"
       },
@@ -4909,7 +5060,7 @@
             "title": "Artifacts"
           },
           "config_json": {
-            "$ref": "#/components/schemas/AssignmentConfigV1-Output"
+            "$ref": "#/components/schemas/AssignmentConfigV1"
           },
           "module_id": {
             "anyOf": [
@@ -4995,7 +5146,7 @@
             "title": "Language"
           },
           "config_json": {
-            "$ref": "#/components/schemas/AssignmentConfigV1-Input"
+            "$ref": "#/components/schemas/AssignmentConfigV1"
           },
           "module_id": {
             "anyOf": [

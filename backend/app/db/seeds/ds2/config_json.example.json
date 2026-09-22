@@ -33,21 +33,21 @@
   "scoring_items": [
     {
       "key": "ds1_regression",
-      "label": "DS1 class hierarchy intact",
+      "label": "DS1 class hierarchy intact (DessertItem, Candy, Cookie, IceCream, Sundae)",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "order_class",
-      "label": "Order class structure & methods",
+      "label": "Order class defines order list, add() method, and len() support",
       "points": 40,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "main_output",
-      "label": "main() produces correct output",
+      "label": "dessertshop.py main() constructs Order items and prints formatted receipt",
       "points": 40,
       "extra_credit": false,
       "item_type": "pytest"

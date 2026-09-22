@@ -1,28 +1,28 @@
-from typing import Any
-import io
-import sys
-import os
-import zipfile
-import json
 import csv
+import io
+import json
+import sys
+import zipfile
 from pathlib import Path
-from unittest.mock import patch, AsyncMock
+from typing import Any
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from sqlalchemy.orm import Session
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.core.settings import get_settings
 from app.db.session import SessionLocal
+from app.domains.grading.engine import GradingResult
+from app.domains.runs.mock_runner import run_mock_official_run
 from app.domains.runs.models import RunSummary
 from app.domains.runs.tasks import (
     build_model_solution_zip,
     failing_automated_items,
     grade_official_run,
-    run_mock_official_run,
 )
-from app.domains.grading.service import GradingResult
-from app.core.settings import get_settings
 from test_ingestion_extractor import create_zip_bytes
 
 
@@ -132,7 +132,7 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
     })
     zip_dest.write_bytes(canvas_zip_bytes)
 
-    # 3. Mock run_grading_pipeline
+    # 3. Mock GradingEngine.grade_submission
     mock_result = GradingResult(
         success=True,
         score=100,
@@ -141,13 +141,22 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
         warnings=[]
     )
 
-    with patch("app.domains.grading.service.run_grading_pipeline", new_callable=AsyncMock) as mock_pipeline:
+    with patch("app.domains.grading.engine.GradingEngine.grade_submission", new_callable=AsyncMock) as mock_pipeline:
         mock_pipeline.return_value = mock_result
 
         # Run task directly
         result = grade_official_run(run.id)
 
         assert mock_pipeline.call_count == 2  # 2 students in zip
+        assert all(
+            call.kwargs.get("bundle_dir") is not None or (
+                len(call.args) == 0 and "bundle_dir" in call.kwargs
+            )
+            for call in mock_pipeline.call_args_list
+        )
+        for call in mock_pipeline.call_args_list:
+            assert call.kwargs.get("zip_data") is None
+            assert call.kwargs.get("bundle_dir") is not None
         assert "student_results" in result
 
     # 4. Verify DB and files
@@ -160,10 +169,67 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
     assert (run_dir / "run_details.json").exists()
     assert (run_dir / "grades.csv").exists()
     assert (run_dir / "feedback.zip").exists()
+    details = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    assert details["run_status"] == "complete"
+    assert len(details["student_results"]) == 2
+
+
+def test_grade_official_run_writes_incremental_details(
+    db_session: Session,
+    temp_workspaces: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "judge0_max_concurrent", 1)
+
+    run = RunSummary(
+        workflow_type="official",
+        assignment_id=1,
+        status="queue",
+        total_submission_count=2,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
+    workspaces_dir.mkdir(parents=True, exist_ok=True)
+    zip_dest = workspaces_dir / f"official_{run.id}.zip"
+    zip_dest.write_bytes(
+        create_zip_bytes({
+            "studenta_11111_67890_student_functions.py": b"print('hello')",
+            "studentb_22222_67891_student_functions.py": b"print('hello')",
+        })
+    )
+
+    mock_result = GradingResult(success=True, score=100, max_score=100, test_results=[], warnings=[])
+    seen_counts: list[int] = []
+    run_dir = workspaces_dir / f"official_{run.id}"
+
+    async def grade_and_observe(*args, **kwargs):
+        details_file = run_dir / "run_details.json"
+        assert details_file.exists()
+        payload = json.loads(details_file.read_text(encoding="utf-8"))
+        seen_counts.append(len(payload.get("student_results", {})))
+        return mock_result
+
+    with patch(
+        "app.domains.grading.engine.GradingEngine.grade_submission",
+        new_callable=AsyncMock,
+        side_effect=grade_and_observe,
+    ):
+        grade_official_run(run.id)
+
+    assert seen_counts[0] == 0
+    assert 1 in seen_counts
+    final = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    assert len(final["student_results"]) == 2
+    assert final["run_status"] == "complete"
 
 
 def test_cleanup_expired_workspaces(db_session: Session, temp_workspaces: Path) -> None:
-    from datetime import datetime, timedelta, UTC
+    from datetime import UTC, datetime, timedelta
+
     from app.domains.runs.tasks import cleanup_expired_workspaces
 
     # 1. Create a run that is 25 hours old (expired)
@@ -227,8 +293,8 @@ def anyio_backend() -> str:
 
 @pytest.mark.anyio
 async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_workspaces: Any) -> None:
-    from app.domains.grading.service import run_grading_pipeline
     from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.grading.engine import GradingEngine
 
     # Create configuration for an assignment
     config_dict = {
@@ -272,12 +338,12 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
         "assignment_tests": f"file://{tests_file.as_posix()}"
     }
 
-    result = await run_grading_pipeline(
-        zip_data=zip_bytes,
+    engine = GradingEngine(
         config=config,
         artifact_refs=artifact_refs,
         allowed_concepts=["variables", "functions"]
     )
+    result = await engine.grade_submission(zip_data=zip_bytes)
 
     # Check that it got blocked by helper.py, not main.py!
     assert not result.success
@@ -288,9 +354,9 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
 
 @pytest.mark.anyio
 async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_workspaces: Path) -> None:
-    from app.domains.grading.service import run_grading_pipeline
-    from app.domains.assignments.service import get_assignment_for_course
     from app.domains.assignments.schemas import AssignmentConfigV1
+    from app.domains.assignments.service import get_assignment_for_course
+    from app.domains.grading.engine import GradingEngine
     from app.domains.grading.executor import ExecutionOutcome
     from app.domains.grading.result_parser import PytestRunResult, PytestTestResult
 
@@ -337,15 +403,15 @@ async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_worksp
     from app.domains.assignments.service import effective_allowed_concepts
     allowed = effective_allowed_concepts(assignment)
 
-    with patch("app.domains.grading.service.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_execute:
+    with patch("app.domains.grading.engine.execute_pytest_in_judge0", new_callable=AsyncMock) as mock_execute:
         mock_execute.return_value = mock_outcome
 
-        result = await run_grading_pipeline(
-            zip_data=zip_bytes,
+        engine = GradingEngine(
             config=config,
             artifact_refs=artifact_refs,
-            allowed_concepts=allowed
+            allowed_concepts=allowed,
         )
+        result = await engine.grade_submission(zip_data=zip_bytes)
 
     # 5. Assert it graded perfectly!
     assert result.success

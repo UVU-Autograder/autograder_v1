@@ -15,17 +15,17 @@ from sqlalchemy.orm import Session
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core.auth_utils import create_access_token  # noqa: E402
-from app.db.session import SessionLocal  # noqa: E402
-from app.domains.assignments.models import Assignment  # noqa: E402
-from app.domains.assignments.service import (  # noqa: E402
+from app.core.auth_utils import create_access_token
+from app.db.session import SessionLocal
+from app.domains.assignments.models import Assignment
+from app.domains.assignments.service import (
     effective_allowed_concepts,
     get_assignment_for_course,
 )
-from app.domains.auth.models import Role, StaffAccess, User  # noqa: E402
-from app.domains.courses.models import Section  # noqa: E402
-from app.domains.runs.models import RunSummary  # noqa: E402
-from app.domains.runs.queue_admission import (  # noqa: E402
+from app.domains.auth.models import Role, StaffAccess, User
+from app.domains.courses.models import Section
+from app.domains.runs.models import RunSummary
+from app.domains.runs.queue_admission import (
     FULL_QUEUE_THRESHOLD,
     HIGH_LOAD_THRESHOLD,
     QueueFullError,
@@ -35,8 +35,8 @@ from app.domains.runs.queue_admission import (  # noqa: E402
     reset_admission_state_for_tests,
     waiting_count,
 )
-from app.main import create_app  # noqa: E402
-from test_ingestion_extractor import create_zip_bytes  # noqa: E402
+from app.main import create_app
+from test_ingestion_extractor import create_zip_bytes
 
 
 @pytest.fixture(autouse=True)
@@ -277,9 +277,10 @@ def test_effective_allowed_concepts_includes_module(db_session: Session) -> None
     assert "module-only-loops" in concepts
 
 
+    from datetime import UTC, datetime, timedelta
+
     from app.domains.sandbox.catalog import get_sandbox_assignment
     from app.domains.sandbox.schemas import UploadQuota
-    from datetime import UTC, datetime, timedelta
 
     detail = get_sandbox_assignment(
         db_session,
@@ -345,7 +346,7 @@ def test_effective_allowed_concepts_stops_at_assignment_module(db_session):
     assignment = get_assignment_for_course(db_session, "cs1410", "lab2")
     assert assignment is not None
     assert assignment.module is not None
-    
+
     # Add a concept to a later module (e.g. module with id > assignment.module_id)
     later_module = next(m for m in assignment.course.modules if m.id > assignment.module_id)
     later_module.concepts = list(later_module.concepts or []) + ["future-unintroduced-concept"]

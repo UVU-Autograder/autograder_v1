@@ -31,43 +31,16 @@
 - Hallucination guardrails (when Local LLM is enabled): treat pytest and tracebacks as ground truth; LLM explains, does not re-grade (sandbox only).
 - Prefer fake/synthetic or completely anonymized validation data until live-data posture is confirmed for a workflow.
 
-## 3. Open-Source Patterns Reused
+## 3. Architecture Patterns Reused
 
-- Autolab/Tango inspires the async grading/job orchestration shape, including queue-driven official-run processing and status tracking.
-- Submitty's `config.json` format informs the grading-config direction for tests, point values, and execution settings.
-- A custom output normalizer (`app/domains/grading/normalizer.py`) handles whitespace, line-ending, and blank-line normalization to reduce false negatives from formatting differences.
+- **Async Job Queueing:** Submitty/Tango pattern for Celery-backed worker queueing and status polling.
+- **Output Normalization:** Standardized string normalizer (`app/domains/grading/normalizer.py`) stripping trailing whitespace and normalizing line endings (`\r\n` -> `\n`) to prevent false test failures.
 
-## 4. App Workflows
+## 4. Pipeline Execution Summaries
 
-### Official staff batch grading
-
-1. Staff uploads a Canvas ZIP for one assignment.
-2. The backend validates the archive and rejects malformed or non-Canvas ZIPs before queueing.
-3. Valid archives are extracted into a shared ephemeral workspace.
-4. Student submission bundles are validated against assignment-config requirements, then graded through AST checks, Judge0 execution in Kata-backed VMs for test runs, and sandbox Local LLM explanation when enabled for non-personally-traceable code payloads (official AI deferred).
-5. Results are packaged into staff-facing export artifacts.
-6. Export is returned.
-
-### Student sandbox projected grading
-
-1. Student opens the sandbox entry flow.
-2. Backend returns globally visible courses and assignments where sandbox access is enabled.
-3. Student selects a visible course and assignment.
-4. Student uploads a ZIP/project bundle for projected grading.
-5. The backend applies sandbox rate limiting before any grading work starts.
-6. The backend validates ZIP safety and assignment-config bundle requirements before grading.
-7. The frontend shows upload quota, preview, and rate-limit state.
-8. Code is processed through the same AST, Judge0-backed Kata-isolated test execution, and sandbox Local LLM explanation pipeline when enabled for non-personally-traceable code payloads.
-9. Projected score, warnings, and feedback appear on screen only.
-
-### Assignment and grading setup
-
-1. Instructor creates an assignment linked to a course.
-2. Authorized staff configure grading data through a comprehensive instructor-facing wizard that writes the app-owned `assignment_configs.config_json`; the wizard is the authoring surface for that config.
-3. Assignment metadata (for example name, due date, and points context) is entered manually; Canvas assignment-metadata import is not required.
-4. `Concepts Covered` defaults are maintained at the course level, and module learning concepts are merged into the effective whitelist at runtime. Per-assignment additions are not supported.
-5. One assignment-owned pytest file, model solution content, support files, ZIP/project bundle requirements, and test metadata derived from the app-owned config are maintained as assignment-owned grading assets.
-6. Model solution validation runs through the same Judge0 + Kata execution path used for student code.
+- **Official Staff Batch Grading:** Canvas ZIP archive -> Ingest Validation -> Ephemeral Workspace Extraction -> Assignment Config & AST Validation -> Judge0 Execution (in Kata VM) -> Result Formatting -> Staff CSV/Feedback Export Package -> Ephemeral Review Retention (≤24h or staff cleanup).
+- **Student Sandbox Runs:** ZIP Bundle -> Rate Limiting -> Ephemeral Extraction -> AST Validation -> Judge0 Execution -> On-screen Results & Visual Diff -> Immediate Cleanup.
+- **Assignment Configuration Setup:** Instructor Wizard -> App-Owned `config_json` v1 -> Pytest/Model Solution Artifact Upload -> Model Solution Verification in Judge0 -> Published Assignment Config.
 
 ## 5. Data Model
 
@@ -188,7 +161,7 @@ classDiagram
 - `assignments` are course-linked, while section-level edit authority is enforced through staff access rules.
 - `assignment_configs` store the app-owned `config_json`, which is the canonical internal grading configuration; the frontend wizard is the authoring surface for that config.
 - `assignment_configs` also store ZIP/project bundle requirements such as required files, entrypoint, and layout expectations.
-- `modules` store module-specific learning concepts; runtime-effective whitelist is course defaults ∪ module concepts. Per-assignment concept additions were removed.
+- `modules` store module-specific learning concepts; runtime-effective whitelist is course defaults ∪ cumulative module concepts. Per-assignment concept additions were removed, but assignment configs may specify a `concepts.denylist` to forbid specific inherited constructs (e.g. built-in sorting).
 - `assignment_artifacts` store lightweight metadata and storage references for assignment-owned files such as pytest files, model solutions, and support files.
 - `scoring_items` are derived records used for querying, validation, and UI rendering; they must never become a second editable grading source of truth.
 - `scoring_items` are derived projections of both automated test keys and manual rubric items, used for grading display and configuration checking.
@@ -200,11 +173,12 @@ classDiagram
 
 - The course-level baseline is teacher-authored and stored with the course settings.
 - Module concepts represent additional learning concepts defined on the module.
-- The effective concept allow-list is computed at runtime as `course defaults ∪ module concepts`.
+- The effective concept allow-list is computed at runtime as `(course defaults ∪ cumulative module concepts 1..N) \ config_json.concepts.denylist`.
 - Runtime merge rules:
   - course defaults appear first
   - module concepts appear after course defaults
   - duplicate concepts are removed automatically
+  - assignment-level `concepts.denylist` removes matching concepts from the effective allowed list
 - AST enforcement and any UI display of allowed concepts must use the same merged effective list.
 - Existing assignments always reflect the current course defaults and module concepts at runtime.
 - Reusing the same assignment config shape in a different course/module may produce a different effective concept list because course defaults and module concepts are owned by the course and module.
@@ -233,6 +207,7 @@ classDiagram
   - `artifacts`
   - `scoring_items`
 - Optional top-level v1 sections:
+  - `concepts` (`allowlist` and `denylist` to subtract inherited constructs)
   - `completion_requirements`
   - `dependencies`
   - `rubric_groups`
@@ -314,6 +289,8 @@ classDiagram
   - detailed compile/runtime error text
   - per-student feedback bodies
 - Coarse categories such as `compile_error`, `timeout`, `test_failure`, or aggregate counts are allowed.
+- Structured audit events (`autograder.audit` logger) may record allowlisted operational metadata such as run ids, aggregate counters, coarse failure categories, and staff actor ids. See `backend/app/core/audit_log.py`.
+- All application log records pass through a sensitive-data redaction filter for Canvas export filenames, `student_{canvas_id}` path segments, email addresses, and Judge0 tokens.
 - If sensitive debug traces are temporarily enabled for operations, they must:
   - be explicitly scoped to troubleshooting
   - be aggressively rotated
@@ -349,7 +326,7 @@ flowchart TD
     M --> N[Destroy workspace, copied assignment artifacts, and transient artifacts]
 ```
 
-### ZIP/project bundle contract
+For **official** runs, the cleanup boundary at `M` means execution artifacts and raw extract trees are destroyed promptly; review workspaces, export packages, and staff-facing previews remain until ≤24h expiration or explicit staff cleanup. For **sandbox** runs, cleanup at `M` is immediate.
 
 - ZIP/project bundle uploads are supported for official staff runs and student sandbox runs.
 - Loose multi-file drag-and-drop is not part of the product contract.
@@ -363,7 +340,7 @@ flowchart TD
   - files that cannot be mapped to the expected assignment layout
 - Official Canvas ZIP ingestion may contain one multi-file submission bundle per student.
 - Student sandbox ZIP upload represents one projected-grading bundle for the selected assignment.
-- File tree and file preview surfaces must use sanitized names only and must not write filenames into persistent run metadata.
+- File tree and file preview surfaces must use **sanitized assignment-local names only** (for example `dessert.py`, not Canvas export prefixes or version suffixes) and must not write filenames into persistent run metadata.
 
 ## Execution Engine Notes
 
@@ -378,7 +355,8 @@ flowchart TD
 - Cleanup verification must confirm:
   - `DELETE /submissions/{token}` was issued after result retrieval
   - the deleted Judge0 submission/result is no longer retrievable
-  - ephemeral local workspace files are removed
+  - per-student **execution** workspaces (`ag_grade_*`) are removed immediately after each grading job
+  - per-student **review** workspaces (`student_{canvas_id}` under the official run directory) remain available only for the official review window (≤24h or staff cleanup)
   - Kata execution state is destroyed or no longer reachable
 - Cleanup proof for launch signoff requires automated integration evidence plus documented Dell-workstation operational spot checks summarized in [delivery_controls.md](../planning/delivery_controls.md).
 - Automated cleanup tests must cover success, test failure, compile/import error, timeout, Judge0 cleanup failure, and workspace cleanup after exceptions.
@@ -427,17 +405,29 @@ Notes:
 - Canvas assumptions:
   - the archive contains student submission entries that can be mapped to Canvas-provided identifiers from filenames or enclosing paths
   - the parser can detect when a file does not map cleanly to a single student submission target
+- Canvas export filename shape (top-level entries):
+  - `{student_name}_{canvas_user_id}_{submission_id}_{original_filename}`
+  - late submissions may include `_LATE_` before the Canvas user id: `{student_name}_LATE_{canvas_user_id}_{submission_id}_{original_filename}`
+  - parsing and grouping are implemented in `backend/app/domains/ingestion/extractor.py`
 - Filename mapping rules:
-  - unmatched files are collected and surfaced as actionable ingest errors
+  - after parsing the Canvas prefix, normalize `original_filename` to assignment-local names by stripping Canvas version suffixes:
+    - numeric suffixes such as `-6` or `-2`
+    - UUID suffixes such as `-bccde8b7-b9d3-4fb7-b04c-3e48ba38dfa2`
+  - normalized names are used for bundle validation, grading, Monaco preview, and staff file inspection
+  - unmatched files are collected in ephemeral run details and surfaced to staff; ingest is not blocked solely because unmatched files exist
   - multiple files for a single student are allowed when they belong to the same extracted submission bundle
-  - duplicate or ambiguous identifier matches must fail clearly rather than guessing
+  - when two Canvas files normalize to the same assignment-local name, keep the larger file and discard the smaller duplicate rather than failing the whole run; this matches common Canvas resubmission/version patterns
   - submission bundles must also pass the assignment-config ZIP/project bundle requirements before grading
   - resubmission semantics are not persisted as submission history; the uploaded ZIP is treated as the official batch snapshot for that run only
+- Official workspace lifecycle (two layers):
+  - **Review workspace:** `workspaces/official_{run_id}/` including `student_{canvas_id}/`, `run_details.json`, `grades.csv`, and `feedback.zip`. Retained ≤24h or until staff cleanup so Monaco preview and manual grading can proceed.
+  - **Execution workspace:** temporary `ag_grade_*` directories created by `GradingEngine` for Judge0/Kata execution. Destroyed immediately after each submission is graded.
+  - the raw Canvas extract directory (`extracted/`) is removed after the run finishes processing; prepared per-student review directories remain.
 - Extraction occurs only inside the shared ephemeral workspace lifecycle used by official runs.
 - No student submission should ever be extracted into a shared persistent workspace across runs.
 - Canvas validation uses synthetic Canvas ZIP/CSV fixtures and any available completely anonymized Canvas-shaped samples.
-- Prefer not to use live, pseudonymous, or re-identifiable Canvas data for validation until live-data posture is confirmed.
-- Synthetic Canvas fixtures must cover malformed ZIPs, path traversal, ambiguous filenames, unmatched files, multi-file submission bundles, and Canvas-grade CSV shape.
+- Prefer not to use live, pseudonymous, or re-identifiable Canvas data for automated validation until live-data posture is confirmed.
+- Synthetic Canvas fixtures must cover malformed ZIPs, path traversal, ambiguous filenames, unmatched files, `_LATE_` filename variants, Canvas version suffix stripping, multi-file submission bundles, and Canvas-grade CSV shape.
 
 ## 8. Celery Grading Pipeline
 
@@ -555,6 +545,7 @@ Notes:
 - Kata-backed VM isolation is required for the planned production execution model (Dell validation still pending).
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
 - Sandbox Local LLM: may process student code only when the payload is not personally traceable (no PII/identifiers); official AI deferred
+- Local LLM prompt ceilings: `max_file_chars = 4000`, `max_total_chars = 8000`. Individual files exceeding 4,000 characters are truncated with explicit markers (`... [file truncated]`); multi-file submissions exceeding 8,000 total characters omit remaining files with notices (`... [additional files omitted: ...]`).
 - Local LLM logging: token usage only, stored as sanitized aggregate metadata
 
 ### Service targets and reliability guardrails

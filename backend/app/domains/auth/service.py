@@ -14,7 +14,6 @@ from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Section
 from app.domains.runs.models import RunSummary
 
-
 # --- Access Control Service ---
 
 def list_users(db: Session) -> list[User]:

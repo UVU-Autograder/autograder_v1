@@ -10,7 +10,7 @@ import asyncio
 from typing import Any
 
 import httpx
-
+from typing_extensions import Self
 
 # ---------------------------------------------------------------------------
 # Custom exceptions
@@ -164,7 +164,7 @@ class Judge0Client:
             response.raise_for_status()
         except httpx.HTTPError as exc:
             raise Judge0SubmissionError(
-                f"Failed to create Judge0 submission: {exc}"
+                f"Failed to create Judge0 submission at {self._client.base_url}: {exc}"
             ) from exc
 
         data = response.json()
@@ -242,12 +242,19 @@ class Judge0Client:
             If the DELETE request fails.  This is launch-blocking per spec.
         """
         try:
-            response = await self._client.delete(f"/submissions/{token}")
-            if response.status_code in (200, 204):
-                return True
+            for attempt in range(3):
+                response = await self._client.delete(f"/submissions/{token}")
+                if response.status_code in (200, 204):
+                    return True
+                if response.status_code == 400 and ("In Queue" in response.text or "Processing" in response.text):
+                    await asyncio.sleep(0.5)
+                    continue
+                raise Judge0CleanupError(
+                    f"Unexpected status {response.status_code} when deleting "
+                    f"submission {token}: {response.text}"
+                )
             raise Judge0CleanupError(
-                f"Unexpected status {response.status_code} when deleting "
-                f"submission {token}"
+                f"Failed to delete submission {token} after retries."
             )
         except httpx.HTTPError as exc:
             raise Judge0CleanupError(
@@ -260,7 +267,7 @@ class Judge0Client:
         """Close the underlying HTTP client."""
         await self._client.aclose()
 
-    async def __aenter__(self) -> Judge0Client:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

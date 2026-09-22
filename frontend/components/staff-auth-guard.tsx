@@ -52,10 +52,14 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       }
     };
 
+    let lastRecorded = 0;
     const updateActivity = () => {
+      const now = Date.now();
+      if (now - lastRecorded < 15000) return;
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       if (token && pathname !== "/staff/login") {
-        localStorage.setItem("lastActivity", Date.now().toString());
+        lastRecorded = now;
+        localStorage.setItem("lastActivity", now.toString());
       }
     };
 
@@ -83,8 +87,8 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isAuthenticated !== true) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
-        <div className="text-center font-medium text-slate-500" role="status">
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="text-center font-medium text-muted-foreground" role="status">
           Checking authorization...
         </div>
       </div>

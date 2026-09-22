@@ -1,10 +1,19 @@
-from datetime import datetime
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint, event, func
-from sqlalchemy.ext.mutable import MutableList
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    event,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -51,7 +60,7 @@ def delete_physical_file(mapper, connection, target) -> None:
         file_path = None
         if ref.startswith("file://"):
             file_path = file_storage_ref_to_path(ref)
-        elif ref.startswith("/") or ref.startswith("\\") or (len(ref) > 1 and ref[1] == ":"):
+        elif ref.startswith(("/", "\\")) or (len(ref) > 1 and ref[1] == ":"):
             if not ref.startswith("seed://"):
                 file_path = Path(ref).resolve()
 

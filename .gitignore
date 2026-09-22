@@ -14,19 +14,24 @@ __pycache__/
 .pytest_cache/
 .pytest-tmp/
 backend/data/
+.ruff_cache/
 
 # Logs
 *.log
 npm-debug.log*
 
 node_modules/
+.vscode/
 
 # Agentic Configuration Ignores
 .agents/
+.scratch/
+
+# Accidental local tooling artifacts
+/uv.lock
 
 # Student submission datasets
 cs1410/
-
 # Preflight output (host details, no secrets)
 preflight-report-*.txt
 preflight-stack-*.json
@@ -35,6 +40,7 @@ preflight-stack-*.json
 backend/training/data/
 backend/training/output/
 
-# Local copies of the course archive (cs1410.zip itself is already tracked)
-cs1410 copy.zip
-cs1410-*.zip
+# Course archives (student data) -- seed fixtures excepted
+/cs1410.zip
+*.zip
+!backend/app/db/seeds/**/*.zip

@@ -1,7 +1,8 @@
 """Autograding test suite for Lab 7: Data Classes."""
 
-import io
 import contextlib
+import io
+
 import pytest
 from python_autograder_helpers import import_student_modules
 
@@ -10,7 +11,7 @@ from python_autograder_helpers import import_student_modules
 def test_dataclass() -> None:
     """Verify @dataclass(order=True) with correct typed fields and default_factory list."""
     (student_mod,) = import_student_modules("student")
-    Student = getattr(student_mod, "Student")
+    Student = student_mod.Student
 
     s1 = Student(101, "Alice", "CS")
     assert s1.id == 101
@@ -27,7 +28,7 @@ def test_dataclass() -> None:
 def test_methods() -> None:
     """Verify enroll() and total_courses() methods on Student."""
     (student_mod,) = import_student_modules("student")
-    Student = getattr(student_mod, "Student")
+    Student = student_mod.Student
 
     s = Student(101, "Alice", "CS")
     assert s.total_courses() == 0
@@ -43,7 +44,7 @@ def test_methods() -> None:
 def test_ordering() -> None:
     """Verify comparison operators and ID sorting on Student dataclass."""
     (student_mod,) = import_student_modules("student")
-    Student = getattr(student_mod, "Student")
+    Student = student_mod.Student
 
     s1 = Student(101, "Alice", "CS")
     s2 = Student(102, "Bob", "SE")

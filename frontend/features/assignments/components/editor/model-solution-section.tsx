@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { apiClient } from "@/lib/api-client";
+import { staffArtifactPath } from "@/features/staff/api";
 
 type ValidationStatus = {
   status: "idle" | "queue" | "run" | "success" | "failure";
@@ -29,6 +30,8 @@ type ValidationStatus = {
   score: number;
   max_score: number;
 };
+
+import { Label } from "@/components/ui/label";
 
 export function ModelSolutionSection() {
   const {
@@ -171,22 +174,8 @@ export function ModelSolutionSection() {
   };
 
   const handleDownload = (key: string, filename: string) => {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("token") || sessionStorage.getItem("token")
-        : null;
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-    const url = `${baseUrl.replace(/\/$/, "")}/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${key}`;
-
-    fetch(url, { headers: token ? { authorization: `Bearer ${token}` } : {} })
-      .then((res) => res.blob())
-      .then((blob) => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = filename || key;
-        a.click();
-      })
+    apiClient
+      .download(staffArtifactPath(courseId, assignmentId, key), filename || key)
       .catch(() => setErrorMessage("Download failed."));
   };
 
@@ -207,13 +196,13 @@ export function ModelSolutionSection() {
             className="flex flex-col sm:flex-row gap-3 items-end"
           >
             <div className="space-y-1 grow">
-              <label className="text-xs font-semibold text-slate-700">
+              <Label className="text-xs">
                 Upload Solution File or ZIP Archive
-              </label>
+              </Label>
               <Input
                 type="file"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="text-xs cursor-pointer bg-white"
+                className="text-xs cursor-pointer"
               />
             </div>
             <Button type="submit" disabled={uploading}>
@@ -235,17 +224,17 @@ export function ModelSolutionSection() {
               return (
                 <div
                   key={art.artifact_key}
-                  className="flex items-center justify-between p-3.5 bg-stone-50 rounded-lg border border-stone-200"
+                  className="flex items-center justify-between p-3.5 bg-card rounded-lg border border-border text-card-foreground"
                 >
                   <div className="flex items-center gap-3">
-                    <FileCodeIcon className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <FileCodeIcon className="w-5 h-5 text-primary shrink-0" />
                     <div>
-                      <div className="font-mono text-sm font-bold text-slate-900">
+                      <div className="font-mono text-sm font-bold text-foreground">
                         {displayFilename}
                       </div>
                       {art.size_bytes !== null &&
                         art.size_bytes !== undefined && (
-                          <div className="text-xs text-stone-500 font-mono">
+                          <div className="text-xs text-muted-foreground font-mono">
                             {Math.round(art.size_bytes / 1024)} KB
                           </div>
                         )}
@@ -280,11 +269,12 @@ export function ModelSolutionSection() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      aria-label="Delete solution file"
                       onClick={() =>
                         handleDeleteSolution(art.artifact_key, displayFilename)
                       }
                     >
-                      <Trash2Icon className="w-4 h-4 text-red-500" />
+                      <Trash2Icon className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>
                 </div>
@@ -292,7 +282,7 @@ export function ModelSolutionSection() {
             })}
 
             {solutionArtifacts.length === 0 && (
-              <p className="text-xs text-stone-400 italic p-6 text-center border border-dashed rounded-lg">
+              <p className="text-xs text-muted-foreground italic p-6 text-center border border-dashed border-border rounded-lg">
                 No model solution files attached yet. Upload a Python solution
                 script or ZIP archive above.
               </p>
@@ -325,18 +315,18 @@ export function ModelSolutionSection() {
         </CardHeader>
         <CardContent>
           {validation.status !== "idle" && (
-            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-xs space-y-4 text-card-foreground">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-slate-900 text-sm">
+                <h4 className="font-semibold text-foreground text-sm">
                   Validation Run Status
                 </h4>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
                     validation.status === "success"
-                      ? "bg-emerald-100 text-emerald-800"
+                      ? "bg-success/15 text-success"
                       : validation.status === "failure"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-amber-100 text-amber-800 animate-pulse"
+                        ? "bg-destructive/15 text-destructive"
+                        : "bg-warning/15 text-warning-foreground animate-pulse"
                   }`}
                 >
                   {validation.status}
@@ -345,15 +335,15 @@ export function ModelSolutionSection() {
 
               {(validation.status === "queue" ||
                 validation.status === "run") && (
-                <p className="text-xs text-slate-500 animate-pulse font-mono">
+                <p className="text-xs text-muted-foreground animate-pulse font-mono">
                   Executing model solution against tests.py in sandbox
                   container...
                 </p>
               )}
 
               {validation.status === "success" && (
-                <div className="flex items-center text-emerald-700 gap-2 text-xs font-semibold p-3 bg-emerald-50 rounded-lg">
-                  <CheckCircle2Icon className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div className="flex items-center text-success gap-2 text-xs font-semibold p-3 bg-success/10 rounded-lg border border-success/20">
+                  <CheckCircle2Icon className="w-5 h-5 text-success shrink-0" />
                   <span>
                     Parity Confirmed. Model Solution scored {validation.score} /{" "}
                     {validation.max_score} pts.
@@ -362,12 +352,12 @@ export function ModelSolutionSection() {
               )}
 
               {validation.status === "failure" && (
-                <div className="space-y-2 p-3 bg-red-50 rounded-lg border border-red-200">
-                  <div className="flex items-center text-red-700 gap-2 text-xs font-semibold">
-                    <ShieldAlertIcon className="w-5 h-5 text-red-600 shrink-0" />
+                <div className="space-y-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30 text-destructive">
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    <ShieldAlertIcon className="w-5 h-5 text-destructive shrink-0" />
                     <span>Preflight validation errors found:</span>
                   </div>
-                  <ul className="list-disc pl-5 text-xs text-red-800 font-mono space-y-1">
+                  <ul className="list-disc pl-5 text-xs font-mono space-y-1">
                     {validation.errors.map((err, idx) => (
                       <li key={idx}>{err}</li>
                     ))}

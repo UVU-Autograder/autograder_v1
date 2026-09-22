@@ -1,8 +1,7 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
+from fastapi import Depends, HTTPException, Response, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.auth_utils import decode_access_token
@@ -38,6 +37,7 @@ def get_current_user(
 
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
+
     from app.domains.auth.models import StaffAccess
 
     user = db.scalar(
@@ -73,10 +73,13 @@ def get_optional_user(
         HTTPAuthorizationCredentials | None, Depends(security)
     ] = None,
 ) -> User | None:
-    """Return the authenticated user when a Bearer token is present, else None."""
+    """Return the authenticated user when a valid Bearer token is present, else None."""
     if not credentials:
         return None
-    return get_current_user(db, response, credentials)
+    try:
+        return get_current_user(db, response, credentials)
+    except HTTPException:
+        return None
 
 def require_role(allowed_roles: list[str]):
     """Standardized guard to enforce specific user roles."""
@@ -135,6 +138,7 @@ def assert_course_section_access(
         return
 
     from sqlalchemy import select
+
     from app.domains.courses.models import Course, Section
 
     course = db.scalar(select(Course).where(Course.code == course_code))
@@ -171,6 +175,7 @@ def assert_course_section_access(
 def accessible_section_ids_for_course(db: Session, user: User, course_code: str) -> list[int] | None:
     """Return section IDs the user may access, or None if admin (all sections)."""
     from sqlalchemy import select
+
     from app.domains.courses.models import Course
 
     course = db.scalar(select(Course).where(Course.code == course_code))

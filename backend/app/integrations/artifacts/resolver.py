@@ -7,7 +7,6 @@ knowing the underlying storage layout.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 SEEDS_DIR = Path(__file__).resolve().parents[2] / "db" / "seeds"

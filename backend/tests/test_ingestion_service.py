@@ -11,13 +11,18 @@ from sqlalchemy import select
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.session import SessionLocal  # noqa: E402
-from app.domains.auth.models import User  # noqa: E402
-from app.domains.courses.models import Section  # noqa: E402
-from app.domains.ingestion.service import IngestError, ingest_official_canvas_zip  # noqa: E402
-from app.domains.runs.queue_admission import reset_admission_state_for_tests  # noqa: E402
-from app.domains.runs.service import official_run_zip_path  # noqa: E402
-from test_ingestion_extractor import create_zip_bytes  # noqa: E402
+from app.db.session import SessionLocal
+from app.domains.auth.models import User
+from app.domains.courses.models import Section
+from app.domains.ingestion import (
+    IngestError,
+    ingestion_engine,
+)
+from app.domains.runs.queue_admission import (
+    reset_admission_state_for_tests,
+)
+from app.domains.runs.service import official_run_zip_path
+from test_ingestion_extractor import create_zip_bytes
 
 
 @pytest.fixture(autouse=True)
@@ -60,7 +65,7 @@ def test_ingest_official_canvas_zip_success(db_session, staff_user, section_id, 
         {"jaxonlarsen_12345_67890_student_functions.py": b"print('hello')"}
     )
 
-    run = ingest_official_canvas_zip(
+    run = ingestion_engine.ingest_canvas_upload(
         db_session,
         course_id="cs1400",
         assignment_id="simple-python-functions",
@@ -80,7 +85,7 @@ def test_ingest_official_canvas_zip_success(db_session, staff_user, section_id, 
 
 def test_ingest_rejects_non_zip(db_session, staff_user, section_id):
     with pytest.raises(IngestError, match="Only ZIP files"):
-        ingest_official_canvas_zip(
+        ingestion_engine.ingest_canvas_upload(
             db_session,
             course_id="cs1400",
             assignment_id="simple-python-functions",
@@ -96,7 +101,7 @@ def test_ingest_rejects_oversized(db_session, staff_user, section_id, monkeypatc
 
     monkeypatch.setattr(get_settings(), "max_upload_bytes", 10)
     with pytest.raises(IngestError, match="Upload size limit"):
-        ingest_official_canvas_zip(
+        ingestion_engine.ingest_canvas_upload(
             db_session,
             course_id="cs1400",
             assignment_id="simple-python-functions",
@@ -112,7 +117,7 @@ def test_ingest_rejects_missing_assignment(db_session, staff_user, section_id):
         {"jaxonlarsen_12345_67890_student_functions.py": b"print('hello')"}
     )
     with pytest.raises(IngestError, match="Assignment not found") as exc_info:
-        ingest_official_canvas_zip(
+        ingestion_engine.ingest_canvas_upload(
             db_session,
             course_id="cs1400",
             assignment_id="does-not-exist",
@@ -127,7 +132,7 @@ def test_ingest_rejects_missing_assignment(db_session, staff_user, section_id):
 def test_ingest_rejects_non_canvas_zip(db_session, staff_user, section_id):
     zip_bytes = create_zip_bytes({"main.py": b"print('hello')"})
     with pytest.raises(IngestError, match="recognized Canvas"):
-        ingest_official_canvas_zip(
+        ingestion_engine.ingest_canvas_upload(
             db_session,
             course_id="cs1400",
             assignment_id="simple-python-functions",
@@ -143,7 +148,7 @@ def test_ingest_rejects_bad_section(db_session, staff_user):
         {"jaxonlarsen_12345_67890_student_functions.py": b"print('hello')"}
     )
     with pytest.raises(IngestError, match="Section not found") as exc_info:
-        ingest_official_canvas_zip(
+        ingestion_engine.ingest_canvas_upload(
             db_session,
             course_id="cs1400",
             assignment_id="simple-python-functions",
@@ -152,4 +157,5 @@ def test_ingest_rejects_bad_section(db_session, staff_user):
             filename="submissions.zip",
             content=zip_bytes,
         )
+
     assert exc_info.value.status_code == 404

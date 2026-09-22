@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
-
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Concept-to-node mapping
@@ -270,9 +270,7 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
                 if concept == "exceptions" and isinstance(node, ast.Raise):
                     is_stop_iteration = False
                     if node.exc:
-                        if isinstance(node.exc, ast.Name) and node.exc.id == "StopIteration":
-                            is_stop_iteration = True
-                        elif isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name) and node.exc.func.id == "StopIteration":
+                        if (isinstance(node.exc, ast.Name) and node.exc.id == "StopIteration") or (isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name) and node.exc.func.id == "StopIteration"):
                             is_stop_iteration = True
                     if is_stop_iteration:
                         continue
@@ -307,22 +305,14 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
             if len(node.bases) > 0:
                 detected.add("inheritance")
                 for base in node.bases:
-                    if isinstance(base, ast.Name) and base.id == "ABC":
+                    if (isinstance(base, ast.Name) and base.id == "ABC") or (isinstance(base, ast.Attribute) and base.attr == "ABC"):
                         detected.add("abstract-classes")
-                    elif isinstance(base, ast.Attribute) and base.attr == "ABC":
-                        detected.add("abstract-classes")
-                    elif isinstance(base, ast.Name) and base.id == "Protocol":
-                        detected.add("protocols")
-                    elif isinstance(base, ast.Attribute) and base.attr == "Protocol":
+                    elif (isinstance(base, ast.Name) and base.id == "Protocol") or (isinstance(base, ast.Attribute) and base.attr == "Protocol"):
                         detected.add("protocols")
             for dec in node.decorator_list:
-                if isinstance(dec, ast.Name) and dec.id == "dataclass":
+                if (isinstance(dec, ast.Name) and dec.id == "dataclass") or (isinstance(dec, ast.Attribute) and dec.attr == "dataclass"):
                     detected.add("dataclasses")
-                elif isinstance(dec, ast.Attribute) and dec.attr == "dataclass":
-                    detected.add("dataclasses")
-                elif isinstance(dec, ast.Name) and dec.id == "runtime_checkable":
-                    detected.add("protocols")
-                elif isinstance(dec, ast.Attribute) and dec.attr == "runtime_checkable":
+                elif (isinstance(dec, ast.Name) and dec.id == "runtime_checkable") or (isinstance(dec, ast.Attribute) and dec.attr == "runtime_checkable"):
                     detected.add("protocols")
 
         # ---- FunctionDef / AsyncFunctionDef --------------------------
@@ -363,13 +353,9 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
                 detected.add("operator-overloading")
 
             for dec in node.decorator_list:
-                if isinstance(dec, ast.Name) and dec.id == "property":
+                if (isinstance(dec, ast.Name) and dec.id == "property") or (isinstance(dec, ast.Attribute) and dec.attr == "property"):
                     detected.add("properties")
-                elif isinstance(dec, ast.Attribute) and dec.attr == "property":
-                    detected.add("properties")
-                elif isinstance(dec, ast.Name) and dec.id == "abstractmethod":
-                    detected.add("abstract-classes")
-                elif isinstance(dec, ast.Attribute) and dec.attr == "abstractmethod":
+                elif (isinstance(dec, ast.Name) and dec.id == "abstractmethod") or (isinstance(dec, ast.Attribute) and dec.attr == "abstractmethod"):
                     detected.add("abstract-classes")
 
         # ---- calls ---------------------------------------------------
@@ -398,9 +384,8 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
             # image-processing: calls on PIL objects (e.g. Image.open)
             if isinstance(node.func, ast.Attribute) and isinstance(
                 node.func.value, ast.Name
-            ):
-                if node.func.value.id in ("Image", "ImageDraw", "ImageFilter"):
-                    detected.add("image-processing")
+            ) and node.func.value.id in ("Image", "ImageDraw", "ImageFilter"):
+                detected.add("image-processing")
 
             # properties: call to property()
             if isinstance(node.func, ast.Name) and node.func.id == "property":
@@ -484,3 +469,59 @@ def get_concepts_metadata() -> dict[str, dict]:
         }
         for k, v in CONCEPT_DETAILS.items()
     }
+
+
+class ASTCodeInspector:
+    """Audits student Python source code or whole project directories for concept whitelist compliance."""
+
+    def __init__(self, allowed_concepts: list[str] | None = None):
+        self.allowed_concepts = allowed_concepts or []
+
+    def inspect_source(self, source_code: str, file_label: str = "") -> ASTCheckResult:
+        res = check_student_code(source_code, self.allowed_concepts)
+        if not file_label:
+            return res
+
+        prefix = f"[{file_label}] "
+        tagged_warnings = [
+            ASTFinding(code=w.code, message=f"{prefix}{w.message}", line=w.line)
+            for w in res.warnings
+        ]
+        tagged_blocked = [
+            ASTFinding(code=b.code, message=f"{prefix}{b.message}", line=b.line)
+            for b in res.blocked
+        ]
+        return ASTCheckResult(
+            detected_concepts=res.detected_concepts,
+            warnings=tagged_warnings,
+            blocked=tagged_blocked,
+        )
+
+    def inspect_directory(self, root_dir: Path) -> ASTCheckResult:
+        combined_detected: set[str] = set()
+        combined_warnings: list[ASTFinding] = []
+        combined_blocked: list[ASTFinding] = []
+
+        for py_file in root_dir.rglob("*.py"):
+            rel_path = py_file.relative_to(root_dir).as_posix()
+            try:
+                source_code = py_file.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as exc:
+                combined_blocked.append(
+                    ASTFinding(
+                        code="validation_error",
+                        message=f"[{rel_path}] Could not read file: {exc}",
+                    )
+                )
+                continue
+
+            res = self.inspect_source(source_code, file_label=rel_path)
+            combined_detected.update(res.detected_concepts)
+            combined_warnings.extend(res.warnings)
+            combined_blocked.extend(res.blocked)
+
+        return ASTCheckResult(
+            detected_concepts=combined_detected,
+            warnings=combined_warnings,
+            blocked=combined_blocked,
+        )

@@ -6,14 +6,10 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-import pytest
 
 from app.integrations.ast_checker.validator import (
-    ASTCheckResult,
-    ASTFinding,
     check_student_code,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Valid code with only allowed concepts → no warnings or blocks
@@ -127,7 +123,7 @@ class TestBlockedEval:
         code = "a = 1\nx = eval('a')\n"
         result = check_student_code(code, ["variables"])
 
-        eval_finding = [f for f in result.blocked if "eval" in f.message][0]
+        eval_finding = next(f for f in result.blocked if "eval" in f.message)
         assert eval_finding.line == 2
 
 
@@ -328,8 +324,12 @@ class TestMultipleConceptDetection:
 
 
 def test_concepts_metadata():
-    from app.integrations.ast_checker.validator import get_concepts_metadata, CONCEPT_NODE_MAP
     import ast
+
+    from app.integrations.ast_checker.validator import (
+        CONCEPT_NODE_MAP,
+        get_concepts_metadata,
+    )
 
     meta = get_concepts_metadata()
     assert "loops" in meta
@@ -340,7 +340,7 @@ def test_concepts_metadata():
 
     assert "conditionals" in meta
     assert meta["conditionals"]["title"] == "Conditionals"
-    
+
     assert "file-io" in meta
     assert len(meta["file-io"]["nodes"]) == 0
     assert len(meta["file-io"]["syntax_patterns"]) > 0

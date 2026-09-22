@@ -1,6 +1,6 @@
 """Payment method Protocol definition for Dessert Shop."""
 
-from typing import Protocol, Literal
+from typing import Literal, Protocol
 
 PayType = Literal["CASH", "CARD", "PHONE"]
 

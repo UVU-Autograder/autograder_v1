@@ -31,14 +31,14 @@ export default function AssignmentCard({
   return (
     <Card
       onClick={() => router.push(linkHref)}
-      className="cursor-pointer py-3 transition-shadow hover:shadow-md hover:bg-slate-50/50"
+      className="cursor-pointer py-3 transition-shadow hover:shadow-md hover:bg-muted/50"
     >
       <CardContent className="flex items-center justify-between py-0 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex w-2.5 shrink-0 justify-center">
             {assignment.sandbox_enabled && (
               <span
-                className="size-2.5 rounded-full bg-green-500"
+                className="size-2.5 rounded-full bg-success"
                 title="Sandbox enabled"
               />
             )}
@@ -47,8 +47,8 @@ export default function AssignmentCard({
           <div className="min-w-0 space-y-0.5">
             <CardTitle className="truncate text-base">{assignment.title}</CardTitle>
             <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              <span className="uppercase tracking-wider text-slate-500">{assignment.language}</span>
-              <span className="text-slate-500">{assignment.max_score} pts</span>
+              <span className="uppercase tracking-wider text-muted-foreground">{assignment.language}</span>
+              <span className="text-muted-foreground">{assignment.max_score} pts</span>
             </CardDescription>
           </div>
         </div>

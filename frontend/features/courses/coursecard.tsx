@@ -1,31 +1,8 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { SandboxCourse, StaffCourse } from "@/features/courses/types";
 
 type ViewMode = "sandbox" | "staff";
-
-const colors = [
-  "from-blue-500 to-blue-200",
-  "from-green-500 to-green-200",
-  "from-purple-500 to-purple-200",
-  "from-red-500 to-red-200",
-  "from-orange-500 to-orange-200",
-];
-
-// stable color based on course id (frontend-only logic)
-function getColor(id: string) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-}
 
 
 export default function CourseCard({
@@ -35,37 +12,30 @@ export default function CourseCard({
   course: SandboxCourse | StaffCourse;
   mode: ViewMode;
 }) {
-  const colorClass = getColor(course.id);
   const linkHref = mode === "sandbox" ? `/sandbox/${course.id}/assignments` : `/staff/courses/${course.id}/assignments`;
 
   return (
-    <Link href={linkHref} className="block">
-      <Card className="overflow-hidden hover:shadow-lg transition-all cursor-pointer">
-
-        {/* TOP COLOR BANNER (like CardMedia) */}
-        <div className={`h-36 bg-gradient-to-br ${colorClass}`} />
-
-        {/* CONTENT */}
-        <CardHeader>
-          <CardDescription className="uppercase tracking-wider text-xs">
+    <Link href={linkHref} className="block group">
+      <Card className="hover:shadow-md transition-all cursor-pointer border border-border bg-card text-card-foreground p-6 space-y-4">
+        <div className="space-y-1">
+          <span className="text-xs font-mono font-bold text-primary tracking-wider uppercase">
             {course.id}
-          </CardDescription>
-
-          <CardTitle className="text-lg">
+          </span>
+          <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-1">
             {course.title}
-          </CardTitle>
-        </CardHeader>
+          </h3>
+        </div>
 
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
+        <div className="flex items-center justify-between pt-2 border-t border-border text-xs">
+          <span className="text-muted-foreground font-medium">
             {course.term}
-          </p>
+          </span>
 
-          <p className="text-sm mt-3 text-slate-600">
-            Click to view assignments →
-          </p>
-        </CardContent>
-
+          <span className="font-semibold text-primary group-hover:underline flex items-center gap-1">
+            <span>View assignments</span>
+            <span>→</span>
+          </span>
+        </div>
       </Card>
     </Link>
   );

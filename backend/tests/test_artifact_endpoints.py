@@ -1,15 +1,16 @@
 import sys
 from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.session import SessionLocal  # noqa: E402
-from app.main import create_app  # noqa: E402
-import app.domains.runs.tasks as runs_tasks  # noqa: E402
+import app.domains.runs.tasks as runs_tasks
+from app.db.session import SessionLocal
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)

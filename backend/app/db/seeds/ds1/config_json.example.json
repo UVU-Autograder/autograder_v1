@@ -23,35 +23,35 @@
   "scoring_items": [
     {
       "key": "dessert_item",
-      "label": "DessertItem base class verification",
+      "label": "DessertItem base class defines name attribute with default ''",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "candy",
-      "label": "Candy subclass verification",
+      "label": "Candy inherits DessertItem and defines candy_weight & price_per_pound",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "cookie",
-      "label": "Cookie subclass verification",
+      "label": "Cookie inherits DessertItem and defines cookie_quantity & price_per_dozen",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "icecream",
-      "label": "IceCream subclass verification",
+      "label": "IceCream inherits DessertItem and defines scoop_count & price_per_scoop",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "sundae",
-      "label": "Sundae subclass verification (inherits IceCream)",
+      "label": "Sundae inherits IceCream and defines topping_name & topping_price",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"

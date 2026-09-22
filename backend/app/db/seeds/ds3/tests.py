@@ -1,9 +1,6 @@
 import inspect
-import io
-import runpy
-import sys
-import pytest
 
+import pytest
 from python_autograder_helpers import import_student_modules
 from student_test_helpers import (
     assert_student_pytest_passes,

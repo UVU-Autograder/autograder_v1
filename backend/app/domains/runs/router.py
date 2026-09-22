@@ -1,30 +1,34 @@
+import base64
+import mimetypes
+import shutil
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from pathlib import Path
-import shutil
 
+from app.core.audit_log import audit_event
 from app.core.dependencies import (
     DbSession,
+    accessible_section_ids_for_course,
     assert_run_section_access,
     get_optional_user,
     require_staff,
-    accessible_section_ids_for_course,
 )
 from app.domains.auth.models import User
-from app.domains.runs.schemas import (
-    RunStatusResponse,
-    RunSummaryResponse,
-    RunSummaryListResponse,
-    RunCounters,
-    UpdateManualGradesRequest,
-)
+from app.domains.runs.models import RunSummary
+from app.domains.runs.orchestrator import get_run_state
 from app.domains.runs.queue_admission import (
     backpressure_snapshot,
     eta_band_for_position,
 )
-from app.domains.sandbox.service import sandbox_service
-from app.domains.runs.models import RunSummary
+from app.domains.runs.schemas import (
+    RunCounters,
+    RunStatusResponse,
+    RunSummaryListResponse,
+    RunSummaryResponse,
+    UpdateManualGradesRequest,
+)
 from app.domains.runs.service import (
     is_listable_student_file,
     load_run_details_json,
@@ -37,14 +41,37 @@ from app.domains.runs.service import (
     student_workspace_dir,
     update_student_manual_result,
 )
-from app.domains.runs.tasks import get_run_state
+from app.domains.sandbox.service import sandbox_service
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
 MAX_PREVIEW_BYTES = 1 * 1024 * 1024
 NON_PREVIEWABLE_SUFFIXES = (
-    ".pyc", ".zip", ".png", ".jpg", ".jpeg", ".gif", ".exe", ".pdf", ".tar", ".gz",
+    ".pyc", ".zip", ".exe", ".pdf", ".tar", ".gz",
 )
+IMAGE_PREVIEW_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp"})
+
+
+def _preview_kind(path: Path, size_bytes: int) -> str:
+    if size_bytes > MAX_PREVIEW_BYTES:
+        return "none"
+    suffix = path.suffix.lower()
+    if suffix in NON_PREVIEWABLE_SUFFIXES:
+        return "none"
+    if suffix in IMAGE_PREVIEW_SUFFIXES:
+        return "image"
+    return "text"
+
+
+def _is_file_previewable(path: Path, size_bytes: int) -> bool:
+    return _preview_kind(path, size_bytes) != "none"
+
+
+def _image_content_type(path: Path) -> str:
+    guessed, _ = mimetypes.guess_type(path.name)
+    if guessed and guessed.startswith("image/"):
+        return guessed
+    return "application/octet-stream"
 
 
 def _load_official_run_details(run_id: int) -> dict:
@@ -57,20 +84,17 @@ def _load_official_run_details(run_id: int) -> dict:
     return load_run_details_json(details_file)
 
 
-def _require_exports_ready(run_id: int) -> None:
+def _require_exports_ready(run_id: int, *, run_status: str) -> None:
     data = _load_official_run_details(run_id)
-    progress = manual_grading_progress(data.get("student_results", {}))
+    progress = manual_grading_progress(
+        data.get("student_results", {}),
+        run_status=run_status,
+    )
     if not progress["exports_ready"]:
         raise HTTPException(
             status_code=409,
-            detail="Complete every manual rubric score before exporting.",
+            detail="Exports are available only after the run completes and every manual rubric score is set.",
         )
-
-
-def _is_file_previewable(path: Path, size_bytes: int) -> bool:
-    if size_bytes > MAX_PREVIEW_BYTES:
-        return False
-    return path.suffix.lower() not in NON_PREVIEWABLE_SUFFIXES
 
 
 def _official_status_from_run(run: RunSummary, redis_state: dict | None) -> RunStatusResponse:
@@ -79,58 +103,43 @@ def _official_status_from_run(run: RunSummary, redis_state: dict | None) -> RunS
         state = redis_state.get("state", run.status)
         if state not in ("queue", "run", "complete", "failure"):
             state = "complete"
-        total = int(redis_state.get("total", run.total_submission_count or 0))
-        queued = int(redis_state.get("queued", 0))
-        running = int(redis_state.get("running", 0))
-        completed = int(redis_state.get("completed", 0))
-        failed = int(redis_state.get("failed", 0))
-        warnings = int(redis_state.get("warnings", 0))
-        queue_position = redis_state.get("queue_position")
-        if state != "queue":
-            queue_position = None
+        queue_position = redis_state.get("queue_position") if state == "queue" else None
         eta = redis_state.get("eta_band") if state == "queue" else None
         if state == "queue" and eta is None:
             eta = eta_band_for_position(queue_position)
-        message = redis_state.get("message") or f"Official run status: {state}"
-        return RunStatusResponse(
-            run_id=str(run.id),
-            state=state,
-            queue_position=queue_position,
-            eta_band=eta,
-            counters=RunCounters(
-                total=total,
-                queued=queued,
-                running=running,
-                completed=completed,
-                failed=failed,
-                warnings=warnings,
-            ),
-            backpressure=bp,
-            message=message,
+        counters = RunCounters(
+            total=int(redis_state.get("total", run.total_submission_count or 0)),
+            queued=int(redis_state.get("queued", 0)),
+            running=int(redis_state.get("running", 0)),
+            completed=int(redis_state.get("completed", 0)),
+            failed=int(redis_state.get("failed", 0)),
+            warnings=int(redis_state.get("warnings", 0)),
         )
-
-    state_val = run.status
-    if state_val not in ("queue", "run", "complete", "failure"):
-        state_val = "complete"
-    completed = run.success_count + run.warning_count
-    failed = run.failure_count + run.timeout_count
-    return RunStatusResponse(
-        run_id=str(run.id),
-        state=state_val,
-        queue_position=None,
-        eta_band=None,
-        counters=RunCounters(
+        message = redis_state.get("message") or f"Official run status: {state}"
+    else:
+        state = run.status if run.status in ("queue", "run", "complete", "failure") else "complete"
+        completed = run.success_count + run.warning_count
+        failed = run.failure_count + run.timeout_count
+        queue_position = None
+        eta = None
+        counters = RunCounters(
             total=run.total_submission_count,
-            queued=0 if state_val != "queue" else run.total_submission_count,
-            running=0 if state_val != "run" else max(
-                0, run.total_submission_count - completed - failed
-            ),
+            queued=0 if state != "queue" else run.total_submission_count,
+            running=0 if state != "run" else max(0, run.total_submission_count - completed - failed),
             completed=completed,
             failed=failed,
             warnings=run.warning_count,
-        ),
+        )
+        message = f"Official run status: {run.status}"
+
+    return RunStatusResponse(
+        run_id=str(run.id),
+        state=state,
+        queue_position=queue_position,
+        eta_band=eta,
+        counters=counters,
         backpressure=bp,
-        message=f"Official run status: {run.status}",
+        message=message,
     )
 
 
@@ -157,8 +166,9 @@ def get_run_status(
         if run is None:
             raise HTTPException(status_code=404, detail="Run not found.")
 
-        from app.domains.assignments.models import Assignment
         from sqlalchemy.orm import selectinload
+
+        from app.domains.assignments.models import Assignment
 
         assignment = db.scalar(
             select(Assignment)
@@ -255,7 +265,10 @@ def get_official_run_details(
         for canvas_id, res in data.get("student_results", {}).items()
     ]
     students.sort(key=lambda student: student["student_name"].casefold())
-    progress = manual_grading_progress(data.get("student_results", {}))
+    progress = manual_grading_progress(
+        data.get("student_results", {}),
+        run_status=run.status,
+    )
 
     return {
         "run_id": run_id,
@@ -273,10 +286,10 @@ def export_official_run_csv(
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(
+    run = require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    _require_exports_ready(run_id)
+    _require_exports_ready(run_id, run_status=run.status)
     csv_file = official_run_dir(run_id) / "grades.csv"
 
     if not csv_file.exists():
@@ -300,10 +313,10 @@ def export_official_run_feedback(
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(
+    run = require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    _require_exports_ready(run_id)
+    _require_exports_ready(run_id, run_status=run.status)
     zip_file = official_run_dir(run_id) / "feedback.zip"
 
     if not zip_file.exists():
@@ -338,6 +351,15 @@ def cleanup_official_run(
     if zip_file.exists():
         zip_file.unlink(missing_ok=True)
 
+    audit_event(
+        "official.workspace_manual_cleanup",
+        run_id=run_id,
+        course_id=course_id,
+        assignment_id=assignment_id,
+        actor_user_id=current_user.id,
+        workflow_type="official",
+    )
+
     return {"message": "Run workspace cleaned up successfully."}
 
 
@@ -367,10 +389,12 @@ def list_student_files(
             continue
         stat = path.stat()
         rel_path = str(path.relative_to(student_dir)).replace("\\", "/")
+        kind = _preview_kind(path, stat.st_size)
         files.append({
             "filepath": rel_path,
             "size_bytes": stat.st_size,
-            "previewable": _is_file_previewable(path, stat.st_size),
+            "previewable": kind != "none",
+            "preview_kind": kind,
         })
 
     return {"files": files}
@@ -413,15 +437,24 @@ def get_student_file_content(
         )
 
     stat = target_path.stat()
-    if not _is_file_previewable(target_path, stat.st_size):
+    kind = _preview_kind(target_path, stat.st_size)
+    if kind == "none":
         raise HTTPException(
             status_code=400,
             detail="File is not previewable.",
         )
 
+    if kind == "image":
+        raw = target_path.read_bytes()
+        return {
+            "kind": "image",
+            "content_type": _image_content_type(target_path),
+            "content_base64": base64.b64encode(raw).decode("ascii"),
+        }
+
     try:
         content = target_path.read_text(encoding="utf-8")
-        return {"content": content}
+        return {"kind": "text", "content": content}
     except UnicodeDecodeError:
         raise HTTPException(
             status_code=400,
@@ -439,11 +472,11 @@ def update_student_manual_grades(
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
-    require_official_run_for_assignment(
+    run = require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    from app.domains.grading.service import GradingResult
-    from app.domains.runs.tasks import generate_pedagogical_feedback_html
+    from app.domains.grading.engine import GradingResult
+    from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
 
     def apply_update(data: dict) -> dict:
         student_results = data.get("student_results", {})
@@ -482,6 +515,7 @@ def update_student_manual_grades(
     data, result = mutate_run_details(run_id, apply_update)
     response = student_detail_from_result(canvas_id, result)
     response["manual_progress"] = manual_grading_progress(
-        data.get("student_results", {})
+        data.get("student_results", {}),
+        run_status=run.status,
     )
     return response

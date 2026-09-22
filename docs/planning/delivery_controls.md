@@ -1,67 +1,61 @@
-# UVU Autograder — Delivery Controls
+# UVU Autograder — Delivery Controls & Acceptance Gates
 
-This file defines acceptance gates for active development. Product decisions live in [decisions.md](../core/decisions.md), runtime contracts in [technical_specs.md](../core/technical_specs.md), frontend contracts in [frontend_implementation.md](../implementation/frontend_implementation.md), and the living backlog in [backlog.md](backlog.md).
+> **Purpose:** Single source of truth for the Definition of Done (DoD), verification standards, risk-based testing requirements, and launch signoff gates.
+> - Product decisions: [decisions.md](../core/decisions.md)
+> - Technical contracts: [technical_specs.md](../core/technical_specs.md)
+> - Frontend contracts: [frontend_implementation.md](../implementation/frontend_implementation.md)
+> - Active roadmap: [backlog.md](backlog.md)
 
-## Definition of Done
+---
 
-A checklist item is complete when:
+## 1. Definition of Done (DoD)
 
-- [ ] feature works end to end, not just in isolation
-- [ ] reviewed in a pull request by at least one teammate
-- [ ] no TypeScript or Python type errors on CI
-- [ ] Ruff and ESLint pass
-- [ ] at least one unit or integration test covers the happy path
-- [ ] risk-based tests cover high-risk paths for the feature: unit, integration, cleanup, FERPA/privacy, or stress coverage as appropriate
-- [ ] edge cases handled where relevant: bad input, malformed ZIP, unsafe ZIP path, missing required bundle file, ambiguous entrypoint, unmatched filename, non-UVU login, timeout, cleanup failure, sandbox exit cleanup
-- [ ] no hardcoded secrets or environment-specific values
-- [ ] docs updated if setup or behavior changed
-- [ ] zero-retention / retention-window cleanup is verified for any item that touches student code or student-facing grading artifacts
-- [ ] cleanup-touching work includes automated cleanup test evidence; Dell-workstation spot-check evidence when the change affects on-prem execution
-- [ ] multi-file official and sandbox behavior is covered when the item touches ZIP/project bundle intake, validation, preview, or grading
+A checklist item or pull request is complete when:
 
-## Risk-Based Testing Matrix
+- [ ] **End-to-End Verification:** Feature functions end-to-end in the integrated stack, not merely in isolation.
+- [ ] **Code Quality & Linting:** Passes type checking (`tsc` and Python typing) and linters (`ESLint` and `Ruff`) with zero comment suppressions (`// eslint-disable-next-line ...`). Re-exported symbols use explicit `as` or `__all__`.
+- [ ] **Automated Test Coverage:** Includes unit and integration test coverage for happy paths and high-risk paths (input validation, rate limiting, zero-retention cleanup, permissions).
+- [ ] **Edge Case Handling:** Correctly handles malformed ZIPs, unsafe archive paths (path traversal), missing bundle entrypoints, unmatched student filenames, non-`@uvu.edu` log-ins, execution timeouts, and workspace cleanup failures.
+- [ ] **Zero-Retention & Slot Safety Compliance:** Deletion of temporary student code, extracted workspaces, and Judge0 execution artifacts is verified by automated test assertions. All concurrency slot reservations are guarded by top-level `try...finally` blocks.
+- [ ] **On-Prem Host Evidence:** Code changes affecting execution or system capacity include host evidence (or documented spot-check logs) prior to marking complete.
+- [ ] **Documentation Parity:** Updated relevant specifications in `docs/` and `.agents/memory/context.md` if interfaces, setup, or behaviors changed.
 
-| Area                       | Required coverage                                                                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Upload and parsing         | Unit tests for ZIP safety, malformed archives, assignment-config bundle validation, and identifier mapping                               |
-| Grading execution          | Integration tests for AST checks, Judge0/Kata execution, timeout handling, and cleanup                                                   |
-| Student sandbox            | End-to-end test for public assignment selection, ZIP/project bundle upload, quota state, results, preview, and cleanup                   |
-| Official runs              | End-to-end test for Canvas ZIP ingest, multi-file submission bundles, run status, preview, exports, and cleanup                          |
-| Compliance-sensitive paths | Regression checks that persistent storage and logs do not contain student code, identifiers, filenames, tracebacks, or detailed feedback |
-| Stress and capacity        | Dell-workstation validation for service targets, worker caps, queue admission at `40`/`50`, and AI degradation under load                |
+---
 
-## Launch-Blocking Signoff Gates
+## 2. Risk-Based Testing Matrix
 
-- Cleanup proof must show Judge0 deletion, non-retrievability after deletion, ephemeral workspace removal, and Kata execution-state cleanup through automated tests plus a sanitized Dell-workstation spot-check log (when Dell access is available).
-- Cleanup spot-check notes should be brief and dated: reviewer, app commit, synthetic workload, Judge0 deletion/non-retrievability result, workspace cleanup result, Kata runtime evidence, resource observations, and outcome. Do not include student code, filenames, identifiers, raw tracebacks, detailed outputs, raw Judge0 payloads, secrets, or auth tokens.
-- Judge0 deletion must be enabled and verifiable before live official or live student-derived workflows are allowed.
-- Capacity-sensitive work must respect the approved cap of `2` concurrent Judge0/Kata execution slots unless stability-first benchmark evidence approves a higher cap.
-- Benchmark evidence must use mixed synthetic workloads and pass cleanup, no-crash, queue/backpressure, and service-target checks before a cap of `3` or `4` is approved.
-- The intended global waiting execution queue rejects new intake at `50` queued jobs, warns at `40`, and preserves the approved execution-slot cap (implemented via shared queue admission).
-- Do not approve `8` concurrent Judge0/Kata execution slots from RAM estimates alone.
-- Sandbox Local LLM may process student **code** only when the payload is not personally traceable (no student PII/identifiers). Official-run AI is deferred.
-- Prefer fake/synthetic or completely anonymized validation data until institutional live-data posture is confirmed for a given workflow.
-- Canvas ZIP ingest and grade CSV export are dependable for live courses only after synthetic fixture validation and Dell-host confidence.
+| Subsystem / Area | Verification Standard & Required Coverage |
+| :--- | :--- |
+| **Archive Ingestion & Bundle Safety** | Unit tests verifying safe path extraction, zip-slip rejection, malformed ZIP handling, assignment `config_json` schema validation, Canvas filename matching, `_LATE_` variants, and Canvas version suffix normalization. |
+| **Execution Engine & Runner** | Integration tests covering AST concept checking, `execute_pytest_in_judge0` runner generator, test timeouts (30s limit), immediate `DELETE /submissions/{token}` execution, and immediate deletion of `ag_grade_*` execution workspaces. |
+| **Student Sandbox Flow** | End-to-end tests for unauthenticated course/assignment discovery, rate-limiting (`warn@40` / `reject@50`), projected scoring results, `visual-diff-viewer`, and immediate post-run cleanup. |
+| **Official Batch Runs** | End-to-end tests for staff Canvas ZIP ingest, section permission checks, transient Redis run status (`GET /runs/{id}/status`), CSV grade exports, per-student review workspace retention during the review window, and ≤24h workspace cleanup. |
+| **FERPA & Privacy Guardrails** | Automated assertions confirming that persistent DB tables (`RunSummary`), long-lived logs, and AI payloads do not store student code, names, identifiers, or tracebacks; ephemeral official workspaces may contain identifying review data only within the ≤24h window; structured audit logs use allowlisted fields plus log redaction filters. |
+| **Capacity & Backpressure** | Stress tests verifying queue admission limits (`warn@40` / `reject@50`), execution slot caps (default 2 slots, max 4), and Celery worker stability under load. |
 
-## Current product boundaries
+---
 
-In scope for active development (see backlog):
+## 3. Launch-Blocking Acceptance Gates
 
-- Manual grading on official review (in progress)
-- Sandbox Local LLM (PII-safe; sandbox only)
-- Official review UX improvements (preview, Monaco, filtering)
-- Platform gap fixes (section auth, queue admission, preflight, concepts unify, run status)
-- Dell workstation validation
+1. **Cleanup Proof Gate:** Automated integration tests must prove that `DELETE /submissions/{token}` runs immediately post-retrieval, Judge0 tokens are un-retrievable, and ephemeral workspaces are wiped.
+2. **On-Prem Host Verification:** Dell workstation spot-checks must confirm Kata VM isolation, host Hugepages/CPU pinning stability, and cleanup execution without logging PII or raw student code.
+3. **Execution Concurrency Cap:** Bounded Judge0 execution slots defaults to `2`. Raising the cap to `3` or `4` requires benchmark proof showing zero container crashes and clean queue backpressure under mixed synthetic workloads.
+4. **Queue Admission Enforcement:** Global queued job cap rejects intake at `50` waiting jobs and warns at `40` across sandbox and official channels.
+5. **Sanitized AI Payloads:** Sandbox Local LLM explanation requests must process code only when free of student PII/identifiers. Official-run AI feedback remains explicitly deferred.
 
-Explicitly not in the living product plan (do not pull in without a new decision):
+---
 
-- Canvas LTI or grade passback API integration
-- Automated Canvas feedback attachment, upload, or distribution (deferred note only)
-- Persistent student history, saved projected runs, or resubmission timelines
-- Downloadable student sandbox artifacts
-- LLM-assisted PDF/text rubric conversion or AI-assisted test generation
-- Inline in-editor LLM annotation markers for Monaco
-- Loose multi-file drag-and-drop outside the ZIP/project bundle contract
-- PDF feedback generation
-- Analytics or class-wide reporting
-- Responsive design for mobile devices as a launch requirement
+## 4. In Scope vs. Explicit Non-Goals
+
+### In Scope for Active Development
+- Ephemeral manual rubric grading for visual/pixel assignment criteria.
+- Sandbox Local LLM pedagogical feedback (PII-safe, on-screen only).
+- Section-scoped staff authorization and monitoring.
+- Dell workstation Kata container deployment & validation.
+
+### Explicit Non-Goals (Purged / Deferred)
+- Canvas LTI or automated Canvas API feedback upload/write-backs.
+- Persistent student submission history or saved sandbox run timelines.
+- Central multi-user shared grading grids or edit-locking concurrency primitives.
+- Downloadable student sandbox artifacts.
+- Multi-language or compiled language execution outside Python 3.11+.

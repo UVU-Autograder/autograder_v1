@@ -9,17 +9,17 @@ from app.core.dependencies import (
 from app.domains.auth.models import User
 from app.domains.courses.models import Course, Section
 from app.domains.courses.schemas import (
-    StaffAssignmentListResponse,
-    StaffCourseListResponse,
     CourseConceptsResponse,
     CourseConceptsUpdate,
+    StaffAssignmentListResponse,
+    StaffCourseListResponse,
     StaffSectionListResponse,
     StaffSectionSummary,
 )
 from app.domains.courses.service import (
+    get_course_concepts,
     list_staff_assignments,
     list_staff_courses,
-    get_course_concepts,
     update_course_concepts,
 )
 

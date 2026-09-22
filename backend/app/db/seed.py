@@ -1,5 +1,4 @@
 import json
-import mimetypes
 from pathlib import Path
 
 from sqlalchemy import select, text
@@ -7,16 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base, import_domain_models
 from app.db.session import SessionLocal, engine
-from app.domains.assignments.models import Assignment, AssignmentArtifact
+from app.domains.assignments.models import Assignment
 from app.domains.assignments.service import (
-    resolve_seed_artifact_path,
+    resolve_seed_artifact_path as resolve_seed_artifact_path,
     seed_assignment_artifacts,
-    upsert_assignment_config,
 )
-
 from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Module, Section
-
 
 SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
 EXAMPLE_DIR = SEEDS_DIR / "simple_python_functions"
@@ -51,7 +47,7 @@ def _seed_cs1400(
 ) -> None:
     course = Course(
         code="cs1400",
-        title="CS 1400: Fundamentals of Programming",
+        title="Fundamentals of Programming",
         term="Spring 2026",
         default_concepts=["variables", "conditionals"],
         instructor=staff_user,
@@ -100,7 +96,7 @@ def _seed_cs1410(
     catalog = load_cs1410_catalog()
     course = Course(
         code="cs1410",
-        title="CS 1410: Object-Oriented Programming",
+        title="Object-Oriented Programming",
         term="Spring 2026",
         default_concepts=["variables", "conditionals", "loops", "functions"],
         instructor=staff_user,

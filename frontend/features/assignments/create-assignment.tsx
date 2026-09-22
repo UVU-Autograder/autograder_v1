@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,7 +69,6 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
     handleSubmit,
     control,
     setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateAssignmentFormValues>({
     defaultValues: {
@@ -82,7 +81,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
     },
   });
 
-  const titleValue = watch("title");
+  const titleValue = useWatch({ control, name: "title" });
 
   useEffect(() => {
     if (!isSlugCustomized && titleValue) {
@@ -146,14 +145,14 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             {submitError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive font-medium">
                 {submitError}
               </div>
             )}
 
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label htmlFor="slug" className="text-xs font-semibold text-slate-500 uppercase">
+                <label htmlFor="slug" className="text-xs font-semibold text-muted-foreground uppercase">
                   Slug
                 </label>
                 {isSlugCustomized && (
@@ -165,7 +164,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
                         setValue("slug", slugifySlug(titleValue), { shouldValidate: true });
                       }
                     }}
-                    className="text-[10px] text-indigo-600 hover:underline cursor-pointer"
+                    className="text-xs text-primary font-semibold hover:underline cursor-pointer"
                   >
                     Reset to auto-slug
                   </button>
@@ -193,7 +192,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="title" className="text-xs font-semibold text-slate-500 uppercase">
+              <label htmlFor="title" className="text-xs font-semibold text-muted-foreground uppercase">
                 Title
               </label>
               <Input
@@ -211,7 +210,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="language" className="text-xs font-semibold text-slate-500 uppercase">
+              <label htmlFor="language" className="text-xs font-semibold text-muted-foreground uppercase">
                 Language
               </label>
               <Controller
@@ -239,7 +238,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="canvas_ref" className="text-xs font-semibold text-slate-500 uppercase">
+              <label htmlFor="canvas_ref" className="text-xs font-semibold text-muted-foreground uppercase">
                 Canvas reference (optional)
               </label>
               <Input
@@ -250,7 +249,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="module_id" className="text-xs font-semibold text-slate-500 uppercase">
+              <label htmlFor="module_id" className="text-xs font-semibold text-muted-foreground uppercase">
                 Module Assignment (optional)
               </label>
               <Controller

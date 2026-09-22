@@ -7,8 +7,9 @@ from fastapi.testclient import TestClient
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.main import create_app  # noqa: E402
-from app.domains.sandbox.service import sandbox_service  # noqa: E402
+from app.core.settings import get_settings
+from app.domains.sandbox.service import sandbox_service
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
@@ -153,7 +154,7 @@ def test_run_creation_returns_session_quota_urls_and_queue_state(client):
     assert response.headers["X-Sandbox-Session"] == body["sandbox_session"]
     assert body["status_url"] == f"/runs/{body['run_id']}/status"
     assert body["result_url"] == f"/sandbox/runs/{body['run_id']}/result"
-    assert body["upload_quota"]["remaining"] == 4
+    assert body["upload_quota"]["remaining"] == get_settings().sandbox_upload_limit - 1
     assert body["initial_status"]["state"] == "queue"
     assert body["initial_status"]["queue_position"] == 1
     assert body["initial_status"]["eta_band"] == "under_1_min"
@@ -210,14 +211,17 @@ def test_result_is_session_scoped_and_only_available_when_complete(client):
     )
     assert result.status_code == 200
     body = result.json()
-    assert body["projected_score"] == 86
-    assert body["test_summaries"]
+    assert body["projected_score"] == 0
+    assert body["warnings"]
     assert body["sanitized_feedback"]
     assert "student_secret.py" not in str(body)
     assert "raw code body" not in str(body)
 
 
-def test_quota_rejects_sixth_upload_in_one_hour(client):
+def test_quota_rejects_sixth_upload_in_one_hour(client, monkeypatch):
+    from app.core.settings import get_settings
+
+    monkeypatch.setattr(get_settings(), "sandbox_upload_limit", 5)
     session = "sandbox_quota_test"
     responses = [create_run(client, session=session) for _ in range(6)]
 

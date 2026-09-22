@@ -1,7 +1,8 @@
 """Autograding test suite for Lab 2: Bank Account Class."""
 
-import io
 import contextlib
+import io
+
 import pytest
 from python_autograder_helpers import import_student_modules
 
@@ -10,7 +11,7 @@ from python_autograder_helpers import import_student_modules
 def test_account_init() -> None:
     """Verify Account initialization with default and custom arguments."""
     (account_mod,) = import_student_modules("account")
-    Account = getattr(account_mod, "Account")
+    Account = account_mod.Account
 
     default_acc = Account()
     assert getattr(default_acc, "owner", None) == ""
@@ -25,7 +26,7 @@ def test_account_init() -> None:
 def test_account_str() -> None:
     """Verify Account __str__ formatting."""
     (account_mod,) = import_student_modules("account")
-    Account = getattr(account_mod, "Account")
+    Account = account_mod.Account
 
     acc = Account("Alice", 100.0)
     output = str(acc)

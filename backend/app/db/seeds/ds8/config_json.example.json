@@ -71,28 +71,28 @@
   "scoring_items": [
     {
       "key": "payment_protocol",
-      "label": "PayType + Payable in payment.py",
+      "label": "PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py",
       "points": 15,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "order_payable",
-      "label": "Order implements get/set_pay_type with validation",
+      "label": "Order implements get_pay_type() and set_pay_type() with PayType enum validation",
       "points": 30,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "student_order_tests",
-      "label": "Student test_order.py exists with >= 5 tests",
+      "label": "Student test_order.py exists with at least 5 test cases validating Order methods",
       "points": 20,
       "extra_credit": false,
       "item_type": "pytest"
     },
     {
       "key": "ds7_regression",
-      "label": "DS7 packaging + classes intact",
+      "label": "DS7 packaging interface, class structure, and output formatting intact",
       "points": 35,
       "extra_credit": false,
       "item_type": "pytest"

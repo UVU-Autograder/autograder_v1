@@ -4,11 +4,11 @@ On-prem autograder for retention-aware Python grading with a public student sand
 
 ## Documentation
 
-- [Technical specs](docs/core/technical_specs.md) — system contracts, data model, runtime limits
-- [Active backlog](docs/planning/backlog.md) — living implementation checklist
-- [Frontend routes](docs/implementation/frontend_implementation.md)
-- [OpenAPI schema](docs/schemas/openapi.json)
-- [Ubuntu 24.x local POC deployment](docs/deployment/ubuntu_poc_deployment.md)
+- [Documentation Index](docs/index.md) — central index for all architecture, specs, schemas, and modeling docs
+- [Technical Specs](docs/core/technical_specs.md) — system contracts, data model, and runtime limits
+- [Active Backlog](docs/planning/backlog.md) — living implementation roadmap
+- [Frontend Routes](docs/implementation/frontend_implementation.md) — route contracts and UI responsibilities
+- [Local POC Deployment](docs/deployment/ubuntu_poc_deployment.md) — on-prem workstation / Docker Compose setup
 
 Frontend mockup: https://autograder-frontend-mockup.vercel.app/
 
@@ -45,12 +45,30 @@ Do not install `next`/`react` at the repo root.
 ## Backend
 
 ```bash
+# From repo root:
+npm run openapi:generate
+
+# Or inside backend directory:
 cd backend
 python -m pytest
 python scripts/generate_openapi.py   # refresh docs/schemas/openapi.json
 ```
 
 Set `SANDBOX_USE_CELERY=true` to dispatch real sandbox grading tasks (requires Redis/Celery/Judge0).
+ 
+## Docker POC Stack
+
+```bash
+# Build Judge0 custom runtime image
+npm run docker:build
+
+# Launch on-prem stack (Postgres, Redis, Judge0, Celery, Backend)
+npm run docker:up
+
+# Stream logs or stop stack
+npm run docker:logs
+npm run docker:down
+```
 
 ## Frontend
 

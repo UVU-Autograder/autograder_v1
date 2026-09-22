@@ -1,0 +1,14 @@
+{
+  "include": ["app", "tests"],
+  "exclude": ["**/venv", "**/__pycache__", "**/.pytest_cache"],
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["."]
+    }
+  ]
+}

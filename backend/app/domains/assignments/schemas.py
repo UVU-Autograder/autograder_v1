@@ -169,7 +169,7 @@ class AssignmentConfigV1(BaseModel):
         if duplicate_requirements:
             raise ValueError(f"duplicate completion requirement keys: {', '.join(duplicate_requirements)}")
 
-        known_pytest_tests = set(item.key for item in self.scoring_items if item.item_type == "pytest")
+        known_pytest_tests = {item.key for item in self.scoring_items if item.item_type == "pytest"}
         for req in self.completion_requirements:
             unknown = sorted(set(req.test_keys) - known_pytest_tests)
             if unknown:

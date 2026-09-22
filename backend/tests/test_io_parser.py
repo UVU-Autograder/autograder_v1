@@ -1,4 +1,3 @@
-import pytest
 from app.domains.assignments.io_parser import extract_expected_io
 
 

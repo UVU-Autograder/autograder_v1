@@ -24,8 +24,8 @@ export default function AdminCoursesPage() {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 p-6">
-        <div className="max-w-md rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 shadow-sm">
+      <div className="flex h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive shadow-xs">
           <p className="mb-1 font-semibold">Failed to load courses</p>
           <p className="text-xs opacity-90">{error}</p>
         </div>
@@ -35,8 +35,8 @@ export default function AdminCoursesPage() {
 
   if (!courses) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="animate-pulse font-medium text-slate-500">Loading courses...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="animate-pulse font-medium text-muted-foreground">Loading courses...</p>
       </div>
     );
   }

@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import Any, Generator
+
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import MagicMock, patch
-import pytest
+
 import httpx
+import pytest
 
 
 @pytest.fixture
@@ -25,10 +28,14 @@ def reset_database():
     from app.db.seed import initialize_database
     from app.db.session import engine
 
+    from app.domains.runs.orchestrator import clear_local_orchestrator_cache
+
     import_domain_models()
+    clear_local_orchestrator_cache()
     Base.metadata.drop_all(bind=engine)
     initialize_database(seed=True)
     yield
+    clear_local_orchestrator_cache()
     Base.metadata.drop_all(bind=engine)
 
 

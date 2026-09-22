@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 
 from app.domains.assignments.schemas import ScoringItemConfig, pytest_marker_for_key
@@ -191,7 +192,13 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
 # ---------------------------------------------------------------------------
 
 
-import re
+def _clean_assertion_target(match: re.Match) -> tuple[str, str]:
+    act_str = match.group(1).strip().strip("'\"")
+    exp_str = match.group(3).strip().strip("'\"")
+    msg_match = re.search(r"^(.+?),\s*([\"'].*[\"'])$", exp_str)
+    if msg_match:
+        exp_str = msg_match.group(1).strip().strip("'\"")
+    return act_str, exp_str
 
 
 def _extract_assertion_values(message: str | None, actual: str | None = None, expected: str | None = None) -> tuple[str | None, str | None]:
@@ -202,14 +209,21 @@ def _extract_assertion_values(message: str | None, actual: str | None = None, ex
     if not message:
         return None, None
 
+    # Priority 1: Pytest evaluated failure line (e.g. "E       assert -1.0 == 0.0")
+    for line in message.splitlines():
+        line_str = line.strip()
+        if line_str.startswith("E ") and "assert " in line_str:
+            match = re.search(r"E\s+assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
+            if match:
+                return _clean_assertion_target(match)
+
+    # Priority 2: Standard assert statement line in traceback
     for line in message.splitlines():
         line_str = line.strip()
         if "AssertionError:" in line_str or "assert " in line_str:
             match = re.search(r"assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
             if match:
-                act_str = match.group(1).strip().strip("'\"")
-                exp_str = match.group(3).strip().strip("'\"")
-                return act_str, exp_str
+                return _clean_assertion_target(match)
 
             if "assert False" in line_str or "assert false" in line_str:
                 return "false", "true"
@@ -304,3 +318,19 @@ def calculate_scores(
         )
 
     return total_score, details
+
+
+class PytestOutcomeParser:
+    """Cohesive parser for Pytest execution outputs, assertion diffs, and score calculations."""
+
+    @staticmethod
+    def parse_execution_output(
+        stdout: str,
+        stderr: str = "",
+        test_configs: list[ScoringItemConfig] | None = None,
+    ) -> tuple[PytestRunResult, tuple[int, list[dict]]]:
+        run_result = parse_pytest_json(stdout)
+        if test_configs is None:
+            return run_result, (0, [])
+        score, details = calculate_scores(run_result, test_configs)
+        return run_result, (score, details)

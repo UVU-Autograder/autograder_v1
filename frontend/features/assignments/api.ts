@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from "@/lib/api-client";
+import { apiClient, ApiError, resolveUrl } from "@/lib/api-client";
 import {
   Assignment,
   AssignmentsResponse,
@@ -6,6 +6,7 @@ import {
   SandboxRunCreateResponse,
   SandboxRunResultResponse,
   SandboxCancelResponse,
+  SandboxAiFeedbackResponse,
   ConceptMetadata,
   StaffAssignmentSetup,
   AssignmentCreatePayload,
@@ -13,13 +14,12 @@ import {
 
 
 const SANDBOX_SESSION_HEADER = "X-Sandbox-Session";
-const intervalsMsDefault = 2000;
 
 function sandboxSessionKey(courseId: string, assignmentId: string) {
   return `sandbox-session:${courseId}:${assignmentId}`;
 }
 
-export function getStoredSandboxSession(
+function getStoredSandboxSession(
   courseId: string,
   assignmentId: string
 ): string | null {
@@ -35,7 +35,17 @@ function storeSandboxSession(
   sessionStorage.setItem(sandboxSessionKey(courseId, assignmentId), sessionId);
 }
 
-function sleep(ms: number) {
+/** Adaptive fast-polling schedule for rapid local grading feedback (150ms -> 250ms -> 400ms -> 750ms). */
+export function getAdaptivePollDelayMs(attempt: number): number {
+  if (attempt === 0) return 150;
+  if (attempt === 1) return 250;
+  if (attempt === 2) return 350;
+  if (attempt <= 5) return 500;
+  if (attempt <= 12) return 750;
+  return 1000;
+}
+
+export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -96,8 +106,7 @@ export async function pollRunUntilComplete(
     onStatusUpdate?: (status: RunStatusResponse) => void;
   }
 ) {
-  const intervalMs = options?.intervalMs ?? intervalsMsDefault;
-  const maxAttempts = options?.maxAttempts ?? 60;
+  const maxAttempts = options?.maxAttempts ?? 80;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const status = await getRunStatus(statusUrl);
@@ -108,7 +117,8 @@ export async function pollRunUntilComplete(
     if (status.state === "complete" || status.state === "failure") {
       return status;
     }
-    await sleep(intervalMs);
+    const delay = options?.intervalMs ?? getAdaptivePollDelayMs(attempt);
+    await sleep(delay);
   }
 
   throw new Error("Sandbox run timed out before completion.");
@@ -119,8 +129,7 @@ export async function getRunResult(
   sessionId: string,
   options?: { intervalMs?: number; maxAttempts?: number }
 ) {
-  const intervalMs = options?.intervalMs ?? intervalsMsDefault;
-  const maxAttempts = options?.maxAttempts ?? 20;
+  const maxAttempts = options?.maxAttempts ?? 30;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
@@ -129,7 +138,8 @@ export async function getRunResult(
       });
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
-        await sleep(intervalMs);
+        const delay = options?.intervalMs ?? (attempt < 3 ? 150 : 350);
+        await sleep(delay);
         continue;
       }
       throw error;
@@ -137,17 +147,6 @@ export async function getRunResult(
   }
 
   throw new Error("Sandbox result was not ready in time.");
-}
-
-export async function runSandboxCheck(
-  courseId: string,
-  assignmentId: string,
-  bundle: Blob
-) {
-  const { run, sessionId } = await createSandboxRun(courseId, assignmentId, bundle);
-  await pollRunUntilComplete(run.status_url);
-  const result = await getRunResult(run.result_url, sessionId);
-  return { run, result, sessionId };
 }
 
 export async function cancelSandboxRun(runId: string, sessionId: string) {
@@ -158,6 +157,54 @@ export async function cancelSandboxRun(runId: string, sessionId: string) {
       headers: { [SANDBOX_SESSION_HEADER]: sessionId },
     }
   );
+}
+
+export async function getSandboxAiFeedback(runId: string, sessionId: string) {
+  return apiClient.post<SandboxAiFeedbackResponse>(
+    `/sandbox/runs/${runId}/ai-feedback`,
+    {},
+    {
+      headers: { [SANDBOX_SESSION_HEADER]: sessionId },
+    }
+  );
+}
+
+export async function streamSandboxAiFeedback(
+  runId: string,
+  sessionId: string,
+  onChunk: (chunk: string) => void,
+): Promise<string> {
+  const url = resolveUrl(`/sandbox/runs/${runId}/ai-feedback/stream`);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      [SANDBOX_SESSION_HEADER]: sessionId,
+    },
+    body: JSON.stringify({}),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to stream AI feedback (${response.status})`);
+  }
+
+  if (!response.body) {
+    throw new Error("ReadableStream not supported on this browser.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    fullText += chunk;
+    onChunk(chunk);
+  }
+
+  return fullText;
 }
 
 export function getConceptsMetadata() {
@@ -171,4 +218,3 @@ export function createStaffAssignment(courseId: string, payload: AssignmentCreat
 export function deleteStaffAssignment(courseId: string, assignmentId: string) {
   return apiClient.delete<void>(`/staff/courses/${courseId}/assignments/${assignmentId}`);
 }
-

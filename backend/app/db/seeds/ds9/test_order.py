@@ -1,6 +1,5 @@
 import pytest
-from dessert import Order, Candy, Cookie
-from payment import Payable
+from dessert import Candy, Cookie, Order
 
 
 def test_order_default_pay_type():

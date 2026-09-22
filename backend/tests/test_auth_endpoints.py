@@ -1,16 +1,18 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import pytest
 from unittest.mock import patch
+
+import pytest
+from app.core.auth_utils import create_access_token
+from app.db.session import SessionLocal
+from app.domains.auth.models import User
+from app.main import create_app
 from fastapi.testclient import TestClient
 from sqlalchemy import select
-from app.main import create_app
-from app.domains.auth.models import User
-from app.db.session import SessionLocal
-from app.core.auth_utils import create_access_token
-from app.core.settings import get_settings
+
 
 @pytest.fixture(autouse=True)
 def initialized_database(reset_database):
@@ -38,14 +40,15 @@ def test_mock_login_success(client, db_session):
             db_session.delete(access)
         db_session.delete(user_before)
         db_session.commit()
-        
+
     response = client.post("/auth/mock-login", json={"email": email, "display_name": "New Staff"})
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
     assert data["email"] == email
     assert data["display_name"] == "New Staff"
-    
+    assert data["roles"] == []
+
     # Verify user was provisioned
     user_after = db_session.scalar(select(User).where(User.email == email))
     assert user_after is not None
@@ -73,7 +76,7 @@ def test_get_current_user_dependency_missing_token(client):
 def test_get_current_user_dependency_valid_token(client, db_session):
     email = "dev.staff@uvu.edu"
     token = create_access_token(email=email, display_name="Dev Staff")
-    
+
     response = client.get("/staff/courses", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
 
@@ -86,15 +89,15 @@ def test_get_current_user_dependency_auto_provision(client, db_session):
             db_session.delete(access)
         db_session.delete(user)
         db_session.commit()
-        
+
     token = create_access_token(email=email, display_name="Unregistered User")
-    
+
     # Calling `/staff/courses` should result in 403 Forbidden because they are
     # authenticated but have no staff access roles.
     response = client.get("/staff/courses", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 403
     assert "Staff access required" in response.json()["detail"]
-    
+
     # Verify user was automatically created in DB
     user_created = db_session.scalar(select(User).where(User.email == email))
     assert user_created is not None
@@ -111,9 +114,52 @@ def test_get_current_user_dependency_inactive_user(client, db_session):
     else:
         user.is_active = False
     db_session.commit()
-    
+
     token = create_access_token(email=email)
-    
+
     response = client.get("/staff/courses", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
     assert "User is inactive" in response.json()["detail"]
+
+
+def test_auth_me_returns_admin_roles(client):
+    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["email"] == "dev.staff@uvu.edu"
+    assert "admin" in body["roles"]
+
+
+def test_auth_me_non_admin_has_no_admin_role(client, db_session):
+    from app.domains.auth.models import Role, StaffAccess
+
+    email = "instructor.only@uvu.edu"
+    user = db_session.scalar(select(User).where(User.email == email))
+    if user is None:
+        user = User(email=email, display_name="Instructor Only", is_active=True)
+        db_session.add(user)
+        db_session.flush()
+    instructor_role = db_session.scalar(select(Role).where(Role.name == "instructor"))
+    assert instructor_role is not None
+    existing = [
+        a for a in user.staff_access if a.role_id == instructor_role.id and a.is_active
+    ]
+    if not existing:
+        db_session.add(
+            StaffAccess(
+                user_id=user.id,
+                role_id=instructor_role.id,
+                course_id=None,
+                section_id=None,
+                is_active=True,
+            )
+        )
+    db_session.commit()
+
+    token = create_access_token(email=email, display_name="Instructor Only")
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    body = response.json()
+    assert "instructor" in body["roles"]
+    assert "admin" not in body["roles"]

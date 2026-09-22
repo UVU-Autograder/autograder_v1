@@ -5,12 +5,12 @@ from app.domains.assignments.models import Assignment
 from app.domains.assignments.service import validate_config_json
 from app.domains.courses.models import Course, Module
 from app.domains.courses.schemas import (
+    CourseConceptsResponse,
+    ModuleConfig,
     StaffAssignmentListResponse,
     StaffAssignmentSummary,
     StaffCourseListResponse,
     StaffCourseSummary,
-    CourseConceptsResponse,
-    ModuleConfig,
 )
 
 

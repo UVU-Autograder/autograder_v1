@@ -14,7 +14,7 @@ function getBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BASE_URL;
 }
 
-function resolveUrl(path: string): string {
+export function resolveUrl(path: string): string {
     if (path.startsWith("http://") || path.startsWith("https://")) {
         return path;
     }
@@ -80,6 +80,9 @@ async function apiFetch<T>(
     if (!response.ok) {
         const message = await parseErrorMessage(response);
         if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+            localStorage.removeItem("lastActivity");
             window.dispatchEvent(new Event("unauthorized-api-call"));
         }
         throw new ApiError(response.status, message);
@@ -117,25 +120,8 @@ export const apiClient = {
     get: <T>(path: string, options?: ApiFetchOptions) =>
         apiFetch<T>(path, { method: "GET", headers: options?.headers }).then((result) => result.data),
 
-    getText: async (path: string, options?: ApiFetchOptions): Promise<string> => {
-        const headers = new Headers(options?.headers);
-        const token = getAuthToken();
-        if (token && !headers.has("authorization")) {
-            headers.set("authorization", `Bearer ${token}`);
-        }
-
-        const response = await fetch(resolveUrl(path), { method: "GET", headers });
-        if (!response.ok) {
-            const message = await parseErrorMessage(response);
-            if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
-                window.dispatchEvent(new Event("unauthorized-api-call"));
-            }
-            throw new ApiError(response.status, message);
-        }
-
-        updateStoredToken(response);
-        return await response.text();
-    },
+    getText: (path: string, options?: ApiFetchOptions): Promise<string> =>
+        apiFetch<string>(path, { method: "GET", headers: options?.headers }).then((res) => String(res.data)),
 
     post: <T>(path: string, body: unknown, options?: ApiFetchOptions) =>
         apiFetch<T>(path, {
@@ -172,6 +158,9 @@ export const apiClient = {
         if (!response.ok) {
             const message = await parseErrorMessage(response);
             if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+                localStorage.removeItem("token");
+                sessionStorage.removeItem("token");
+                localStorage.removeItem("lastActivity");
                 window.dispatchEvent(new Event("unauthorized-api-call"));
             }
             throw new ApiError(response.status, message);

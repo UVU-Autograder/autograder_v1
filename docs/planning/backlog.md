@@ -15,45 +15,11 @@ When a checklist item repeats a policy or runtime rule, treat the linked canonic
 
 ## Operating Guidelines
 
-- Prefer completing fewer end-to-end deliverables over starting many disconnected tasks.
-- Do not reintroduce purged topics without a new product decision.
-- Reduce scope before weakening zero-retention, FERPA, authentication, or cleanup safeguards.
+Refer to [delivery_controls.md](delivery_controls.md) for Definition of Done (DoD), verification standards, and zero-retention / FERPA acceptance gates. Refer to [.agents/memory/context.md](../../.agents/memory/context.md) for operational domain vocabulary. Do not reintroduce purged topics without a new product decision.
 
 ---
 
 ## Active — Product
-
-
-### Manual grading UX
-
-- [ ] Add coarse status/manual-completion filters and queue polish without introducing a bulk grading grid.
-- [ ] Add explicit same-student edit conflict detection if multiple API processes or simultaneous graders become a requirement (current v1 is last-write-wins).
-
-### Student sandbox UX
-
-- [x] Fix student sandbox sidebar (removed `mt-15` offset, aligned flush with shell header, added Problem Overview button).
-- [x] Refactor problem description rendering to structured layout instead of raw text file views (implemented minimal `<ProblemOverview />` tab component).
-
-### Expected I/O extraction and visual diff (Unverified / Manual validation needed)
-
-- [ ] Backend AST parsing of pytest files for convention-based expected inputs/outputs (e.g. `EXPECTED_INPUT` / `EXPECTED_OUTPUT`) — implementation present; needs end-to-end host verification.
-- [ ] Expose extracted expected fields in the sandbox run results API — implementation present; needs payload verification.
-- [ ] Wire sandbox visual diff to real expected vs actual output (custom `VisualDiffViewer` exists; verify rendering against live student outputs).
-- [x] Expose parsed expected inputs/outputs next to test items in the instructor assignment setup rubric panel (implemented via `parseExpectedIO` & `scoring-rules-section.tsx` badges).
-
-
----
-
-## Active — Correctness / platform gaps
-
-- [ ] **Add a custom Judge0 Python runtime** — Judge0 CE `1.13.1` remains the latest stable release, but language ID `71` is Python 3.8.1. Choose the course-supported Python version (3.11+ required by current modeled code), then:
-  - retain Judge0 CE `1.13.1` and build a custom compiler/runtime image containing the selected Python version;
-  - install `pytest` plus the allowlisted `pillow`, `pygame`, and `tabulate` packages into that exact interpreter;
-  - register a new, non-`71` language ID whose run command targets that interpreter, then update `JUDGE0_LANGUAGE_ID`;
-  - seed and test the language mapping against a disposable Judge0 database before migrating the deployed instance;
-  - smoke-test `sys.version`, every allowlisted import, multi-file execution, and submission deletion. Until then, the runner intentionally fails fast on the incompatible image.
-
----
 
 ## Active — Ops and workstation validation
 
@@ -63,6 +29,7 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
 - [ ] Validate ~200 official submissions complete within ~40 min on the Dell workstation.
 - [ ] Validate export packaging overhead under ~2 min for ~200 submissions after grading completes.
 - [ ] Validate Kata-backed VM isolation is active in the planned execution environment.
+- [ ] Validate on-prem local LLM serving (Ollama/vLLM) on the Dell workstation.
 - [ ] Smoke test on the Dell-workstation deployment.
 - [ ] Review deployment configuration.
 - [ ] Update README with deployment and operating notes.
@@ -73,14 +40,14 @@ Waiting on real Dell workstation access. Do not mark complete without host evide
 
 - [ ] Configuration Schema Versioning & Migration Pipeline (Deferred while in testing stage without active live assignments).
 - [ ] Staff Microsoft OAuth through NextAuth (mock JWT remains current).
-- [ ] Sandbox Local LLM feedback. (Deferred)
-  - Send submission source (+ grounded test/AST context) only when payload is not personally traceable.
-  - Generate rubric-context explanations without re-grading (hallucination guard).
-  - Degrade under high load; log token usage in non-sensitive run metadata.
 - [ ] Canvas automated feedback upload / distribution (manual Canvas grade CSV import remains assumed).
 - [ ] Multi-language or compiled-language execution pipelines beyond current Python Judge0 path.
-- [ ] Official-run Local LLM feedback. Before approval:
-  - generated comments must remain editable HTML-only drafts and never replace pytest truth;
+- [ ] Official-run Local LLM feedback (deferred; planned shape when unblocked):
+  - **Entry:** opt-in checkbox on the Official Runs start/upload page only (per new run).
+  - **Timing:** generate during grading, after each student’s tests, and bake into that student’s feedback HTML.
+  - **Posture:** POC-style like sandbox AI — staff opt-in, strip identifiers where possible; keep behind institutional approval / FERPA gates before enabling by default.
+  - **HTML shape:** separate “AI coaching” section alongside the existing score/test report (never replaces pytest truth).
+  - generated comments must remain editable HTML-only drafts;
   - deterministically remove names, Canvas/submission identifiers, identifying paths, and identifiers in source comments/string literals;
   - use run-local pseudonyms only and skip feedback when anonymization confidence is insufficient;
   - prove with tests that raw identifiers never reach the Local LLM client.

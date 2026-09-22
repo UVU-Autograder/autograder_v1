@@ -8,7 +8,7 @@ from python_autograder_helpers import import_student_modules
 def test_normalize() -> None:
     """Verify normalize method carries cents >= 100 to dollars."""
     (money_mod,) = import_student_modules("money")
-    Money = getattr(money_mod, "Money")
+    Money = money_mod.Money
 
     m = Money(1, 150)
     assert m.dollars == 2
@@ -23,7 +23,7 @@ def test_normalize() -> None:
 def test_str() -> None:
     """Verify __str__ string formatting $dollars.cents."""
     (money_mod,) = import_student_modules("money")
-    Money = getattr(money_mod, "Money")
+    Money = money_mod.Money
 
     m1 = Money(3, 50)
     assert str(m1) == "$3.50"
@@ -36,7 +36,7 @@ def test_str() -> None:
 def test_add() -> None:
     """Verify __add__ operator overload for Money addition."""
     (money_mod,) = import_student_modules("money")
-    Money = getattr(money_mod, "Money")
+    Money = money_mod.Money
 
     m1 = Money(3, 50)
     m2 = Money(2, 75)
@@ -51,7 +51,7 @@ def test_add() -> None:
 def test_mul() -> None:
     """Verify __mul__ and __rmul__ operator overloads for scalar multiplication."""
     (money_mod,) = import_student_modules("money")
-    Money = getattr(money_mod, "Money")
+    Money = money_mod.Money
 
     m1 = Money(3, 50)
     m2 = Money(2, 75)
@@ -71,7 +71,7 @@ def test_mul() -> None:
 def test_eq() -> None:
     """Verify __eq__ operator overload comparing normalized dollar and cent values."""
     (money_mod,) = import_student_modules("money")
-    Money = getattr(money_mod, "Money")
+    Money = money_mod.Money
 
     m1 = Money(3, 50)
     m2 = Money(2, 150)

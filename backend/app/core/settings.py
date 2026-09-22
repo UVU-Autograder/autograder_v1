@@ -23,13 +23,13 @@ class Settings(BaseSettings):
     )
     judge0_url: str = Field(default="http://localhost:2358", validation_alias="JUDGE0_URL")
     judge0_auth_token: str | None = Field(default=None, validation_alias="JUDGE0_AUTH_TOKEN")
-    judge0_language_id: int = Field(default=71, ge=1, validation_alias="JUDGE0_LANGUAGE_ID")
+    judge0_language_id: int = Field(default=711, ge=1, validation_alias="JUDGE0_LANGUAGE_ID")
     judge0_max_concurrent: int = Field(default=2, ge=1, validation_alias="JUDGE0_MAX_CONCURRENT")
     judge0_preinstalled_dependencies: str = Field(
         default="pillow,pygame,tabulate",
         validation_alias="JUDGE0_PREINSTALLED_DEPENDENCIES",
     )
-    sandbox_upload_limit: int = Field(default=5, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
+    sandbox_upload_limit: int = Field(default=999999, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
     sandbox_upload_window_seconds: int = Field(
         default=3600,
         ge=1,
@@ -48,9 +48,23 @@ class Settings(BaseSettings):
     jwt_expiration_minutes: int = Field(default=5, ge=1, validation_alias="JWT_EXPIRATION_MINUTES")
     enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
+    cors_allowed_origins: str = Field(
+        default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://autograder-frontend-mockup.vercel.app",
+        validation_alias="CORS_ALLOWED_ORIGINS",
+    )
     local_llm_api_key: str | None = Field(default=None, validation_alias="LOCAL_LLM_API_KEY")
     local_llm_endpoint: str | None = Field(default=None, validation_alias="LOCAL_LLM_ENDPOINT")
+    local_llm_model: str = Field(default="qwen2.5:3b", validation_alias="LOCAL_LLM_MODEL")
     repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
+
+    @property
+    def parsed_cors_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
+
 
     @property
     def is_sqlite(self) -> bool:
