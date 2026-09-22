@@ -21,11 +21,13 @@ All of this runs on the Dell over SSH. Student-derived data never leaves it.
 From the repo root:
 
 ```bash
-bash scripts/preflight_dell.sh --install-kata --keep-up
+bash scripts/preflight_dell.sh
 ```
 
-Paste the `preflight-report-*.txt` back. Don't train until it's green (or every
-WARN is understood).
+With the Dell's stack already running this is read-only (existing-stack mode —
+see `docs/deployment/blackwell_training_setup.md`). Paste the
+`preflight-report-*.txt` back. Don't train until it's green (or every WARN is
+understood).
 
 ## 1. Training venv
 

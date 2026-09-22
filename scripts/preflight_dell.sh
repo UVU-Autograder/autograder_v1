@@ -18,6 +18,10 @@
 #   --skip-frontend   skip npm ci / lint / build
 #   --skip-gpu        skip GPU and training-stack checks
 #   --keep-up         leave the stack running afterwards (default: docker compose down)
+#   --existing-stack  check the stack that is already running: never build, recreate,
+#                     stop, or install anything. Turned on automatically when the
+#                     compose project is already up (e.g. the live Dell deployment).
+#   --rebuild         opt out of that: rebuild and restart a stack that is running
 #   --model-dir DIR   volume that will hold model weights (default: $HF_HOME or /data)
 
 set -uo pipefail
@@ -27,6 +31,8 @@ USE_KATA=1
 SKIP_FRONTEND=0
 SKIP_GPU=0
 KEEP_UP=0
+EXISTING=0
+REBUILD=0
 MODEL_DIR="${HF_HOME:-/data}"
 TRAIN_VENV="${TRAIN_VENV:-$HOME/venvs/train}"
 REQUIRED_FREE_GB=100
@@ -39,8 +45,10 @@ while [ $# -gt 0 ]; do
     --skip-frontend) SKIP_FRONTEND=1 ;;
     --skip-gpu) SKIP_GPU=1 ;;
     --keep-up) KEEP_UP=1 ;;
+    --existing-stack) EXISTING=1 ;;
+    --rebuild) REBUILD=1 ;;
     --model-dir) MODEL_DIR="$2"; shift ;;
-    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
   shift
@@ -48,6 +56,30 @@ done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 2
+
+# main renamed docker-compose.poc.yml -> docker-compose.yml (d4d76bf).
+if [ -f docker-compose.yml ]; then
+  COMPOSE_FILE=docker-compose.yml
+elif [ -f docker-compose.poc.yml ]; then
+  COMPOSE_FILE=docker-compose.poc.yml
+else
+  echo "no docker-compose.yml or docker-compose.poc.yml in $REPO_ROOT" >&2
+  exit 2
+fi
+
+if [ $EXISTING -eq 1 ] && [ $REBUILD -eq 1 ]; then
+  echo "--existing-stack and --rebuild are mutually exclusive" >&2
+  exit 2
+fi
+STACK_RUNNING=0
+docker compose -f "$COMPOSE_FILE" ps -q 2>/dev/null | grep -q . && STACK_RUNNING=1
+AUTO_EXISTING=0
+if [ $STACK_RUNNING -eq 1 ] && [ $REBUILD -eq 0 ] && [ $EXISTING -eq 0 ]; then
+  EXISTING=1
+  AUTO_EXISTING=1
+fi
+# A stack that was up when we started is left up, even after --rebuild.
+[ $STACK_RUNNING -eq 1 ] && KEEP_UP=1
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 REPORT="$REPO_ROOT/preflight-report-$STAMP.txt"
@@ -65,6 +97,12 @@ have() { command -v "$1" >/dev/null 2>&1; }
 echo "UVU Autograder preflight -- $(date -Is)"
 echo "host=$(hostname) user=$(whoami) repo=$REPO_ROOT"
 echo "git: $(git rev-parse --abbrev-ref HEAD 2>/dev/null) @ $(git rev-parse --short HEAD 2>/dev/null)$(git diff --quiet 2>/dev/null || echo ' (dirty)')"
+echo "compose: $COMPOSE_FILE"
+if [ $EXISTING -eq 1 ]; then
+  echo "mode: EXISTING STACK -- checks only; nothing is built, recreated, stopped, or installed$([ $AUTO_EXISTING -eq 1 ] && echo ' (auto: stack already running; pass --rebuild to override)')"
+else
+  echo "mode: build -- docker compose up --build, then $([ $KEEP_UP -eq 1 ] && echo 'leave running' || echo 'down')"
+fi
 
 # ---------------------------------------------------------------- host
 stage "1. host"
@@ -109,7 +147,7 @@ root_free=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
 [ "${root_free:-0}" -ge 30 ] && pass "free disk at /: ${root_free}GB (docker images)" \
   || warn "only ${root_free}GB free at / -- docker images and build cache live here"
 
-if docker compose -f docker-compose.poc.yml ps -q 2>/dev/null | grep -q .; then
+if [ $STACK_RUNNING -eq 1 ]; then
   echo "        autograder stack already running -- skipping port-conflict check"
 else
   busy=()
@@ -143,13 +181,13 @@ stage "2. cgroups (Judge0 isolate)"
 cgroup_fs=$(stat -fc %T /sys/fs/cgroup 2>/dev/null)
 # Since 6bb6e41 the compose file runs Judge0 in rlimit mode (no isolate --cg),
 # which works on cgroup v2. Count the flags on judge0 + judge0-worker.
-rlimit_flags=$(grep -cE 'ENABLE_PER_PROCESS_AND_THREAD_(TIME|MEMORY)_LIMIT: "true"' docker-compose.poc.yml)
+rlimit_flags=$(grep -cE 'ENABLE_PER_PROCESS_AND_THREAD_(TIME|MEMORY)_LIMIT: "true"' "$COMPOSE_FILE")
 if [ "$cgroup_fs" = "cgroup2fs" ] && [ "$rlimit_flags" -ge 4 ]; then
   warn "cgroup v2 host; Judge0 runs in rlimit mode (ENABLE_PER_PROCESS_AND_THREAD_*_LIMIT) so no GRUB change or reboot
         is needed if stage 5 passes. Limits are per-process rather than cgroup-accounted -- acceptable with Kata's VM
-        boundary, weaker without it. See docs/deployment/ubuntu_poc_deployment.md (Cgroups section)."
+        boundary, weaker without it. See docs/deployment/workstation_deployment.md (Cgroups section)."
 elif [ "$cgroup_fs" = "cgroup2fs" ]; then
-  fail "cgroup-v2" "host is on cgroup v2 and Judge0 rlimit mode is not enabled in docker-compose.poc.yml. Either set
+  fail "cgroup-v2" "host is on cgroup v2 and Judge0 rlimit mode is not enabled in $COMPOSE_FILE. Either set
         ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT/MEMORY_LIMIT=\"true\" on judge0 + judge0-worker, or switch the host to
         cgroup v1 (reboots; walkthrough in docs/deployment/blackwell_training_setup.md):
           echo 'GRUB_CMDLINE_LINUX=\"\$GRUB_CMDLINE_LINUX systemd.unified_cgroup_hierarchy=0\"' | sudo tee /etc/default/grub.d/99-cgroup-v1.cfg
@@ -175,6 +213,10 @@ else
   pass "/dev/kvm present ($(grep -cE 'vmx|svm' /proc/cpuinfo) cores report virt flags)"
   if kata_ok; then
     pass "kata-runtime registered and boots a VM (guest kernel $(cat /tmp/kata-uname.$$))"
+  elif [ $INSTALL_KATA -eq 1 ] && [ $EXISTING -eq 1 ]; then
+    warn "kata-runtime not usable, but --install-kata is ignored in existing-stack mode (the installer
+        rewrites Kata config the running stack may depend on). Re-run with --rebuild to allow it."
+    USE_KATA=0
   elif [ $INSTALL_KATA -eq 1 ]; then
     echo "        kata-runtime missing or broken -- installing (sudo will prompt)"
     if sudo "$REPO_ROOT/scripts/install-kata-docker-runtime-ubuntu.sh" && kata_ok; then
@@ -190,8 +232,25 @@ else
 fi
 rm -f /tmp/kata-uname.$$
 
-COMPOSE=(docker compose --env-file .env.local -f docker-compose.poc.yml)
-if [ $USE_KATA -eq 1 ]; then
+COMPOSE=(docker compose)
+if [ $EXISTING -eq 0 ] || [ -f .env.local ]; then
+  COMPOSE+=(--env-file .env.local)
+fi
+COMPOSE+=(-f "$COMPOSE_FILE")
+
+if [ $EXISTING -eq 1 ]; then
+  # Match the override set to what is actually running, so ps/run see the same config.
+  j0=$(docker compose -f "$COMPOSE_FILE" ps -q judge0 2>/dev/null)
+  j0_runtime=$([ -n "$j0" ] && docker inspect --format '{{.HostConfig.Runtime}}' "$j0")
+  if [ "$j0_runtime" = "${KATA_DOCKER_RUNTIME:-kata-runtime}" ]; then
+    USE_KATA=1
+    COMPOSE+=(-f docker-compose.kata.yml)
+    echo "        running Judge0 is under $j0_runtime"
+  else
+    USE_KATA=0
+    warn "running Judge0 is on runtime '${j0_runtime:-none}', not Kata (no VM isolation)"
+  fi
+elif [ $USE_KATA -eq 1 ]; then
   COMPOSE+=(-f docker-compose.kata.yml)
   echo "        stack will run Judge0 under kata-runtime"
 else
@@ -199,11 +258,33 @@ else
 fi
 
 # ---------------------------------------------------------------- stack up
-stage "4. stack up"
+if [ $EXISTING -eq 1 ]; then
+  stage "4. existing stack (read-only: no .env.local changes, no up/build)"
+else
+  stage "4. stack up"
+fi
 
-if [ ! -f .env.local ]; then
-  python3 - <<'PY'
-import re, secrets
+if [ $EXISTING -eq 1 ]; then
+  if [ -f .env.local ]; then
+    pass "found .env.local (not modified)"
+    if grep -q 'network_mode: "host"' "$COMPOSE_FILE" &&
+       grep -qE '^(DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|JUDGE0_URL)=[^#]*(//|@)(postgres|app-postgres|redis|judge0):' .env.local; then
+      warn ".env.local uses compose service names with a host-networked backend; works only if something else
+        resolves them. Worth checking with whoever deployed the stack."
+    fi
+  else
+    warn "no .env.local -- the running stack was started on compose defaults (dev passwords)"
+  fi
+elif [ ! -f .env.local ] && [ $STACK_RUNNING -eq 1 ]; then
+  # New random secrets would not match the password baked into the existing
+  # Postgres volume and lock the backend out. Rebuild on the same defaults.
+  warn "no .env.local and the stack was already running: NOT generating one (new secrets would not match
+        the existing database volume). Rebuilding on compose defaults."
+  COMPOSE=(docker compose -f "$COMPOSE_FILE")
+  [ $USE_KATA -eq 1 ] && COMPOSE+=(-f docker-compose.kata.yml)
+elif [ ! -f .env.local ]; then
+  COMPOSE_FILE="$COMPOSE_FILE" python3 - <<'PY'
+import os, re, secrets
 from pathlib import Path
 
 text = Path(".env.example").read_text()
@@ -223,7 +304,7 @@ text = re.sub(
 )
 # backend + celery-worker run with network_mode: host, where compose service
 # names (postgres, redis, judge0) do not resolve. Point them at published ports.
-if 'network_mode: "host"' in Path("docker-compose.poc.yml").read_text():
+if 'network_mode: "host"' in Path(os.environ["COMPOSE_FILE"]).read_text():
     for key in ("DATABASE_URL", "REDIS_URL", "CELERY_BROKER_URL", "JUDGE0_URL"):
         text = re.sub(
             rf"^({key}=[\w+]+://(?:[^@/\s]*@)?)(postgres|app-postgres|redis|judge0)(:\d+)",
@@ -239,7 +320,7 @@ else
   pass "using existing .env.local"
   grep -qE '^(POSTGRES_PASSWORD|JWT_SECRET|JUDGE0_AUTH_TOKEN)=(change-me|replace)' .env.local &&
     warn ".env.local still has placeholder secrets from .env.example"
-  if grep -q 'network_mode: "host"' docker-compose.poc.yml &&
+  if grep -q 'network_mode: "host"' "$COMPOSE_FILE" &&
      grep -qE '^(DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|JUDGE0_URL)=[^#]*(//|@)(postgres|app-postgres|redis|judge0):' .env.local; then
     fail "env-hosts" ".env.local uses compose service names (postgres/redis/judge0), but backend and celery-worker run
         with network_mode: host where those don't resolve. Use 127.0.0.1 in DATABASE_URL, REDIS_URL,
@@ -247,16 +328,19 @@ else
   fi
 fi
 
-echo "        building and starting (first build takes several minutes)..."
-if "${COMPOSE[@]}" up -d --build >/tmp/compose-up.$$ 2>&1; then
-  pass "docker compose up"
-else
-  fail "compose-up" "docker compose up failed:"
-  tail -40 /tmp/compose-up.$$ | sed 's/^/          /'
+if [ $EXISTING -eq 0 ]; then
+  echo "        building and starting (first build takes several minutes)..."
+  if "${COMPOSE[@]}" up -d --build >/tmp/compose-up.$$ 2>&1; then
+    pass "docker compose up"
+  else
+    fail "compose-up" "docker compose up failed:"
+    tail -40 /tmp/compose-up.$$ | sed 's/^/          /'
+  fi
+  rm -f /tmp/compose-up.$$
 fi
-rm -f /tmp/compose-up.$$
 
-deadline=$((SECONDS + 300))
+# A running stack gets 30s to report healthy; a fresh one gets 5 minutes.
+deadline=$((SECONDS + $([ $EXISTING -eq 1 ] && echo 30 || echo 300)))
 while [ $SECONDS -lt $deadline ]; do
   unhealthy=$("${COMPOSE[@]}" ps --format '{{.Service}} {{.State}} {{.Health}}' 2>/dev/null |
     awk '$2!="running" || ($3!="" && $3!="healthy")')
@@ -313,6 +397,10 @@ stage "6. backend test suite"
 # The suite's reset_database fixture calls drop_all() on whatever DATABASE_URL
 # points at. Run it in a throwaway container with a clean env on in-memory
 # SQLite -- never against the live stack's Postgres.
+if [ $EXISTING -eq 1 ]; then
+  echo "        note: runs the tests inside the DEPLOYED backend image, i.e. the code the stack was
+        built from -- not necessarily this checkout. One-off container; live services untouched."
+fi
 if "${COMPOSE[@]}" run --rm --no-deps -T --entrypoint "" backend \
     env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONPATH=/app \
     DATABASE_URL=sqlite+pysqlite:///:memory: \
@@ -378,7 +466,9 @@ fi
 
 # ---------------------------------------------------------------- teardown
 stage "9. teardown"
-if [ $KEEP_UP -eq 1 ]; then
+if [ $EXISTING -eq 1 ]; then
+  echo "        existing-stack mode: stack left exactly as found"
+elif [ $KEEP_UP -eq 1 ]; then
   echo "        --keep-up: stack left running. Stop with: ${COMPOSE[*]} down"
 else
   "${COMPOSE[@]}" down >/dev/null 2>&1 && echo "        stack stopped (volumes kept)"

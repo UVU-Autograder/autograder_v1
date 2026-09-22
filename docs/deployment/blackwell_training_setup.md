@@ -42,8 +42,23 @@ Before any training, prove the whole autograder works on this machine. From the
 repo root over SSH:
 
 ```bash
-bash scripts/preflight_dell.sh --install-kata --keep-up
+bash scripts/preflight_dell.sh
 ```
+
+**On the Dell the stack is normally already running** (it's the live deployment),
+so the script switches itself to **existing-stack mode**: it checks what is running
+and never builds, recreates, stops, or reinstalls anything — no `.env.local`
+changes, no Kata installer, no `docker compose down`. The report's `mode:` line
+says which mode ran. Two side effects to know about: the model-solution checks
+overwrite each assignment's "validation status" in the staff UI with the
+preflight's run, and the sandbox check spends one upload from a fresh session's
+quota.
+
+On a machine with nothing running it builds and starts the stack instead. Useful
+flags there: `--install-kata` (run the Kata installer if the runtime is missing),
+`--keep-up` (don't stop the stack afterwards). `--rebuild` forces a rebuild of a
+stack that is already up — don't use it on the Dell without the person who
+deployed it.
 
 It runs nine independent stages — host, cgroups, Kata, stack up, end-to-end
 stack checks, backend tests, frontend build, GPU/training stack, teardown — and
@@ -65,19 +80,27 @@ Two things it will likely flag on a fresh Ubuntu 24.04 box:
 
 ### Switching the host to cgroup v1 (over SSH) — fallback only
 
-**You probably don't need this.** Since commit `6bb6e41`, `docker-compose.poc.yml`
+**You probably don't need this.** Since commit `6bb6e41`, `docker-compose.yml`
 runs Judge0 in rlimit mode (`ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT` /
 `_MEMORY_LIMIT: "true"` on `judge0` and `judge0-worker`), which skips isolate's
 cgroup accounting and works on cgroup v2. The preflight reports that as a WARN,
 not a FAIL. Limits become per-process rather than per-sandbox — acceptable
 behind Kata's VM boundary, weaker without it (see the Cgroups section of
-[ubuntu_poc_deployment.md](ubuntu_poc_deployment.md)).
+[workstation_deployment.md](workstation_deployment.md)), which also records Judge0
+under Kata verified end to end on this Dell with cgroup v2 as-is.
 
 Only switch the host to v1 if stage 5's Judge0 submission still fails in rlimit
 mode, or if you later want cgroup-accounted limits on the non-Kata path. Ubuntu
-24.04's systemd 255 still honours the flag below; the Arch/systemd 261 limitation
-in that doc does not apply here. This is a remote reboot, and other people may be
-logged in (`who`) — coordinate before rebooting, then read the safety checks.
+24.04's systemd 255 still honours the flag below, and this Dell's
+`6.17.0-*-oem` kernel is built with `CONFIG_MEMCG_V1=y` and `CONFIG_CPUSETS_V1=y`,
+so v1 controllers would be available; the Arch/systemd 261 limitation in that doc
+does not apply here. Check any other kernel before relying on it:
+`grep -E 'CONFIG_MEMCG_V1|CONFIG_CPUSETS_V1' /boot/config-$(uname -r)`.
+
+Note the change is **armed for the next reboot, whoever triggers it** (an update,
+another user). Don't leave the drop-in in place unless you mean to switch. And
+this is a remote reboot with other people possibly logged in (`who`) — coordinate
+before rebooting, then read the safety checks.
 
 **Before you reboot**, confirm the machine can come back without you in the room:
 
@@ -102,11 +125,12 @@ sudo update-grub
 ```
 
 ```bash
-grep -c "systemd.unified_cgroup_hierarchy=0" /boot/grub/grub.cfg
+sudo grep -c "systemd.unified_cgroup_hierarchy=0" /boot/grub/grub.cfg
 ```
 
-That count must be non-zero before you reboot — it means the flag actually made
-it into the generated boot config.
+`grub.cfg` is root-only on this box, hence `sudo`. The count must be non-zero
+before you reboot (one per boot entry — 5 on this Dell) — it means the flag
+actually made it into the generated boot config.
 
 ```bash
 sudo reboot
@@ -121,11 +145,13 @@ stat -fc %T /sys/fs/cgroup && docker info --format 'cgroup v{{.CgroupVersion}}, 
 Expect `tmpfs`, then `cgroup v1`, then the flag echoed back. Then re-run the
 preflight.
 
-**Undo:**
+**Undo** (before rebooting, no reboot needed; the count should drop to 0):
 
 ```bash
-sudo rm /etc/default/grub.d/99-cgroup-v1.cfg && sudo update-grub && sudo reboot
+sudo rm /etc/default/grub.d/99-cgroup-v1.cfg && sudo update-grub && sudo grep -c "systemd.unified_cgroup_hierarchy=0" /boot/grub/grub.cfg
 ```
+
+If you already rebooted into v1, add `&& sudo reboot` to return to v2.
 
 **Leave `/etc/docker/daemon.json` alone.** Some guides say to write
 `{"exec-opts": ["native.cgroupdriver=cgroupfs"]}` into it. Docker picks the

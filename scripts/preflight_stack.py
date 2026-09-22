@@ -188,7 +188,18 @@ def check_judge0(judge0: str, token: str, language_id: int) -> None:
 def staff_token(api: str, email: str) -> str | None:
     status, body, _ = http_json("POST", f"{api}/auth/mock-login", {"email": email})
     token = body.get("access_token") if isinstance(body, dict) else None
-    record("auth", "PASS" if token else "FAIL", f"mock-login as {email}", "" if token else f"HTTP {status} {body}")
+    if token:
+        record("auth", "PASS", f"mock-login as {email}")
+    elif status == 403:
+        # A deployed stack may legitimately turn mock login off; that is a skip, not a fault.
+        record(
+            "auth",
+            "WARN",
+            f"mock-login as {email}",
+            "disabled on this stack (ENABLE_MOCK_LOGIN) -- staff model-solution checks skipped",
+        )
+    else:
+        record("auth", "FAIL", f"mock-login as {email}", f"HTTP {status} {body}")
     return token
 
 
