@@ -178,12 +178,24 @@ def check_judge0(judge0: str, token: str, language_id: int) -> None:
     if status not in (200, 204):
         record("judge0", "FAIL", "DELETE submission", f"HTTP {status} (is ENABLE_SUBMISSION_DELETE set?)")
         return
-    after, _, _ = http("GET", f"{judge0}/submissions/{submission}?fields=status", headers=headers)
+    # Judge0's GET serves from Rails.cache for SUBMISSION_CACHE_DURATION (default
+    # 1s) and DELETE does not evict it, so a read right after a delete can
+    # return the cached copy even though the DB row is gone. Poll past that.
+    started = time.time()
+    after = None
+    while time.time() - started < 5:
+        after, _, _ = http("GET", f"{judge0}/submissions/{submission}?fields=status", headers=headers)
+        if after == 404:
+            break
+        time.sleep(0.5)
+    elapsed = time.time() - started
     record(
         "judge0",
         "PASS" if after == 404 else "FAIL",
         "deleted submission is gone",
-        f"GET after delete -> HTTP {after}",
+        f"404 after {elapsed:.1f}s (Judge0 caches reads ~1s)"
+        if after == 404
+        else f"still HTTP {after} {elapsed:.0f}s after delete -- longer than Judge0's read cache; investigate",
     )
 
 
