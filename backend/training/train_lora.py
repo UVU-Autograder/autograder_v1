@@ -37,15 +37,57 @@ TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj"
 EXCLUDE_MODULES = r".*(?:vision|audio|embed_vision|embed_audio|multi_modal).*"
 
 
-def to_prompt_completion(row: dict) -> dict:
-    """{"messages": [sys, user, asst]} -> TRL conversational prompt/completion.
+def render_as_served(tokenizer, messages: list[dict]) -> dict:
+    """{"messages": [sys, user, asst]} -> {"input_ids", "completion_mask"}, tokenized as served.
 
-    TRL computes loss on the completion only for this format, which avoids
-    depending on {% generation %} markers in the Gemma chat template.
+    The prompt is the model's own chat template with add_generation_prompt=True --
+    the exact call vLLM makes when serving -- so whatever the template opens the
+    model turn with (Gemma 4 may add an empty "<|channel>thought ... <channel|>"
+    block, depending on template version) is in the training input too. The
+    completion is the answer plus the template's own end-of-turn text, so the
+    model learns to stop.
+
+    Tokenized here rather than by TRL, prompt and completion separately with
+    add_special_tokens=False -- the chat template already emits BOS, and vLLM's
+    chat endpoint tokenizes the same way (its add_special_tokens defaults to
+    False). Joining token lists also means no merge can happen across the
+    prompt/answer boundary, so the loss mask is exact.
+
+    Training on the conversational form instead lets TRL render the prompt twice
+    in two different ways; with Gemma 4 they disagree ("Mismatch between tokenized
+    prompt and the start of tokenized prompt+completion"), which shifts the loss
+    mask and trains on a prompt format serving never sends. TRL's string form
+    re-tokenizes with add_special_tokens=True, doubling BOS.
     """
-    messages = row["messages"]
     assert messages[-1]["role"] == "assistant", "last turn must be the target"
-    return {"prompt": messages[:-1], "completion": messages[-1:]}
+    prompt_msgs, answer = messages[:-1], messages[-1]["content"]
+    prompt = tokenizer.apply_chat_template(prompt_msgs, add_generation_prompt=True, tokenize=False)
+    full = tokenizer.apply_chat_template(messages, tokenize=False)
+    at = full.rfind(answer)
+    if at == -1:
+        raise SystemExit("chat template rewrote the assistant answer; cannot derive its end-of-turn text")
+    end_of_turn = full[at + len(answer):]
+    prompt_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
+    completion_ids = tokenizer(answer + end_of_turn, add_special_tokens=False)["input_ids"]
+    return {
+        "input_ids": prompt_ids + completion_ids,
+        "completion_mask": [0] * len(prompt_ids) + [1] * len(completion_ids),
+    }
+
+
+def describe_template(tokenizer, messages: list[dict]) -> str:
+    """One line showing what the generation prompt adds beyond the history rendering."""
+    prompt_msgs, answer = messages[:-1], messages[-1]["content"]
+    gen = tokenizer.apply_chat_template(prompt_msgs, add_generation_prompt=True, tokenize=False)
+    full = tokenizer.apply_chat_template(messages, tokenize=False)
+    history_prefix = full[: full.rfind(answer)]
+    common = 0
+    while common < min(len(gen), len(history_prefix)) and gen[common] == history_prefix[common]:
+        common += 1
+    return (
+        f"serving opens the model turn with {gen[common:]!r}; "
+        f"a finished conversation has {history_prefix[common:]!r} there. Training uses the serving form."
+    )
 
 
 def load_model_and_tokenizer(base: str, quantize: bool = True):
@@ -117,14 +159,34 @@ def main(argv: list[str] | None = None) -> int:
         if not (args.data / f"{split}.jsonl").exists():
             raise SystemExit(f"missing {args.data}/{split}.jsonl -- run: python -m training.make_smoke_dataset")
 
-    dataset = load_dataset(
+    raw = load_dataset(
         "json",
         data_files={"train": str(args.data / "train.jsonl"), "validation": str(args.data / "valid.jsonl")},
-    ).map(to_prompt_completion, remove_columns=["messages"])
+    )
 
     started = time.time()
     torch.cuda.reset_peak_memory_stats()
     model, tokenizer = load_model_and_tokenizer(args.base)
+    print("chat template:", describe_template(tokenizer, raw["train"][0]["messages"]))
+    # load_from_cache_file=False: datasets fingerprints a module function by name,
+    # not by its code, so after an edit to render_as_served it would silently
+    # reuse the previous version's cached output.
+    dataset = raw.map(
+        lambda row: render_as_served(tokenizer, row["messages"]),
+        remove_columns=["messages"],
+        load_from_cache_file=False,
+    )
+    # Truncation would cut the answer's end (and its end-of-turn), teaching the
+    # model not to stop. Drop over-long rows instead, and say so.
+    for split in ("train", "validation"):
+        before = len(dataset[split])
+        dataset[split] = dataset[split].filter(
+            lambda row: len(row["input_ids"]) <= args.max_length, load_from_cache_file=False
+        )
+        if len(dataset[split]) < before:
+            print(f"dropped {before - len(dataset[split])}/{before} {split} rows longer than --max-length {args.max_length}")
+    if len(dataset["train"]) == 0:
+        raise SystemExit("no training rows fit --max-length; raise it")
     # No explicit prepare_model_for_kbit_training: SFTTrainer runs it for 4-bit
     # models (and it upcasts non-4-bit weights -- here mainly the ~1B-param
     # embedding table -- to fp32, ~+2GB; there are no per-layer embeddings).

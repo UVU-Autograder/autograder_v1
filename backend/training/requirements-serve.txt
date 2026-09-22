@@ -4,9 +4,13 @@
 #   python3.12 -m venv ~/venvs/serve
 #   ~/venvs/serve/bin/pip install -r backend/training/requirements-serve.txt
 #
-# Needs a vLLM release whose wheel ships sm_120 kernels and supports Gemma 4.
-# If the default wheel logs "no kernel image is available for execution", install
-# the cu129 variant per the vLLM Blackwell install docs.
-# The vLLM forum has an sm_120 (RTX PRO 4000) thread reporting a v0.18.1 regression --
-# if throughput looks wrong, check it before debugging anything else.
-vllm>=0.18
+# Gemma 4 12B is "Unified" (gemma4_unified): vLLM support merged in
+# vllm-project/vllm#44429 (2026-06-03) and ships in every release from 0.23.0
+# (the recipe page's "nightly required" note predates that). 0.29.0 is pinned
+# rather than 0.30.0, which released the day this was written.
+#
+# Serve with the checkpoint's OWN chat template: do not pass --chat-template or
+# --default-chat-template-kwargs. train_lora renders prompts with that template
+# and its defaults, and a different template at serve time is exactly the
+# train/serve mismatch this pipeline exists to prevent.
+vllm==0.29.0

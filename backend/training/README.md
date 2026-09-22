@@ -99,6 +99,25 @@ python3.12 -m venv ~/venvs/serve && ~/venvs/serve/bin/pip install -r backend/tra
 Port 8001 because the autograder backend owns 8000. Paste back the `Maximum
 concurrency for 8192 tokens per request` line from startup.
 
+**Don't add `--chat-template`, `--reasoning-parser` or
+`--default-chat-template-kwargs`** even though vLLM's Gemma 4 recipe uses them.
+The adapter was trained on prompts rendered with the checkpoint's own template
+and defaults (`train_lora` prints what that template opens the model turn with);
+serving with a different template would feed the model a format it wasn't
+trained on.
+
+If vLLM refuses LoRA for this architecture, merge the adapter into the bf16
+base instead and serve that (24GB of weights still fits at `--max-model-len 8192`):
+
+```bash
+~/venvs/train/bin/python -c "from transformers import AutoModelForMultimodalLM as M; from peft import PeftModel; m = PeftModel.from_pretrained(M.from_pretrained('/data/models/gemma4-12b-qat-bf16', dtype='bfloat16'), 'backend/training/output/smoke').merge_and_unload(); m.save_pretrained('/data/models/cs1410-smoke-merged')"
+```
+
+```bash
+~/venvs/train/bin/python -c "from transformers import AutoProcessor; AutoProcessor.from_pretrained('/data/models/gemma4-12b-qat-bf16').save_pretrained('/data/models/cs1410-smoke-merged')"
+```
+
+
 If vLLM refuses LoRA on the compressed-tensors base, serve the bf16 training base
 instead for the smoke run (`vllm serve /data/models/gemma4-12b-qat-bf16 ...`,
 same flags) and note it — that's a finding, not a failure.
