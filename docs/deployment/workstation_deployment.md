@@ -48,7 +48,7 @@ docker compose down
 
 ### Host capacity
 
-Capacity planning in the specs is benchmarked on the Dell workstation (execution-slot cap `2-4`). A typical developer laptop (~8GB RAM, few cores) can idle the POC stack for API work and **one grading job at a time**, but will thrash under concurrent Judge0 work, heavy pygame runs, Kata, or IDE + browser + frontend together.
+Capacity planning in the specs is benchmarked on the Dell workstation (execution-slot cap `2-4`). A typical developer laptop (~8GB RAM, few cores) can idle the stack for API work and **one grading job at a time**, but will thrash under concurrent Judge0 work, heavy pygame runs, Kata, or IDE + browser + frontend together.
 
 On small hosts:
 
@@ -62,7 +62,7 @@ Skip Kata on laptops; use `docker-compose.kata.yml` only on the Ubuntu/Dell host
 ### Volume and database caveats
 
 - Switching from the older dual-Postgres layout to the single `postgres` service uses volume `postgres_data`. First bring-up after that change is a clean DB (re-seed).
-- `scripts/init_poc_databases.sh` runs **only** on first init of an empty data volume. Changing the script does nothing until you recreate the volume, e.g. `docker compose -f docker-compose.poc.yml down -v` (destroys POC DB data).
+- `scripts/init_databases.sh` runs **only** on first init of an empty data volume. Changing the script does nothing until you recreate the volume, e.g. `docker compose down -v` (destroys DB data).
 - Compose defaults include local-only passwords (`autograder_dev_password`, `judge0_dev_password`). Override them in `.env.local` for any shared or long-lived machine.
 
 ## Optional Kata Runtime Setup
@@ -97,13 +97,13 @@ docker run --rm --runtime kata-runtime busybox uname -a
 > sudo journalctl -u containerd --since "2 minutes ago" --no-pager | grep "load configuration from"
 > ```
 
-Then start the POC stack with the Kata override:
+Then start the autograder stack with the Kata override:
 
 ```bash
 docker compose --env-file .env.local \
-  -f docker-compose.poc.yml \
+  -f docker-compose.yml \
   -f docker-compose.kata.yml \
-  up --build
+  up -d --build
 ```
 
 If the dev machine uses a different Docker runtime name, set it in `.env.local`:
@@ -168,7 +168,7 @@ Judge0 uses the same Postgres container on database `judge0`. Custom language `7
 
 The compose file starts Judge0 CE and its worker locally. The app sends zipped student work to Judge0 through the existing backend grading pipeline and deletes Judge0 submissions after result retrieval.
 
-Upstream Judge0 CE uses `privileged: true` for its isolate sandbox, and `docker-compose.poc.yml` keeps that for the plain (runc) POC path. **The Kata path does not**: `docker-compose.kata.yml` overrides it to `privileged: false` plus an explicit `cap_add` list, because privileged mode makes Kata fail to start the container at all (see the Kata section above). This was verified working end to end — submissions return `Accepted` on stock language 71 and custom 711, with pytest/Pillow/pygame imports intact.
+Upstream Judge0 CE uses `privileged: true` for its isolate sandbox, and `docker-compose.yml` keeps that for the default (runc) path. **The Kata path does not**: `docker-compose.kata.yml` overrides it to `privileged: false` plus an explicit `cap_add` list, because privileged mode makes Kata fail to start the container at all (see the Kata section above). This was verified working end to end — submissions return `Accepted` on stock language 71 and custom 711, with pytest/Pillow/pygame imports intact.
 
 If a capability turns out to be missing for some workload, add the specific capability rather than reverting to `privileged: true`, which does not function under Kata on this host.
 
@@ -183,14 +183,14 @@ Stock Judge0 1.13.1 ships **isolate 1.8.1**, which expects **cgroup v1** paths s
 
 **Do not rely on** `systemd.unified_cgroup_hierarchy=0` on this Arch host: systemd **261** has removed forcing cgroup v1 (see ArchWiki *Cgroups* historical note). Mounting `/sys/fs/cgroup` into the container also does not create missing v1 controllers.
 
-**POC workaround (enabled in `docker-compose.poc.yml`):** set
+**Workstation configuration (enabled in `docker-compose.yml`):** set
 
 ```yaml
 ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT: "true"
 ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
 ```
 
-on both `judge0` and `judge0-worker`. That makes Judge0 omit isolate’s `--cg` flag and use process rlimits instead, which works on cgroup v2. Isolation is weaker than cgroup accounting; fine for laptop POC, not a substitute for Kata on the Dell workstation.
+on both `judge0` and `judge0-worker`. That makes Judge0 omit isolate’s `--cg` flag and use process rlimits instead, which works on cgroup v2. Isolation is weaker than cgroup accounting; fine for basic rlimits, but reinforced by Kata microVM isolation on the Dell workstation.
 
 > [!IMPORTANT]
 > **Keep these enabled on the Dell workstation too — including on the Kata path.** Forcing
@@ -224,15 +224,15 @@ Kata Containers is host-level execution isolation. The repository cannot configu
 
 ## Environment Notes
 
-Local POC defaults intentionally keep CORS and frontend API access on localhost. Tailscale/SSH access should be handled at the host/network layer until UVU assigns a hosted environment.
+Default workstation settings keep frontend API access on the single origin or localhost. Tailscale/SSH access should be handled at the host/network layer until UVU assigns a hosted environment.
 
 Use plain environment files for now, but do not commit real secrets. The existing tracked `backend/.env` is left unchanged for compatibility with the current development workflow.
 
 ## FERPA/Local LLM Scope
 
-The current documentation says the technical design reduces FERPA risk, but live official grading still depends on institutional approval and direct-control requirements. Use this POC with synthetic, fake, or approved anonymized data unless UVU approval has been explicitly documented for live student data.
+The current documentation says the technical design reduces FERPA risk, but live official grading still depends on institutional approval and direct-control requirements. Use synthetic, fake, or approved anonymized data unless UVU approval has been explicitly documented for live student data.
 
-**Project status:** UVU Software Approval for live official grading is in progress. Local/on-prem POC use of real Canvas ZIPs is acceptable for authorized staff debugging when student-identifying data remains ephemeral only (≤24h), Postgres/logs stay aggregate-only, and exports are not committed to the repository. See [ferpa_analysis.md](../core/ferpa_analysis.md).
+**Project status:** UVU Software Approval for live official grading is in progress. Workstation use of real Canvas ZIPs is acceptable for authorized staff debugging when student-identifying data remains ephemeral only (≤24h), Postgres/logs stay aggregate-only, and exports are not committed to the repository. See [ferpa_analysis.md](../core/ferpa_analysis.md).
 
 Local LLM credentials can be supplied through environment variables, but AI feedback for live, pseudonymous, or real student-derived code should remain disabled unless the UVU approval checklist is complete.
 

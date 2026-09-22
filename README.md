@@ -1,8 +1,6 @@
 # UVU Autograder
 
-On-prem autograder for retention-aware Python grading with a public student sandbox and staff setup/official-run workflows.
-
-**Status:** Workstation deployment active on the dedicated Dell workstation (`10.115.20.200`) with Nginx reverse proxy on port 80, independent retention cleanup, and Judge0 execution. The retention contract enforces immediate sandbox cleanup after results, immediate execution-artifact cleanup after retrieval, and official review/export retention of at most 24 hours or until staff cleanup. Active roadmap and delivery gates are tracked in the [backlog](docs/planning/backlog.md).
+Utah Valley University's Autograder software. Currently preparing to serve CS 1400 and 1410 classes.
 
 ## Documentation
 

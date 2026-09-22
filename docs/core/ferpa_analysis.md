@@ -69,9 +69,9 @@ Pseudonymous labels with a retained mapping, even if the mapping stays outside t
 
 The app should treat fake and fully anonymized validation bundles with the same retention discipline used for student-code-bearing data.
 
-### Local POC / developer use of real Canvas exports
+### Workstation evaluation / developer use of real Canvas exports
 
-Real Canvas bulk-download ZIPs may be used on local or on-prem POC hosts for debugging and integration testing **only when all of the following remain true**:
+Real Canvas bulk-download ZIPs may be used on the on-prem workstation deployment for debugging and integration testing **only when all of the following remain true**:
 
 - access is limited to authorized staff accounts (`@uvu.edu`) and section-scoped official routes
 - student code, Canvas identifiers, and student names exist only in **ephemeral** official workspaces (≤24h or staff cleanup)
@@ -80,7 +80,7 @@ Real Canvas bulk-download ZIPs may be used on local or on-prem POC hosts for deb
 - exports (CSV, feedback ZIP) are treated as education-record artifacts and handled under instructor/institutional policy
 - real exports are not committed to git, attached to issues, or reused as long-lived fixtures without anonymization
 
-This posture is acceptable for POC engineering while institutional approval is in progress. It does **not** replace formal UVU approval for production/live-course deployment.
+This posture applies to workstation engineering while institutional software approval is in progress. It does **not** replace formal UVU approval for production/live-course deployment.
 
 Anonymization reduces validation risk, but it does not by itself authorize all downstream uses. Live official grading with education-record-linked data still requires formal institutional approval.
 

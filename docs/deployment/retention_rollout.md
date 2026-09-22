@@ -12,7 +12,7 @@ evidence. Persistent failures remain visible and retryable.
    then SSH to `dev@10.115.20.200`. Supply credentials at the SSH prompt; never
    put them in this document, command arguments, environment files, or evidence.
 2. Identify the active checkout and Compose project from container labels. On the
-   Dell these are `/home/dev/autograder_v1` and `uvu-autograder-poc`. Confirm the
+   Dell these are `/home/dev/autograder_v1` and `uvu-autograder`. Confirm the
    frontend systemd service's working directory before changing it.
 3. Record the source commit, migration revision, image IDs, aggregate run counts
    grouped by status and original age, queue lengths, and Celery active/reserved/
