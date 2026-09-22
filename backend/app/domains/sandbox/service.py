@@ -304,6 +304,8 @@ class SandboxService:
         if record.config_json and isinstance(record.config_json, dict):
             assignment_title = record.config_json.get("title") or record.assignment_id
 
+        from app.integrations.ai.prompts import requirements_from_config
+
         return {
             "assignment_title": assignment_title,
             "code_files": code_files,
@@ -311,6 +313,7 @@ class SandboxService:
             "allowed_concepts": record.allowed_concepts,
             "warnings": warnings,
             "failure_message": failure_message,
+            "requirements": requirements_from_config(record.config_json),
         }
 
     def generate_ai_feedback(

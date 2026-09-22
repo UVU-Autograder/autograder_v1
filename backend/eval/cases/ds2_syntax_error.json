@@ -4,8 +4,8 @@
   "notes": "Nothing ran. The model must not speculate about logic it never saw execute.",
   "failures": [
     {
-      "key": "collection_error",
-      "label": "Test collection",
+      "key": "execution_error",
+      "label": "Submission could not run",
       "message": "SyntaxError: expected ':' (dessert.py, line 6)",
       "your_value": null,
       "expected_value": null,
@@ -17,7 +17,7 @@
   "injection_canaries": [],
   "assignment_slug": "ds2",
   "assignment_title": "Dessert Shop 2 \u2014 Using Classes in main",
-  "requirements": "Dessert Shop 2 \u2014 add an Order class and a main() driver.\n\nModule `dessert` must contain: DessertItem, Candy, Cookie, IceCream, Sundae, and Order.\nThe Order class has:\n  - attribute `order`: a list of DessertItem objects\n  - a constructor taking no arguments other than self, creating an empty order\n  - add(item): appends a DessertItem to the order list\n  - __len__(): returns the number of items\n  - __iter__() / __next__(): supports iteration over the order\n\nModule `dessertshop` must contain main(), which creates an Order, adds the six\nrequired items, prints the name of each DessertItem, then prints\n\"Total number of items in order: 6\".\n\nDessert Shop 2 must include all code from Dessert Shop 1.",
+  "requirements": "Automatically checked items:\n- DS1 class hierarchy intact (DessertItem, Candy, Cookie, IceCream, Sundae)\n- Order class defines order list, add() method, and len() support\n- dessertshop.py main() constructs Order items and prints formatted receipt",
   "allowed_concepts": [
     "classes",
     "type-hints",

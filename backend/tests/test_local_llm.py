@@ -1,7 +1,16 @@
 """Tests for Local LLM integration and AI feedback generation."""
 
+import json
 import unittest.mock as mock
-from app.integrations.llm.client import LocalLLMClient, sanitize_code_and_text
+
+from app.integrations.ai.prompts import (
+    EXECUTION_ERROR_KEY,
+    SYSTEM_PROMPT,
+    build_messages,
+    failures_from_test_results,
+    requirements_from_config,
+)
+from app.integrations.llm.client import FEEDBACK_UNAVAILABLE, LocalLLMClient, sanitize_code_and_text
 
 
 def test_sanitize_code_and_text():
@@ -39,24 +48,148 @@ def test_local_llm_client_fallback_on_connection_error():
     assert "unreachable" in res or "error" in res.lower() or "timed out" in res.lower()
 
 
-def test_local_llm_generate_sandbox_feedback_format():
-    with mock.patch.object(LocalLLMClient, "generate_chat_completion", return_value="Great job! Check line 12.") as mock_chat:
+FAILING_RESULTS = [
+    {
+        "name": "test_filter",
+        "outcome": "Failed",
+        "test_results": [{"outcome": "failed", "message": "Expected 42 but got 0"}],
+    }
+]
+
+
+def _feedback(raw: str, test_results=FAILING_RESULTS, code_files=None) -> tuple[str, list]:
+    """Run generate_sandbox_feedback against a canned model response."""
+    with mock.patch.object(LocalLLMClient, "_complete_structured", return_value=raw) as mock_chat:
         client = LocalLLMClient()
         feedback = client.generate_sandbox_feedback(
             assignment_title="Lab 1: Image Processing",
-            code_files={"bears2.py": "def process(): pass"},
-            test_results=[{"name": "test_filter", "outcome": "Failed", "test_results": [{"outcome": "failed", "message": "Expected 42 but got 0"}]}],
+            code_files=code_files or {"bears2.py": "def process(): pass"},
+            test_results=test_results,
             allowed_concepts=["loops", "functions"],
             warnings=[{"code": "concept_warning", "message": "Avoid while loops"}],
         )
-        assert feedback == "Great job! Check line 12."
-        mock_chat.assert_called_once()
-        call_args = mock_chat.call_args[0][0]
-        system_msg = call_args[0]["content"]
-        user_msg = call_args[1]["content"]
-        assert "Teaching Assistant" in system_msg
-        assert "Lab 1: Image Processing" in user_msg
-        assert "Expected 42 but got 0" in user_msg
+        return feedback, mock_chat.call_args[0][0]
+
+
+def _json(**overrides) -> str:
+    body = {
+        "summary": "Your filter runs but returns the wrong value.",
+        "items": [{"test_key": "test_filter", "what_went_wrong": "It returns 0.", "hint": "Where is the total updated?"}],
+        "next_step": "Trace the loop by hand.",
+    }
+    body.update(overrides)
+    return json.dumps(body)
+
+
+def test_sandbox_feedback_uses_shared_prompt_and_renders_validated_json():
+    feedback, messages = _feedback(_json())
+    system_msg, user_msg = messages[0]["content"], messages[1]["content"]
+    # One prompt for serving, eval, and training.
+    assert system_msg == SYSTEM_PROMPT
+    assert "Lab 1: Image Processing" in user_msg
+    assert "Expected 42 but got 0" in user_msg
+    assert "concept_warning: Avoid while loops" in user_msg
+    # Rendered for the UI, labelled with the test's label.
+    assert "Your filter runs but returns the wrong value." in feedback
+    assert "**test_filter**: It returns 0." in feedback
+    assert "Where is the total updated?" in feedback
+    assert "**Next step:** Trace the loop by hand." in feedback
+
+
+def test_sandbox_feedback_blocks_invented_failures():
+    raw = _json(items=[{"test_key": "made_up", "what_went_wrong": "x", "hint": "y"}])
+    assert _feedback(raw)[0] == FEEDBACK_UNAVAILABLE
+
+
+def test_sandbox_feedback_blocks_score_statements():
+    assert _feedback(_json(summary="You earned 80% on this lab."))[0] == FEEDBACK_UNAVAILABLE
+
+
+def test_sandbox_feedback_blocks_writing_the_students_code():
+    raw = _json(next_step="Try:\ndef process(img):\n    return img")
+    assert _feedback(raw)[0] == FEEDBACK_UNAVAILABLE
+
+
+def test_sandbox_feedback_blocks_non_json_output():
+    assert _feedback("Great job! Check line 12.")[0] == FEEDBACK_UNAVAILABLE
+
+
+def test_sandbox_feedback_all_passing_rejects_any_failure_items():
+    passing = [{"key": "k", "label": "K", "passed": True, "item_type": "pytest"}]
+    ok = _json(summary="All checks passed -- nice work.", items=[])
+    assert "nice work" in _feedback(ok, test_results=passing)[0]
+    bad = _json(items=[{"test_key": "k", "what_went_wrong": "x", "hint": "y"}])
+    assert _feedback(bad, test_results=passing)[0] == FEEDBACK_UNAVAILABLE
+
+
+def test_sandbox_feedback_stream_yields_only_validated_text():
+    with mock.patch.object(LocalLLMClient, "_complete_structured", return_value=_json()):
+        chunks = list(
+            LocalLLMClient().generate_sandbox_feedback_stream(
+                assignment_title="Lab 1", code_files={"a.py": ""}, test_results=FAILING_RESULTS
+            )
+        )
+    assert len(chunks) > 1
+    assert "Where is the total updated?" in "".join(chunks)
+    with mock.patch.object(LocalLLMClient, "_complete_structured", return_value="You got 90%"):
+        chunks = list(
+            LocalLLMClient().generate_sandbox_feedback_stream(
+                assignment_title="Lab 1", code_files={"a.py": ""}, test_results=FAILING_RESULTS
+            )
+        )
+    assert "".join(chunks) == FEEDBACK_UNAVAILABLE
+
+
+def test_failures_from_test_results_skips_manual_and_passed_items():
+    results = [
+        {"key": "init", "label": "Init", "passed": True, "item_type": "pytest"},
+        {"key": "reflection", "label": "Reflection", "passed": False, "item_type": "manual"},
+        {
+            "key": "str",
+            "label": "__str__ output",
+            "passed": False,
+            "item_type": "pytest",
+            "your_value": "$5.5",
+            "expected_value": "$5.50",
+            "test_results": [{"outcome": "failed", "message": "assert '$5.5' == '$5.50'"}],
+        },
+    ]
+    failures, passing = failures_from_test_results(results)
+    assert [f["key"] for f in failures] == ["str"]
+    assert failures[0]["message"] == "assert '$5.5' == '$5.50'"
+    assert passing == ["Init"]
+
+
+def test_failures_from_test_results_execution_error_is_citable():
+    failures, _ = failures_from_test_results([], failure_message="SyntaxError: invalid syntax")
+    assert failures == [
+        {"key": EXECUTION_ERROR_KEY, "label": "Submission could not run", "message": "SyntaxError: invalid syntax"}
+    ]
+
+
+def test_prompt_is_sanitized_for_every_caller():
+    messages = build_messages(
+        assignment_title="Lab 2",
+        requirements="",
+        allowed_concepts=[],
+        failures=[{"key": "k", "label": "K", "message": "failed for jane.doe@uvu.edu"}],
+        concept_violations=[],
+        student_code="# Author: Jane Doe\nx = 10123456\n",
+    )
+    user = messages[1]["content"]
+    assert "jane.doe@uvu.edu" not in user and "Jane Doe" not in user and "10123456" not in user
+
+
+def test_requirements_from_config_lists_automated_items_only():
+    config = {
+        "scoring_items": [
+            {"key": "a", "label": "Account init", "item_type": "pytest"},
+            {"key": "r", "label": "Reflection", "item_type": "manual"},
+        ]
+    }
+    text = requirements_from_config(config)
+    assert "Account init" in text and "Reflection" not in text
+    assert requirements_from_config(None) == ""
 
 
 def test_local_llm_global_code_ceiling():

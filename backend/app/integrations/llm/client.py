@@ -2,35 +2,25 @@
 
 import json
 import logging
-import re
 from typing import Any, Generator
 import httpx
 
 from app.core.settings import get_settings
+from app.integrations.ai import prompts
+from app.integrations.ai.guardrails import DEF_RE, validate_feedback
+from app.integrations.ai.sanitize import sanitize_code_and_text
+
+__all__ = ["LocalLLMClient", "sanitize_code_and_text", "FEEDBACK_UNAVAILABLE"]
+
+# Shown instead of any model output that fails the guardrails. Never show
+# unvalidated text: a score or a full solution on screen can't be retracted.
+FEEDBACK_UNAVAILABLE = (
+    "The AI assistant couldn't produce hints that passed our accuracy checks for this run. "
+    "Your test results above are complete and correct -- start with the first failing test "
+    "and compare what your code produced with what was expected."
+)
 
 logger = logging.getLogger(__name__)
-
-
-def sanitize_code_and_text(text: str) -> str:
-    """Strip student identifiers, emails, and student ID patterns to ensure FERPA compliance."""
-    if not text:
-        return ""
-    # Strip email addresses
-    sanitized = re.sub(r"[\w\.-]+@[\w\.-]+\.\w+", "[REDACTED_EMAIL]", text)
-    # Strip UVU-style IDs (e.g., 10123456 or U10123456 or A12345678)
-    sanitized = re.sub(r"\b[AUau]?\d{7,8}\b", "[REDACTED_ID]", sanitized)
-    # Strip common name/author header patterns in comments or metadata lines without corrupting code variables
-    sanitized = re.sub(
-        r"(?im)^([ \t]*(?:#|//|/\*|\*)\s*)(author|student(?:\s*name)?|name|submitted\s*by)\s*[:=]\s*[^\n\r]+",
-        r"\1\2: [REDACTED_NAME]",
-        sanitized,
-    )
-    sanitized = re.sub(
-        r"(?im)^([ \t]*)(author|student(?:\s*name)?|submitted\s*by)\s*[:=]\s*[^\n\r]+",
-        r"\1\2: [REDACTED_NAME]",
-        sanitized,
-    )
-    return sanitized
 
 
 class LocalLLMClient:
@@ -139,6 +129,33 @@ class LocalLLMClient:
         except Exception as exc:
             yield f"⚠️ Error generating AI feedback: {exc!s}"
 
+    def _complete_structured(self, messages: list[dict[str, str]]) -> str:
+        """One non-streamed completion, asking the server to enforce the JSON schema.
+
+        Raises on transport/HTTP errors so the caller can pick the right message.
+        Servers that reject ``response_format`` get one retry without it; the
+        guardrails still validate whatever comes back.
+        """
+        url = f"{self.endpoint}/chat/completions"
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": prompts.GENERATION_TEMPERATURE,
+            "max_tokens": prompts.MAX_OUTPUT_TOKENS,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "feedback", "schema": prompts.RESPONSE_JSON_SCHEMA, "strict": True},
+            },
+        }
+        with httpx.Client(timeout=self.timeout) as client:
+            response = client.post(url, json=payload, headers=headers)
+            if response.status_code in (400, 422):
+                payload.pop("response_format")
+                response = client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return (response.json()["choices"][0]["message"].get("content") or "").strip()
+
     def build_sandbox_messages(
         self,
         assignment_title: str,
@@ -147,78 +164,20 @@ class LocalLLMClient:
         allowed_concepts: list[str] | None = None,
         warnings: list[dict[str, str]] | None = None,
         failure_message: str | None = None,
+        requirements: str | None = None,
     ) -> list[dict[str, str]]:
-        """Construct compact, high-signal messages for local model inference."""
-        system_prompt = (
-            "You are a friendly, concise Computer Science Teaching Assistant at Utah Valley University.\n"
-            "Pedagogical Rules:\n"
-            "1. NEVER give the complete solution code or copy-paste code fixes.\n"
-            "2. Give 2 to 3 concise, bulleted Socratic hints pointing to the specific function or logic to check.\n"
-            "3. Keep your total response under 150 words.\n"
-            "4. If all tests passed, congratulate them in one short sentence!"
+        """Messages for the sandbox, built by the shared prompt module (see prompts.py)."""
+        failures, passing = prompts.failures_from_test_results(test_results, failure_message)
+        violations = [f"{w.get('code', 'warning')}: {w.get('message', '')}" for w in (warnings or [])]
+        return prompts.build_messages(
+            assignment_title=assignment_title,
+            requirements=requirements or "",
+            allowed_concepts=allowed_concepts or [],
+            failures=failures,
+            concept_violations=violations,
+            code_files=code_files or {"submission.py": ""},
+            passing_labels=passing,
         )
-
-        user_content_parts = [f"### Assignment: {assignment_title}\n"]
-
-        if allowed_concepts:
-            user_content_parts.append(f"**Allowed Concepts:** {', '.join(allowed_concepts)}\n")
-
-        if failure_message:
-            user_content_parts.append(f"**Issue:** {sanitize_code_and_text(failure_message)}\n")
-
-        if warnings:
-            user_content_parts.append("**AST Warnings:**")
-            for w in warnings:
-                msg = sanitize_code_and_text(w.get("message", ""))
-                user_content_parts.append(f"- {w.get('code', 'Warning')}: {msg}")
-            user_content_parts.append("")
-
-        if test_results:
-            user_content_parts.append("**Test Results:**")
-            for tr in test_results:
-                name = tr.get("name") or tr.get("label") or "Test"
-                outcome = tr.get("outcome") or (
-                    "Passed" if tr.get("points_earned", 0) > 0 else "Failed"
-                )
-                user_content_parts.append(f"- {name}: {outcome}")
-                for sub in tr.get("test_results", []):
-                    if sub.get("outcome") != "passed":
-                        msg = sanitize_code_and_text(sub.get("message") or "")
-                        actual = sanitize_code_and_text(str(sub.get("actual", "")))
-                        expected = sanitize_code_and_text(str(sub.get("expected", "")))
-                        if msg:
-                            user_content_parts.append(f"  * Error: {msg}")
-                        if actual or expected:
-                            user_content_parts.append(
-                                f"  * Got: `{actual}` | Expected: `{expected}`"
-                            )
-            user_content_parts.append("")
-
-        if code_files:
-            user_content_parts.append("**Student Code:**")
-            total_code_chars = 0
-            max_file_chars = 4000
-            max_total_chars = 8000
-            for fname, code in code_files.items():
-                if total_code_chars >= max_total_chars:
-                    user_content_parts.append("... [additional files truncated due to context limits] ...\n")
-                    break
-                sanitized_fname = sanitize_code_and_text(fname)
-                sanitized_code = sanitize_code_and_text(code).replace("```", "'''")
-                remaining_budget = max_total_chars - total_code_chars
-                max_chars = min(max_file_chars, remaining_budget)
-                if len(sanitized_code) > max_chars:
-                    sanitized_code = sanitized_code[:max_chars] + "\n... [truncated] ..."
-                total_code_chars += len(sanitized_code)
-                user_content_parts.append(f"```{sanitized_fname}\n{sanitized_code}\n```\n")
-
-        user_content_parts.append("Provide concise Socratic hints to help me fix my code.")
-        user_prompt = "\n".join(user_content_parts)
-
-        return [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
 
     def generate_sandbox_feedback(
         self,
@@ -228,7 +187,10 @@ class LocalLLMClient:
         allowed_concepts: list[str] | None = None,
         warnings: list[dict[str, str]] | None = None,
         failure_message: str | None = None,
+        requirements: str | None = None,
     ) -> str:
+        """Generate, validate, and render feedback. Only validated text is returned."""
+        failures, _ = prompts.failures_from_test_results(test_results, failure_message)
         messages = self.build_sandbox_messages(
             assignment_title=assignment_title,
             code_files=code_files,
@@ -236,8 +198,37 @@ class LocalLLMClient:
             allowed_concepts=allowed_concepts,
             warnings=warnings,
             failure_message=failure_message,
+            requirements=requirements,
         )
-        return self.generate_chat_completion(messages)
+        try:
+            raw = self._complete_structured(messages)
+        except httpx.ConnectError:
+            logger.warning("Failed to connect to Local LLM at %s", self.endpoint)
+            return (
+                "⚠️ Local AI assistant is currently unreachable. "
+                "Please make sure the model server is running and the model is available."
+            )
+        except httpx.TimeoutException:
+            logger.warning("Local LLM request timed out at %s", self.endpoint)
+            return "⚠️ Local AI assistant request timed out. Please try again."
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Local LLM request failed: %s", type(exc).__name__)
+            return "⚠️ An error occurred while generating AI feedback. Please try again later."
+
+        try:
+            parsed = prompts.parse_response(raw)
+        except ValueError:
+            logger.warning("Local LLM feedback rejected: response was not valid FeedbackResponse JSON")
+            return FEEDBACK_UNAVAILABLE
+
+        # A response that *defines* a symbol the student's code defines is writing their code.
+        forbidden = {name for code in (code_files or {}).values() for name in DEF_RE.findall(code)}
+        reasons = validate_feedback(parsed, {f["key"] for f in failures}, forbidden)
+        if reasons:
+            # Reasons name checks and test keys only -- never student code or text.
+            logger.warning("Local LLM feedback rejected by guardrails: %s", "; ".join(reasons))
+            return FEEDBACK_UNAVAILABLE
+        return prompts.render_markdown(parsed, {f["key"]: f["label"] for f in failures})
 
     def generate_sandbox_feedback_stream(
         self,
@@ -247,13 +238,20 @@ class LocalLLMClient:
         allowed_concepts: list[str] | None = None,
         warnings: list[dict[str, str]] | None = None,
         failure_message: str | None = None,
+        requirements: str | None = None,
     ) -> Generator[str, None, None]:
-        messages = self.build_sandbox_messages(
+        """Stream *validated* feedback, line by line.
+
+        Generation finishes and passes the guardrails before the first chunk is
+        sent. Token-by-token streaming would put unchecked text on screen.
+        """
+        text = self.generate_sandbox_feedback(
             assignment_title=assignment_title,
             code_files=code_files,
             test_results=test_results,
             allowed_concepts=allowed_concepts,
             warnings=warnings,
             failure_message=failure_message,
+            requirements=requirements,
         )
-        yield from self.generate_chat_completion_stream(messages)
+        yield from text.splitlines(keepends=True)

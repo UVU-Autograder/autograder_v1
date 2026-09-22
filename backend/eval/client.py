@@ -11,10 +11,12 @@ from dataclasses import dataclass
 
 import httpx
 
+from app.integrations.ai.prompts import GENERATION_TEMPERATURE, MAX_OUTPUT_TOKENS
+
 PRESETS = {
     "lmstudio": "http://127.0.0.1:1234/v1",
     "ollama": "http://127.0.0.1:11434/v1",
-    "vllm": "http://127.0.0.1:8000/v1",
+    "vllm": "http://127.0.0.1:8001/v1",  # backend owns 8000 on the Dell
 }
 
 
@@ -33,8 +35,8 @@ class ChatClient:
         model: str,
         *,
         api_key: str = "not-needed",
-        temperature: float = 0.3,
-        max_tokens: int = 900,
+        temperature: float = GENERATION_TEMPERATURE,
+        max_tokens: int = MAX_OUTPUT_TOKENS,
         timeout: float = 180.0,
         json_schema: dict | None = None,
     ) -> None:

@@ -26,38 +26,37 @@ import json
 import random
 from pathlib import Path
 
-from app.integrations.ai.prompts import PROMPT_VERSION, FeedbackResponse, build_messages
+from app.integrations.ai.prompts import (
+    EXECUTION_ERROR_KEY,
+    PROMPT_VERSION,
+    FeedbackResponse,
+    build_messages,
+    requirements_from_config,
+)
 
 OUT_DIR = Path(__file__).parent / "data" / "smoke"
+SEEDS_DIR = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
+
+
+def seed_requirements(slug: str) -> str:
+    """REQUIREMENTS exactly as the live sandbox derives them (prompts.requirements_from_config)."""
+    return requirements_from_config(json.loads((SEEDS_DIR / slug / "config_json.example.json").read_text()))
+
 
 DS1 = dict(
     title="Dessert Shop 1: Inheritance Superclass",
     concepts=["classes", "type-hints", "inheritance", "properties", "operator-overloading"],
-    requirements=(
-        "Module `dessert` defines DessertItem (attribute `name`, default \"\") and four "
-        "subclasses: Candy(candy_weight, price_per_pound), Cookie(cookie_quantity, "
-        "price_per_dozen), IceCream(scoop_count, price_per_scoop), and Sundae, which "
-        "inherits from IceCream and adds topping_name and topping_price. Every "
-        "constructor argument has a default so each class can be built with no arguments."
-    ),
+    requirements=seed_requirements("ds1"),
 )
 DS3 = dict(
     title="Dessert Shop 3: Test Cases with pytest",
     concepts=DS1["concepts"] + ["generators", "testing"],
-    requirements=(
-        "Dessert Shop 3 keeps all DS2 classes and Order working, and adds "
-        "test_dessert.py containing at least 15 pytest test functions that exercise "
-        "the classes. The student's own tests must pass."
-    ),
+    requirements=seed_requirements("ds3"),
 )
 LAB2 = dict(
     title="Lab 2: Bank Account Class",
     concepts=["classes", "type-hints"],
-    requirements=(
-        "Module `account` defines Account with owner (default \"\") and balance "
-        "(default 0.0). __str__ returns \"Account owner: <owner>, balance: $<balance "
-        "to 2 decimals>\". demo.py creates two accounts and prints them."
-    ),
+    requirements=seed_requirements("lab2"),
 )
 
 
@@ -239,14 +238,14 @@ SCENARIOS: list[tuple[dict, list[dict], list[str], str, dict]] = [
     ),
     (
         LAB2,
-        [failure("collection_error", "Test collection",
+        [failure(EXECUTION_ERROR_KEY, "Submission could not run",
                  "SyntaxError: unterminated string literal (account.py, line 4)")],
         [],
         "class Account:\n    def __str__(self):\n        return f'Account owner: {self.owner}\n",
         {
             "summary": "Python couldn't read account.py, so none of the tests could run yet.",
             "items": [{
-                "test_key": "collection_error",
+                "test_key": EXECUTION_ERROR_KEY,
                 "what_went_wrong": "There is a syntax error on line 4: a string is opened but never closed.",
                 "hint": "Look at the quote marks on line 4. Does every opening quote have a partner?",
             }],

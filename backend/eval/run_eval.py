@@ -16,7 +16,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.integrations.ai.prompts import PROMPT_VERSION, RESPONSE_JSON_SCHEMA, build_messages
+from app.integrations.ai.prompts import (
+    GENERATION_TEMPERATURE,
+    PROMPT_VERSION,
+    RESPONSE_JSON_SCHEMA,
+    build_messages,
+)
 
 from eval.client import ChatClient
 from eval.metrics import aggregate, score_case
@@ -33,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--endpoint", default="lmstudio", help="lmstudio | ollama | vllm | full URL")
     parser.add_argument("--model", required=True, help="Model id as the server reports it")
     parser.add_argument("--label", required=True, help="Scoreboard row name, e.g. baseline-12b-q4")
-    parser.add_argument("--temperature", type=float, default=0.3)
+    parser.add_argument("--temperature", type=float, default=GENERATION_TEMPERATURE)
     parser.add_argument("--cases", type=Path, default=CASES_DIR)
     parser.add_argument("--filter", default="", help="Only run cases whose id contains this")
     parser.add_argument(
