@@ -1,6 +1,6 @@
 # Pygame Assignment Grading Guidelines
 
-This guide details the system architecture and policy constraints for testing and grading student **Pygame** assignments (such as `lab6` and `ds6`–`ds7`). 
+This guide details the system architecture and policy constraints for testing and grading student **Pygame** assignments (such as `lab6` in CS 1410). 
 
 ---
 

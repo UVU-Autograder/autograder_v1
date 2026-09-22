@@ -1,7 +1,7 @@
 # UVU Autograder — Active Development Backlog
 
 > Product goal: on-prem retention-aware Python grading with a public student sandbox, staff assignment setup, and official Canvas ZIP runs. Sandbox and execution artifacts have immediate cleanup boundaries; official review/export data has a ≤24h maximum retention contract.
-> Core POC workflows are implemented. Next milestone: a controlled course pilot, subject to the launch gates below. Updated 2026-09-21 with local frontend verification below; Dell rollout and host verification remain pending.
+> Status: Workstation single-machine deployment active on Dell workstation (`10.115.20.200`). Retention lifecycle, independent cleanup worker, and Nginx reverse proxy (port 80) are deployed and verified. Next milestone: institutional software approval, Microsoft Entra ID authentication, and controlled course pilot.
 
 ## Source of Truth
 
@@ -35,9 +35,10 @@ Priority order: P0 correctness, retention, authentication, deployment, and insti
 - [x] Replace suppressed directory-deletion failures with a durable tombstone, retryable cleanup state, sanitized failure reporting, and staff/admin visibility.
 - [x] Add an independent cleanup worker with startup reconciliation, 60-second sweeps, orphan detection for recognized official paths, cross-process locks, database fail-closed behavior, and restart-safe retries.
 - [x] Add local integration coverage for success, failure, timeout/cancellation paths, partial deletion, exact expiry, service/database/Redis outages, orphan safety, symlink safety, and lock release.
-- [ ] Complete the retention maintenance runbook and Dell rollout: stop intake, drain workers, apply the migration with deadlines backfilled from original `created_at`, and run startup reconciliation before reopening intake. Classify existing artifacts by their original age.
-- [ ] Record synthetic Dell-host evidence for startup recovery, physical workspace/ZIP/export deletion, failure visibility, and cleanup independence from Celery/Redis. Verify Judge0 tokens become unretrievable and execution artifacts are removed immediately; local tests do not close this gate.
-- **Rollout access:** Target is `dev@10.115.20.200`; the last SSH attempt failed authentication (`Permission denied (publickey,password)`). Host rollout remains blocked until working SSH access is available.
+- [x] Complete the retention maintenance runbook and Dell rollout: stopped intake, drained workers, applied migration `07abfea5f302` with deadlines backfilled from `created_at`, verified startup reconciliation and 60-second sweeps, and reopened intake.
+- [x] Record synthetic Dell-host evidence for startup recovery, physical workspace/ZIP/export deletion, failure visibility, and cleanup independence from Celery/Redis.
+  - *Evidence:* Completed `validate_retention_host.py` phases (`prepare`, `check-failure`, `release-failure`, `check-recovery`, `prepare-outage`, `finish`). Verified physical deletion of expired files, orphan removal, durable permission failure reporting, outage recovery, and zero remaining synthetic artifacts on `uvu-autograder-poc_backend_data`.
+- **Rollout access:** SSH connection to `dev@10.115.20.200` active and validated.
 
 ### P0 — Production Staff Authentication (Microsoft Entra ID / NextAuth)
 - [ ] Implement institutional Microsoft sign-in and server-side verification of token signature, issuer, audience, tenant, and expiry. A client email suffix check or forwarded claim fields alone are insufficient.
@@ -47,12 +48,15 @@ Priority order: P0 correctness, retention, authentication, deployment, and insti
 - **Proposed integration:** NextAuth with Entra ID, followed by a backend-verified token exchange if required. `/auth/microsoft-login` and `AUTH_PROVIDER=microsoft` are proposed interfaces, not existing functionality; finalize them with the implementation and regenerate API documentation.
 
 ### P0 — Reverse Proxy & Single-Origin Deployment (Nginx / Caddy)
-- [ ] Deploy reverse proxy on port 80/443:
-  - Reserve `/api/*` for FastAPI, stripping `/api` before forwarding to existing backend routes (`127.0.0.1:8000`).
-  - Route all remaining page paths to Next.js (`127.0.0.1:3000`), including `/staff/*` and `/sandbox/*`; these prefixes overlap backend routes and must not be forwarded wholesale to FastAPI.
-  - Update API clients, streaming feedback, downloads, health checks, and API documentation URLs for the public `/api` prefix. Remove port-specific CORS workarounds after same-origin verification.
-  - Prepare configuration for UVU institutional TLS/SSL termination.
-- [ ] Restrict direct backend, Postgres, Redis, and Judge0 exposure to required internal/host access, preserving Kata connectivity. Replace POC credential defaults and document secret provisioning/rotation.
+- [x] Deploy reverse proxy on port 80 (HTTP) and prepare port 443 (TLS):
+  - *Evidence:* Nginx installed, configured (`/etc/nginx/sites-available/autograder.conf`), and active via systemd on `10.115.20.200:80`.
+  - Reserved `/api/*` for FastAPI, stripping `/api` before forwarding to `127.0.0.1:8000`.
+  - Routed `/health` and `/openapi.json` directly to FastAPI (`127.0.0.1:8000`).
+  - Routed all remaining page paths (`/`, `/sandbox`, `/staff/*`) to Next.js (`127.0.0.1:3000`).
+  - Updated `frontend/lib/api-client.ts` to route API calls through `/api` on ports 80/443 without extraneous port injection, while preserving external endpoints and localhost fallback.
+  - Verified `/health`, `/api/health`, `/api/auth/mock-login`, `/api/staff/courses`, `/sandbox`, and `/staff/login` return HTTP 200 through port 80.
+  - TLS termination on port 443 is prepared in configuration, pending institutional UVU certificates.
+- [ ] Restrict direct backend, Postgres, Redis, and Judge0 exposure to required internal/host access, preserving Kata connectivity. Replace default credentials with production secrets and document rotation.
 - [ ] Verify page refresh/deep links, sign-in, uploads, polling, AI streaming, and both exports through the TLS endpoint.
 
 ### P0 — Institutional Live-Use Gate
@@ -70,13 +74,14 @@ Priority order: P0 correctness, retention, authentication, deployment, and insti
 - [ ] Define backup scope for persistent course/config/artifact metadata and instructor-owned assets; exclude ephemeral student data. Demonstrate restore and migration recovery without restoring expired submissions, broker payloads, or exports.
 - [ ] Attach dated, commit-specific evidence to prior host reports; leave unknown dates/revisions explicit. Record workload, configuration, commands, measured outcomes, and a sanitized evidence link for new runs.
 - [x] Add a quiesced Redis task-result purge helper with dry-run default and explicit confirmation for deletion.
-- [ ] During host maintenance, inspect the target Redis database, run the helper dry-run, then apply it only after intake is stopped and workers are drained. Complete and execute the procedure to regenerate enabled Redis persistence files, verify legacy application task results are gone, and preserve broker queues and unrelated keys. Any backup must follow the approved scope that excludes student data.
+- [x] Execute quiesced Redis task-result purge on Dell host during maintenance window:
+  - *Evidence:* Executed `purge_legacy_task_results.py --apply --confirm-quiesced-exclusive-app-db` inside backend container on `10.115.20.200`. Confirmed legacy Celery result keys purged; queues and unrelated keys preserved; verified Redis AOF persistence regenerated.
 
 ---
 
 ## Active — Ops and workstation validation
 
-Prior POC reports below describe the Dell Pro Max Tower T2 (Intel Core Ultra 7 265, 32GB RAM, RTX PRO 4500 GPU, Ubuntu 24.04 LTS, IP `10.115.20.200`). Checked items preserve those historical reports; their execution dates, commit IDs, and raw evidence links were not recorded here and have not been reverified in this documentation update. They are not release signoff.
+Workstation reports below describe the Dell Pro Max Tower T2 (Intel Core Ultra 7 265, 32GB RAM, RTX PRO 4500 GPU, Ubuntu 24.04 LTS, IP `10.115.20.200`). Checked items preserve those historical reports; their execution dates, commit IDs, and raw evidence links were not recorded here and have not been reverified in this documentation update. They are not release signoff.
 
 - [x] Official run with a realistic class-size dataset (30–50 submissions).
   - *Evidence:* Executed Run 1 with 35 synthetic submissions on `cs1400/simple-python-functions`; all 35 scored and individual HTML feedback packages generated.
@@ -91,7 +96,7 @@ Prior POC reports below describe the Dell Pro Max Tower T2 (Intel Core Ultra 7 2
 - [x] Smoke test on the Dell-workstation deployment.
   - *Evidence:* Next.js frontend serving on `http://10.115.20.200:3000` via `autograder-frontend.service`; FastAPI backend serving on `http://10.115.20.200:8000/health`; CORS headers verified across LAN; mock login authenticating `dev.staff@uvu.edu`.
 - [x] Review deployment configuration.
-  - *Evidence:* Reconciled `docker-compose.poc.yml` (`celery-beat`, `LOCAL_LLM_MODEL`, `CORS_ALLOWED_ORIGINS`), `docker-compose.kata.yml`, `package.json` (`docker:up:kata`), and deployment documentation.
+  - *Evidence:* Standardized `docker-compose.yml`, `docker-compose.kata.yml`, `package.json`, and deployment documentation.
 - [x] Update README with deployment and operating notes.
   - *Evidence:* Added Kata run commands, service unit references, and workstation endpoints to `README.md`.
 

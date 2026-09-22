@@ -187,11 +187,11 @@ cat <<EOF
 
 Kata is registered as Docker runtime: ${KATA_RUNTIME_NAME}
 
-Start the autograder POC with the optional Kata compose override:
+Start the autograder with the Kata compose override:
 
   docker compose --env-file .env.local \
-    -f docker-compose.poc.yml \
+    -f docker-compose.yml \
     -f docker-compose.kata.yml \
-    up --build
+    up -d --build
 
 EOF

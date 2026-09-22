@@ -1,4 +1,4 @@
-name: uvu-autograder-poc
+name: uvu-autograder
 
 services:
   postgres:
@@ -13,7 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init_poc_databases.sh:/docker-entrypoint-initdb.d/01_init_poc_databases.sh:ro
+      - ./scripts/init_databases.sh:/docker-entrypoint-initdb.d/01_init_databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autograder} -d ${POSTGRES_DB:-autograder}"]
       interval: 10s
@@ -34,8 +34,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Local tag only: build once with `docker compose -f docker-compose.poc.yml build judge0`
-  # after judge0.Dockerfile changes; day-to-day `up` reuses uvu-autograder-judge0:latest.
+  # Build with `docker compose build judge0` after judge0.Dockerfile changes; day-to-day `up` reuses uvu-autograder-judge0:latest.
   judge0:
     build:
       context: .
@@ -266,5 +265,8 @@ services:
 
 volumes:
   postgres_data:
+    name: ${POSTGRES_VOLUME_NAME:-uvu-autograder-poc_postgres_data}
   redis_data:
+    name: ${REDIS_VOLUME_NAME:-uvu-autograder-poc_redis_data}
   backend_data:
+    name: ${BACKEND_VOLUME_NAME:-uvu-autograder-poc_backend_data}

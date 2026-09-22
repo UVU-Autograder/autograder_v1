@@ -3,10 +3,11 @@ from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from typing import cast
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.router import api_router
 from app.core.audit_log import configure_audit_logging
@@ -24,9 +25,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.is_sqlite:
         initialize_database(seed=True)
     yield
-
-
-
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Autograder API", version="0.1.0", lifespan=lifespan)
@@ -47,9 +45,12 @@ def create_app() -> FastAPI:
         expose_headers=["x-refresh-token"],
     )
     @app.middleware("http")
-    async def private_staff_responses(request: Request, call_next):
+    async def private_cache_control(
+        request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
         response = await call_next(request)
-        if request.url.path.startswith("/staff/"):
+        path = request.url.path
+        if path.startswith(("/staff/", "/runs/", "/sandbox/runs/", "/auth/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -71,6 +72,5 @@ def create_app() -> FastAPI:
 
     app.openapi = custom_openapi
     return app
-
 
 app = create_app()

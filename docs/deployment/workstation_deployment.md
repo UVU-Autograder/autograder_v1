@@ -1,61 +1,49 @@
-# Local POC & Workstation Deployment (Ubuntu 24.04 LTS / Dell Workstation)
+# Workstation Deployment (Ubuntu 24.04 LTS / Dell Workstation)
 
-This document wires the current repository into a fully functional local proof-of-concept stack. The long-term execution target is the **Dell Pro Max Tower T2 (Intel Core Ultra 7 265, 20 cores / 40 threads, 32GB RAM, NVIDIA RTX PRO 4500 Blackwell, Ubuntu 24.04.5 LTS)** with Kata Containers. The same compose file can run on other Linux hosts (e.g. a developer laptop) for backend and single-job grading smoke tests—see [Host capacity](#host-capacity).
-
-This is not a live-student production approval document. Use synthetic, fake, or approved anonymized test code while validating the end-to-end autograder path.
+This document describes the deployment architecture and operation on the dedicated **Dell Pro Max Tower T2 (Intel Core Ultra 7 265, 20 cores / 40 threads, 32GB RAM, NVIDIA RTX PRO 4500 Blackwell, Ubuntu 24.04.5 LTS, IP `10.115.20.200`)**.
 
 ## Stack
 
-- Frontend: run separately with the existing frontend workflow; this backend POC compose file does not build or modify frontend assets.
-- Backend: FastAPI on `http://localhost:8000`
-- Database: one PostgreSQL instance with two databases (`autograder` for the app, `judge0` for Judge0 CE), migrated by Alembic at backend startup
-- Queue/state: Redis
-- Worker: Celery using the `sandbox`, `official`, and `default` queues
-- Execution API: local Judge0 CE on `http://localhost:2358` (image tag `uvu-autograder-judge0:latest`)
-- Isolation: Kata Containers is expected to be configured on the Ubuntu host and validated operationally outside the app container
+- **Reverse Proxy:** Nginx active on port 80 (and prepared for institutional TLS on 443), proxying `/api/*` to FastAPI (`127.0.0.1:8000`) and routing all page paths (`/`, `/staff/*`, `/sandbox/*`) to Next.js (`127.0.0.1:3000`).
+- **Frontend:** Next.js production server managed via systemd (`autograder-frontend.service`) listening on `127.0.0.1:3000`.
+- **Backend API:** FastAPI on `http://127.0.0.1:8000` (container network mode: host).
+- **Database:** PostgreSQL 16 instance with two databases (`autograder` for the application, `judge0` for Judge0 CE), migrated by Alembic at backend startup.
+- **Queue/State:** Redis 7 with AOF persistence.
+- **Workers:**
+  - Celery worker handling `sandbox`, `official`, and `default` queues.
+  - Independent `cleanup-worker` running 60-second retention sweeps.
+- **Execution API:** Judge0 CE on `http://127.0.0.1:2358` (image tag `uvu-autograder-judge0:latest`).
+- **Isolation:** Kata Containers VM isolation layer configured on the Ubuntu host via `docker-compose.kata.yml`.
 
 ## Files
 
-- `docker-compose.poc.yml`: local POC stack for Postgres, Redis, Judge0, backend, and Celery worker.
-- `judge0.Dockerfile`: custom Judge0 image with Python 3.11.9 and allowlisted course deps; tagged locally as `uvu-autograder-judge0:latest`.
-- `scripts/init_poc_databases.sh`: POSIX `sh` script that creates the `judge0` role (`CREATEDB`) and database on first Postgres volume init. Judge0’s Rails entrypoint runs `db:create`, which requires `CREATEDB` even when the database already exists.
-- `scripts/seed_judge0_language_311.sql`: registers language ID `711` after Judge0 is healthy (cannot run in `initdb` because the `languages` table does not exist yet).
-- `backend/Dockerfile`: backend runtime image that installs Python dependencies, waits for Postgres, runs Alembic, and optionally seeds development data.
-- `.env.example`: local POC environment template (copy to `.env.local`; do not commit real secrets).
-- `backend/scripts/docker-entrypoint.sh`: backend container startup script.
+- `docker-compose.yml`: primary Compose stack for Postgres, Redis, Judge0, backend, Celery worker, and cleanup worker.
+- `docker-compose.kata.yml`: Compose override for Kata Containers VM runtime isolation.
+- `judge0.Dockerfile`: custom Judge0 image with Python 3.11.9 and allowlisted course dependencies (`uvu-autograder-judge0:latest`).
+- `scripts/init_databases.sh`: POSIX shell script that creates the `judge0` role (`CREATEDB`) and database on first Postgres volume initialization.
+- `scripts/seed_judge0_language_311.sql`: registers language ID `711` after Judge0 is healthy.
+- `backend/Dockerfile`: backend runtime image.
+- `.env.example`: environment template (copy to `.env.local`; do not commit real secrets).
 
-## First Run
+## Operation Commands
 
 From the repository root:
 
 ```bash
 cp .env.example .env.local
-# Edit .env.local secrets if needed.
-# On low-RAM laptops, set JUDGE0_MAX_CONCURRENT=1 (see Host capacity).
+# Edit .env.local secrets and environment settings.
 
-# First time (or after judge0.Dockerfile / allowlisted deps change):
-docker compose --env-file .env.local -f docker-compose.poc.yml build judge0
+# Build Judge0 image (run once or after judge0.Dockerfile changes):
+docker compose --env-file .env.local build judge0
 
-# Day-to-day: reuses the local uvu-autograder-judge0:latest tag
-docker compose --env-file .env.local -f docker-compose.poc.yml up -d --build
-```
+# Start backend, database, queue, and workers:
+docker compose --env-file .env.local up -d --build
 
-`up --build` rebuilds backend/celery when their Dockerfile or context changes; Judge0 is only rebuilt when you explicitly `build judge0` (or change its Dockerfile and force a rebuild). The Judge0 image is **local-tag only** (no registry): `uvu-autograder-judge0:latest`.
+# Start with Kata isolation:
+docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.kata.yml up -d --build
 
-Python in `judge0.Dockerfile` is built **without** `--enable-optimizations` so POC rebuilds stay shorter. Revisit PGO later only if the Dell image needs it.
-
-Then open:
-
-- UI: run the existing frontend separately when needed (`NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`).
-- API health: `http://localhost:8000/health`
-- Judge0 languages: `http://localhost:2358/languages` (should include id `711` / Python 3.11.9)
-
-The seeded staff account is `dev.staff@uvu.edu`. The POC compose file enables mock login with `ENABLE_MOCK_LOGIN=true`; turn this off for any non-local deployment.
-
-Stop the stack:
-
-```bash
-docker compose -f docker-compose.poc.yml down
+# Stop the stack:
+docker compose down
 ```
 
 ### Host capacity
@@ -252,11 +240,15 @@ On the Dell Pro Max Tower T2 workstation with the **NVIDIA RTX PRO 4500 Blackwel
 
 ## Independent retention cleanup worker
 
-The POC stack runs `cleanup-worker` from the backend image. It uses PostgreSQL and the shared artifact volume, starts with a reconciliation pass, and retries every 60 seconds without depending on Celery or Redis.
+Use the [retention maintenance runbook](retention_rollout.md) for the quiesced
+rollout, original-age backfill, Redis persistence regeneration, synthetic host
+checks, and reopening criteria.
+
+The workstation runs `cleanup-worker` from the backend image. It uses PostgreSQL and the shared artifact volume, starts with a reconciliation pass, and retries every 60 seconds without depending on Celery or Redis.
 
 ```bash
-docker compose -f docker-compose.poc.yml -f docker-compose.kata.yml logs cleanup-worker --tail 30
-docker compose -f docker-compose.poc.yml -f docker-compose.kata.yml exec cleanup-worker python -m app.domains.runs.cleanup_worker --health
+docker compose logs cleanup-worker --tail 30
+docker compose exec cleanup-worker python -m app.domains.runs.cleanup_worker --health
 ```
 
 Review access ends 23 hours after intake. The worker marks expired runs unavailable, deletes the official workspace and ZIP, verifies both paths are gone, and records a sanitized failure state when deletion cannot complete. A failed or busy run is retried on the next sweep. Database failure is fail-closed: the worker does not guess which files are safe to remove.
@@ -264,16 +256,18 @@ Review access ends 23 hours after intake. The worker marks expired runs unavaila
 During a quiesced maintenance window, inspect legacy Celery result records and remove only the application-owned result keys with the dry-run-first helper:
 
 ```bash
-docker compose -f docker-compose.poc.yml exec backend python scripts/purge_legacy_task_results.py
-docker compose -f docker-compose.poc.yml exec backend python scripts/purge_legacy_task_results.py --apply --confirm-quiesced-exclusive-app-db
+docker compose exec backend python scripts/purge_legacy_task_results.py
+docker compose exec backend python scripts/purge_legacy_task_results.py --apply --confirm-quiesced-exclusive-app-db
 ```
 
-Stop intake and drain workers before `--apply`; preserve broker queues and unrelated Redis keys. The helper is not a substitute for a Redis backup or for host evidence.
+Stop intake and drain workers before `--apply`; preserve broker queues and unrelated Redis keys. Regenerate enabled Redis persistence files after logical deletion as described in the runbook. Do not back up ephemeral student results; the helper alone does not establish physical deletion or host verification.
 
-## Planned Pilot Deployment and Operating Runbook
+## Reverse Proxy and Production Access
 
-The current stack remains a POC. Its published internal-service ports, mock-login defaults, and development credentials must be reviewed before live deployment. Preserve the connectivity required by Kata when restricting service access.
+The Dell workstation serves web and API traffic through an Nginx reverse proxy listening on port 80 (configured at `/etc/nginx/sites-available/autograder.conf`):
 
-The target proxy contract sends `/api/*` to FastAPI after removing `/api`; all other page routes go to Next.js. Do not route `/staff/*` or `/sandbox/*` wholesale to FastAPI because the frontend uses those paths too. API clients, streaming feedback, downloads, health checks, and API documentation URLs must be updated and tested together. This is a planned change, not a description of the running POC.
-
-Before pilot signoff, complete an operator runbook covering dependency health, queue stalls, failed-run retry, cleanup alerts, scheduler/host downtime recovery, credentials and rotation, upgrade/rollback, and operator/escalation ownership. Define and rehearse backup/restore for persistent metadata and instructor-owned artifacts while excluding ephemeral student workspaces, exports, and broker payloads. Track evidence using [delivery_controls.md](../planning/delivery_controls.md); existing POC measurements are not live-release approval.
+- `/api/*`: Strips `/api` and proxies to FastAPI on `127.0.0.1:8000`.
+- `/health`, `/openapi.json`: Proxied directly to FastAPI on `127.0.0.1:8000`.
+- `/`, `/staff/*`, `/sandbox/*`, and all other page routes: Proxied to the Next.js production server on `127.0.0.1:3000`.
+- Next.js runs as a systemd service (`autograder-frontend.service`) with auto-restart.
+- Institutional TLS termination on port 443 is prepared for UVU certificate provisioning.

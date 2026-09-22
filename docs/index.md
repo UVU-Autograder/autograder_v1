@@ -28,7 +28,7 @@ Current milestone: **controlled course pilot readiness**. Start with the [active
 ---
 
 ## 🚀 DevOps & Host Deployment (`docs/deployment/`)
-* **[ubuntu_poc_deployment.md](./deployment/ubuntu_poc_deployment.md):** Local POC Docker Compose stack (Ubuntu/Dell target; laptop notes, Judge0 image build, single Postgres, capacity).
+* **[workstation_deployment.md](./deployment/workstation_deployment.md):** Dell workstation production deployment (Ubuntu 24.04, Nginx reverse proxy, Docker Compose, retention cleanup, Judge0 capacity).
 * **[kata_optimization.md](./deployment/kata_optimization.md):** Low-latency host tuning strategies (Hugepages, CPU pinning, microVMs) for Kata Containers backing Judge0.
 
 ---
