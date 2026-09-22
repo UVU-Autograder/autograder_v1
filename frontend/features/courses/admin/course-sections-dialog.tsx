@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,23 +25,35 @@ interface CourseSectionsDialogProps {
   course: CourseAdminDetail | null;
 }
 
-export function CourseSectionsDialog({
+export function CourseSectionsDialog(props: CourseSectionsDialogProps) {
+  if (!props.isOpen || !props.course) return null;
+
+  return (
+    <CourseSectionsDialogSession
+      key={props.course.id}
+      {...props}
+      course={props.course}
+    />
+  );
+}
+
+function CourseSectionsDialogSession({
   isOpen,
   onOpenChange,
   course,
-}: CourseSectionsDialogProps) {
+}: CourseSectionsDialogProps & { course: CourseAdminDetail }) {
+  const courseId = course.id;
   const [sections, setSections] = useState<SectionAdminDetail[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [newCrn, setNewCrn] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSections = useCallback(async () => {
-    if (!course) return;
+  const fetchSections = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getCourseSections(course.id);
+      const data = await getCourseSections(courseId);
       setSections(data);
     } catch (err) {
       setError(
@@ -50,15 +62,26 @@ export function CourseSectionsDialog({
     } finally {
       setIsLoading(false);
     }
-  }, [course]);
+  };
 
   useEffect(() => {
-    if (isOpen && course) {
-      setNewCrn("");
-      setError(null);
-      void fetchSections();
-    }
-  }, [isOpen, course, fetchSections]);
+    let active = true;
+    getCourseSections(courseId)
+      .then((data) => {
+        if (active) setSections(data);
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load sections.");
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [courseId]);
 
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault();

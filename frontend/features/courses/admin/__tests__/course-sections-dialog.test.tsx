@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { CourseSectionsDialog } from "../course-sections-dialog";
@@ -120,5 +120,54 @@ describe("CourseSectionsDialog Component", () => {
     expect(coursesApi.updateAdminSection).toHaveBeenCalledWith(102, {
       is_active: true,
     });
+  });
+
+  it("clears drafts and errors when switching courses or reopening", async () => {
+    vi.mocked(coursesApi.getCourseSections).mockResolvedValue([]);
+    vi.mocked(coursesApi.createAdminSection).mockRejectedValueOnce(
+      new Error("Section already exists."),
+    );
+    const props = { isOpen: true, onOpenChange: vi.fn(), course: mockCourse };
+    const { rerender } = render(<CourseSectionsDialog {...props} />);
+    await screen.findByText("No sections created yet for this course.");
+    fireEvent.change(screen.getByLabelText("Section CRN"), {
+      target: { value: "99999" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add Section" }));
+    await screen.findByText("Section already exists.");
+
+    const otherCourse = { ...mockCourse, id: 43, code: "cs1410" };
+    rerender(<CourseSectionsDialog {...props} course={otherCourse} />);
+    expect((screen.getByLabelText("Section CRN") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText("Section already exists.")).toBeNull();
+    await screen.findByText("No sections created yet for this course.");
+    expect(coursesApi.getCourseSections).toHaveBeenLastCalledWith(43);
+
+    fireEvent.change(screen.getByLabelText("Section CRN"), {
+      target: { value: "12345" },
+    });
+    rerender(<CourseSectionsDialog {...props} course={otherCourse} isOpen={false} />);
+    rerender(<CourseSectionsDialog {...props} course={otherCourse} />);
+    expect((screen.getByLabelText("Section CRN") as HTMLInputElement).value).toBe("");
+    await screen.findByText("No sections created yet for this course.");
+  });
+
+  it("ignores a previous course's late response", async () => {
+    let resolvePrevious!: (value: coursesApi.SectionAdminDetail[]) => void;
+    vi.mocked(coursesApi.getCourseSections)
+      .mockReturnValueOnce(new Promise((resolve) => { resolvePrevious = resolve; }))
+      .mockResolvedValueOnce([
+        { id: 102, course_id: 43, crn: "67890", is_active: true },
+      ]);
+    const props = { isOpen: true, onOpenChange: vi.fn(), course: mockCourse };
+    const { rerender } = render(<CourseSectionsDialog {...props} />);
+    rerender(<CourseSectionsDialog {...props} course={{ ...mockCourse, id: 43 }} />);
+    await screen.findByText("CRN: 67890");
+
+    await act(async () => {
+      resolvePrevious([{ id: 101, course_id: 42, crn: "12345", is_active: true }]);
+    });
+    expect(screen.queryByText("CRN: 12345")).toBeNull();
+    expect(screen.getByText("CRN: 67890")).toBeDefined();
   });
 });

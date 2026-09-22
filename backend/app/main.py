@@ -46,6 +46,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         expose_headers=["x-refresh-token"],
     )
+    @app.middleware("http")
+    async def private_staff_responses(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/staff/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     app.include_router(api_router)
 
     def custom_openapi():

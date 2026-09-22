@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 import json
 import os
-import threading
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
@@ -17,8 +16,6 @@ from app.core.settings import get_settings
 from app.domains.runs.models import RunSummary
 
 EXCLUDED_WORKSPACE_PARTS = frozenset({"__pycache__", ".DS_Store"})
-_RUN_LOCKS: dict[int, threading.Lock] = {}
-_RUN_LOCKS_GUARD = threading.Lock()
 
 
 def get_workspaces_dir() -> Path:
@@ -179,17 +176,12 @@ def mutate_run_details(
     run_id: int,
     mutator: Callable[[dict], Any],
 ) -> tuple[dict, Any]:
-    """Atomically mutate one run's ephemeral details.
-
-    The lock is process-local. A multi-API-process deployment must replace it
-    with a Redis-backed distributed lock.
-    """
-    with _RUN_LOCKS_GUARD:
-        lock = _RUN_LOCKS.setdefault(run_id, threading.Lock())
+    """Mutate review data under the cross-process retention guard."""
+    from app.domains.runs.retention import access
 
     run_dir = official_run_dir(run_id)
     details_file = run_dir / "run_details.json"
-    with lock:
+    with access(run_id):
         if not details_file.exists():
             raise HTTPException(
                 status_code=404,

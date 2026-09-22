@@ -71,6 +71,14 @@ export default function MonitoringPage() {
         </div>
       )}
 
+      <Card className="mb-4">
+        <CardHeader><CardTitle>Official data cleanup</CardTitle></CardHeader>
+        <CardContent>
+          <p role="status">{stats?.cleanup_service_healthy ? "Cleanup service healthy" : "Cleanup service unhealthy or heartbeat missing"}</p>
+          <p>{stats?.cleanup_failed_runs ?? 0} failed cleanups · {stats?.cleanup_overdue_runs ?? 0} runs past the 24-hour deletion deadline · {stats?.cleanup_orphan_errors ?? 0} sweep errors</p>
+          <p className="text-sm text-muted-foreground">Last check: {stats?.cleanup_last_checked_at ? new Date(stats.cleanup_last_checked_at).toLocaleString() : "Never reported"}</p>
+        </CardContent>
+      </Card>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Active Runs Card */}
         <Card className="hover:shadow-md transition-shadow">

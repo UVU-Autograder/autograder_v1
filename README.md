@@ -2,6 +2,8 @@
 
 On-prem autograder for retention-aware Python grading with a public student sandbox and staff setup/official-run workflows.
 
+**Status:** Core POC workflows are implemented. The next milestone is a controlled course pilot; live use still requires institutional approval and the [launch acceptance gates](docs/planning/delivery_controls.md). The retention contract is immediate sandbox cleanup after results, immediate execution-artifact cleanup after retrieval, and official review/export retention of at most 24 hours or until earlier staff cleanup. Known enforcement gaps are tracked in the [backlog](docs/planning/backlog.md).
+
 ## Documentation
 
 - [Documentation Index](docs/index.md) — central index for all architecture, specs, schemas, and modeling docs
@@ -31,7 +33,7 @@ npm run dev
 
 ### Staff dev login
 
-Use **Staff Portal Sign In** at `/staff/login` with a `@uvu.edu` address. Local/dev uses mock JWT login (`POST /auth/mock-login`). NextAuth + Microsoft OAuth is planned but deferred.
+Use **Staff Portal Sign In** at `/staff/login` with a `@uvu.edu` address. Local/dev uses mock JWT login (`POST /auth/mock-login`), which does not verify email ownership. Institutional Microsoft authentication and explicit staff authorization are required before live deployment and are active pilot-readiness work.
 
 ## npm layout
 
@@ -73,7 +75,7 @@ npm run docker:logs
 npm run docker:down
 ```
 
-## Workstation & Production Operating Notes
+## POC Workstation Operating Notes
 
 - **Workstation IP / Endpoints:**
   - Frontend: `http://10.115.20.200:3000` (managed via `autograder-frontend.service`)

@@ -232,7 +232,7 @@ Kata Containers is host-level execution isolation. The repository cannot configu
 - Judge0 submissions execute under the expected isolated runtime.
 - `DELETE /submissions/{token}` works and deleted submissions are no longer retrievable.
 - Temporary **execution** workspaces (`ag_grade_*`, Judge0 payloads) are removed after success, failure, timeout, and cancellation.
-- Temporary **official review** workspaces (`workspaces/official_{run_id}/`, including per-student directories for Monaco preview) are retained ≤24h or until staff cleanup, then removed by `cleanup_expired_workspaces` or `POST .../runs/{run_id}/cleanup`.
+- Temporary **official review** workspaces (`workspaces/official_{run_id}/`, including per-student directories for Monaco preview) are available for 23h after intake, then become inaccessible and are removed by the independent `cleanup-worker` or `POST .../runs/{run_id}/cleanup`. A file remaining at 24h is reported as a retention breach and retried.
 
 ## Environment Notes
 
@@ -250,22 +250,30 @@ Local LLM credentials can be supplied through environment variables, but AI feed
 
 On the Dell Pro Max Tower T2 workstation with the **NVIDIA RTX PRO 4500 Blackwell GPU**, the recommended model is **`qwen2.5-coder:7b`** (VRAM footprint ~4.7 GB) or **`qwen2.5-coder:14b`** (~9 GB VRAM) served via Ollama (`LOCAL_LLM_ENDPOINT=http://127.0.0.1:11434/v1`). The default `qwen2.5:3b` remains a low-RAM CPU fallback.
 
-## Celery Beat Scheduler (Periodic Tasks)
+## Independent retention cleanup worker
 
-The autograder stack utilizes **Celery Beat** to schedule periodic background tasks such as the hourly workspace cleanup (`cleanup_expired_workspaces`).
-
-`docker-compose.poc.yml` includes a `celery-beat` service that mirrors `celery-worker`'s
-environment and dependencies, running Beat with its schedule file on the persistent
-`backend_data` volume (`--schedule=/data/celerybeat-schedule`). It starts with the rest of the
-stack — no separate process to remember.
-
-Confirm it is scheduling:
+The POC stack runs `cleanup-worker` from the backend image. It uses PostgreSQL and the shared artifact volume, starts with a reconciliation pass, and retries every 60 seconds without depending on Celery or Redis.
 
 ```bash
-docker compose -f docker-compose.poc.yml -f docker-compose.kata.yml logs celery-beat --tail 30
-# expect: "Scheduler: Sending due task cleanup_expired_workspaces"
+docker compose -f docker-compose.poc.yml -f docker-compose.kata.yml logs cleanup-worker --tail 30
+docker compose -f docker-compose.poc.yml -f docker-compose.kata.yml exec cleanup-worker python -m app.domains.runs.cleanup_worker --health
 ```
 
-The cleanup task is hourly, so a freshly started stack will only show the startup banner until
-the first interval elapses. Since the zero-retention contract depends on this task, verify an
-actual dispatch — not just that the container is up — before treating retention as enforced.
+Review access ends 23 hours after intake. The worker marks expired runs unavailable, deletes the official workspace and ZIP, verifies both paths are gone, and records a sanitized failure state when deletion cannot complete. A failed or busy run is retried on the next sweep. Database failure is fail-closed: the worker does not guess which files are safe to remove.
+
+During a quiesced maintenance window, inspect legacy Celery result records and remove only the application-owned result keys with the dry-run-first helper:
+
+```bash
+docker compose -f docker-compose.poc.yml exec backend python scripts/purge_legacy_task_results.py
+docker compose -f docker-compose.poc.yml exec backend python scripts/purge_legacy_task_results.py --apply --confirm-quiesced-exclusive-app-db
+```
+
+Stop intake and drain workers before `--apply`; preserve broker queues and unrelated Redis keys. The helper is not a substitute for a Redis backup or for host evidence.
+
+## Planned Pilot Deployment and Operating Runbook
+
+The current stack remains a POC. Its published internal-service ports, mock-login defaults, and development credentials must be reviewed before live deployment. Preserve the connectivity required by Kata when restricting service access.
+
+The target proxy contract sends `/api/*` to FastAPI after removing `/api`; all other page routes go to Next.js. Do not route `/staff/*` or `/sandbox/*` wholesale to FastAPI because the frontend uses those paths too. API clients, streaming feedback, downloads, health checks, and API documentation URLs must be updated and tested together. This is a planned change, not a description of the running POC.
+
+Before pilot signoff, complete an operator runbook covering dependency health, queue stalls, failed-run retry, cleanup alerts, scheduler/host downtime recovery, credentials and rotation, upgrade/rollback, and operator/escalation ownership. Define and rehearse backup/restore for persistent metadata and instructor-owned artifacts while excluding ephemeral student workspaces, exports, and broker payloads. Track evidence using [delivery_controls.md](../planning/delivery_controls.md); existing POC measurements are not live-release approval.

@@ -8,6 +8,21 @@
 
 ---
 
+## Evidence and Status Labels
+
+Track these independently; none implies the next:
+
+| Label | Required evidence |
+| :--- | :--- |
+| **Implemented** | Code/configuration exists at an identified commit; not a claim that checks passed. |
+| **Automatically tested** | Dated test command, result, scope, and commit; distinguish mocks from integrated services. |
+| **Host verified** | Dated host/configuration, commit, workload, commands, measured outcomes, and sanitized evidence link. |
+| **Approved for live use** | Recorded institutional approval scope plus release acceptance signoff and responsible owner. |
+
+Projections must remain labeled as projections. A smaller workload does not close a larger workload's acceptance gate. Preserve historical reports with unknown dates/revisions explicitly marked; do not invent missing evidence. Keep student identifiers, code, credentials, and raw sensitive payloads out of retained evidence.
+
+The next milestone is a controlled course pilot. The [backlog](backlog.md) tracks open work; the retention contract remains immediate sandbox cleanup after results, immediate execution-artifact cleanup after retrieval, and official review/export deletion within 24 hours or on earlier staff cleanup.
+
 ## 1. Definition of Done (DoD)
 
 A checklist item or pull request is complete when:
@@ -42,12 +57,19 @@ A checklist item or pull request is complete when:
 3. **Execution Concurrency Cap:** Bounded Judge0 execution slots defaults to `2`. Raising the cap to `3` or `4` requires benchmark proof showing zero container crashes and clean queue backpressure under mixed synthetic workloads.
 4. **Queue Admission Enforcement:** Global queued job cap rejects intake at `50` waiting jobs and warns at `40` across sandbox and official channels.
 5. **Sanitized AI Payloads:** Sandbox Local LLM explanation requests must process code only when free of student PII/identifiers. Official-run AI feedback remains explicitly deferred.
+6. **Official Retention Enforcement:** Prove deletion by the ≤24h deadline and on explicit staff cleanup. Test deletion failure, orphaned files, and worker/scheduler restart; verify removal, expose sanitized failures, and document downtime limitations. Hourly dispatch or successful task return alone is insufficient proof.
+7. **Batch Capacity and Fairness:** An actual 200-submission batch must enter the system, finish within 40 min, and package exports within 2 min after grading. Use representative synthetic workloads alongside sandbox traffic; verify timeouts, bounded dispatch, no starvation, Redis-outage handling, reservation recovery, and retry behavior without duplicate grading side effects.
+8. **Identity and Deployment:** Verify institutional staff identity and explicit active grants; disable mock login and development secrets. Verify TLS and the `/api/*` proxy contract without intercepting frontend pages, and restrict direct service exposure.
+9. **Institutional Authorization:** Record UVU approval for the live official workflow and its approved data/infrastructure scope. Local-AI authorization is separate where applicable; no technical test substitutes for approval.
+10. **Pilot Acceptance and Recovery:** Record instructor grading calibration for assignments included in the pilot, integrated staff/student browser acceptance, operator ownership, and a restore rehearsal limited to permitted persistent data and instructor assets.
 
 ---
 
 ## 4. In Scope vs. Explicit Non-Goals
 
 ### In Scope for Active Development
+- Pilot-readiness fixes for bounded batch scheduling, retention enforcement, institutional staff authentication, single-origin deployment, and operational recovery.
+- Course grading calibration and repeatable automated/integrated acceptance evidence.
 - Ephemeral manual rubric grading for visual/pixel assignment criteria.
 - Sandbox Local LLM pedagogical feedback (PII-safe, on-screen only).
 - Section-scoped staff authorization and monitoring.

@@ -86,6 +86,9 @@ async function apiFetch<T>(
 
     if (!response.ok) {
         const message = await parseErrorMessage(response);
+        if (response.status === 410 && typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("official-review-expired", { detail: path }));
+        }
         if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
             localStorage.removeItem("token");
             sessionStorage.removeItem("token");
@@ -164,6 +167,9 @@ export const apiClient = {
         const response = await fetch(resolveUrl(path), { method: "GET", headers });
         if (!response.ok) {
             const message = await parseErrorMessage(response);
+        if (response.status === 410 && typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("official-review-expired", { detail: path }));
+        }
             if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
                 localStorage.removeItem("token");
                 sessionStorage.removeItem("token");

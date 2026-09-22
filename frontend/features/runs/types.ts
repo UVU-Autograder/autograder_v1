@@ -18,6 +18,12 @@ export type RunSummary = {
   failure_count: number;
   timeout_count: number;
   created_at: string;
+  review_expires_at?: string | null;
+  deletion_deadline_at?: string | null;
+  retention_state?: "available" | "cleanup_pending" | "cleanup_failed" | "deleted";
+  cleanup_reason?: string | null;
+  deleted_at?: string | null;
+  cleanup_failure_category?: string | null;
 };
 
 export type StudentRunDetail = {

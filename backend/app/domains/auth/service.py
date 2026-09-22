@@ -491,7 +491,10 @@ def get_admin_monitoring_metrics(db: Session) -> dict:
         if isinstance(meta, dict):
             total_tokens += meta.get("total_tokens", 0)
 
+    from app.domains.runs.retention import health
+
     return {
+        **health(db),
         "active_runs_count": active_runs,
         "queued_runs_count": queued_runs,
         "sandbox_runs_last_hour": sandbox_last_hour,

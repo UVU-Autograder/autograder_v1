@@ -1,8 +1,8 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { StudentInspectDialog } from "../student-inspect-dialog";
-import { StudentRunDetail } from "../../types";
+import { StudentInspectDialog, type StudentInspectDialogProps } from "../student-inspect-dialog";
+import { StudentRunDetail, type StudentFile } from "../../types";
 import { apiClient } from "@/lib/api-client";
 
 vi.mock("@/components/monaco-editor", () => ({
@@ -50,6 +50,19 @@ const mockUngradedStudent: StudentRunDetail = {
     rubric1: { label: "Design Pattern", points: 15, score: null, comments: "" },
   },
 };
+
+function dialogProps(student = mockStudent): StudentInspectDialogProps {
+  return {
+    isOpen: true,
+    onOpenChange: vi.fn(),
+    student,
+    courseId: "1",
+    assignmentId: "2",
+    runId: "3",
+    onSaveManualGrades: vi.fn().mockResolvedValue(undefined),
+    isSavingGrades: false,
+  };
+}
 
 describe("StudentInspectDialog Component", () => {
   beforeEach(() => {
@@ -110,5 +123,89 @@ describe("StudentInspectDialog Component", () => {
       false,
     );
   });
-});
 
+  it("starts a fresh grading draft when switching students", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ files: [] });
+    const props = dialogProps(mockUngradedStudent);
+    const { rerender } = render(<StudentInspectDialog {...props} />);
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "5" } });
+    fireEvent.change(screen.getByPlaceholderText("Feedback for this item..."), {
+      target: { value: "Unsaved first-student feedback" },
+    });
+
+    rerender(
+      <StudentInspectDialog
+        {...props}
+        student={{ ...mockUngradedStudent, canvas_id: "67890", overall_comment: "Second student" }}
+      />,
+    );
+    expect((screen.getByRole("spinbutton") as HTMLInputElement).value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+    expect(props.onSaveManualGrades).toHaveBeenCalledWith(
+      "67890",
+      { rubric1: { score: null, comments: "" } },
+      "Second student",
+      false,
+    );
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
+  });
+
+  it("preserves unsaved feedback through a same-student polling update", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ files: [] });
+    const props = dialogProps();
+    const { rerender } = render(<StudentInspectDialog {...props} />);
+    const input = screen.getByLabelText("Overall student feedback");
+    fireEvent.change(input, { target: { value: "Unsaved feedback" } });
+    rerender(<StudentInspectDialog {...props} student={{ ...mockStudent, score: 90 }} />);
+
+    expect((screen.getByLabelText("Overall student feedback") as HTMLTextAreaElement).value)
+      .toBe("Unsaved feedback");
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(1));
+  });
+
+  it("resets feedback and file state when reopened or moved to another run", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ files: [] });
+    const props = dialogProps();
+    const { rerender } = render(<StudentInspectDialog {...props} />);
+    fireEvent.change(screen.getByLabelText("Overall student feedback"), {
+      target: { value: "Discarded feedback" },
+    });
+    rerender(<StudentInspectDialog {...props} isOpen={false} />);
+    expect(screen.queryByLabelText("Overall student feedback")).toBeNull();
+    rerender(<StudentInspectDialog {...props} />);
+    expect((screen.getByLabelText("Overall student feedback") as HTMLTextAreaElement).value)
+      .toBe("Good submission");
+
+    fireEvent.change(screen.getByLabelText("Overall student feedback"), {
+      target: { value: "Feedback for the previous run" },
+    });
+    rerender(<StudentInspectDialog {...props} runId="4" />);
+    expect((screen.getByLabelText("Overall student feedback") as HTMLTextAreaElement).value)
+      .toBe("Good submission");
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(3));
+  });
+
+  it("ignores a previous student's late file response", async () => {
+    let resolvePrevious!: (value: { files: StudentFile[] }) => void;
+    vi.mocked(apiClient.get)
+      .mockReturnValueOnce(new Promise((resolve) => { resolvePrevious = resolve; }))
+      .mockResolvedValueOnce({
+        files: [{ filepath: "current.py", size_bytes: 10, previewable: false }],
+      });
+    const props = dialogProps();
+    const { rerender } = render(<StudentInspectDialog {...props} />);
+    rerender(<StudentInspectDialog {...props} student={{ ...mockStudent, canvas_id: "67890" }} />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Code Explorer" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    await screen.findByText("current.py");
+
+    await act(async () => {
+      resolvePrevious({ files: [{ filepath: "previous.py", size_bytes: 10, previewable: true }] });
+    });
+    expect(screen.queryByText("previous.py")).toBeNull();
+    expect(screen.getByText("current.py")).toBeDefined();
+    expect(apiClient.get).toHaveBeenCalledTimes(2);
+  });
+});

@@ -93,13 +93,17 @@ class RunLifecycleTracker:
         failure_count: int,
         failure_summary: dict | None = None,
     ) -> None:
-        self._update_db_run(
-            status="complete",
-            success_count=success_count,
-            warning_count=warning_count,
-            failure_count=failure_count,
-            failure_summary=failure_summary,
-        )
+        from app.domains.runs.retention import access
+
+        assert isinstance(self.raw_run_id, int)
+        with access(self.raw_run_id):
+            self._update_db_run(
+                status="complete",
+                success_count=success_count,
+                warning_count=warning_count,
+                failure_count=failure_count,
+                failure_summary=failure_summary,
+            )
         set_run_state(
             self.run_id,
             "complete",

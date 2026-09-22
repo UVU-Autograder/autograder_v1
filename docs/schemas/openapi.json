@@ -3644,6 +3644,37 @@
           "total_token_usage": {
             "type": "integer",
             "title": "Total Token Usage"
+          },
+          "cleanup_service_healthy": {
+            "type": "boolean",
+            "title": "Cleanup Service Healthy",
+            "default": false
+          },
+          "cleanup_last_checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cleanup Last Checked At"
+          },
+          "cleanup_failed_runs": {
+            "type": "integer",
+            "title": "Cleanup Failed Runs",
+            "default": 0
+          },
+          "cleanup_overdue_runs": {
+            "type": "integer",
+            "title": "Cleanup Overdue Runs",
+            "default": 0
+          },
+          "cleanup_orphan_errors": {
+            "type": "integer",
+            "title": "Cleanup Orphan Errors",
+            "default": 0
           }
         },
         "type": "object",
@@ -4009,6 +4040,87 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "review_expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Expires At"
+          },
+          "deletion_deadline_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletion Deadline At"
+          },
+          "retention_state": {
+            "type": "string",
+            "enum": [
+              "available",
+              "cleanup_pending",
+              "cleanup_failed",
+              "deleted"
+            ],
+            "title": "Retention State",
+            "default": "available"
+          },
+          "cleanup_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cleanup Reason"
+          },
+          "cleanup_last_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cleanup Last Attempt At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "cleanup_failure_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cleanup Failure Category"
           }
         },
         "type": "object",

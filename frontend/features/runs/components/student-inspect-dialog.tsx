@@ -23,6 +23,26 @@ import {
 import { hasUngradedManualItems } from "../lib/student-filter";
 import type { StudentRunDetail, StudentFile, FilePreview } from "../types";
 
+function buildManualGradesDraft(
+  student: StudentRunDetail | null,
+): Record<string, { score: number | null; comments: string }> {
+  if (!student) return {};
+  return Object.fromEntries(
+    Object.entries(student.manual_results ?? {}).map(([key, item]) => [
+      key,
+      { score: item.score, comments: item.comments || "" },
+    ]),
+  );
+}
+
+function initialInspectTab(student: StudentRunDetail | null): string {
+  if (!student) return "feedback";
+  const manualCount = Object.keys(student.manual_results ?? {}).length;
+  return manualCount > 0 && hasUngradedManualItems(student)
+    ? "manual"
+    : "feedback";
+}
+
 export interface StudentInspectDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,7 +59,24 @@ export interface StudentInspectDialogProps {
   isSavingGrades: boolean;
 }
 
-export function StudentInspectDialog({
+export function StudentInspectDialog(props: StudentInspectDialogProps) {
+  if (!props.isOpen || !props.student) return null;
+
+  return (
+    <StudentInspectDialogSession
+      key={JSON.stringify([
+        props.courseId,
+        props.assignmentId,
+        props.runId,
+        props.student.canvas_id,
+      ])}
+      {...props}
+      student={props.student}
+    />
+  );
+}
+
+function StudentInspectDialogSession({
   isOpen,
   onOpenChange,
   student,
@@ -48,10 +85,11 @@ export function StudentInspectDialog({
   runId,
   onSaveManualGrades,
   isSavingGrades,
-}: StudentInspectDialogProps) {
-  const [inspectTab, setInspectTab] = useState("feedback");
+}: StudentInspectDialogProps & { student: StudentRunDetail }) {
+  const canvasId = student.canvas_id;
+  const [inspectTab, setInspectTab] = useState(() => initialInspectTab(student));
   const [studentFiles, setStudentFiles] = useState<StudentFile[]>([]);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
   const [selectedFilepath, setSelectedFilepath] = useState<string | null>(null);
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
   const filePreviewCacheRef = React.useRef<Record<string, FilePreview>>({});
@@ -60,8 +98,10 @@ export function StudentInspectDialog({
 
   const [manualGradesDraft, setManualGradesDraft] = useState<
     Record<string, { score: number | null; comments: string }>
-  >({});
-  const [overallCommentDraft, setOverallCommentDraft] = useState("");
+  >(() => buildManualGradesDraft(student));
+  const [overallCommentDraft, setOverallCommentDraft] = useState(
+    () => student?.overall_comment || "",
+  );
 
   const isManualDraftDirty = useMemo(() => {
     if (!student) return false;
@@ -139,44 +179,17 @@ export function StudentInspectDialog({
   );
 
   useEffect(() => {
-    if (!student || !isOpen) return;
-
-    const draft: Record<string, { score: number | null; comments: string }> =
-      {};
-    Object.entries(student.manual_results ?? {}).forEach(([key, val]) => {
-      draft[key] = {
-        score: val.score,
-        comments: val.comments || "",
-      };
-    });
-    setManualGradesDraft(draft);
-    setOverallCommentDraft(student.overall_comment || "");
-
-    const manualCount = Object.keys(student.manual_results ?? {}).length;
-    setInspectTab(
-      manualCount > 0 && hasUngradedManualItems(student)
-        ? "manual"
-        : "feedback",
-    );
-
-    setStudentFiles([]);
-    setSelectedFilepath(null);
-    setFilePreview(null);
-    filePreviewCacheRef.current = {};
-    setContentError(null);
-    setIsLoadingFiles(true);
-
     let active = true;
-    apiClient
-      .get<{ files: StudentFile[] }>(
-        staffRunStudentFilesPath(
-          courseId,
-          assignmentId,
-          runId,
-          student.canvas_id,
-        ),
-      )
-      .then((data) => {
+    const loadStudentFiles = async () => {
+      try {
+        const data = await apiClient.get<{ files: StudentFile[] }>(
+          staffRunStudentFilesPath(
+            courseId,
+            assignmentId,
+            runId,
+            canvasId,
+          ),
+        );
         if (!active) return;
         setStudentFiles(data.files);
         const firstTextFile = data.files.find(
@@ -185,21 +198,20 @@ export function StudentInspectDialog({
         const firstPreviewable =
           firstTextFile ?? data.files.find((file) => file.previewable);
         if (firstPreviewable) {
-          handleSelectFile(student.canvas_id, firstPreviewable);
+          handleSelectFile(canvasId, firstPreviewable);
         }
-      })
-      .catch((err) => {
-        if (!active) return;
-        console.error("Failed to load student files", err);
-      })
-      .finally(() => {
+      } catch (err) {
+        if (active) console.error("Failed to load student files", err);
+      } finally {
         if (active) setIsLoadingFiles(false);
-      });
+      }
+    };
+    void loadStudentFiles();
 
     return () => {
       active = false;
     };
-  }, [student?.canvas_id, isOpen, courseId, assignmentId, runId, handleSelectFile]);
+  }, [canvasId, courseId, assignmentId, runId, handleSelectFile]);
 
   const selectedFile = useMemo(
     () =>

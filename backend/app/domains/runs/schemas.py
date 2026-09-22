@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 RunState = Literal["queue", "run", "complete", "failure"]
 EtaBand = Literal["under_1_min", "1_to_3_min", "3_to_5_min", "over_5_min"]
@@ -50,6 +50,21 @@ class RunSummaryResponse(BaseModel):
     timeout_count: int
     failure_summary: dict
     created_at: datetime
+
+    review_expires_at: datetime | None = None
+    deletion_deadline_at: datetime | None = None
+    retention_state: Literal["available", "cleanup_pending", "cleanup_failed", "deleted"] = "available"
+    cleanup_reason: str | None = None
+    cleanup_last_attempt_at: datetime | None = None
+    deleted_at: datetime | None = None
+    cleanup_failure_category: str | None = None
+
+    @field_validator("created_at", "review_expires_at", "deletion_deadline_at", "cleanup_last_attempt_at", "deleted_at")
+    @classmethod
+    def utc_dates(cls, value: datetime | None) -> datetime | None:
+        from datetime import UTC
+
+        return value.replace(tzinfo=UTC) if value is not None and value.tzinfo is None else value
 
     model_config = ConfigDict(from_attributes=True)
 

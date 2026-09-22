@@ -142,6 +142,7 @@ class GradingEngine:
         *,
         bundle_dir: Path | None = None,
         stdin: str | None = None,
+        official_run_id: int | None = None,
     ) -> GradingResult:
         """Execute the full grading pipeline for a single student submission bundle.
 
@@ -156,7 +157,13 @@ class GradingEngine:
         try:
             exec_dir = workspace / "execution"
             if bundle_dir is not None:
-                shutil.copytree(bundle_dir, exec_dir)
+                if official_run_id is not None:
+                    from app.domains.runs.retention import access
+
+                    with access(official_run_id):
+                        shutil.copytree(bundle_dir, exec_dir)
+                else:
+                    shutil.copytree(bundle_dir, exec_dir)
             else:
                 assert zip_data is not None
                 try:

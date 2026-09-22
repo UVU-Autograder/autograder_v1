@@ -3,6 +3,8 @@
 > [!NOTE]
 > **Purpose:** Central navigation hub and table of contents for specifications, compliance analyses, implementation guides, deployment procedures, schemas, and course modeling.
 
+Current milestone: **controlled course pilot readiness**. Start with the [active backlog](planning/backlog.md) for implementation gaps and the [delivery controls](planning/delivery_controls.md) for evidence labels and launch gates. Technical contracts state required behavior; implementation, test evidence, host verification, and institutional approval are tracked separately.
+
 ---
 
 ## 🏛️ Core Architecture & Governance (`docs/core/`)
