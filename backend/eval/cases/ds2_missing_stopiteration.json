@@ -1,0 +1,42 @@
+{
+  "case_id": "ds2_missing_stopiteration",
+  "category": "single_failure",
+  "notes": "Classic iterator-protocol error: __next__ never raises StopIteration.",
+  "failures": [
+    {
+      "key": "order_class",
+      "label": "Order class structure & methods",
+      "message": "IndexError: list index out of range\n  at dessert.py:__next__\n  during: for item in order:",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    }
+  ],
+  "concept_violations": [],
+  "student_code": "class DessertItem:\n    def __init__(self, name: str = \"\"):\n        self.name = name\n\n\nclass Candy(DessertItem):\n    def __init__(self, name=\"\", candy_weight=0.0, price_per_pound=0.0):\n        super().__init__(name)\n        self.candy_weight = candy_weight\n        self.price_per_pound = price_per_pound\n\n\nclass Cookie(DessertItem):\n    def __init__(self, name=\"\", cookie_quantity=0, price_per_dozen=0.0):\n        super().__init__(name)\n        self.cookie_quantity = cookie_quantity\n        self.price_per_dozen = price_per_dozen\n\n\nclass IceCream(DessertItem):\n    def __init__(self, name=\"\", scoop_count=0, price_per_scoop=0.0):\n        super().__init__(name)\n        self.scoop_count = scoop_count\n        self.price_per_scoop = price_per_scoop\n\n\nclass Sundae(IceCream):\n    def __init__(self, name=\"\", scoop_count=0, price_per_scoop=0.0,\n                 topping_name=\"\", topping_price=0.0):\n        super().__init__(name, scoop_count, price_per_scoop)\n        self.topping_name = topping_name\n        self.topping_price = topping_price\n\n\nclass Order:\n    def __init__(self):\n        self.order = []\n        self._i = 0\n\n    def add(self, item):\n        self.order.append(item)\n\n    def __len__(self):\n        return len(self.order)\n\n    def __iter__(self):\n        return self\n\n    def __next__(self):\n        item = self.order[self._i]\n        self._i += 1\n        return item\n",
+  "injection_canaries": [],
+  "assignment_slug": "ds2",
+  "assignment_title": "Dessert Shop 2 \u2014 Using Classes in main",
+  "requirements": "Dessert Shop 2 \u2014 add an Order class and a main() driver.\n\nModule `dessert` must contain: DessertItem, Candy, Cookie, IceCream, Sundae, and Order.\nThe Order class has:\n  - attribute `order`: a list of DessertItem objects\n  - a constructor taking no arguments other than self, creating an empty order\n  - add(item): appends a DessertItem to the order list\n  - __len__(): returns the number of items\n  - __iter__() / __next__(): supports iteration over the order\n\nModule `dessertshop` must contain main(), which creates an Order, adds the six\nrequired items, prints the name of each DessertItem, then prints\n\"Total number of items in order: 6\".\n\nDessert Shop 2 must include all code from Dessert Shop 1.",
+  "allowed_concepts": [
+    "classes",
+    "type-hints",
+    "inheritance",
+    "properties",
+    "operator-overloading",
+    "generators"
+  ],
+  "forbidden_identifiers": [
+    "Order",
+    "DessertItem",
+    "Candy",
+    "Cookie",
+    "IceCream",
+    "Sundae",
+    "main",
+    "add",
+    "__len__",
+    "__iter__",
+    "__next__"
+  ]
+}

@@ -1,0 +1,19 @@
+# Training venv only (~/venvs/train). Never install into the API image or the serve venv.
+#
+# torch MUST come from the cu129 index -- cu128 wheels lack working sm_120 cuBLAS
+# kernels and fail at the first matmul (CUBLAS_STATUS_EXECUTION_FAILED):
+#
+#   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu129
+#   pip install -r backend/training/requirements-train.txt
+#
+# Pins are the combination reported working for Gemma 4 QLoRA on 32GB sm_120.
+# If anything here tries to bump torch to a cu130 build, bitsandbytes breaks.
+transformers==5.5.3
+trl==0.23.1
+bitsandbytes==0.49.2
+peft>=0.17,<1
+accelerate>=1.10,<2
+datasets>=4,<5
+huggingface_hub>=1.0
+pydantic>=2.7,<3
+httpx>=0.28,<1

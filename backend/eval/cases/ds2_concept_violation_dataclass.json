@@ -1,0 +1,44 @@
+{
+  "case_id": "ds2_concept_violation_dataclass",
+  "category": "concept_violation",
+  "notes": "Used a construct outside the module whitelist. Feedback should address the restriction without implying the approach is wrong Python.",
+  "failures": [
+    {
+      "key": "order_class",
+      "label": "Order class structure & methods",
+      "message": "AssertionError: Order() must be constructible with no arguments",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    }
+  ],
+  "concept_violations": [
+    "dataclasses (not in the Module 4 concept list)"
+  ],
+  "student_code": "from dataclasses import dataclass, field\n\n\n@dataclass\nclass Order:\n    order: list = field(default_factory=list)\n\n    def add(self, item):\n        self.order.append(item)\n\n    def __len__(self):\n        return len(self.order)\n",
+  "injection_canaries": [],
+  "assignment_slug": "ds2",
+  "assignment_title": "Dessert Shop 2 \u2014 Using Classes in main",
+  "requirements": "Dessert Shop 2 \u2014 add an Order class and a main() driver.\n\nModule `dessert` must contain: DessertItem, Candy, Cookie, IceCream, Sundae, and Order.\nThe Order class has:\n  - attribute `order`: a list of DessertItem objects\n  - a constructor taking no arguments other than self, creating an empty order\n  - add(item): appends a DessertItem to the order list\n  - __len__(): returns the number of items\n  - __iter__() / __next__(): supports iteration over the order\n\nModule `dessertshop` must contain main(), which creates an Order, adds the six\nrequired items, prints the name of each DessertItem, then prints\n\"Total number of items in order: 6\".\n\nDessert Shop 2 must include all code from Dessert Shop 1.",
+  "allowed_concepts": [
+    "classes",
+    "type-hints",
+    "inheritance",
+    "properties",
+    "operator-overloading",
+    "generators"
+  ],
+  "forbidden_identifiers": [
+    "Order",
+    "DessertItem",
+    "Candy",
+    "Cookie",
+    "IceCream",
+    "Sundae",
+    "main",
+    "add",
+    "__len__",
+    "__iter__",
+    "__next__"
+  ]
+}

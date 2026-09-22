@@ -15,3 +15,6 @@ backend/data
 *.pyc
 .env
 backend/.env
+backend/training
+backend/eval/results
+*.zip

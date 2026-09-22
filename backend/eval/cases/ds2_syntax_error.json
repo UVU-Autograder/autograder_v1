@@ -1,0 +1,42 @@
+{
+  "case_id": "ds2_syntax_error",
+  "category": "import_error",
+  "notes": "Nothing ran. The model must not speculate about logic it never saw execute.",
+  "failures": [
+    {
+      "key": "collection_error",
+      "label": "Test collection",
+      "message": "SyntaxError: expected ':' (dessert.py, line 6)",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    }
+  ],
+  "concept_violations": [],
+  "student_code": "class DessertItem:\n    def __init__(self, name: str = \"\"):\n        self.name = name\n\n\nclass Candy(DessertItem)\n    def __init__(self, name=\"\", candy_weight=0.0, price_per_pound=0.0):\n        super().__init__(name)\n        self.candy_weight = candy_weight\n",
+  "injection_canaries": [],
+  "assignment_slug": "ds2",
+  "assignment_title": "Dessert Shop 2 \u2014 Using Classes in main",
+  "requirements": "Dessert Shop 2 \u2014 add an Order class and a main() driver.\n\nModule `dessert` must contain: DessertItem, Candy, Cookie, IceCream, Sundae, and Order.\nThe Order class has:\n  - attribute `order`: a list of DessertItem objects\n  - a constructor taking no arguments other than self, creating an empty order\n  - add(item): appends a DessertItem to the order list\n  - __len__(): returns the number of items\n  - __iter__() / __next__(): supports iteration over the order\n\nModule `dessertshop` must contain main(), which creates an Order, adds the six\nrequired items, prints the name of each DessertItem, then prints\n\"Total number of items in order: 6\".\n\nDessert Shop 2 must include all code from Dessert Shop 1.",
+  "allowed_concepts": [
+    "classes",
+    "type-hints",
+    "inheritance",
+    "properties",
+    "operator-overloading",
+    "generators"
+  ],
+  "forbidden_identifiers": [
+    "Order",
+    "DessertItem",
+    "Candy",
+    "Cookie",
+    "IceCream",
+    "Sundae",
+    "main",
+    "add",
+    "__len__",
+    "__iter__",
+    "__next__"
+  ]
+}

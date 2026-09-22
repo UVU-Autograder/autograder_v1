@@ -26,3 +26,15 @@ node_modules/
 
 # Student submission datasets
 cs1410/
+
+# Preflight output (host details, no secrets)
+preflight-report-*.txt
+preflight-stack-*.json
+
+# Training artifacts stay on the machine that made them
+backend/training/data/
+backend/training/output/
+
+# Local copies of the course archive (cs1410.zip itself is already tracked)
+cs1410 copy.zip
+cs1410-*.zip
