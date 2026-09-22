@@ -118,11 +118,12 @@ where Phase 2 examples should go.
 
 ## Growing the case set
 
-The seven seed cases are synthetic and cover one assignment (DS2). They exercise
-every category but are not a sufficient eval set. Target **40–60 cases across
-several assignments** before trusting a scoreboard delta.
+The set is 50 cases: 7 hand-written (DS2) plus 43 generated across 13
+assignments. To add more, append to `eval/mutations.py` and re-run
+`eval.build_cases`. That is the preferred route, because the output is real
+grader output on synthetic code.
 
-Once the stack is up locally, capture real runs:
+`eval.capture` turns a real sandbox run into a case:
 
 ```bash
 python -m eval.capture --run-id <run-id> --code path/to/submission.py --case-id ds4_missing_abstract --category single_failure --requirements ../docs/.../desc.md
