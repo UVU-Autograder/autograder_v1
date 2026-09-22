@@ -270,3 +270,48 @@ def test_generated_cases_cite_real_scoring_keys():
         cited = {f["key"] for f in case.failures}
         assert cited <= keys, f"{case.case_id}: unknown keys {cited - keys}"
         assert case.code_files, f"{case.case_id}: generated cases carry the bundle's files"
+
+
+# --- prompt v3 inputs ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("files", "expected"),
+    [
+        ({"money.py": "# TODO: finish the Money class\n"}, True),
+        ({"money.py": ""}, True),
+        ({"money.py": '"""Money."""\npass\n'}, True),
+        ({"money.py": "x = 1\n"}, False),
+        ({"money.py": "def f(:\n"}, False),  # a syntax error is real work
+        ({"a.py": "# TODO", "b.py": "class A: pass"}, False),
+        ({"(no Python files could be read)": ""}, False),  # sandbox fallback is not "empty"
+    ],
+)
+def test_submission_placeholder_detection(files, expected):
+    from app.integrations.ai.prompts import submission_is_placeholder
+
+    assert submission_is_placeholder(files) is expected
+
+
+def test_placeholder_note_only_rendered_for_placeholders():
+    kwargs = dict(assignment_title="T", requirements="r", allowed_concepts=[], failures=[], concept_violations=[])
+    placeholder = build_messages(**kwargs, code_files={"money.py": "# TODO\n"})[1]["content"]
+    real = build_messages(**kwargs, code_files={"money.py": "class Money: pass\n"})[1]["content"]
+    assert "SUBMISSION_NOTE" in placeholder
+    assert "SUBMISSION_NOTE" not in real
+
+
+def test_empty_eval_cases_are_flagged_as_placeholders():
+    for case in load_cases(CASES_DIR):
+        if case.category != "empty_submission":
+            continue
+        user = build_messages(
+            assignment_title=case.assignment_title,
+            requirements=case.requirements,
+            allowed_concepts=case.allowed_concepts,
+            failures=case.failures,
+            concept_violations=case.concept_violations,
+            student_code=case.student_code,
+            code_files=case.code_files or None,
+        )[1]["content"]
+        assert "SUBMISSION_NOTE" in user, case.case_id

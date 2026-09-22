@@ -175,7 +175,8 @@ class LocalLLMClient:
             allowed_concepts=allowed_concepts or [],
             failures=failures,
             concept_violations=violations,
-            code_files=code_files or {"submission.py": ""},
+            # Not a .py name: unreadable files must not be reported as an empty submission.
+            code_files=code_files or {"(no Python files could be read)": ""},
             passing_labels=passing,
         )
 
