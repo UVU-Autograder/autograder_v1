@@ -310,6 +310,7 @@ def calculate_scores(
                 "points_awarded": points_awarded,
                 "passed": passed,
                 "extra_credit": config.extra_credit,
+                "item_type": config.item_type,
                 "marker": marker,
                 "your_value": item_your_val,
                 "expected_value": item_exp_val,

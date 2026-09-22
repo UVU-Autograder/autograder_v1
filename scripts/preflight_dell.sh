@@ -141,7 +141,8 @@ if [ -d "$MODEL_DIR" ]; then
     fail "disk" "only ${free_gb}GB free at $MODEL_DIR (need ${REQUIRED_FREE_GB}GB for weights + checkpoints); use --model-dir"
   fi
 else
-  warn "model dir $MODEL_DIR not creatable; pass --model-dir to a large volume (sudo mkdir + chown)"
+  warn "model dir $MODEL_DIR not creatable. Create it once: sudo mkdir -p $MODEL_DIR && sudo chown $(whoami): $MODEL_DIR
+        (or pass --model-dir to another large volume)"
 fi
 root_free=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
 [ "${root_free:-0}" -ge 30 ] && pass "free disk at /: ${root_free}GB (docker images)" \
@@ -169,10 +170,13 @@ else
     || fail "node" "node not installed; install Node 20+ (e.g. via nvm) or pass --skip-frontend"
 fi
 
-if have python3.13; then
-  pass "python3.13 available (training venv)"
+TRAIN_PY=$(command -v python3.13 || command -v python3.12 || true)
+if [ -n "$TRAIN_PY" ]; then
+  pass "$(basename "$TRAIN_PY") available for the training venv"
+  "$TRAIN_PY" -c 'import ensurepip' 2>/dev/null ||
+    warn "venv support missing: sudo apt install $(basename "$TRAIN_PY")-venv"
 else
-  warn "python3.13 missing -- needed for the training venv: sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt install python3.13 python3.13-venv"
+  warn "need python3.12+ for the training venv: sudo apt install python3.12 python3.12-venv"
 fi
 
 # ---------------------------------------------------------------- cgroups
@@ -342,14 +346,18 @@ fi
 # A running stack gets 30s to report healthy; a fresh one gets 5 minutes.
 deadline=$((SECONDS + $([ $EXISTING -eq 1 ] && echo 30 || echo 300)))
 while [ $SECONDS -lt $deadline ]; do
-  unhealthy=$("${COMPOSE[@]}" ps --format '{{.Service}} {{.State}} {{.Health}}' 2>/dev/null |
-    awk '$2!="running" || ($3!="" && $3!="healthy")')
-  [ -z "$unhealthy" ] && break
+  svc_states=$("${COMPOSE[@]}" ps --format '{{.Service}} {{.State}} {{.Health}}' 2>/dev/null)
+  unhealthy=$(echo "$svc_states" | awk 'NF && ($2!="running" || ($3!="" && $3!="healthy"))')
+  running_count=$(echo "$svc_states" | awk 'NF' | wc -l)
+  [ -z "$unhealthy" ] && [ "$running_count" -gt 0 ] && break
   sleep 5
 done
 "${COMPOSE[@]}" ps --format 'table {{.Service}}\t{{.State}}\t{{.Health}}' 2>/dev/null | sed 's/^/        /'
-if [ -z "${unhealthy:-}" ]; then
-  pass "all services running/healthy"
+if [ "${running_count:-0}" -eq 0 ]; then
+  # An empty list used to count as "healthy" -- it means nothing is running.
+  fail "services-healthy" "no services running for this compose project"
+elif [ -z "${unhealthy:-}" ]; then
+  pass "all $running_count services running/healthy"
 else
   fail "services-healthy" "not healthy after 5 min: $(echo "$unhealthy" | awk '{print $1}' | tr '\n' ' ')"
   for svc in $(echo "$unhealthy" | awk '{print $1}'); do
@@ -383,7 +391,15 @@ done
 # ---------------------------------------------------------------- stack checks
 stage "5. end-to-end stack checks"
 
-if python3 scripts/preflight_stack.py --json-out "preflight-stack-$STAMP.json"; then
+stack_env=()
+if [ $EXISTING -eq 1 ] && [ -n "${j0:-}" ]; then
+  # DELETE needs the live Judge0's AUTHZ_TOKEN; a freshly generated .env.local
+  # would not match it (that was the 403). Read it from the container; never print it.
+  live_token=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$j0" |
+    sed -n 's/^AUTHZ_TOKEN=//p')
+  [ -n "$live_token" ] && stack_env=(env "JUDGE0_AUTH_TOKEN=$live_token")
+fi
+if ${stack_env[@]+"${stack_env[@]}"} python3 scripts/preflight_stack.py --json-out "preflight-stack-$STAMP.json"; then
   pass "stack checks (details above)"
 else
   fail "stack-checks" "one or more end-to-end checks failed (details above)"
@@ -397,13 +413,15 @@ stage "6. backend test suite"
 # The suite's reset_database fixture calls drop_all() on whatever DATABASE_URL
 # points at. Run it in a throwaway container with a clean env on in-memory
 # SQLite -- never against the live stack's Postgres.
-if [ $EXISTING -eq 1 ]; then
-  echo "        note: runs the tests inside the DEPLOYED backend image, i.e. the code the stack was
-        built from -- not necessarily this checkout. One-off container; live services untouched."
-fi
-if "${COMPOSE[@]}" run --rm --no-deps -T --entrypoint "" backend \
-    env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONPATH=/app \
-    DATABASE_URL=sqlite+pysqlite:///:memory: \
+# The checkout is mounted at /repo so tests that read repo-root files
+# (docker-compose.yml, judge0.Dockerfile, pyproject.toml ruff config) see them;
+# the image only contains backend/. Runs as the invoking user, so nothing it
+# writes ends up root-owned. One-off container; live services untouched.
+echo "        testing this checkout's code with the backend image's dependencies"
+if "${COMPOSE[@]}" run --rm --no-deps -T --entrypoint "" \
+    --user "$(id -u):$(id -g)" -v "$REPO_ROOT:/repo" -w /repo/backend backend \
+    env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONPATH=/repo/backend \
+    PYTHONDONTWRITEBYTECODE=1 DATABASE_URL=sqlite+pysqlite:///:memory: \
     python -m pytest -q -p no:cacheprovider >/tmp/pytest.$$ 2>&1; then
   pass "pytest: $(tail -1 /tmp/pytest.$$)"
 else
@@ -415,8 +433,16 @@ rm -f /tmp/pytest.$$
 # ---------------------------------------------------------------- frontend
 stage "7. frontend"
 
+if systemctl list-unit-files autograder-frontend.service >/dev/null 2>&1 &&
+   systemctl list-unit-files autograder-frontend.service | grep -q autograder-frontend; then
+  if systemctl is-active --quiet autograder-frontend.service; then
+    pass "autograder-frontend.service active (Next.js behind nginx)"
+  else
+    fail "frontend-service" "autograder-frontend.service is not active: systemctl status autograder-frontend"
+  fi
+fi
 if [ $SKIP_FRONTEND -eq 1 ]; then
-  warn "frontend skipped (--skip-frontend)"
+  warn "frontend build skipped (--skip-frontend)"
 elif have npm; then
   (
     cd frontend || exit 1
@@ -459,7 +485,8 @@ else
     fi
   else
     warn "no training venv at $TRAIN_VENV yet. Create it with:
-          python3.13 -m venv $TRAIN_VENV && $TRAIN_VENV/bin/pip install -r backend/training/requirements-train.txt"
+          ${TRAIN_PY:-python3.12} -m venv $TRAIN_VENV && $TRAIN_VENV/bin/pip install -r backend/training/requirements-train.txt
+        (install torch from the cu129 index first -- see backend/training/README.md)"
   fi
   [ -n "${HF_HOME:-}" ] && pass "HF_HOME=$HF_HOME" || warn "HF_HOME unset -- model downloads will land in ~/.cache/huggingface"
 fi

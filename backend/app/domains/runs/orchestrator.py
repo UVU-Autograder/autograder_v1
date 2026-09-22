@@ -47,9 +47,16 @@ def build_model_solution_zip(
 
 
 def failing_automated_items(test_results: list[dict]) -> list[dict]:
-    """Return scored items that did not explicitly pass."""
+    """Return automated scored items that did not explicitly pass.
+
+    Manual rubric items have no pytest to run, so they never report passed=True;
+    they are staff-graded and must not count as automated failures. Results with
+    no item_type are treated as automated.
+    """
     return [
-        result for result in test_results if result.get("passed") is not True
+        result
+        for result in test_results
+        if result.get("item_type", "pytest") != "manual" and result.get("passed") is not True
     ]
 
 

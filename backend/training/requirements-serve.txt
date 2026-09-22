@@ -1,7 +1,7 @@
 # Serve venv only (~/venvs/serve). vLLM pins its own torch build; installing it
 # into the training venv is exactly the torch-bump trap that breaks bitsandbytes.
 #
-#   python3.13 -m venv ~/venvs/serve
+#   python3.12 -m venv ~/venvs/serve
 #   ~/venvs/serve/bin/pip install -r backend/training/requirements-serve.txt
 #
 # Needs a vLLM release whose wheel ships sm_120 kernels and supports Gemma 4.

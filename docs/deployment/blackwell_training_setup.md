@@ -148,10 +148,12 @@ preflight.
 **Undo** (before rebooting, no reboot needed; the count should drop to 0):
 
 ```bash
-sudo rm /etc/default/grub.d/99-cgroup-v1.cfg && sudo update-grub && sudo grep -c "systemd.unified_cgroup_hierarchy=0" /boot/grub/grub.cfg
+sudo rm -f /etc/default/grub.d/99-cgroup-v1.cfg; sudo update-grub && sudo grep -c "systemd.unified_cgroup_hierarchy=0" /boot/grub/grub.cfg
 ```
 
-If you already rebooted into v1, add `&& sudo reboot` to return to v2.
+`rm -f` plus `;` means a missing file can't stop `update-grub` from running — deleting the
+drop-in without regenerating `grub.cfg` leaves the flag armed. If you already rebooted into
+v1, add `&& sudo reboot` to return to v2.
 
 **Leave `/etc/docker/daemon.json` alone.** Some guides say to write
 `{"exec-opts": ["native.cgroupdriver=cgroupfs"]}` into it. Docker picks the
@@ -194,8 +196,8 @@ Blackwell cuBLAS kernels and dies with `CUBLAS_STATUS_EXECUTION_FAILED` once
 training starts. Use `cu129`.
 
 ```bash
-sudo apt install -y python3.13 python3.13-venv
-python3.13 -m venv ~/venvs/train && source ~/venvs/train/bin/activate
+sudo apt install -y python3.12-venv
+python3.12 -m venv ~/venvs/train && source ~/venvs/train/bin/activate
 ```
 
 ```bash

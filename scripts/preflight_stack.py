@@ -16,6 +16,8 @@ What it proves, in order:
    Celery -> Judge0 -> runner -> result_parser path, via the existing
    ``validate-model-solution`` endpoint.
 5. One sandbox upload round-trips through intake, rate limiting, and grading.
+6. If a reverse proxy answers on port 80 (nginx on the Dell): /health and
+   /api/health reach FastAPI, and / serves the Next.js frontend.
 
 Exit code 0 only if nothing FAILed.
 """
@@ -182,6 +184,28 @@ def check_judge0(judge0: str, token: str, language_id: int) -> None:
         "PASS" if after == 404 else "FAIL",
         "deleted submission is gone",
         f"GET after delete -> HTTP {after}",
+    )
+
+
+def check_proxy(proxy: str) -> None:
+    """nginx on the Dell: /health and /api/* -> FastAPI (prefix stripped), pages -> Next.js."""
+    try:
+        http("GET", f"{proxy}/health", timeout=5)
+    except Exception as exc:  # noqa: BLE001
+        record("proxy", "WARN", f"reverse proxy at {proxy}", f"not reachable ({type(exc).__name__}); skipped")
+        return
+    for path, label in (("/health", "/health -> FastAPI"), ("/api/health", "/api/health -> FastAPI (prefix stripped)")):
+        status, body, _ = http("GET", f"{proxy}{path}", timeout=10)
+        ok = status == 200 and isinstance(body, dict) and body.get("status") == "ok"
+        record("proxy", "PASS" if ok else "FAIL", label, f"HTTP {status}" + ("" if ok else f" {str(body)[:120]}"))
+    status, body, headers = http("GET", f"{proxy}/", timeout=15)
+    content_type = headers.get("Content-Type") or headers.get("content-type") or ""
+    ok = status == 200 and "html" in content_type
+    record(
+        "proxy",
+        "PASS" if ok else "FAIL",
+        "/ -> Next.js frontend",
+        f"HTTP {status} {content_type}" + ("" if ok else " -- is autograder-frontend.service running?"),
     )
 
 
@@ -360,6 +384,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--concurrency", type=int, default=int(env.get("JUDGE0_MAX_CONCURRENT", "2")))
     parser.add_argument("--timeout", type=float, default=180.0, help="Per-assignment seconds")
     parser.add_argument("--sandbox-seed", default="ds2")
+    parser.add_argument("--proxy", default="http://127.0.0.1", help="Reverse proxy base URL; skipped if unreachable")
+    parser.add_argument("--no-proxy", action="store_true", help="Skip the reverse proxy checks")
     parser.add_argument("--json-out", type=Path, help="Write machine-readable results here")
     args = parser.parse_args(argv)
 
@@ -369,6 +395,8 @@ def main(argv: list[str] | None = None) -> int:
         if token:
             check_model_solutions(args.api, token, max(1, args.concurrency), args.timeout)
         check_sandbox(args.api, args.sandbox_seed, args.timeout)
+        if not args.no_proxy:
+            check_proxy(args.proxy.rstrip("/"))
     else:
         check_judge0(args.judge0, args.judge0_token, args.language_id)
 

@@ -56,6 +56,19 @@ def test_model_validation_accepts_only_explicitly_passed_items():
     assert failing_automated_items([passed, failed]) == [failed]
 
 
+def test_failing_automated_items_ignores_manual_rubric_items():
+    """Manual items never pass (no pytest runs), so they must not fail validation.
+
+    Regression: model-solution validation failed ds5, ds6, lab1, lab3, lab4, lab6
+    and lab7 on their manual items ("Test case 'reflection' failed: None").
+    """
+    manual = {"key": "reflection", "item_type": "manual", "passed": False}
+    auto_fail = {"key": "sorting", "item_type": "pytest", "passed": False}
+    auto_pass = {"key": "init", "item_type": "pytest", "passed": True}
+    assert failing_automated_items([manual, auto_pass]) == []
+    assert failing_automated_items([manual, auto_fail]) == [auto_fail]
+
+
 @pytest.fixture(autouse=True)
 def db_session(reset_database):
     with SessionLocal() as session:

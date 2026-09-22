@@ -32,7 +32,7 @@ understood).
 ## 1. Training venv
 
 ```bash
-python3.13 -m venv ~/venvs/train
+python3.12 -m venv ~/venvs/train
 ```
 
 ```bash
@@ -89,7 +89,7 @@ the card. The autograder stack itself is CPU-only and can stay up.
 ## 4. Serve
 
 ```bash
-python3.13 -m venv ~/venvs/serve && ~/venvs/serve/bin/pip install -r backend/training/requirements-serve.txt
+python3.12 -m venv ~/venvs/serve && ~/venvs/serve/bin/pip install -r backend/training/requirements-serve.txt
 ```
 
 ```bash
