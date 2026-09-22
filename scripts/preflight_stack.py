@@ -115,26 +115,26 @@ def check_api(api: str) -> bool:
     return ok
 
 
-def check_judge0(judge0: str, token: str) -> None:
+def check_judge0(judge0: str, token: str, language_id: int) -> None:
     headers = {"X-Auth-Token": token} if token else {}
     try:
         status, languages, _ = http("GET", f"{judge0}/languages", headers=headers, timeout=15)
     except Exception as exc:  # noqa: BLE001
         record("judge0", "FAIL", "GET /languages", f"{type(exc).__name__}: {exc}")
         return
-    python = [l for l in languages if isinstance(l, dict) and l.get("id") == 71] if isinstance(languages, list) else []
+    python = [lang for lang in languages if isinstance(lang, dict) and lang.get("id") == language_id] if isinstance(languages, list) else []
     record(
         "judge0",
         "PASS" if python else "FAIL",
-        "language 71 (Python) available",
-        python[0].get("name", "") if python else f"HTTP {status}",
+        f"language {language_id} (JUDGE0_LANGUAGE_ID) available",
+        python[0].get("name", "") if python else f"HTTP {status} -- did judge0-language-seed run?",
     )
 
     source = "import sys, pytest\nprint('preflight-ok', sys.version.split()[0], pytest.__version__)\n"
     status, created, _ = http_json(
         "POST",
         f"{judge0}/submissions?base64_encoded=false&wait=false",
-        {"source_code": source, "language_id": 71},
+        {"source_code": source, "language_id": language_id},
         headers,
     )
     submission = created.get("token") if isinstance(created, dict) else None
@@ -166,7 +166,10 @@ def check_judge0(judge0: str, token: str) -> None:
                 detail += f" {field}={str(value).strip()[:300]!r}"
         hint = ""
         if "cgroup" in detail.lower() or status_obj.get("id") in (13, None):
-            hint = "  <-- typical of cgroup v2: see the cgroups stage of preflight_dell.sh"
+            hint = (
+                "  <-- typical of cgroup v2: confirm ENABLE_PER_PROCESS_AND_THREAD_*_LIMIT is set on "
+                "judge0 + judge0-worker, see the cgroups stage of preflight_dell.sh"
+            )
         record("judge0", "FAIL", "execute Python + import pytest", detail + hint)
 
     status, _, _ = http("DELETE", f"{judge0}/submissions/{submission}", headers=headers)
@@ -335,6 +338,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--api", default="http://127.0.0.1:8000")
     parser.add_argument("--judge0", default="http://127.0.0.1:2358")
+    parser.add_argument(
+        "--language-id",
+        type=int,
+        default=int(os.environ.get("JUDGE0_LANGUAGE_ID") or env.get("JUDGE0_LANGUAGE_ID", "711")),
+        help="Judge0 language the backend grades with (711 = custom Python 3.11.9)",
+    )
     parser.add_argument("--judge0-token", default=os.environ.get("JUDGE0_AUTH_TOKEN") or env.get("JUDGE0_AUTH_TOKEN", "judge0-testing-token"))
     parser.add_argument("--staff-email", default="dev.staff@uvu.edu")
     parser.add_argument("--concurrency", type=int, default=int(env.get("JUDGE0_MAX_CONCURRENT", "2")))
@@ -344,13 +353,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if check_api(args.api):
-        check_judge0(args.judge0, args.judge0_token)
+        check_judge0(args.judge0, args.judge0_token, args.language_id)
         token = staff_token(args.api, args.staff_email)
         if token:
             check_model_solutions(args.api, token, max(1, args.concurrency), args.timeout)
         check_sandbox(args.api, args.sandbox_seed, args.timeout)
     else:
-        check_judge0(args.judge0, args.judge0_token)
+        check_judge0(args.judge0, args.judge0_token, args.language_id)
 
     failed = [r for r in results if r["status"] == "FAIL"]
     summary = {

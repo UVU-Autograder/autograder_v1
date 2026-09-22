@@ -14,7 +14,7 @@ correctness source of truth and the model explains rather than re-grades.
 from __future__ import annotations
 
 import json
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, Field
 

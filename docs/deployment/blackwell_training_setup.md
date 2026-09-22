@@ -55,17 +55,29 @@ solution through Celery → Judge0 → scoring via the existing
 
 Two things it will likely flag on a fresh Ubuntu 24.04 box:
 
-- **cgroup v2.** Judge0 1.13.x's `isolate` needs cgroup v1, and 24.04 defaults to
-  v2. Healthchecks still pass; real submissions fail. The script prints the GRUB
-  fix (`systemd.unified_cgroup_hierarchy=0` + reboot) but never edits GRUB itself.
+- **cgroup v2.** Ubuntu 24.04 defaults to v2 and stock Judge0 1.13.x's `isolate`
+  expects v1. The compose file already runs Judge0 in rlimit mode to cope, so this
+  is a WARN; stage 5's real submission is the verdict. Only if that fails does the
+  GRUB fallback below apply — the script prints it but never edits GRUB itself.
 - **Kata.** `--install-kata` runs `scripts/install-kata-docker-runtime-ubuntu.sh`
   under sudo if the runtime is missing. Without the flag it warns and continues on
   the default Docker runtime.
 
-### Switching the host to cgroup v1 (over SSH)
+### Switching the host to cgroup v1 (over SSH) — fallback only
 
-Only do this if the preflight reports `cgroup-v2` **and** stage 5's Judge0
-submission fails. This is a remote reboot — read the safety checks first.
+**You probably don't need this.** Since commit `6bb6e41`, `docker-compose.poc.yml`
+runs Judge0 in rlimit mode (`ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT` /
+`_MEMORY_LIMIT: "true"` on `judge0` and `judge0-worker`), which skips isolate's
+cgroup accounting and works on cgroup v2. The preflight reports that as a WARN,
+not a FAIL. Limits become per-process rather than per-sandbox — acceptable
+behind Kata's VM boundary, weaker without it (see the Cgroups section of
+[ubuntu_poc_deployment.md](ubuntu_poc_deployment.md)).
+
+Only switch the host to v1 if stage 5's Judge0 submission still fails in rlimit
+mode, or if you later want cgroup-accounted limits on the non-Kata path. Ubuntu
+24.04's systemd 255 still honours the flag below; the Arch/systemd 261 limitation
+in that doc does not apply here. This is a remote reboot, and other people may be
+logged in (`who`) — coordinate before rebooting, then read the safety checks.
 
 **Before you reboot**, confirm the machine can come back without you in the room:
 

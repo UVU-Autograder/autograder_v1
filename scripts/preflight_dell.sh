@@ -141,13 +141,19 @@ fi
 stage "2. cgroups (Judge0 isolate)"
 
 cgroup_fs=$(stat -fc %T /sys/fs/cgroup 2>/dev/null)
-if [ "$cgroup_fs" = "cgroup2fs" ]; then
-  fail "cgroup-v2" "host is on cgroup v2. Judge0 1.13.x's isolate needs cgroup v1. Fix (manual, reboots;
-        walkthrough in docs/deployment/blackwell_training_setup.md):
+# Since 6bb6e41 the compose file runs Judge0 in rlimit mode (no isolate --cg),
+# which works on cgroup v2. Count the flags on judge0 + judge0-worker.
+rlimit_flags=$(grep -cE 'ENABLE_PER_PROCESS_AND_THREAD_(TIME|MEMORY)_LIMIT: "true"' docker-compose.poc.yml)
+if [ "$cgroup_fs" = "cgroup2fs" ] && [ "$rlimit_flags" -ge 4 ]; then
+  warn "cgroup v2 host; Judge0 runs in rlimit mode (ENABLE_PER_PROCESS_AND_THREAD_*_LIMIT) so no GRUB change or reboot
+        is needed if stage 5 passes. Limits are per-process rather than cgroup-accounted -- acceptable with Kata's VM
+        boundary, weaker without it. See docs/deployment/ubuntu_poc_deployment.md (Cgroups section)."
+elif [ "$cgroup_fs" = "cgroup2fs" ]; then
+  fail "cgroup-v2" "host is on cgroup v2 and Judge0 rlimit mode is not enabled in docker-compose.poc.yml. Either set
+        ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT/MEMORY_LIMIT=\"true\" on judge0 + judge0-worker, or switch the host to
+        cgroup v1 (reboots; walkthrough in docs/deployment/blackwell_training_setup.md):
           echo 'GRUB_CMDLINE_LINUX=\"\$GRUB_CMDLINE_LINUX systemd.unified_cgroup_hierarchy=0\"' | sudo tee /etc/default/grub.d/99-cgroup-v1.cfg
-          sudo update-grub && sudo reboot
-        Undo: sudo rm /etc/default/grub.d/99-cgroup-v1.cfg && sudo update-grub && sudo reboot
-        Stage 5's real Judge0 submission confirms whether this actually bites."
+          sudo update-grub && sudo reboot"
 elif [ "$cgroup_fs" = "tmpfs" ]; then
   pass "cgroup v1 (hybrid/legacy) -- compatible with Judge0 isolate"
 else
@@ -215,6 +221,16 @@ text = re.sub(
     text,
     flags=re.M,
 )
+# backend + celery-worker run with network_mode: host, where compose service
+# names (postgres, redis, judge0) do not resolve. Point them at published ports.
+if 'network_mode: "host"' in Path("docker-compose.poc.yml").read_text():
+    for key in ("DATABASE_URL", "REDIS_URL", "CELERY_BROKER_URL", "JUDGE0_URL"):
+        text = re.sub(
+            rf"^({key}=[\w+]+://(?:[^@/\s]*@)?)(postgres|app-postgres|redis|judge0)(:\d+)",
+            r"\g<1>127.0.0.1\g<3>",
+            text,
+            flags=re.M,
+        )
 Path(".env.local").write_text(text)
 PY
   chmod 600 .env.local
@@ -223,6 +239,12 @@ else
   pass "using existing .env.local"
   grep -qE '^(POSTGRES_PASSWORD|JWT_SECRET|JUDGE0_AUTH_TOKEN)=(change-me|replace)' .env.local &&
     warn ".env.local still has placeholder secrets from .env.example"
+  if grep -q 'network_mode: "host"' docker-compose.poc.yml &&
+     grep -qE '^(DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|JUDGE0_URL)=[^#]*(//|@)(postgres|app-postgres|redis|judge0):' .env.local; then
+    fail "env-hosts" ".env.local uses compose service names (postgres/redis/judge0), but backend and celery-worker run
+        with network_mode: host where those don't resolve. Use 127.0.0.1 in DATABASE_URL, REDIS_URL,
+        CELERY_BROKER_URL and JUDGE0_URL (or delete .env.local and let this script regenerate it)."
+  fi
 fi
 
 echo "        building and starting (first build takes several minutes)..."
@@ -251,6 +273,16 @@ else
     "${COMPOSE[@]}" logs --tail 50 "$svc" 2>&1 | sed 's/^/          /'
   done
 fi
+
+while read -r svc _state code; do
+  [ -z "$svc" ] && continue
+  if [ "$code" = "0" ]; then
+    pass "one-shot $svc completed"
+  else
+    fail "oneshot-$svc" "$svc exited with code $code:"
+    "${COMPOSE[@]}" logs --tail 30 "$svc" 2>&1 | sed 's/^/          /'
+  fi
+done < <("${COMPOSE[@]}" ps -a --status exited --format '{{.Service}} {{.State}} {{.ExitCode}}' 2>/dev/null)
 
 for svc in judge0 judge0-worker; do
   cid=$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null)
