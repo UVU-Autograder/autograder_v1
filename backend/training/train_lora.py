@@ -26,12 +26,11 @@ from pathlib import Path
 HERE = Path(__file__).parent
 DEFAULT_BASE = os.environ.get("TRAIN_BASE_MODEL", "/data/models/gemma4-12b-qat-bf16")
 
-# Full-match regex handed to peft: every attention/MLP projection whose path does
-# not run through a vision or audio tower.
-TARGET_MODULES = (
-    r"^(?!.*(?:vision|audio|embed_vision|embed_audio|multi_modal)).*"
-    r"\.(?:q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)$"
-)
+# Conventional short-name list (what vLLM and most LoRA loaders expect in
+# adapter_config.json), with the vision/audio towers excluded separately so the
+# adapter only touches the language model.
+TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+EXCLUDE_MODULES = r".*(?:vision|audio|embed_vision|embed_audio|multi_modal).*"
 
 
 def to_prompt_completion(row: dict) -> dict:
@@ -120,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         lora_alpha=args.alpha,
         lora_dropout=0.05,
         target_modules=TARGET_MODULES,
+        exclude_modules=EXCLUDE_MODULES,
         bias="none",
         task_type="CAUSAL_LM",
     )
@@ -154,6 +154,12 @@ def main(argv: list[str] | None = None) -> int:
         peft_config=lora,
     )
     trainer.model.print_trainable_parameters()
+    adapted = [name for name, _ in trainer.model.named_modules() if name.endswith(".lora_A")]
+    adapted_count = len(adapted)
+    leaked = [name for name in adapted if any(t in name for t in ("vision", "audio", "multi_modal"))]
+    if leaked:
+        raise SystemExit(f"LoRA attached to non-language modules: {leaked[:5]}")
+    print(f"LoRA attached to {adapted_count} language-model projections")
 
     result = trainer.train()
     metrics = trainer.evaluate()
@@ -173,7 +179,13 @@ def main(argv: list[str] | None = None) -> int:
         "eval_loss": metrics.get("eval_loss"),
         "peak_vram_gib": round(torch.cuda.max_memory_allocated() / 1024**3, 2),
         "wall_seconds": round(time.time() - started),
-        "lora": {"r": args.rank, "alpha": args.alpha, "target_modules": TARGET_MODULES},
+        "lora": {
+            "r": args.rank,
+            "alpha": args.alpha,
+            "target_modules": TARGET_MODULES,
+            "exclude_modules": EXCLUDE_MODULES,
+            "adapted_modules": adapted_count,
+        },
         "versions": {"torch": torch.__version__, "transformers": transformers.__version__, "trl": trl.__version__},
         "gpu": torch.cuda.get_device_name(0),
     }
