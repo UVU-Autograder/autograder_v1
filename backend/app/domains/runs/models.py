@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, event, func
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, event, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -31,6 +31,7 @@ class RunSummary(Base):
     timeout_count: Mapped[int] = mapped_column(Integer, default=0)
     failure_summary: Mapped[dict] = mapped_column(JSON, default=dict)
     token_usage_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    export_packaging_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     review_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -42,6 +43,25 @@ class RunSummary(Base):
     cleanup_failure_category: Mapped[str | None] = mapped_column(String(64))
 
     assignment: Mapped["Assignment"] = relationship(back_populates="run_summaries")
+
+
+class ExecutionTicket(Base):
+    """Scheduling metadata only. Never put submission content or names here."""
+
+    __tablename__ = "execution_tickets"
+    owner: Mapped[str] = mapped_column(String(100), primary_key=True)
+    token: Mapped[str] = mapped_column(String(36))
+    state: Mapped[str] = mapped_column(String(20), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OfficialDispatch(Base):
+    __tablename__ = "official_dispatches"
+    run_id: Mapped[int] = mapped_column(ForeignKey("run_summaries.id", ondelete="CASCADE"), primary_key=True)
+    ready: Mapped[bool] = mapped_column(default=False)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(default=0)
 
 
 @event.listens_for(RunSummary, "before_insert")

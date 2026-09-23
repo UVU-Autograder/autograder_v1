@@ -3675,6 +3675,21 @@
             "type": "integer",
             "title": "Cleanup Orphan Errors",
             "default": 0
+          },
+          "dispatch_service_healthy": {
+            "type": "boolean",
+            "title": "Dispatch Service Healthy",
+            "default": false
+          },
+          "waiting_executions": {
+            "type": "integer",
+            "title": "Waiting Executions",
+            "default": 0
+          },
+          "active_executions": {
+            "type": "integer",
+            "title": "Active Executions",
+            "default": 0
           }
         },
         "type": "object",

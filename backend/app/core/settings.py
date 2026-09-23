@@ -36,6 +36,8 @@ class Settings(BaseSettings):
         validation_alias="SANDBOX_UPLOAD_WINDOW_SECONDS",
     )
     max_upload_bytes: int = Field(default=50 * 1024 * 1024, ge=1, validation_alias="MAX_UPLOAD_BYTES")
+    official_batch_limit: int = Field(default=200, ge=1, validation_alias="OFFICIAL_BATCH_LIMIT")
+    official_unfinished_limit: int = Field(default=1000, ge=1, validation_alias="OFFICIAL_UNFINISHED_LIMIT")
     default_max_files: int = Field(default=100, ge=1, validation_alias="DEFAULT_MAX_FILES")
     default_max_zip_size: int = Field(default=50 * 1024 * 1024, ge=1, validation_alias="DEFAULT_MAX_ZIP_SIZE")
     test_execution_timeout_seconds: int = Field(default=30, ge=1, validation_alias="TEST_EXECUTION_TIMEOUT_SECONDS")

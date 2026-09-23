@@ -131,6 +131,9 @@ export type MonitoringStats = {
   cleanup_failed_runs: number;
   cleanup_overdue_runs: number;
   cleanup_orphan_errors: number;
+  dispatch_service_healthy: boolean;
+  waiting_executions: number;
+  active_executions: number;
 };
 
 export function getAdminMonitoring() {

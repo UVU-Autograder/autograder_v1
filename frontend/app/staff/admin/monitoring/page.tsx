@@ -79,6 +79,14 @@ export default function MonitoringPage() {
           <p className="text-sm text-muted-foreground">Last check: {stats?.cleanup_last_checked_at ? new Date(stats.cleanup_last_checked_at).toLocaleString() : "Never reported"}</p>
         </CardContent>
       </Card>
+      <Card className="mb-4">
+        <CardHeader><CardTitle>Execution dispatch</CardTitle></CardHeader>
+        <CardContent>
+          <p role="status">{stats?.dispatch_service_healthy ? "Dispatcher healthy" : "Dispatcher unhealthy or heartbeat missing"}</p>
+          <p>{stats?.active_executions ?? 0} active executions · {stats?.waiting_executions ?? 0} waiting executions</p>
+          <p className="text-sm text-muted-foreground">Official batches wait separately for execution capacity.</p>
+        </CardContent>
+      </Card>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Active Runs Card */}
         <Card className="hover:shadow-md transition-shadow">

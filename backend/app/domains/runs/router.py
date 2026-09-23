@@ -122,6 +122,13 @@ def _retained_download(run_id: int, *, path: Path, filename: str, media_type: st
 
 
 def _official_status_from_run(run: RunSummary, redis_state: dict | None) -> RunStatusResponse:
+    from app.db.session import SessionLocal
+    from app.domains.runs.models import OfficialDispatch
+    from app.domains.runs.queue_admission import ticket_state
+    with SessionLocal() as scheduling_db:
+        bounded = scheduling_db.get(OfficialDispatch, run.id) is not None
+    if bounded:
+        redis_state = None  # Redis may predate a committed workspace checkpoint.
     bp = backpressure_snapshot()
     if redis_state is not None:
         state = redis_state.get("state", run.status)
@@ -146,10 +153,12 @@ def _official_status_from_run(run: RunSummary, redis_state: dict | None) -> RunS
         failed = run.failure_count + run.timeout_count
         queue_position = None
         eta = None
+        active = int(state == "run" and (not bounded or ticket_state(f"official:{run.id}") == "active"))
+        remaining = max(0, run.total_submission_count - completed - failed)
         counters = RunCounters(
             total=run.total_submission_count,
-            queued=0 if state != "queue" else run.total_submission_count,
-            running=0 if state != "run" else max(0, run.total_submission_count - completed - failed),
+            queued=max(0, remaining - active) if state in ("queue", "run") else 0,
+            running=active if bounded else (remaining if state == "run" else 0),
             completed=completed,
             failed=failed,
             warnings=run.warning_count,

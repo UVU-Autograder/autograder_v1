@@ -240,6 +240,10 @@ On the Dell Pro Max Tower T2 workstation with the **NVIDIA RTX PRO 4500 Blackwel
 
 ## Independent retention cleanup worker
 
+The bounded official dispatch worker is deployed separately; see the
+[dispatch rollout](bounded_dispatch_rollout.md) for migration, health checks,
+and the synthetic 200-submission benchmark.
+
 Use the [retention maintenance runbook](retention_rollout.md) for the quiesced
 rollout, original-age backfill, Redis persistence regeneration, synthetic host
 checks, and reopening criteria.

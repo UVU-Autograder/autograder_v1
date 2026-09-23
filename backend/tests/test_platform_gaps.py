@@ -297,7 +297,7 @@ def test_effective_allowed_concepts_includes_module(db_session: Session) -> None
     assert detail.allowed_concepts == concepts
 
 
-def test_official_ingest_rejects_when_queue_full(
+def test_official_intake_is_separate_from_full_execution_queue(
     client, db_session, section_id, admin_headers, temp_workspace_storage
 ):
     reset_admission_state_for_tests()
@@ -312,11 +312,12 @@ def test_official_ingest_rejects_when_queue_full(
             data={"section_id": str(section_id)},
             headers=admin_headers,
         )
-    assert response.status_code == 429
-    mock_run.assert_not_called()
+    assert response.status_code == 200
+    mock_run.assert_called_once()
+    assert waiting_count() == FULL_QUEUE_THRESHOLD
     workspaces = temp_workspace_storage / "workspaces"
     if workspaces.exists():
-        assert list(workspaces.glob("official_*.zip")) == []
+        assert len(list(workspaces.glob("official_*.zip"))) == 1
 
 
 def test_cumulative_module_concept_inheritance(db_session):

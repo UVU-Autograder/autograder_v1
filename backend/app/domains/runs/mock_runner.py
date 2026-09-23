@@ -128,4 +128,4 @@ def run_mock_official_run(run_id: int) -> None:
                 },
             )
         finally:
-            release_execution_slots(run.total_submission_count or 0)
+            release_execution_slots(owner=f"official:{run_id}")

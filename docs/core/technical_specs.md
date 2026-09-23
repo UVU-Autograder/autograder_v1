@@ -35,8 +35,8 @@
 
 The contracts below describe required behavior, not a claim that all launch gates have passed. Core setup, sandbox grading, official review/manual grading, and exports are implemented. Existing tests and workstation reports do not replace release-specific integrated verification.
 
-- **Retention:** Official review access ends 23 hours after intake. The independent cleanup worker reconciles every 60 seconds, tombstones expired runs before deletion, verifies removal of the official ZIP and workspace, and reports retryable failures. A remaining file at 24 hours is a visible retention breach; host rollout and recovery evidence remain open.
-- **Batch capacity:** Official ingest reserves one waiting slot per submission against a global cap of 50, so a single upload above 50 submissions is rejected. The whole official batch also inherits Celery's 120s soft / 180s hard task limits. Bounded scheduling and an appropriate task lifecycle are required to meet the 200-submission target.
+- **Retention:** Official review access ends 23 hours after intake. The independent cleanup worker reconciles every 60 seconds, tombstones expired runs before deletion, verifies removal of the official ZIP and workspace, and reports retryable failures. A remaining file at 24 hours is a visible retention breach; synthetic Dell rollout and recovery evidence was recorded on 2026-09-22.
+- **Batch capacity:** Official intake permits 200 submissions per upload and 1,000 unfinished submissions host-wide by default. A dedicated dispatcher offers one submission per bounded Celery task. Durable owned tickets enforce 50 waiting executions and the default two active executions; official retained intake can succeed when the waiting execution queue is full. The actual Dell mixed-load and 200-submission benchmarks remain open.
 - **Deployment:** The single-origin Nginx reverse proxy deployment is active on port 80 of the Dell workstation. The proxy reserves `/api/*` for backend requests, removing `/api` before forwarding to FastAPI routes on `127.0.0.1:8000`; Next.js on `127.0.0.1:3000` handles page routes including `/staff/*` and `/sandbox/*`. Frontend API client calls route through the single origin (`/api`) without port switching or cross-origin credentials.
 - **Evidence:** The backlog's 35-submission timing is a measurement; the 200-submission estimate is a projection. Use the evidence labels and launch gates in [delivery_controls.md](../planning/delivery_controls.md).
 
@@ -474,18 +474,18 @@ Notes:
 - One queued execution job equals one per-submission Judge0/Kata execution.
 - Running jobs do not count toward the `50` queued-job limit; they are governed by the approved execution-slot cap.
 - At `40` queued execution jobs, staff and sandbox status surfaces should show high-load messaging.
-- At `50` queued execution jobs, new intake is rejected before file persistence with a sanitized full-queue error, retry guidance, and `Retry-After` where the protocol allows it.
+- At `50` queued execution jobs, new sandbox intake is rejected before execution submission; official retained intake is governed by its separate `200` per-upload and `1,000` host-wide unfinished limits.
 - Separate logical official and sandbox queues feed the same bounded execution slots with round-robin fairness.
 - Queue capacity policy must never raise the active Judge0/Kata execution slot cap.
 - Under high load, sandbox AI feedback may be delayed, skipped, or marked unavailable; grounded test results return first.
 
-**Current reality:** Shared Redis admission (`reserve_execution_slots` / `release_execution_slots`) enforces warn-at-40 / reject-at-50 while Redis is available. Its process-local fallback does not preserve a global cap across processes during a Redis outage. Official ingest reserves the entire submission count, rejecting batches above 50 even with an empty queue. Workers listen to `-Q sandbox,official,default`, but whole-batch official tasks can occupy worker slots for their duration; listing queues alone is not proof of end-to-end fairness. Bounded batch dispatch, outage behavior, reservation recovery, and mixed-load fairness require implementation and verification.
+**Current implementation:** Postgres tickets and short shared-volume locks own waiting and active capacity. Redis carries Celery deliveries and transient sandbox state; database failure rejects new scheduling. The dedicated dispatcher reconciles retained official runs every five seconds, publishes at most two official tasks, and retries an interrupted attempt after its 240-second lease expires. Every task handles at most one submission under Celery's 120/180-second limits. A stale token cannot write results or release another run's slot. Successful steps checkpoint review data inside the governed workspace; duplicate delivery skips completed steps. Per-run grading inputs are snapshotted there at first execution. The Dell workload, Redis interruption, and recovery benchmarks remain to be run before pilot signoff.
 
 ### Run status delivery contract
 
 **Target:** Redis-backed transient run state with sanitized counters, queue position, and ETA bands.
 
-**Current reality:** Official numeric status prefers Redis transient state (counters, queue position, ETA band) with Postgres `RunSummary` fallback when complete/expired. Staff auth + section access required for numeric IDs; sandbox IDs remain unauthenticated.
+**Current reality:** New official runs use durable `RunSummary` counters and execution tickets, so broker restarts cannot roll progress backward. Retained batches may be queued without an execution queue position. Legacy runs retain the previous Redis status fallback. Staff auth + section access are required for numeric IDs; sandbox IDs remain unauthenticated.
 
 - `GET /runs/{id}/status` should surface `queue`, `run`, `complete`, or `failure` state.
 - The status response should include sanitized counters: `total`, `queued`, `running`, `completed`, `failed`, and `warnings`.

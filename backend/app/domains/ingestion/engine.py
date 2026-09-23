@@ -16,15 +16,12 @@ from app.domains.ingestion.extractor import (
     ExtractionError,
     count_canvas_submissions,
 )
-from app.domains.runs.models import RunSummary
+from app.domains.runs.models import OfficialDispatch, RunSummary
 from app.domains.runs import retention
 from app.domains.runs.orchestrator import set_run_state
 from app.domains.runs.queue_admission import (
-    QueueFullError,
     backpressure_snapshot,
     eta_band_for_position,
-    release_execution_slots,
-    reserve_execution_slots,
 )
 from app.domains.runs.service import get_workspaces_dir, official_run_zip_path
 
@@ -100,10 +97,11 @@ class SubmissionIngestionEngine:
                 "Ensure filenames match Canvas export format."
             )
 
-        try:
-            waiting = reserve_execution_slots(submission_count)
-        except QueueFullError as exc:
-            raise IngestError(str(exc), status_code=429) from exc
+        if submission_count > settings.official_batch_limit:
+            raise IngestError(
+                f"Official uploads are limited to {settings.official_batch_limit} submissions.",
+                status_code=413,
+            )
 
         try:
             run = RunSummary(
@@ -120,15 +118,35 @@ class SubmissionIngestionEngine:
                 failure_summary={},
                 token_usage_metadata={},
             )
-            db.add(run)
-            db.commit()
-            db.refresh(run)
+            # Serialize intake capacity across API processes on the shared volume.
+            # Only aggregate counts enter durable scheduling metadata.
+            with retention.control_lock("scheduler"):
+                unfinished = db.scalars(select(RunSummary).where(
+                    RunSummary.workflow_type == "official",
+                    RunSummary.status.in_(("queue", "run")),
+                )).all()
+                retained = sum(max(0, value.total_submission_count - value.success_count
+                    - value.warning_count - value.failure_count - value.timeout_count)
+                    for value in unfinished if retention.available(value))
+                if retained + submission_count > settings.official_unfinished_limit:
+                    raise IngestError("Official intake capacity is full. Retry later.", status_code=429)
+                db.add(run)
+                db.flush()
+                db.add(OfficialDispatch(run_id=run.id, ready=False,
+                    next_attempt_at=retention.utc_now(), attempts=0))
+                db.commit()
+                db.refresh(run)
 
             with retention.access(run.id, db):
                 get_workspaces_dir().mkdir(parents=True, exist_ok=True)
                 official_run_zip_path(run.id).write_bytes(content)
+                dispatch = db.get(OfficialDispatch, run.id)
+                if dispatch is None:
+                    raise IngestError("Official intake record is unavailable.", status_code=503)
+                dispatch.ready = True
+                db.commit()
 
-            queue_position = max(1, waiting - submission_count + 1)
+            queue_position = None
             set_run_state(
                 str(run.id),
                 "queue",
@@ -141,16 +159,12 @@ class SubmissionIngestionEngine:
                     "warnings": 0,
                     "queue_position": queue_position,
                     "eta_band": eta_band_for_position(queue_position),
-                    "message": "Official run queued for execution.",
+                    "message": "Official batch retained; awaiting bounded dispatch.",
                     "high_load": backpressure_snapshot().high_load,
                 },
             )
 
-            if settings.sandbox_use_celery:
-                from app.domains.runs.tasks import grade_official_run
-
-                grade_official_run.delay(run.id)
-            else:
+            if not settings.sandbox_use_celery:
                 from app.domains.runs.tasks import run_mock_official_run
 
                 run_mock_official_run(run.id)
@@ -169,8 +183,7 @@ class SubmissionIngestionEngine:
 
             return run
         except Exception as exc:
-            release_execution_slots(submission_count)
-            if "run" in locals() and isinstance(run, RunSummary):
+            if "run" in locals() and isinstance(run, RunSummary) and run.id is not None:
                 try:
                     with retention.run_lock(run.id):
                         official_run_zip_path(run.id).unlink(missing_ok=True)

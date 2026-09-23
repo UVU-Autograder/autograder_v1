@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+import os
+import sys
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+
+backend_dir = str(Path(__file__).resolve().parents[1])
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+if "PYTHONPATH" not in os.environ or backend_dir not in os.environ["PYTHONPATH"]:
+    os.environ["PYTHONPATH"] = (
+        f"{backend_dir}{os.pathsep}{os.environ.get('PYTHONPATH', '')}".rstrip(os.pathsep)
+    )
 
 
 @pytest.fixture

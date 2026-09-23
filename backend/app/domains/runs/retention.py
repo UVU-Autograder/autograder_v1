@@ -27,7 +27,7 @@ from app.domains.runs.models import RunSummary
 
 REVIEW_WINDOW = timedelta(hours=23)
 DELETION_WINDOW = timedelta(hours=24)
-_LOCKS: dict[int, threading.RLock] = {}
+_LOCKS: dict[int | str, threading.RLock] = {}
 _LOCKS_GUARD = threading.Lock()
 _HELD = threading.local()
 _OFFICIAL_NAME = re.compile(r"official_([1-9][0-9]*)(?:\.zip)?\Z")
@@ -93,6 +93,15 @@ def validate_tree(path: Path) -> None:
 def run_lock(run_id: int, *, blocking: bool = True) -> Iterator[None]:
     if run_id < 1:
         raise ValueError("Invalid run ID")
+    with control_lock(run_id, blocking=blocking):
+        yield
+
+
+@contextmanager
+def control_lock(run_id: int | str, *, blocking: bool = True) -> Iterator[None]:
+    """Short shared-volume transactions, including the scheduling authority."""
+    if not re.fullmatch(r"[a-z0-9_-]+", str(run_id)):
+        raise ValueError("Invalid lock name")
     held = getattr(_HELD, "runs", None)
     if held is None:
         held = _HELD.runs = set()

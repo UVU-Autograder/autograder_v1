@@ -178,6 +178,8 @@ services:
       SANDBOX_UPLOAD_LIMIT: ${SANDBOX_UPLOAD_LIMIT:-5}
       SANDBOX_UPLOAD_WINDOW_SECONDS: ${SANDBOX_UPLOAD_WINDOW_SECONDS:-3600}
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
+      OFFICIAL_BATCH_LIMIT: ${OFFICIAL_BATCH_LIMIT:-200}
+      OFFICIAL_UNFINISHED_LIMIT: ${OFFICIAL_UNFINISHED_LIMIT:-1000}
       DEFAULT_MAX_FILES: ${DEFAULT_MAX_FILES:-100}
       DEFAULT_MAX_ZIP_SIZE: ${DEFAULT_MAX_ZIP_SIZE:-52428800}
       TEST_EXECUTION_TIMEOUT_SECONDS: ${TEST_EXECUTION_TIMEOUT_SECONDS:-30}
@@ -236,6 +238,32 @@ services:
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}
     command: ["celery", "-A", "app.integrations.celery.app", "worker", "--loglevel=info", "-Q", "sandbox,official,default"]
+    volumes:
+      - backend_data:/data
+
+  dispatch-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    network_mode: "host"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
+      JUDGE0_MAX_CONCURRENT: ${JUDGE0_MAX_CONCURRENT:-2}
+      ARTIFACT_STORAGE_DIR: ${ARTIFACT_STORAGE_DIR:-/data/artifacts}
+      RUN_ALEMBIC_MIGRATIONS: "false"
+      SEED_DATABASE: "false"
+    command: ["python", "-m", "app.domains.runs.dispatch_worker"]
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.domains.runs.dispatch_worker", "--health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
     volumes:
       - backend_data:/data
 

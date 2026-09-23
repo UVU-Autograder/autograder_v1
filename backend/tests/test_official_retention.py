@@ -243,7 +243,7 @@ def test_expired_task_and_duplicate_delivery_never_recreate_files(run, monkeypat
     with patch("app.domains.runs.tasks.release_execution_slots") as release:
         grade_official_run(run.id)
         grade_official_run(run.id)
-        release.assert_called_once_with(1)
+        release.assert_not_called()  # Tokenless legacy deliveries cannot own capacity.
     assert not (retention.workspace_root() / f"official_{run.id}").exists()
 
 
@@ -263,10 +263,14 @@ def test_expiry_during_execution_discards_result_and_releases_slots(run, monkeyp
         assert sweep()
         return GradingResult(success=True, score=100, max_score=100)
 
-    with patch("app.domains.grading.engine.GradingEngine.grade_submission", new=AsyncMock(side_effect=execute)), patch("app.domains.runs.lifecycle.release_execution_slots") as release:
-        result = grade_official_run(run.id)
+    from dispatch_helpers import drain
+    from app.domains.runs.queue_admission import ticket_state
+    # This fixture represents an unstarted upload, not a checkpointed result.
+    (retention.workspace_root() / f"official_{run.id}" / "run_details.json").unlink(missing_ok=True)
+    with patch("app.domains.grading.engine.GradingEngine.grade_submission", new=AsyncMock(side_effect=execute)):
+        result = drain(run.id)
         assert result["failure_category"] == "review_expired"
-        release.assert_called_once_with(1)
+        assert ticket_state(f"official:{run.id}") == "done"
     assert not (retention.workspace_root() / f"official_{run.id}").exists()
     assert "student_results" not in json.dumps(result)
 
