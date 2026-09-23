@@ -15,6 +15,7 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes"
@@ -23,7 +24,7 @@
     {
       "key": "tax_percent",
       "label": "DessertItem tax_percent attribute defaults to 7.25%",
-      "message": "tests.py:33: in test_tax_percent\n    assert candy.tax_percent == 7.25, \"Default tax_percent must be 7.25\"\nE   AssertionError: Default tax_percent must be 7.25\nE   assert 8.25 == 7.25\nE    +  where 8.25 = <dessert.Candy object at 0x10aef96a0>.tax_percent",
+      "message": "tests.py:33: in test_tax_percent\n    assert candy.tax_percent == 7.25, \"Default tax_percent must be 7.25\"\nE   AssertionError: Default tax_percent must be 7.25\nE   assert 8.25 == 7.25\nE    +  where 8.25 = <dessert.Candy object at 0x0000020137C886E0>.tax_percent",
       "your_value": "8.25",
       "expected_value": "7.25",
       "expected_input": null

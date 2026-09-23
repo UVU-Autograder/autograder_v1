@@ -15,6 +15,7 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators"
   ],
   "failures": [],

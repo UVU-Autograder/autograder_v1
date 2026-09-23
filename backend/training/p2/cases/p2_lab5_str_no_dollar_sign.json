@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "str",
       "label": "Money __str__() formats currency output as '$[dollars].[cents:02d]'",
-      "message": "tests.py:29: in test_str\n    assert str(m1) == \"$3.50\"\nE   AssertionError: assert '3.50' == '$3.50'\nE     \nE     - $3.50\nE     ? -\nE     + 3.50",
+      "message": "tests.py:37: in test_str\n    assert str(m1) == \"$3.50\"\nE   AssertionError: assert '3.50' == '$3.50'\nE     \nE     - $3.50\nE     ? -\nE     + 3.50",
       "your_value": "str(m1)",
       "expected_value": "$3.50",
       "expected_input": null

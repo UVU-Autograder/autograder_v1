@@ -14,7 +14,8 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
@@ -28,7 +29,7 @@
     {
       "key": "sundae",
       "label": "Sundae inherits IceCream and defines topping_name & topping_price",
-      "message": "tests.py:124: in test_sundae_class\n    assert sundae2.scoop_count == 2, \"scoop_count not set correctly\"\nE   AssertionError: scoop_count not set correctly\nE   assert 0 == 2\nE    +  where 0 = <dessert.Sundae object at 0x1090d1d10>.scoop_count",
+      "message": "tests.py:126: in test_sundae_class\n    assert sundae2.scoop_count == 2, \"scoop_count not set correctly\"\nE   AssertionError: scoop_count not set correctly\nE   assert 0 == 2\nE    +  where 0 = <dessert.Sundae object at 0x0000013CD711EE90>.scoop_count",
       "your_value": "0",
       "expected_value": "2",
       "expected_input": null

@@ -194,11 +194,11 @@ def test_requirements_from_config_lists_automated_items_only():
 
 def test_local_llm_global_code_ceiling():
     client = LocalLLMClient()
-    # Provide 3 files of 4500 chars each (total 13,500 chars > 8,000 ceiling)
+    # Provide 3 files of 9000 chars each (total 27,000 chars > 16,000 ceiling)
     code_files = {
-        "file1.py": "x = 1\n" * 700,
-        "file2.py": "y = 2\n" * 700,
-        "file3.py": "z = 3\n" * 700,
+        "file1.py": "x = 1\n" * 1500,
+        "file2.py": "y = 2\n" * 1500,
+        "file3.py": "z = 3\n" * 1500,
     }
     messages = client.build_sandbox_messages(
         assignment_title="Test Lab",
@@ -208,5 +208,5 @@ def test_local_llm_global_code_ceiling():
     user_prompt = messages[1]["content"]
     assert "[truncated]" in user_prompt or "additional files truncated" in user_prompt
     # Total code content in prompt should be bounded
-    assert len(user_prompt) < 12000
+    assert len(user_prompt) < 22000
 

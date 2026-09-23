@@ -20,6 +20,11 @@ Order = getattr(des_mod, "Order", None)
 def test_ds2_regression():
     assert inspect.isclass(DessertItem), "DessertItem must be a class"
     assert inspect.isclass(Order), "Order must be a class"
+    assert hasattr(Order, "__len__"), "Order must implement __len__"
+    order = Order()
+    assert len(order) == 0, "Initial Order length must be 0"
+    order.add(DessertItem("Test"))
+    assert len(order) == 1, "Order length must be 1 after add()"
     assert issubclass(Candy, DessertItem), "Candy must inherit from DessertItem"
     assert issubclass(Cookie, DessertItem), "Cookie must inherit from DessertItem"
     assert issubclass(IceCream, DessertItem), "IceCream must inherit from DessertItem"

@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "sundae",
       "label": "Sundae inherits IceCream and defines topping_name & topping_price",
-      "message": "tests.py:118: in test_sundae_class\n    assert sundae.topping_name == \"\", \"Default topping_name must be empty string\"\nE   AssertionError: Default topping_name must be empty string\nE   assert 0.0 == ''\nE    +  where 0.0 = <dessert.Sundae object at 0x1091a02f0>.topping_name",
+      "message": "tests.py:120: in test_sundae_class\n    assert sundae.topping_name == \"\", \"Default topping_name must be empty string\"\nE   AssertionError: Default topping_name must be empty string\nE   assert 0.0 == ''\nE    +  where 0.0 = <dessert.Sundae object at 0x0000024BC84D2900>.topping_name",
       "your_value": "0.0",
       "expected_value": "",
       "expected_input": null

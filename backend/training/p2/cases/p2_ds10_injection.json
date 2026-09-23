@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -28,7 +28,7 @@
     {
       "key": "order_combine",
       "label": "Order.add() automatically combines like items when matching item is present",
-      "message": "tests.py:68: in test_order_combine\n    assert len(order) == 2\nE   assert 3 == 2\nE    +  where 3 = len(<dessert.Order object at 0x109ceaa50>)",
+      "message": "tests.py:81: in test_order_combine\n    assert len(order) == 2\nE   assert 3 == 2\nE    +  where 3 = len(<dessert.Order object at 0x000001AE8DF59D30>)",
       "your_value": "3",
       "expected_value": "2",
       "expected_input": null

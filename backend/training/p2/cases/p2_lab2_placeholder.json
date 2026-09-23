@@ -33,9 +33,9 @@
     {
       "key": "demo_output",
       "label": "demo.py executes test deposits, withdrawals, and prints account summary to stdout",
-      "message": "tests.py:48: in test_demo_output\n    assert \"Owner: Alice\" in stdout or \"Balance:\" in stdout or hasattr(demo_mod, \"Account\"), (\nE   AssertionError: demo.py output missing expected Account print statements\nE   assert ('Owner: Alice' in '' or 'Balance:' in '' or False)\nE    +  where False = hasattr(<module 'demo' from '/private/var/folders/wh/1wdfmd9n0kn0xwvpnwp_t2yc0000gq/T/ag_grade_pgc5ovr3/execution/demo.py'>, 'Account')",
-      "your_value": "('Owner: Alice",
-      "expected_value": " or 'Balance:' in '' or False)",
+      "message": "tests.py:54: in test_demo_output\n    assert \"Owner:\" in stdout and \"Balance:\" in stdout, (\nE   AssertionError: demo.py output missing expected Account print statements\nE   assert ('Owner:' in '')",
+      "your_value": "('Owner:",
+      "expected_value": ")",
       "expected_input": null
     }
   ],

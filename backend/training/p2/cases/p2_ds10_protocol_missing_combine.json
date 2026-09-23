@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -28,7 +28,7 @@
     {
       "key": "combinable_protocol",
       "label": "Combinable protocol defined in combine.py with can_combine() and combine() methods",
-      "message": "tests.py:20: in test_combinable_protocol\n    assert hasattr(Combinable, \"combine\"), \"Combinable missing combine\"\nE   AssertionError: Combinable missing combine\nE   assert False\nE    +  where False = hasattr(<class 'combine.Combinable'>, 'combine')",
+      "message": "tests.py:27: in test_combinable_protocol\n    assert hasattr(Combinable, \"combine\"), \"Combinable missing combine\"\nE   AssertionError: Combinable missing combine\nE   assert False\nE    +  where False = hasattr(<class 'combine.Combinable'>, 'combine')",
       "your_value": "hasattr(Comb",
       "expected_value": "able, \"combine\"), \"Combinable missing combine",
       "expected_input": null

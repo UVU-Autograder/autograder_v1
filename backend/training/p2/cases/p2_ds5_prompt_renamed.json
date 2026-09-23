@@ -15,17 +15,17 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols"
   ],
   "failures": [
     {
       "key": "dessertshop_class",
       "label": "DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)",
-      "message": "tests.py:43: in test_dessertshop_class\n    assert hasattr(shop, method), f\"DessertShop is missing method: {method}\"\nE   AssertionError: DessertShop is missing method: user_prompt_candy\nE   assert False\nE    +  where False = hasattr(<dessertshop.DessertShop object at 0x109ad1400>, 'user_prompt_candy')",
+      "message": "tests.py:51: in test_dessertshop_class\n    assert hasattr(shop, method), f\"DessertShop is missing method: {method}\"\nE   AssertionError: DessertShop is missing method: user_prompt_candy\nE   assert False\nE    +  where False = hasattr(<dessertshop.DessertShop object at 0x000001262D2F8D70>, 'user_prompt_candy')",
       "your_value": "hasattr(shop, method), f\"DessertShop is miss",
       "expected_value": "g method: {method}",
       "expected_input": null

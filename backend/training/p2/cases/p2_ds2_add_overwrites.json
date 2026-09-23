@@ -15,13 +15,14 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators"
   ],
   "failures": [
     {
       "key": "order_class",
       "label": "Order class defines order list, add() method, and len() support",
-      "message": "tests.py:85: in test_order_class\n    assert len(order) == 2, \"Order len() should reflect added items\"\nE   AssertionError: Order len() should reflect added items\nE   assert 1 == 2\nE    +  where 1 = len(<dessert.Order object at 0x10aa681a0>)",
+      "message": "tests.py:93: in test_order_class\n    assert len(order) == 2, \"Order len() should reflect added items\"\nE   AssertionError: Order len() should reflect added items\nE   assert 1 == 2\nE    +  where 1 = len(<dessert.Order object at 0x00000147570B2BA0>)",
       "your_value": "1",
       "expected_value": "2",
       "expected_input": null
@@ -29,7 +30,7 @@
     {
       "key": "main_output",
       "label": "dessertshop.py main() constructs Order items and prints formatted receipt",
-      "message": "tests.py:103: in test_main_output\n    assert len(lines) >= 7, f\"Expected output to contain at least 7 lines, got {len(lines)}\"\nE   AssertionError: Expected output to contain at least 7 lines, got 2\nE   assert 2 >= 7\nE    +  where 2 = len(['Oatmeal Raisin', 'Total number of items in order: 1'])",
+      "message": "tests.py:115: in test_main_output\n    assert len(lines) >= 7, f\"Expected output to contain at least 7 lines, got {len(lines)}\"\nE   AssertionError: Expected output to contain at least 7 lines, got 2\nE   assert 2 >= 7\nE    +  where 2 = len(['Oatmeal Raisin', 'Total number of items in order: 1'])",
       "your_value": "2",
       "expected_value": "= 7",
       "expected_input": null

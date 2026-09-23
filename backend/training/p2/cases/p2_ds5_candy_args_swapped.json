@@ -15,17 +15,17 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols"
   ],
   "failures": [
     {
       "key": "dessertshop_class",
       "label": "DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)",
-      "message": "tests.py:50: in test_dessertshop_class\n    assert candy.candy_weight == 0.25\nE   assert 0.35 == 0.25\nE    +  where 0.35 = <dessert.Candy object at 0x108d42c10>.candy_weight",
+      "message": "tests.py:58: in test_dessertshop_class\n    assert candy.candy_weight == 0.25\nE   assert 0.35 == 0.25\nE    +  where 0.35 = <dessert.Candy object at 0x000002555ACA7B10>.candy_weight",
       "your_value": "0.35",
       "expected_value": "0.25",
       "expected_input": null

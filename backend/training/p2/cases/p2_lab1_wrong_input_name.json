@@ -15,7 +15,7 @@
     {
       "key": "part1_output",
       "label": "bears2.py filters bears_copy.jpg into a valid non-trivial bears2.jpg",
-      "message": "tests.py:56: in test_part1_script_produces_valid_filter_image\n    runpy.run_path(\"bears2.py\", run_name=\"__main__\")\n<frozen runpy>:294: in run_path\n    ???\n<frozen runpy>:98: in _run_module_code\n    ???\n<frozen runpy>:88: in _run_code\n    ???\nbears2.py:10: in <module>\n    orig_image = Image.open(filepath)\n                 ^^^^^^^^^^^^^^^^^^^^\n/Users/eastonparkhurst/Documents/GitHub/autograder_v1/.venv/lib/python3.14/site-packages/PIL/Image.py:3513: in open\n    fp = builtins.open(filename, \"rb\")\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   FileNotFoundError: [Errno 2] No such file or directory: './bears.jpg'",
+      "message": "tests.py:56: in test_part1_script_produces_valid_filter_image\n    runpy.run_path(\"bears2.py\", run_name=\"__main__\")\n<frozen runpy>:287: in run_path\n    ???\n<frozen runpy>:98: in _run_module_code\n    ???\n<frozen runpy>:88: in _run_code\n    ???\nbears2.py:10: in <module>\n    orig_image = Image.open(filepath)\n                 ^^^^^^^^^^^^^^^^^^^^\nC:\\Users\\Jaxon\\coding\\autograder_v1\\backend\\venv\\Lib\\site-packages\\PIL\\Image.py:3513: in open\n    fp = builtins.open(filename, \"rb\")\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   FileNotFoundError: [Errno 2] No such file or directory: './bears.jpg'",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

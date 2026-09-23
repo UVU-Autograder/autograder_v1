@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "icecream",
       "label": "IceCream inherits DessertItem and defines scoop_count & price_per_scoop",
-      "message": "tests.py:85: in test_icecream_class\n    assert issubclass(IceCream, DessertItem), \"IceCream must inherit from DessertItem\"\nE   AssertionError: IceCream must inherit from DessertItem\nE   assert False\nE    +  where False = issubclass(IceCream, DessertItem)",
+      "message": "tests.py:87: in test_icecream_class\n    assert issubclass(IceCream, DessertItem), \"IceCream must inherit from DessertItem\"\nE   AssertionError: IceCream must inherit from DessertItem\nE   assert False\nE    +  where False = issubclass(IceCream, DessertItem)",
       "your_value": "issubclass(IceCream, DessertItem), \"IceCream must",
       "expected_value": "herit from DessertItem",
       "expected_input": null
@@ -28,7 +29,7 @@
     {
       "key": "sundae",
       "label": "Sundae inherits IceCream and defines topping_name & topping_price",
-      "message": "tests.py:114: in test_sundae_class\n    sundae = Sundae()\n             ^^^^^^^^\ndessert.py:29: in __init__\n    super().__init__(name, scoop_count, price_per_scoop)\ndessert.py:22: in __init__\n    super().__init__(name)\nE   TypeError: object.__init__() takes exactly one argument (the instance to initialize)",
+      "message": "tests.py:116: in test_sundae_class\n    sundae = Sundae()\n             ^^^^^^^^\ndessert.py:29: in __init__\n    super().__init__(name, scoop_count, price_per_scoop)\ndessert.py:22: in __init__\n    super().__init__(name)\nE   TypeError: object.__init__() takes exactly one argument (the instance to initialize)",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

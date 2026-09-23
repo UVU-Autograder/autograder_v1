@@ -16,6 +16,11 @@ def test_encapsulation() -> None:
     assert hasattr(ch, "_name"), "YouTubeChannel must have _name attribute"
     assert hasattr(ch, "_YouTubeChannel__video_count") or hasattr(ch, "__video_count"), "YouTubeChannel must have __video_count private attribute"
 
+    # Constructor should not accept negative video count
+    ch_neg = YouTubeChannel("Neg", -5)
+    priv_count = getattr(ch_neg, "_YouTubeChannel__video_count", getattr(ch_neg, "__video_count", None))
+    assert priv_count == 0, "Constructor must not store a negative video count"
+
 
 @pytest.mark.ag_getters_setters
 def test_getters_setters() -> None:
@@ -40,6 +45,10 @@ def test_getters_setters() -> None:
     # Negative guard test
     ch.set_video_count(-10)
     assert ch.get_video_count() == 20, "set_video_count should ignore negative values"
+
+    # Zero count test (0 is not negative)
+    ch.set_video_count(0)
+    assert ch.get_video_count() == 0, "set_video_count(0) should be accepted (0 is not negative)"
 
 
 @pytest.mark.ag_type_hints

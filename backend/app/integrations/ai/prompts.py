@@ -36,16 +36,17 @@ from app.integrations.ai.sanitize import sanitize_code_and_text
 # sandbox Warnings panel, so the model must not contradict them rather than
 # announce them (v3's "name it in the summary" produced an ungrounded item and
 # bled into non-empty submissions); the empty-submission rule is gated on the
-# SUBMISSION_NOTE line.
-PROMPT_VERSION = "v4"
+# v5: raised code budget (MAX_FILE_CHARS 10,000, MAX_TOTAL_CODE_CHARS 16,000)
+# so multi-class files like dessert.py (DS8-DS10, 7k-9k chars) are not truncated.
+PROMPT_VERSION = "v5"
 
 # Serving parameters, shared so eval measures what production runs.
 GENERATION_TEMPERATURE = 0.2
 MAX_OUTPUT_TOKENS = 700
 
 # Code budget per prompt (from the original sandbox client).
-MAX_FILE_CHARS = 4000
-MAX_TOTAL_CODE_CHARS = 8000
+MAX_FILE_CHARS = 10000
+MAX_TOTAL_CODE_CHARS = 16000
 
 # Key used when the submission never produced test results (syntax error,
 # timeout, import failure) so the model still has a real item to cite.

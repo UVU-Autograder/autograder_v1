@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "normalize",
       "label": "Money normalize() carries overflow cents (>= 100) into dollars",
-      "message": "tests.py:18: in test_normalize\n    assert m2.dollars == 3\nE   assert 1 == 3\nE    +  where 1 = <money.Money object at 0x10aa68f50>.dollars",
+      "message": "tests.py:18: in test_normalize\n    assert m2.dollars == 3\nE   assert 1 == 3\nE    +  where 1 = <money.Money object at 0x000001A6DF5D1F90>.dollars",
       "your_value": "1",
       "expected_value": "3",
       "expected_input": null
@@ -28,7 +29,7 @@
     {
       "key": "mul",
       "label": "Money __mul__() and __rmul__() overload '*' operator for scalar multiplication",
-      "message": "tests.py:61: in test_mul\n    assert m4.dollars == 7\nE   assert 1 == 7\nE    +  where 1 = <money.Money object at 0x10aa6a5d0>.dollars",
+      "message": "tests.py:69: in test_mul\n    assert m4.dollars == 7\nE   assert 1 == 7\nE    +  where 1 = <money.Money object at 0x000001A6DF5D34D0>.dollars",
       "your_value": "1",
       "expected_value": "7",
       "expected_input": null

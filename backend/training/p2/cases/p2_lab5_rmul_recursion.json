@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "mul",
       "label": "Money __mul__() and __rmul__() overload '*' operator for scalar multiplication",
-      "message": "tests.py:64: in test_mul\n    m5 = 3 * m2\n         ^^^^^^\nmoney.py:38: in __rmul__\n    return other * self\n           ^^^^^^^^^^^^\nmoney.py:38: in __rmul__\n    return other * self\n           ^^^^^^^^^^^^\nE   RecursionError: maximum recursion depth exceeded\n!!! Recursion detected (same locals & position)",
+      "message": "tests.py:72: in test_mul\n    m5 = 3 * m2\n         ^^^^^^\nmoney.py:38: in __rmul__\n    return other * self\n           ^^^^^^^^^^^^\nmoney.py:38: in __rmul__\n    return other * self\n           ^^^^^^^^^^^^\nE   RecursionError: maximum recursion depth exceeded\n!!! Recursion detected (same locals & position)",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

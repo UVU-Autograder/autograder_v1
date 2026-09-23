@@ -10,19 +10,19 @@
     },
     "m3": {
       "name": "Module 3: Inheritance, Polymorphism, and Properties",
-      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "exceptions"]
     },
     "m4": {
       "name": "Module 4: Generators and Iterators",
-      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "exceptions"]
     },
     "m5": {
       "name": "Module 5: Unit Tests with pytest",
-      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "exceptions"]
     },
     "m6": {
       "name": "Module 6: Abstract Classes",
-      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes"]
+      "concepts": ["image-processing", "classes", "type-hints", "inheritance", "properties", "operator-overloading", "generators", "testing", "abstract-classes", "exceptions"]
     },
     "m7": {
       "name": "Module 7: Exceptions and Protocols",

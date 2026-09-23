@@ -30,21 +30,27 @@ def test_account_str() -> None:
 
     acc = Account("Alice", 100.0)
     output = str(acc)
-    assert "Owner: Alice" in output
-    assert "Balance: $100.00" in output or "Balance: $100" in output
+    assert "Owner: Alice, Balance: $100.00" in output, (
+        f"Expected 'Owner: Alice, Balance: $100.00', got {output!r}"
+    )
+
+    acc2 = Account("Bob", 50.5)
+    output2 = str(acc2)
+    assert "Owner: Bob, Balance: $50.50" in output2, (
+        f"Expected 'Owner: Bob, Balance: $50.50', got {output2!r}"
+    )
 
 
 @pytest.mark.ag_demo_output
 def test_demo_output() -> None:
     """Verify demo.py executes and produces expected stdout output."""
-    (demo_mod,) = import_student_modules("demo")
-
     f = io.StringIO()
     with contextlib.redirect_stdout(f):
+        (demo_mod,) = import_student_modules("demo")
         if hasattr(demo_mod, "main"):
             demo_mod.main()
 
     stdout = f.getvalue()
-    assert "Owner: Alice" in stdout or "Balance:" in stdout or hasattr(demo_mod, "Account"), (
+    assert "Owner:" in stdout and "Balance:" in stdout, (
         "demo.py output missing expected Account print statements"
     )

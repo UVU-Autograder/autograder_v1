@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "mul",
       "label": "Money __mul__() and __rmul__() overload '*' operator for scalar multiplication",
-      "message": "tests.py:61: in test_mul\n    assert m4.dollars == 7\nE   assert 4 == 7\nE    +  where 4 = <money.Money object at 0x10948e0d0>.dollars",
+      "message": "tests.py:69: in test_mul\n    assert m4.dollars == 7\nE   assert 4 == 7\nE    +  where 4 = <money.Money object at 0x00000222B25E2C10>.dollars",
       "your_value": "4",
       "expected_value": "7",
       "expected_input": null

@@ -17,7 +17,7 @@
     {
       "key": "encapsulation",
       "label": "YouTubeChannel protects attributes using private (_ and __) naming encapsulation",
-      "message": "tests.py:16: in test_encapsulation\n    assert hasattr(ch, \"_name\"), \"YouTubeChannel must have _name attribute\"\nE   AssertionError: YouTubeChannel must have _name attribute\nE   assert False\nE    +  where False = hasattr(<youtube_channel.YouTubeChannel object at 0x1096342f0>, '_name')",
+      "message": "tests.py:16: in test_encapsulation\n    assert hasattr(ch, \"_name\"), \"YouTubeChannel must have _name attribute\"\nE   AssertionError: YouTubeChannel must have _name attribute\nE   assert False\nE    +  where False = hasattr(<youtube_channel.YouTubeChannel object at 0x000002018EE727B0>, '_name')",
       "your_value": "false",
       "expected_value": "true",
       "expected_input": null

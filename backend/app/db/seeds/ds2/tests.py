@@ -39,6 +39,11 @@ def test_ds1_regression():
     candy.price_per_pound = 4.99
     assert (candy.candy_weight, candy.price_per_pound) == (2.0, 4.99)
 
+    candy_param = Candy("Sour Patch", 1.5, 3.99)
+    assert candy_param.name == "Sour Patch"
+    assert candy_param.candy_weight == 1.5
+    assert candy_param.price_per_pound == 3.99
+
     cookie = Cookie()
     assert (cookie.name, cookie.cookie_quantity, cookie.price_per_dozen) == ("", 0, 0.0)
     cookie.cookie_quantity = 24
@@ -72,6 +77,9 @@ def test_order_class():
     assert isinstance(order.order, list), "order attribute must be a list"
     assert len(order) == 0, "Initial order length must be 0"
 
+    order2 = Order()
+    assert order.order is not order2.order, "Each Order instance must have its own distinct order list"
+
     assert hasattr(order, "add"), "Order must have an add method"
     assert hasattr(order, "__len__"), "Order must support len()"
     assert hasattr(order, "__iter__"), "Order must support iteration"
@@ -85,6 +93,10 @@ def test_order_class():
     assert len(order) == 2, "Order len() should reflect added items"
     items = list(order)
     assert items == [item1, item2], "Order iteration should return items in order"
+
+    # Multi-iteration: __iter__ must reset index
+    items2 = list(order)
+    assert items2 == [item1, item2], "Order must support multiple iterations (__iter__ should reset index)"
 
 
 @pytest.mark.ag_main_output
@@ -104,4 +116,6 @@ def test_main_output():
     expected_names = ["candy corn", "gummy bears", "chocolate chip", "pistachio", "vanilla", "oatmeal"]
     for name in expected_names:
         assert any(name in line.lower() for line in lines), f"Output is missing expected item: {name}"
-    assert any("6" in line for line in lines), "Output is missing expected total count of 6 items"
+    assert any("total number of items in order:" in line.lower() and "6" in line for line in lines), (
+        "Output is missing expected line: 'Total number of items in order: 6'"
+    )

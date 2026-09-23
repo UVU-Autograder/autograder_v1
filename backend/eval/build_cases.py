@@ -104,6 +104,9 @@ async def _local_execute(
         "SDL_AUDIODRIVER": "dummy",
         "MPLBACKEND": "Agg",
     }
+    for k in ("SYSTEMROOT", "SystemDrive", "TEMP", "TMP", "COMSPEC", "PATHEXT"):
+        if k in os.environ:
+            env[k] = os.environ[k]
     try:
         proc = subprocess.run(
             [sys.executable, "runner.py"],

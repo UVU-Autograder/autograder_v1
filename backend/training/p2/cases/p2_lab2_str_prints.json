@@ -25,7 +25,7 @@
     {
       "key": "demo_output",
       "label": "demo.py executes test deposits, withdrawals, and prints account summary to stdout",
-      "message": "tests.py:45: in test_demo_output\n    demo_mod.main()\ndemo.py:11: in main\n    print(custom_account)\nE   TypeError: __str__ returned non-string (type NoneType)",
+      "message": "tests.py:51: in test_demo_output\n    demo_mod.main()\ndemo.py:11: in main\n    print(custom_account)\nE   TypeError: __str__ returned non-string (type NoneType)",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

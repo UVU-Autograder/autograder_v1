@@ -15,18 +15,18 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols"
   ],
   "failures": [
     {
       "key": "dessertshop_class",
       "label": "DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)",
-      "message": "tests.py:60: in test_dessertshop_class\n    cookie = shop.user_prompt_cookie()\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\ndessertshop.py:41: in user_prompt_cookie\n    if qty <= 0:\n       ^^^^^^^^\nE   TypeError: '<=' not supported between instances of 'str' and 'int'",
-      "your_value": "Weight must be greater than 0.\n",
+      "message": "tests.py:69: in test_dessertshop_class\n    cookie = shop.user_prompt_cookie()\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\ndessertshop.py:41: in user_prompt_cookie\n    if qty <= 0:\n       ^^^^^^^^\nE   TypeError: '<=' not supported between instances of 'str' and 'int'",
+      "your_value": "Weight must be greater than 0.\nWeight must be greater than 0.\n",
       "expected_value": null,
       "expected_input": null
     }

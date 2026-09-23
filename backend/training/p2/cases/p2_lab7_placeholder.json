@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -52,7 +52,7 @@
     {
       "key": "main_output",
       "label": "main() entrypoint instantiates Student records, tests course enrollment, and outputs summary",
-      "message": "tests.py:64: in test_main_output\n    assert hasattr(student_mod, \"main\"), \"student.py missing main function\"\nE   AssertionError: student.py missing main function\nE   assert False\nE    +  where False = hasattr(<module 'student' from '/private/var/folders/wh/1wdfmd9n0kn0xwvpnwp_t2yc0000gq/T/ag_grade_r_ipwk54/execution/student.py'>, 'main')",
+      "message": "tests.py:64: in test_main_output\n    assert hasattr(student_mod, \"main\"), \"student.py missing main function\"\nE   AssertionError: student.py missing main function\nE   assert False\nE    +  where False = hasattr(<module 'student' from 'C:\\\\Users\\\\Jaxon\\\\AppData\\\\Local\\\\Temp\\\\ag_grade_ck70lcq6\\\\execution\\\\student.py'>, 'main')",
       "your_value": "hasattr(student_mod, \"ma",
       "expected_value": "), \"student.py missing main function",
       "expected_input": null

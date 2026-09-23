@@ -68,6 +68,18 @@ def test_main_output() -> None:
         student_mod.main()
 
     stdout = f.getvalue()
-    assert "Alice" in stdout or "courses" in stdout or "Student(" in stdout, (
+    assert "Student(" in stdout or "Alice" in stdout, (
         "main() output missing expected Student print statements"
     )
+    assert "total" in stdout.lower() or "courses:" in stdout.lower(), (
+        "main() output missing total_courses() print statement"
+    )
+    assert "True" in stdout or "False" in stdout or ("100" in stdout and "102" in stdout), (
+        "main() output missing student comparison or sorting demonstration"
+    )
+    if "100" in stdout and "102" in stdout and "sorted" in stdout.lower():
+        idx_100 = stdout.lower().rfind("100")
+        idx_102 = stdout.lower().rfind("102")
+        assert idx_100 < idx_102, (
+            "main() sorted student output appears to be descending rather than ascending by ID"
+        )

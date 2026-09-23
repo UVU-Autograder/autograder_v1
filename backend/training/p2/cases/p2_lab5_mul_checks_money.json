@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "mul",
       "label": "Money __mul__() and __rmul__() overload '*' operator for scalar multiplication",
-      "message": "tests.py:59: in test_mul\n    m4 = m1 * 2\n         ^^^^^^\nE   TypeError: unsupported operand type(s) for *: 'Money' and 'int'",
+      "message": "tests.py:67: in test_mul\n    m4 = m1 * 2\n         ^^^^^^\nE   TypeError: unsupported operand type(s) for *: 'Money' and 'int'",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

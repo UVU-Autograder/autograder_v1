@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "icecream",
       "label": "IceCream inherits DessertItem and defines scoop_count & price_per_scoop",
-      "message": "tests.py:90: in test_icecream_class\n    assert ic.scoop_count == 0, \"Default scoop_count must be 0\"\n           ^^^^^^^^^^^^^^\nE   AttributeError: 'IceCream' object has no attribute 'scoop_count'. Did you mean: 'scoops_count'?",
+      "message": "tests.py:92: in test_icecream_class\n    assert ic.scoop_count == 0, \"Default scoop_count must be 0\"\n           ^^^^^^^^^^^^^^\nE   AttributeError: 'IceCream' object has no attribute 'scoop_count'. Did you mean: 'scoops_count'?",
       "your_value": "ic.scoop_count",
       "expected_value": "0, \"Default scoop_count must be 0",
       "expected_input": null
@@ -28,7 +29,7 @@
     {
       "key": "sundae",
       "label": "Sundae inherits IceCream and defines topping_name & topping_price",
-      "message": "tests.py:116: in test_sundae_class\n    assert sundae.scoop_count == 0, \"Default Sundae scoop_count must be 0\"\n           ^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'Sundae' object has no attribute 'scoop_count'. Did you mean: 'scoops_count'?",
+      "message": "tests.py:118: in test_sundae_class\n    assert sundae.scoop_count == 0, \"Default Sundae scoop_count must be 0\"\n           ^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'Sundae' object has no attribute 'scoop_count'. Did you mean: 'scoops_count'?",
       "your_value": "sundae.scoop_count",
       "expected_value": "0, \"Default Sundae scoop_count must be 0",
       "expected_input": null

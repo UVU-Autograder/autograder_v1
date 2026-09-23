@@ -18,6 +18,14 @@ def test_normalize() -> None:
     assert m2.dollars == 3
     assert m2.cents == 25
 
+    m3 = Money(1, 100)
+    assert m3.dollars == 2
+    assert m3.cents == 0
+
+    m4 = Money(0, 200)
+    assert m4.dollars == 2
+    assert m4.cents == 0
+
 
 @pytest.mark.ag_str
 def test_str() -> None:

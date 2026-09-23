@@ -17,7 +17,7 @@
     {
       "key": "getters_setters",
       "label": "Getter and setter methods enforce validation guards against negative counts",
-      "message": "tests.py:36: in test_getters_setters\n    assert ch.get_video_count() == 5\nE   AssertionError: assert 'Updated' == 5\nE    +  where 'Updated' = get_video_count()\nE    +    where get_video_count = <youtube_channel.YouTubeChannel object at 0x108db82f0>.get_video_count",
+      "message": "tests.py:41: in test_getters_setters\n    assert ch.get_video_count() == 5\nE   AssertionError: assert 'Updated' == 5\nE    +  where 'Updated' = get_video_count()\nE    +    where get_video_count = <youtube_channel.YouTubeChannel object at 0x0000024F417B2660>.get_video_count",
       "your_value": "ch.get_video_count()",
       "expected_value": "5",
       "expected_input": null

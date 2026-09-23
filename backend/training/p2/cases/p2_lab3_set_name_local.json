@@ -17,7 +17,7 @@
     {
       "key": "getters_setters",
       "label": "Getter and setter methods enforce validation guards against negative counts",
-      "message": "tests.py:34: in test_getters_setters\n    assert ch.get_name() == \"Updated\"\nE   AssertionError: assert 'Initial' == 'Updated'\nE     \nE     - Updated\nE     + Initial",
+      "message": "tests.py:39: in test_getters_setters\n    assert ch.get_name() == \"Updated\"\nE   AssertionError: assert 'Initial' == 'Updated'\nE     \nE     - Updated\nE     + Initial",
       "your_value": "ch.get_name()",
       "expected_value": "Updated",
       "expected_input": null

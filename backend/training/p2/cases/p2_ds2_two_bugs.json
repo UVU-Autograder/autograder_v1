@@ -15,20 +15,28 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators"
   ],
   "failures": [
     {
+      "key": "ds1_regression",
+      "label": "DS1 class hierarchy intact (DessertItem, Candy, Cookie, IceCream, Sundae)",
+      "message": "tests.py:45: in test_ds1_regression\n    assert candy_param.price_per_pound == 3.99\nE   assert 1.5 == 3.99\nE    +  where 1.5 = <dessert.Candy object at 0x000002D1DECBDE50>.price_per_pound",
+      "your_value": "1.5",
+      "expected_value": "3.99",
+      "expected_input": null
+    },
+    {
       "key": "main_output",
       "label": "dessertshop.py main() constructs Order items and prints formatted receipt",
-      "message": "tests.py:106: in test_main_output\n    assert any(name in line.lower() for line in lines), f\"Output is missing expected item: {name}\"\nE   AssertionError: Output is missing expected item: candy corn\nE   assert False\nE    +  where False = any(<generator object test_main_output.<locals>.<genexpr> at 0x1044a6180>)",
+      "message": "tests.py:118: in test_main_output\n    assert any(name in line.lower() for line in lines), f\"Output is missing expected item: {name}\"\nE   AssertionError: Output is missing expected item: candy corn\nE   assert False\nE    +  where False = any(<generator object test_main_output.<locals>.<genexpr> at 0x000002D1DECFF140>)",
       "your_value": "any(name",
       "expected_value": "line.lower() for line in lines), f\"Output is missing expected item: {name}",
       "expected_input": null
     }
   ],
   "passing_labels": [
-    "DS1 class hierarchy intact (DessertItem, Candy, Cookie, IceCream, Sundae)",
     "Order class defines order list, add() method, and len() support"
   ],
   "concept_violations": [],

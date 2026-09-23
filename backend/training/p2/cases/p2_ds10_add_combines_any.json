@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -28,17 +28,24 @@
     {
       "key": "order_combine",
       "label": "Order.add() automatically combines like items when matching item is present",
-      "message": "tests.py:68: in test_order_combine\n    assert len(order) == 2\nE   assert 1 == 2\nE    +  where 1 = len(<dessert.Order object at 0x10bb0aa50>)",
+      "message": "tests.py:81: in test_order_combine\n    assert len(order) == 2\nE   assert 1 == 2\nE    +  where 1 = len(<dessert.Order object at 0x00000191E57DA660>)",
       "your_value": "1",
       "expected_value": "2",
+      "expected_input": null
+    },
+    {
+      "key": "ds9_regression",
+      "label": "DS9 Order.sort() and relational comparison operators intact",
+      "message": "tests.py:18: in test_ds9_regression\n    assert order.order == [c1, c2], \"Order.sort() must sort in ascending order by cost\"\nE   AssertionError: Order.sort() must sort in ascending order by cost\nE   assert [<dessert.Can...0191E5736FD0>] == [<dessert.Can...0191E5736FD0>]\nE     \nE     At index 0 diff: <dessert.Candy object at 0x00000191E5736FD0> != <dessert.Candy object at 0x00000191E57D8D70>\nE     Right contains one more item: <dessert.Candy object at 0x00000191E5736FD0>\nE     Use -v to get more diff",
+      "your_value": "[",
+      "expected_value": "dessert.Can...0191E5736FD0>] == [<dessert.Can...0191E5736FD0>]",
       "expected_input": null
     }
   ],
   "passing_labels": [
     "Combinable protocol defined in combine.py with can_combine() and combine() methods",
     "Candy implements Combinable protocol merging candy_weight for matching items",
-    "Cookie implements Combinable protocol merging cookie_quantity for matching items",
-    "DS9 Order.sort() and relational comparison operators intact"
+    "Cookie implements Combinable protocol merging cookie_quantity for matching items"
   ],
   "concept_violations": [],
   "student_code": "",

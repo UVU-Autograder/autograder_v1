@@ -27,6 +27,10 @@
       "type": "pytest_file",
       "display_filename": "tests.py"
     },
+    "student_test_helpers": {
+      "type": "support_file",
+      "display_filename": "student_test_helpers.py"
+    },
     "model_solution": {
       "type": "model_solution",
       "display_filename": "dessert.py"

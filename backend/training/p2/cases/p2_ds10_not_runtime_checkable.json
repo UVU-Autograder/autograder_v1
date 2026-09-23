@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -28,7 +28,15 @@
     {
       "key": "order_combine",
       "label": "Order.add() automatically combines like items when matching item is present",
-      "message": "tests.py:64: in test_order_combine\n    order.add(c1)\ndessert.py:165: in add\n    if isinstance(item, Combinable):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/typing.py:2040: in __instancecheck__\n    raise TypeError(\"Instance and class checks can only be used with\"\nE   TypeError: Instance and class checks can only be used with @runtime_checkable protocols",
+      "message": "tests.py:77: in test_order_combine\n    order.add(c1)\ndessert.py:165: in add\n    if isinstance(item, Combinable):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\Programs\\Python\\Python313\\Lib\\typing.py:2117: in __instancecheck__\n    raise TypeError(\"Instance and class checks can only be used with\"\nE   TypeError: Instance and class checks can only be used with @runtime_checkable protocols",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    },
+    {
+      "key": "ds9_regression",
+      "label": "DS9 Order.sort() and relational comparison operators intact",
+      "message": "tests.py:15: in test_ds9_regression\n    order.add(c2)\ndessert.py:165: in add\n    if isinstance(item, Combinable):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\Programs\\Python\\Python313\\Lib\\typing.py:2117: in __instancecheck__\n    raise TypeError(\"Instance and class checks can only be used with\"\nE   TypeError: Instance and class checks can only be used with @runtime_checkable protocols",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -37,8 +45,7 @@
   "passing_labels": [
     "Combinable protocol defined in combine.py with can_combine() and combine() methods",
     "Candy implements Combinable protocol merging candy_weight for matching items",
-    "Cookie implements Combinable protocol merging cookie_quantity for matching items",
-    "DS9 Order.sort() and relational comparison operators intact"
+    "Cookie implements Combinable protocol merging cookie_quantity for matching items"
   ],
   "concept_violations": [],
   "student_code": "",

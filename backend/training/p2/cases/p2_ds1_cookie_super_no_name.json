@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "cookie",
       "label": "Cookie inherits DessertItem and defines cookie_quantity & price_per_dozen",
-      "message": "tests.py:70: in test_cookie_class\n    assert cookie2.name == \"Chocolate Chip\", \"Cookie name not set correctly\"\nE   AssertionError: Cookie name not set correctly\nE   assert '' == 'Chocolate Chip'\nE     \nE     - Chocolate Chip",
+      "message": "tests.py:72: in test_cookie_class\n    assert cookie2.name == \"Chocolate Chip\", \"Cookie name not set correctly\"\nE   AssertionError: Cookie name not set correctly\nE   assert '' == 'Chocolate Chip'\nE     \nE     - Chocolate Chip",
       "your_value": "",
       "expected_value": "Chocolate Chip",
       "expected_input": null

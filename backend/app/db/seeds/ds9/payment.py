@@ -1,10 +1,11 @@
 """Payment method Protocol definition for Dessert Shop."""
 
-from typing import Literal, Protocol
+from typing import Literal, Protocol, runtime_checkable
 
 PayType = Literal["CASH", "CARD", "PHONE"]
 
 
+@runtime_checkable
 class Payable(Protocol):
     """Protocol for objects that manage payment method types."""
 

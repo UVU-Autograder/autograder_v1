@@ -17,7 +17,7 @@
     {
       "key": "getters_setters",
       "label": "Getter and setter methods enforce validation guards against negative counts",
-      "message": "tests.py:30: in test_getters_setters\n    assert hasattr(ch, \"set_video_count\"), \"Missing set_video_count method\"\nE   AssertionError: Missing set_video_count method\nE   assert False\nE    +  where False = hasattr(<youtube_channel.YouTubeChannel object at 0x10b55c2f0>, 'set_video_count')",
+      "message": "tests.py:35: in test_getters_setters\n    assert hasattr(ch, \"set_video_count\"), \"Missing set_video_count method\"\nE   AssertionError: Missing set_video_count method\nE   assert False\nE    +  where False = hasattr(<youtube_channel.YouTubeChannel object at 0x000001D57BD32660>, 'set_video_count')",
       "your_value": "hasattr(ch, \"set_video_count\"), \"Miss",
       "expected_value": "g set_video_count method",
       "expected_input": null

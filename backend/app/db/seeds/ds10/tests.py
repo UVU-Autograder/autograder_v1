@@ -6,9 +6,16 @@ from python_autograder_helpers import import_student_modules
 def test_ds9_regression():
     (des_mod,) = import_student_modules("dessert")
     Candy = des_mod.Candy
+    Order = des_mod.Order
     c1 = Candy("Cheap Candy", 1.0, 2.0)
     c2 = Candy("Expensive Candy", 2.0, 2.0)
     assert c1 < c2
+
+    order = Order()
+    order.add(c2)
+    order.add(c1)
+    order.sort()
+    assert order.order == [c1, c2], "Order.sort() must sort in ascending order by cost"
 
 
 @pytest.mark.ag_combinable_protocol
@@ -27,11 +34,14 @@ def test_candy_combinable():
     c1 = Candy("Fudge", 1.0, 2.0)
     c2 = Candy("Fudge", 2.0, 2.0)
     c3 = Candy("Toffee", 1.0, 2.0)
+    c4 = Candy("Fudge", 1.0, 3.0)  # different price per pound
 
     assert c1.can_combine(c2)
-    assert not c1.can_combine(c3)
+    assert not c1.can_combine(c3), "Candy cannot combine with different name"
+    assert not c1.can_combine(c4), "Candy cannot combine with different price per pound"
 
-    c1.combine(c2)
+    ret = c1.combine(c2)
+    assert ret is c1, "Candy.combine must return modified self"
     assert c1.candy_weight == 3.0
 
 
@@ -42,11 +52,14 @@ def test_cookie_combinable():
     co1 = Cookie("Choc Chip", 12, 5.0)
     co2 = Cookie("Choc Chip", 6, 5.0)
     co3 = Cookie("Oatmeal", 12, 5.0)
+    co4 = Cookie("Choc Chip", 12, 6.0)  # different price per dozen
 
     assert co1.can_combine(co2)
-    assert not co1.can_combine(co3)
+    assert not co1.can_combine(co3), "Cookie cannot combine with different name"
+    assert not co1.can_combine(co4), "Cookie cannot combine with different price per dozen"
 
-    co1.combine(co2)
+    ret = co1.combine(co2)
+    assert ret is co1, "Cookie.combine must return modified self"
     assert co1.cookie_quantity == 18
 
 

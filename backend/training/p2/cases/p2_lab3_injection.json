@@ -17,7 +17,7 @@
     {
       "key": "getters_setters",
       "label": "Getter and setter methods enforce validation guards against negative counts",
-      "message": "tests.py:42: in test_getters_setters\n    assert ch.get_video_count() == 20, \"set_video_count should ignore negative values\"\nE   AssertionError: set_video_count should ignore negative values\nE   assert -10 == 20\nE    +  where -10 = get_video_count()\nE    +    where get_video_count = <youtube_channel.YouTubeChannel object at 0x108dc42f0>.get_video_count",
+      "message": "tests.py:47: in test_getters_setters\n    assert ch.get_video_count() == 20, \"set_video_count should ignore negative values\"\nE   AssertionError: set_video_count should ignore negative values\nE   assert -10 == 20\nE    +  where -10 = get_video_count()\nE    +    where get_video_count = <youtube_channel.YouTubeChannel object at 0x000002270D0A2660>.get_video_count",
       "your_value": "-10",
       "expected_value": "20",
       "expected_input": null

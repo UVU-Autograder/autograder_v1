@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "add",
       "label": "Money __add__() overloads '+' operator to add dollars and cents",
-      "message": "tests.py:43: in test_add\n    m3 = m1 + m2\n         ^^^^^^^\nE   TypeError: unsupported operand type(s) for +: 'Money' and 'Money'",
+      "message": "tests.py:51: in test_add\n    m3 = m1 + m2\n         ^^^^^^^\nE   TypeError: unsupported operand type(s) for +: 'Money' and 'Money'",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

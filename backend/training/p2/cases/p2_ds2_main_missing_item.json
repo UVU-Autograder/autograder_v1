@@ -15,13 +15,14 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators"
   ],
   "failures": [
     {
       "key": "main_output",
       "label": "dessertshop.py main() constructs Order items and prints formatted receipt",
-      "message": "tests.py:103: in test_main_output\n    assert len(lines) >= 7, f\"Expected output to contain at least 7 lines, got {len(lines)}\"\nE   AssertionError: Expected output to contain at least 7 lines, got 6\nE   assert 6 >= 7\nE    +  where 6 = len(['Candy Corn', 'Gummy Bears', 'Chocolate Chip', 'Pistachio', 'Vanilla', 'Total number of items in order: 5'])",
+      "message": "tests.py:115: in test_main_output\n    assert len(lines) >= 7, f\"Expected output to contain at least 7 lines, got {len(lines)}\"\nE   AssertionError: Expected output to contain at least 7 lines, got 6\nE   assert 6 >= 7\nE    +  where 6 = len(['Candy Corn', 'Gummy Bears', 'Chocolate Chip', 'Pistachio', 'Vanilla', 'Total number of items in order: 5'])",
       "your_value": "6",
       "expected_value": "= 7",
       "expected_input": null

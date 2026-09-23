@@ -14,7 +14,8 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
@@ -28,7 +29,7 @@
     {
       "key": "str",
       "label": "Money __str__() formats currency output as '$[dollars].[cents:02d]'",
-      "message": "tests.py:28: in test_str\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
+      "message": "tests.py:36: in test_str\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -36,7 +37,7 @@
     {
       "key": "add",
       "label": "Money __add__() overloads '+' operator to add dollars and cents",
-      "message": "tests.py:41: in test_add\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
+      "message": "tests.py:49: in test_add\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -44,7 +45,7 @@
     {
       "key": "mul",
       "label": "Money __mul__() and __rmul__() overload '*' operator for scalar multiplication",
-      "message": "tests.py:56: in test_mul\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
+      "message": "tests.py:64: in test_mul\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -52,7 +53,7 @@
     {
       "key": "eq",
       "label": "Money __eq__() overloads '==' operator comparing normalized total cents",
-      "message": "tests.py:76: in test_eq\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
+      "message": "tests.py:84: in test_eq\n    m1 = Money(3, 50)\n         ^^^^^^^^^^^^\nmoney.py:9: in __init__\n    self.dollars = int(dollars)\n                       ^^^^^^^\nE   NameError: name 'dollars' is not defined",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

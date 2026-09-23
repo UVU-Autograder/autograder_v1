@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "normalize",
       "label": "Money normalize() carries overflow cents (>= 100) into dollars",
-      "message": "tests.py:14: in test_normalize\n    assert m.dollars == 2\nE   assert 1 == 2\nE    +  where 1 = <money.Money object at 0x108bb41a0>.dollars",
+      "message": "tests.py:14: in test_normalize\n    assert m.dollars == 2\nE   assert 1 == 2\nE    +  where 1 = <money.Money object at 0x0000014E1C872BA0>.dollars",
       "your_value": "1",
       "expected_value": "2",
       "expected_input": null
@@ -28,7 +29,7 @@
     {
       "key": "add",
       "label": "Money __add__() overloads '+' operator to add dollars and cents",
-      "message": "tests.py:46: in test_add\n    assert m3.dollars == 6\nE   assert 5 == 6\nE    +  where 5 = <money.Money object at 0x108af5f90>.dollars",
+      "message": "tests.py:54: in test_add\n    assert m3.dollars == 6\nE   assert 5 == 6\nE    +  where 5 = <money.Money object at 0x0000014E1C85EE90>.dollars",
       "your_value": "5",
       "expected_value": "6",
       "expected_input": null
@@ -36,7 +37,7 @@
     {
       "key": "mul",
       "label": "Money __mul__() and __rmul__() overload '*' operator for scalar multiplication",
-      "message": "tests.py:61: in test_mul\n    assert m4.dollars == 7\nE   assert 0 == 7\nE    +  where 0 = <money.Money object at 0x108af6990>.dollars",
+      "message": "tests.py:69: in test_mul\n    assert m4.dollars == 7\nE   assert 0 == 7\nE    +  where 0 = <money.Money object at 0x0000014E1C85F750>.dollars",
       "your_value": "0",
       "expected_value": "7",
       "expected_input": null
@@ -44,9 +45,9 @@
     {
       "key": "eq",
       "label": "Money __eq__() overloads '==' operator comparing normalized total cents",
-      "message": "tests.py:80: in test_eq\n    assert m1 == m2\nE   assert <money.Money object at 0x108bb4d70> == <money.Money object at 0x108af6d50>",
-      "your_value": "<money.Money object at 0x108bb4d70",
-      "expected_value": "== <money.Money object at 0x108af6d50>",
+      "message": "tests.py:88: in test_eq\n    assert m1 == m2\nE   assert <money.Money object at 0x0000014E1C873620> == <money.Money object at 0x0000014E1C85F9D0>",
+      "your_value": "<money.Money object at 0x0000014E1C873620",
+      "expected_value": "== <money.Money object at 0x0000014E1C85F9D0>",
       "expected_input": null
     }
   ],

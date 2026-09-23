@@ -1,5 +1,6 @@
 import pytest
 from python_autograder_helpers import import_student_modules
+from student_test_helpers import assert_student_pytest_passes, assert_test_function_count
 
 
 @pytest.mark.ag_ds8_regression
@@ -10,6 +11,11 @@ def test_ds8_regression() -> None:
     assert order.get_pay_type() == "CASH"
     order.set_pay_type("CARD")
     assert order.get_pay_type() == "CARD"
+    order.set_pay_type("PHONE")
+    assert order.get_pay_type() == "PHONE"
+
+    with pytest.raises(ValueError):
+        order.set_pay_type("INVALID")  # type: ignore
 
 
 @pytest.mark.ag_relational_ops
@@ -26,6 +32,12 @@ def test_relational_ops() -> None:
     assert c1 >= c3
     assert c1 == c3
     assert c1 != c2
+
+    # Verify __eq__ handles comparison against non-DessertItem objects gracefully
+    assert not (c1 == None)  # noqa: E711
+    assert not (c1 == "string")
+    assert c1 != None  # noqa: E711
+    assert c1 != 123
 
 
 @pytest.mark.ag_order_sort
@@ -48,13 +60,5 @@ def test_order_sort() -> None:
 
 @pytest.mark.ag_student_sort_tests
 def test_student_sort_tests() -> None:
-    (student_test_mod,) = import_student_modules("test_order")
-    test_funcs = [
-        name for name, obj in vars(student_test_mod).items()
-        if name.startswith("test_") and callable(obj)
-    ]
-    assert len(test_funcs) >= 5, f"test_order.py must contain at least 5 test functions (found {len(test_funcs)})"
-    has_sort_or_op_test = any(
-        "sort" in fn or "op" in fn or "lt" in fn or "gt" in fn or "eq" in fn for fn in test_funcs
-    )
-    assert has_sort_or_op_test, "test_order.py should include test functions for relational operators or sorting"
+    assert_test_function_count("test_order.py", minimum=5)
+    assert_student_pytest_passes("test_order.py", minimum=5, timeout_seconds=10)

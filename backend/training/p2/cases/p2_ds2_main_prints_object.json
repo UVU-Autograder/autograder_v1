@@ -15,13 +15,14 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators"
   ],
   "failures": [
     {
       "key": "main_output",
       "label": "dessertshop.py main() constructs Order items and prints formatted receipt",
-      "message": "tests.py:106: in test_main_output\n    assert any(name in line.lower() for line in lines), f\"Output is missing expected item: {name}\"\nE   AssertionError: Output is missing expected item: candy corn\nE   assert False\nE    +  where False = any(<generator object test_main_output.<locals>.<genexpr> at 0x102e56180>)",
+      "message": "tests.py:118: in test_main_output\n    assert any(name in line.lower() for line in lines), f\"Output is missing expected item: {name}\"\nE   AssertionError: Output is missing expected item: candy corn\nE   assert False\nE    +  where False = any(<generator object test_main_output.<locals>.<genexpr> at 0x00000209D53C2420>)",
       "your_value": "any(name",
       "expected_value": "line.lower() for line in lines), f\"Output is missing expected item: {name}",
       "expected_input": null

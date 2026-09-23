@@ -17,15 +17,22 @@
     {
       "key": "account_str",
       "label": "Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'",
-      "message": "tests.py:33: in test_account_str\n    assert \"Owner: Alice\" in output\nE   AssertionError: assert 'Owner: Alice' in 'Name: Alice, Balance: $100.00'",
-      "your_value": "Owner: Alice",
-      "expected_value": "output",
+      "message": "tests.py:33: in test_account_str\n    assert \"Owner: Alice, Balance: $100.00\" in output, (\nE   AssertionError: Expected 'Owner: Alice, Balance: $100.00', got 'Name: Alice, Balance: $100.00'\nE   assert 'Owner: Alice, Balance: $100.00' in 'Name: Alice, Balance: $100.00'",
+      "your_value": "Owner: Alice, Balance: $100.00",
+      "expected_value": "Name: Alice, Balance: $100.00",
+      "expected_input": null
+    },
+    {
+      "key": "demo_output",
+      "label": "demo.py executes test deposits, withdrawals, and prints account summary to stdout",
+      "message": "tests.py:54: in test_demo_output\n    assert \"Owner:\" in stdout and \"Balance:\" in stdout, (\nE   AssertionError: demo.py output missing expected Account print statements\nE   assert ('Owner:' in 'Name: Alice, Balance: $100.00\\nName: , Balance: $0.00\\n')",
+      "your_value": "('Owner:",
+      "expected_value": "Name: Alice, Balance: $100.00\\nName: , Balance: $0.00\\n')",
       "expected_input": null
     }
   ],
   "passing_labels": [
-    "Account class initializes owner, balance, and account_number attributes",
-    "demo.py executes test deposits, withdrawals, and prints account summary to stdout"
+    "Account class initializes owner, balance, and account_number attributes"
   ],
   "concept_violations": [],
   "student_code": "",

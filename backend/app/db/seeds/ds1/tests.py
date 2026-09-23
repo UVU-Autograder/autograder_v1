@@ -58,6 +58,8 @@ def test_cookie_class():
     # 1. Inheritance and type
     assert inspect.isclass(Cookie), "Cookie must be a class"
     assert issubclass(Cookie, DessertItem), "Cookie must inherit from DessertItem"
+    assert not issubclass(Cookie, Candy), "Cookie must not inherit from Candy"
+    assert DessertItem in Cookie.__bases__, "Cookie must directly inherit from DessertItem"
 
     # 2. Constructor defaults
     cookie = Cookie()

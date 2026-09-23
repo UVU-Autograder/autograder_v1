@@ -14,15 +14,16 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "eq",
       "label": "Money __eq__() overloads '==' operator comparing normalized total cents",
-      "message": "tests.py:81: in test_eq\n    assert m1 != m3\nE   assert <money.Money object at 0x1073cc1a0> != <money.Money object at 0x10732a850>",
-      "your_value": "<money.Money object at 0x1073cc1a0",
-      "expected_value": "!= <money.Money object at 0x10732a850>",
+      "message": "tests.py:89: in test_eq\n    assert m1 != m3\nE   assert <money.Money object at 0x0000015684EE2BA0> != <money.Money object at 0x0000015684ED2D50>",
+      "your_value": "<money.Money object at 0x0000015684EE2BA0",
+      "expected_value": "!= <money.Money object at 0x0000015684ED2D50>",
       "expected_input": null
     }
   ],

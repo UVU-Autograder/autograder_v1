@@ -22,6 +22,12 @@ def test_title_property() -> None:
     with pytest.raises(ValueError):
         b.title = ""
 
+    with pytest.raises((TypeError, ValueError)):
+        Book("", "J.R.R. Tolkien")
+
+    with pytest.raises(TypeError):
+        Book(123, "J.R.R. Tolkien")  # type: ignore
+
 
 @pytest.mark.ag_author_property
 def test_author_property() -> None:
@@ -40,6 +46,12 @@ def test_author_property() -> None:
 
     with pytest.raises(ValueError):
         b.author = ""
+
+    with pytest.raises((TypeError, ValueError)):
+        Book("Dune", "")
+
+    with pytest.raises(TypeError):
+        Book("Dune", ["Frank"])  # type: ignore
 
 
 @pytest.mark.ag_description_readonly

@@ -27,6 +27,14 @@ def test_ds4_regression():
     sundae = Sundae("Vanilla", 3, 0.69, "Hot Fudge", 1.29)
     assert sundae.calculate_cost() == pytest.approx(3.36)
 
+    order = Order()
+    order.add(candy)
+    order.add(cookie)
+    order.add(ic)
+    order.add(sundae)
+    assert candy.tax_percent == pytest.approx(7.25)
+    assert order.order_tax() == pytest.approx(0.52)
+
 
 @pytest.mark.ag_dessertshop_class
 def test_dessertshop_class(monkeypatch):
@@ -50,7 +58,8 @@ def test_dessertshop_class(monkeypatch):
     assert candy.candy_weight == 0.25
     assert candy.price_per_pound == 0.35
 
-    monkeypatch.setattr("builtins.input", sequential_input_mock(["Sour Worms", "-0.5", "0.25", "0.45"]))
+    # Test rejection of negative weight and 0 weight
+    monkeypatch.setattr("builtins.input", sequential_input_mock(["Sour Worms", "-0.5", "0", "0.25", "0.45"]))
     candy2 = shop.user_prompt_candy()
     assert candy2.name == "Sour Worms"
     assert candy2.candy_weight == 0.25

@@ -17,7 +17,7 @@
     {
       "key": "account_init",
       "label": "Account class initializes owner, balance, and account_number attributes",
-      "message": "tests.py:17: in test_account_init\n    assert getattr(default_acc, \"owner\", None) == \"\"\nE   AssertionError: assert None == ''\nE    +  where None = getattr(<account.Account object at 0x10b2002f0>, 'owner', None)",
+      "message": "tests.py:17: in test_account_init\n    assert getattr(default_acc, \"owner\", None) == \"\"\nE   AssertionError: assert None == ''\nE    +  where None = getattr(<account.Account object at 0x000001CC185C2660>, 'owner', None)",
       "your_value": "getattr(default_acc, \"owner\", None)",
       "expected_value": "",
       "expected_input": null
@@ -33,7 +33,7 @@
     {
       "key": "demo_output",
       "label": "demo.py executes test deposits, withdrawals, and prints account summary to stdout",
-      "message": "tests.py:45: in test_demo_output\n    demo_mod.main()\ndemo.py:11: in main\n    print(custom_account)\naccount.py:14: in __str__\n    return f\"Owner: {self.owner}, Balance: ${self.balance:.2f}\"\n                     ^^^^^^^^^^\nE   AttributeError: 'Account' object has no attribute 'owner'",
+      "message": "tests.py:51: in test_demo_output\n    demo_mod.main()\ndemo.py:11: in main\n    print(custom_account)\naccount.py:14: in __str__\n    return f\"Owner: {self.owner}, Balance: ${self.balance:.2f}\"\n                     ^^^^^^^^^^\nE   AttributeError: 'Account' object has no attribute 'owner'",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

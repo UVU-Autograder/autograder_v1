@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -28,7 +28,7 @@
     {
       "key": "candy_combinable",
       "label": "Candy implements Combinable protocol merging candy_weight for matching items",
-      "message": "tests.py:35: in test_candy_combinable\n    assert c1.candy_weight == 3.0\nE   assert 2.0 == 3.0\nE    +  where 2.0 = <dessert.Candy object at 0x10bb7e3c0>.candy_weight",
+      "message": "tests.py:45: in test_candy_combinable\n    assert c1.candy_weight == 3.0\nE   assert 2.0 == 3.0\nE    +  where 2.0 = <dessert.Candy object at 0x0000019DF46A9550>.candy_weight",
       "your_value": "2.0",
       "expected_value": "3.0",
       "expected_input": null
@@ -36,7 +36,7 @@
     {
       "key": "order_combine",
       "label": "Order.add() automatically combines like items when matching item is present",
-      "message": "tests.py:69: in test_order_combine\n    assert order.order[0].candy_weight == 3.0\nE   assert 2.0 == 3.0\nE    +  where 2.0 = <dessert.Candy object at 0x10bb7f380>.candy_weight",
+      "message": "tests.py:82: in test_order_combine\n    assert order.order[0].candy_weight == 3.0\nE   assert 2.0 == 3.0\nE    +  where 2.0 = <dessert.Candy object at 0x0000019DF46AACF0>.candy_weight",
       "your_value": "2.0",
       "expected_value": "3.0",
       "expected_input": null

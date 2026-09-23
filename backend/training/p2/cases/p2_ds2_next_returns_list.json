@@ -15,21 +15,22 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators"
   ],
   "failures": [
     {
       "key": "order_class",
       "label": "Order class defines order list, add() method, and len() support",
-      "message": "tests.py:87: in test_order_class\n    assert items == [item1, item2], \"Order iteration should return items in order\"\nE   AssertionError: Order iteration should return items in order\nE   assert [[<dessert.De...0x108b21e50>]] == [<dessert.Des... 0x108b21e50>]\nE     \nE     At index 0 diff: [<dessert.DessertItem object at 0x108b21d10>, <dessert.DessertItem object at 0x108b21e50>] != <dessert.DessertItem object at 0x108b21d10>\nE     Use -v to get more diff",
+      "message": "tests.py:95: in test_order_class\n    assert items == [item1, item2], \"Order iteration should return items in order\"\nE   AssertionError: Order iteration should return items in order\nE   assert [[<dessert.De...18B46C4EFD0>]] == [<dessert.Des...018B46C4EFD0>]\nE     \nE     At index 0 diff: [<dessert.DessertItem object at 0x0000018B46C4ED50>, <dessert.DessertItem object at 0x0000018B46C4EFD0>] != <dessert.DessertItem object at 0x0000018B46C4ED50>\nE     Use -v to get more diff",
       "your_value": "[[",
-      "expected_value": "dessert.De...0x108b21e50>]] == [<dessert.Des... 0x108b21e50>]",
+      "expected_value": "dessert.De...18B46C4EFD0>]] == [<dessert.Des...018B46C4EFD0>]",
       "expected_input": null
     },
     {
       "key": "main_output",
       "label": "dessertshop.py main() constructs Order items and prints formatted receipt",
-      "message": "tests.py:96: in test_main_output\n    runpy.run_path(\"dessertshop.py\", run_name=\"__main__\")\n<frozen runpy>:294: in run_path\n    ???\n<frozen runpy>:98: in _run_module_code\n    ???\n<frozen runpy>:88: in _run_code\n    ???\ndessertshop.py:20: in <module>\n    main()\ndessertshop.py:14: in main\n    print(item.name)\n          ^^^^^^^^^\nE   AttributeError: 'list' object has no attribute 'name'\n\nThe above exception was the direct cause of the following exception:\ntests.py:98: in test_main_output\n    raise AssertionError(f\"dessertshop.py execution failed: {exc}\") from exc\nE   AssertionError: dessertshop.py execution failed: 'list' object has no attribute 'name'",
+      "message": "tests.py:108: in test_main_output\n    runpy.run_path(\"dessertshop.py\", run_name=\"__main__\")\n<frozen runpy>:287: in run_path\n    ???\n<frozen runpy>:98: in _run_module_code\n    ???\n<frozen runpy>:88: in _run_code\n    ???\ndessertshop.py:20: in <module>\n    main()\ndessertshop.py:14: in main\n    print(item.name)\n          ^^^^^^^^^\nE   AttributeError: 'list' object has no attribute 'name'\n\nThe above exception was the direct cause of the following exception:\ntests.py:110: in test_main_output\n    raise AssertionError(f\"dessertshop.py execution failed: {exc}\") from exc\nE   AssertionError: dessertshop.py execution failed: 'list' object has no attribute 'name'",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

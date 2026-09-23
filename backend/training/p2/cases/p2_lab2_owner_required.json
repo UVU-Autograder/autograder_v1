@@ -25,7 +25,7 @@
     {
       "key": "demo_output",
       "label": "demo.py executes test deposits, withdrawals, and prints account summary to stdout",
-      "message": "tests.py:45: in test_demo_output\n    demo_mod.main()\ndemo.py:9: in main\n    default_account = Account()\n                      ^^^^^^^^^\nE   TypeError: Account.__init__() missing 1 required positional argument: 'owner'",
+      "message": "tests.py:51: in test_demo_output\n    demo_mod.main()\ndemo.py:9: in main\n    default_account = Account()\n                      ^^^^^^^^^\nE   TypeError: Account.__init__() missing 1 required positional argument: 'owner'",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

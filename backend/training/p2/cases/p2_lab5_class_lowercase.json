@@ -14,7 +14,8 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
@@ -28,7 +29,7 @@
     {
       "key": "str",
       "label": "Money __str__() formats currency output as '$[dollars].[cents:02d]'",
-      "message": "tests.py:26: in test_str\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
+      "message": "tests.py:34: in test_str\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -36,7 +37,7 @@
     {
       "key": "add",
       "label": "Money __add__() overloads '+' operator to add dollars and cents",
-      "message": "tests.py:39: in test_add\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
+      "message": "tests.py:47: in test_add\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -44,7 +45,7 @@
     {
       "key": "mul",
       "label": "Money __mul__() and __rmul__() overload '*' operator for scalar multiplication",
-      "message": "tests.py:54: in test_mul\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
+      "message": "tests.py:62: in test_mul\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -52,7 +53,7 @@
     {
       "key": "eq",
       "label": "Money __eq__() overloads '==' operator comparing normalized total cents",
-      "message": "tests.py:74: in test_eq\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
+      "message": "tests.py:82: in test_eq\n    Money = money_mod.Money\n            ^^^^^^^^^^^^^^^\nE   AttributeError: module 'money' has no attribute 'Money'. Did you mean: 'money'?",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

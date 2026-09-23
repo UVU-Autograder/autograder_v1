@@ -17,7 +17,7 @@
     {
       "key": "encapsulation",
       "label": "YouTubeChannel protects attributes using private (_ and __) naming encapsulation",
-      "message": "tests.py:17: in test_encapsulation\n    assert hasattr(ch, \"_YouTubeChannel__video_count\") or hasattr(ch, \"__video_count\"), \"YouTubeChannel must have __video_count private attribute\"\nE   AssertionError: YouTubeChannel must have __video_count private attribute\nE   assert (False or False)\nE    +  where False = hasattr(<youtube_channel.YouTubeChannel object at 0x108f942f0>, '_YouTubeChannel__video_count')\nE    +  and   False = hasattr(<youtube_channel.YouTubeChannel object at 0x108f942f0>, '__video_count')",
+      "message": "tests.py:17: in test_encapsulation\n    assert hasattr(ch, \"_YouTubeChannel__video_count\") or hasattr(ch, \"__video_count\"), \"YouTubeChannel must have __video_count private attribute\"\nE   AssertionError: YouTubeChannel must have __video_count private attribute\nE   assert (False or False)\nE    +  where False = hasattr(<youtube_channel.YouTubeChannel object at 0x00000185C5062660>, '_YouTubeChannel__video_count')\nE    +  and   False = hasattr(<youtube_channel.YouTubeChannel object at 0x00000185C5062660>, '__video_count')",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -25,7 +25,7 @@
     {
       "key": "type_hints",
       "label": "Explicit type hints added to parameters and return types on constructor and __str__()",
-      "message": "tests.py:57: in test_type_hints\n    assert sig_str.return_annotation != inspect.Signature.empty, \"__str__ missing return type hint\"\nE   AssertionError: __str__ missing return type hint\nE   assert <class 'inspect._empty'> != <class 'inspect._empty'>\nE    +  where <class 'inspect._empty'> = <Signature (self)>.return_annotation\nE    +  and   <class 'inspect._empty'> = <class 'inspect.Signature'>.empty\nE    +    where <class 'inspect.Signature'> = inspect.Signature",
+      "message": "tests.py:66: in test_type_hints\n    assert sig_str.return_annotation != inspect.Signature.empty, \"__str__ missing return type hint\"\nE   AssertionError: __str__ missing return type hint\nE   assert <class 'inspect._empty'> != <class 'inspect._empty'>\nE    +  where <class 'inspect._empty'> = <Signature (self)>.return_annotation\nE    +  and   <class 'inspect._empty'> = <class 'inspect.Signature'>.empty\nE    +    where <class 'inspect.Signature'> = inspect.Signature",
       "your_value": "<class ",
       "expected_value": "spect._empty'> != <class 'inspect._empty'>",
       "expected_input": null

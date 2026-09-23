@@ -1,5 +1,8 @@
+import typing
+
 import pytest
 from python_autograder_helpers import import_student_modules
+from student_test_helpers import assert_student_pytest_passes, assert_test_function_count
 
 
 @pytest.mark.ag_ds7_regression
@@ -24,8 +27,20 @@ def test_payment_protocol():
     (pay_mod,) = import_student_modules("payment")
     Payable = getattr(pay_mod, "Payable", None)
     assert Payable is not None, "Payable Protocol missing in payment.py"
+    assert typing.Protocol in getattr(Payable, "__mro__", ()) or getattr(Payable, "_is_protocol", False), (
+        "Payable must be a typing.Protocol"
+    )
     assert hasattr(Payable, "get_pay_type"), "Payable missing get_pay_type"
     assert hasattr(Payable, "set_pay_type"), "Payable missing set_pay_type"
+
+    PayType = getattr(pay_mod, "PayType", None)
+    assert PayType is not None, "PayType type missing in payment.py"
+    if hasattr(PayType, "__members__"):
+        assert all(k in PayType.__members__ for k in ("CASH", "CARD", "PHONE")), "PayType enum must include CASH, CARD, and PHONE"
+    elif hasattr(typing, "get_args"):
+        args = typing.get_args(PayType)
+        if args:
+            assert all(k in args for k in ("CASH", "CARD", "PHONE")), "PayType Literal must include 'CASH', 'CARD', and 'PHONE'"
 
 
 @pytest.mark.ag_order_payable
@@ -45,9 +60,5 @@ def test_order_payable():
 
 @pytest.mark.ag_student_order_tests
 def test_student_order_tests():
-    (student_test_mod,) = import_student_modules("test_order")
-    test_funcs = [
-        name for name, obj in vars(student_test_mod).items()
-        if name.startswith("test_") and callable(obj)
-    ]
-    assert len(test_funcs) >= 5, f"test_order.py must contain at least 5 test functions (found {len(test_funcs)})"
+    assert_test_function_count("test_order.py", minimum=5)
+    assert_student_pytest_passes("test_order.py", minimum=5, timeout_seconds=10)

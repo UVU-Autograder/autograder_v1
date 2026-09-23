@@ -14,13 +14,14 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
       "key": "add",
       "label": "Money __add__() overloads '+' operator to add dollars and cents",
-      "message": "tests.py:45: in test_add\n    assert isinstance(m3, Money)\nE   AssertionError: assert False\nE    +  where False = isinstance(None, <class 'money.Money'>)",
+      "message": "tests.py:53: in test_add\n    assert isinstance(m3, Money)\nE   AssertionError: assert False\nE    +  where False = isinstance(None, <class 'money.Money'>)",
       "your_value": "is",
       "expected_value": "stance(m3, Money)",
       "expected_input": null

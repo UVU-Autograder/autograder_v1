@@ -14,7 +14,8 @@
     "type-hints",
     "inheritance",
     "properties",
-    "operator-overloading"
+    "operator-overloading",
+    "exceptions"
   ],
   "failures": [
     {
@@ -36,7 +37,7 @@
     {
       "key": "cookie",
       "label": "Cookie inherits DessertItem and defines cookie_quantity & price_per_dozen",
-      "message": "tests.py:63: in test_cookie_class\n    cookie = Cookie()\n             ^^^^^^^^\ndessert.py:15: in __init__\n    super().__init__(name)\nE   TypeError: DessertItem.__init__() takes from 0 to 1 positional arguments but 2 were given",
+      "message": "tests.py:65: in test_cookie_class\n    cookie = Cookie()\n             ^^^^^^^^\ndessert.py:15: in __init__\n    super().__init__(name)\nE   TypeError: DessertItem.__init__() takes from 0 to 1 positional arguments but 2 were given",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -44,7 +45,7 @@
     {
       "key": "icecream",
       "label": "IceCream inherits DessertItem and defines scoop_count & price_per_scoop",
-      "message": "tests.py:88: in test_icecream_class\n    ic = IceCream()\n         ^^^^^^^^^^\ndessert.py:22: in __init__\n    super().__init__(name)\nE   TypeError: DessertItem.__init__() takes from 0 to 1 positional arguments but 2 were given",
+      "message": "tests.py:90: in test_icecream_class\n    ic = IceCream()\n         ^^^^^^^^^^\ndessert.py:22: in __init__\n    super().__init__(name)\nE   TypeError: DessertItem.__init__() takes from 0 to 1 positional arguments but 2 were given",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
@@ -52,7 +53,7 @@
     {
       "key": "sundae",
       "label": "Sundae inherits IceCream and defines topping_name & topping_price",
-      "message": "tests.py:114: in test_sundae_class\n    sundae = Sundae()\n             ^^^^^^^^\ndessert.py:29: in __init__\n    super().__init__(name, scoop_count, price_per_scoop)\ndessert.py:22: in __init__\n    super().__init__(name)\nE   TypeError: DessertItem.__init__() takes from 0 to 1 positional arguments but 2 were given",
+      "message": "tests.py:116: in test_sundae_class\n    sundae = Sundae()\n             ^^^^^^^^\ndessert.py:29: in __init__\n    super().__init__(name, scoop_count, price_per_scoop)\ndessert.py:22: in __init__\n    super().__init__(name)\nE   TypeError: DessertItem.__init__() takes from 0 to 1 positional arguments but 2 were given",
       "your_value": null,
       "expected_value": null,
       "expected_input": null

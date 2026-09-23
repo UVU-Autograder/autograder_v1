@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -28,7 +28,7 @@
     {
       "key": "candy_combinable",
       "label": "Candy implements Combinable protocol merging candy_weight for matching items",
-      "message": "tests.py:31: in test_candy_combinable\n    assert c1.can_combine(c2)\nE   assert False\nE    +  where False = can_combine(<dessert.Candy object at 0x109042fd0>)\nE    +    where can_combine = <dessert.Candy object at 0x1090923c0>.can_combine",
+      "message": "tests.py:39: in test_candy_combinable\n    assert c1.can_combine(c2)\nE   assert False\nE    +  where False = can_combine(<dessert.Candy object at 0x00000270503D7ED0>)\nE    +    where can_combine = <dessert.Candy object at 0x00000270504792B0>.can_combine",
       "your_value": "c1.can_comb",
       "expected_value": "e(c2)",
       "expected_input": null
@@ -36,7 +36,7 @@
     {
       "key": "order_combine",
       "label": "Order.add() automatically combines like items when matching item is present",
-      "message": "tests.py:68: in test_order_combine\n    assert len(order) == 2\nE   assert 3 == 2\nE    +  where 3 = len(<dessert.Order object at 0x109093230>)",
+      "message": "tests.py:81: in test_order_combine\n    assert len(order) == 2\nE   assert 3 == 2\nE    +  where 3 = len(<dessert.Order object at 0x000002705047A660>)",
       "your_value": "3",
       "expected_value": "2",
       "expected_input": null

@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -26,19 +26,40 @@
   ],
   "failures": [
     {
+      "key": "candy_combinable",
+      "label": "Candy implements Combinable protocol merging candy_weight for matching items",
+      "message": "tests.py:32: in test_candy_combinable\n    (des_mod,) = import_student_modules(\"dessert\")\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:1026: in exec_module\n    ???\n<frozen importlib._bootstrap>:488: in _call_with_frames_removed\n    ???\ndessert.py:56: in <module>\n    class Candy(DessertItem):\ndessert.py:67: in Candy\n    def can_combine(self, other: Combinable) -> bool:\n                                 ^^^^^^^^^^\nE   NameError: name 'Combinable' is not defined",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    },
+    {
+      "key": "cookie_combinable",
+      "label": "Cookie implements Combinable protocol merging cookie_quantity for matching items",
+      "message": "tests.py:50: in test_cookie_combinable\n    (des_mod,) = import_student_modules(\"dessert\")\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:1026: in exec_module\n    ???\n<frozen importlib._bootstrap>:488: in _call_with_frames_removed\n    ???\ndessert.py:56: in <module>\n    class Candy(DessertItem):\ndessert.py:67: in Candy\n    def can_combine(self, other: Combinable) -> bool:\n                                 ^^^^^^^^^^\nE   NameError: name 'Combinable' is not defined",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    },
+    {
       "key": "order_combine",
       "label": "Order.add() automatically combines like items when matching item is present",
-      "message": "tests.py:64: in test_order_combine\n    order.add(c1)\ndessert.py:164: in add\n    if isinstance(item, Combinable):\n                        ^^^^^^^^^^\nE   NameError: name 'Combinable' is not defined",
+      "message": "tests.py:68: in test_order_combine\n    (des_mod,) = import_student_modules(\"dessert\")\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:1026: in exec_module\n    ???\n<frozen importlib._bootstrap>:488: in _call_with_frames_removed\n    ???\ndessert.py:56: in <module>\n    class Candy(DessertItem):\ndessert.py:67: in Candy\n    def can_combine(self, other: Combinable) -> bool:\n                                 ^^^^^^^^^^\nE   NameError: name 'Combinable' is not defined",
+      "your_value": null,
+      "expected_value": null,
+      "expected_input": null
+    },
+    {
+      "key": "ds9_regression",
+      "label": "DS9 Order.sort() and relational comparison operators intact",
+      "message": "tests.py:7: in test_ds9_regression\n    (des_mod,) = import_student_modules(\"dessert\")\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\npython_autograder_helpers.py:29: in import_student_modules\n    mod = importlib.import_module(name)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n<frozen importlib._bootstrap_external>:1026: in exec_module\n    ???\n<frozen importlib._bootstrap>:488: in _call_with_frames_removed\n    ???\ndessert.py:56: in <module>\n    class Candy(DessertItem):\ndessert.py:67: in Candy\n    def can_combine(self, other: Combinable) -> bool:\n                                 ^^^^^^^^^^\nE   NameError: name 'Combinable' is not defined",
       "your_value": null,
       "expected_value": null,
       "expected_input": null
     }
   ],
   "passing_labels": [
-    "Combinable protocol defined in combine.py with can_combine() and combine() methods",
-    "Candy implements Combinable protocol merging candy_weight for matching items",
-    "Cookie implements Combinable protocol merging cookie_quantity for matching items",
-    "DS9 Order.sort() and relational comparison operators intact"
+    "Combinable protocol defined in combine.py with can_combine() and combine() methods"
   ],
   "concept_violations": [],
   "student_code": "",

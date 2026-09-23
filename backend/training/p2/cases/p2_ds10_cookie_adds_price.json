@@ -15,10 +15,10 @@
     "inheritance",
     "properties",
     "operator-overloading",
+    "exceptions",
     "generators",
     "testing",
     "abstract-classes",
-    "exceptions",
     "protocols",
     "pygame",
     "dataclasses",
@@ -28,7 +28,7 @@
     {
       "key": "cookie_combinable",
       "label": "Cookie implements Combinable protocol merging cookie_quantity for matching items",
-      "message": "tests.py:50: in test_cookie_combinable\n    assert co1.cookie_quantity == 18\nE   assert 12 == 18\nE    +  where 12 = <dessert.Cookie object at 0x107ccaba0>.cookie_quantity",
+      "message": "tests.py:63: in test_cookie_combinable\n    assert co1.cookie_quantity == 18\nE   assert 12 == 18\nE    +  where 12 = <dessert.Cookie object at 0x0000016000EF97F0>.cookie_quantity",
       "your_value": "12",
       "expected_value": "18",
       "expected_input": null
