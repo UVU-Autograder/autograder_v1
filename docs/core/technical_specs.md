@@ -23,7 +23,7 @@
 
 ## 2. Core Features
 
-- Staff authentication: current mock JWT login accepts `@uvu.edu` addresses without verifying ownership. Institutional Microsoft authentication with explicit staff grants is active pilot-readiness work, not yet implemented.
+- Staff authentication: institutional Microsoft Entra ID authentication with pre-provisioned staff access gating and 60-minute JWT session tokens; local developer mock login fallback for development mode when `AUTH_PROVIDER=mock`.
 - Student sandbox access through globally visible sandbox-enabled assignments without student-specific authentication.
 - Progressive `Concepts Covered` enforcement using AST validation (LLM prompt context when sandbox Local LLM is enabled).
 - Retention-aware grading: sandbox wipe after results; official identifiable review/export artifacts ≤24h or until staff cleanup; Judge0/Kata artifacts deleted immediately after retrieval.

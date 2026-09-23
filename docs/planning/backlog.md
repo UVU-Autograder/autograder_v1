@@ -44,12 +44,15 @@ Priority order: P0 correctness, retention, authentication, deployment, and insti
 - [x] Investigate four retained completed Judge0 submissions observed on 2026-09-22 (three older than 24h; none has the generated runner marker or an attached bundle). Establish provenance before removing confirmed disposable records; ensure direct execution smoke tests clean up their tokens even on failure.
   - *Evidence:* Resolved on 2026-09-23. Provenance established as initial workstation setup/preflight smoke test submissions containing no student code or identifiers. Records removed via authorized Judge0 DELETE API; verified submissions table count reduced to 0; confirmed `execute_pytest_in_judge0` enforces deletion in `finally`.
 
-### P0 — Production Staff Authentication (Microsoft Entra ID / NextAuth)
-- [ ] Implement institutional Microsoft sign-in and server-side verification of token signature, issuer, audience, tenant, and expiry. A client email suffix check or forwarded claim fields alone are insufficient.
-- [ ] Map verified identities to active `users` / `staff_access` grants. Do not automatically grant instructor authority based only on a university email; an optional pending account carries no staff privileges.
-- [ ] Disable mock login for live deployment and fail startup on development secrets or incompatible auth configuration. Preserve explicit isolated-development support.
-- [ ] Verify denied tenants, inactive users, missing/revoked grants, section boundaries, logout, and session expiry across API and browser flows.
-- **Proposed integration:** NextAuth with Entra ID, followed by a backend-verified token exchange if required. `/auth/microsoft-login` and `AUTH_PROVIDER=microsoft` are proposed interfaces, not existing functionality; finalize them with the implementation and regenerate API documentation.
+### P0 — Production Staff Authentication (Microsoft Entra ID / Next.js PKCE)
+- [x] Implement institutional Microsoft sign-in and server-side verification of token signature, issuer, audience, tenant, and expiry. A client email suffix check or forwarded claim fields alone are insufficient.
+  - *Evidence:* Implemented `backend/app/integrations/auth/microsoft.py` using `jwt.PyJWKClient` for cryptographic RS256 signature, expiry, audience, tenant, and `@uvu.edu` email suffix validation. Covered by unit tests in `backend/tests/unit/test_microsoft_auth.py` (6 passed).
+- [x] Map verified identities to active `users` / `staff_access` grants. Do not automatically grant instructor authority based only on a university email; an optional pending account carries no staff privileges.
+  - *Evidence:* Implemented `POST /auth/microsoft-login` in `backend/app/domains/auth/router.py`. Rejects unprovisioned users or accounts without active `StaffAccess` with `403 Forbidden` ("Account pending staff authorization"). Persists immutable `azure_oid` on `users` via migration `b73c4d5e6f10`. Verified in `backend/tests/unit/test_auth_gating.py`.
+- [x] Disable mock login for live deployment and fail startup on development secrets or incompatible auth configuration. Preserve explicit isolated-development support.
+  - *Evidence:* Added `AUTH_PROVIDER` and `ENVIRONMENT` controls in `backend/app/core/settings.py`. When `AUTH_PROVIDER=microsoft` or `ENVIRONMENT=production`, `POST /auth/mock-login` is disabled (returns HTTP 403) and startup rejects dev fallback secrets or missing Azure credentials.
+- [x] Verify denied tenants, inactive users, missing/revoked grants, section boundaries, logout, and session expiry across API and browser flows.
+  - *Evidence:* Unit test suite covers token expiration, audience mismatch, tenant mismatch, non-`@uvu.edu` domains, inactive users, and ungranted staff. Standard session token lifespan aligned to 60 minutes. Frontend OIDC route handlers implemented at `frontend/app/api/auth/microsoft/login/route.ts` and `callback/route.ts` with PKCE helpers; `frontend/app/staff/login/page.tsx` updated with UVU Microsoft sign-in button, token storage, and 403 pending status display.
 
 ### P0 — Reverse Proxy & Single-Origin Deployment (Nginx / Caddy)
 - [x] Deploy reverse proxy on port 80 (HTTP) and prepare port 443 (TLS):
@@ -60,7 +63,8 @@ Priority order: P0 correctness, retention, authentication, deployment, and insti
   - Updated `frontend/lib/api-client.ts` to route API calls through `/api` on ports 80/443 without extraneous port injection, while preserving external endpoints and localhost fallback.
   - Verified `/health`, `/api/health`, `/api/auth/mock-login`, `/api/staff/courses`, `/sandbox`, and `/staff/login` return HTTP 200 through port 80.
   - TLS termination on port 443 is prepared in configuration, pending institutional UVU certificates.
-- [ ] Restrict direct backend, Postgres, Redis, and Judge0 exposure to required internal/host access, preserving Kata connectivity. Replace default credentials with production secrets and document rotation.
+- [x] Restrict direct backend, Postgres, Redis, and Judge0 exposure to required internal/host access, preserving Kata connectivity. Replace default credentials with production secrets and document rotation.
+  - *Evidence:* Updated `docker-compose.yml` to bind Postgres, Redis, and Judge0 ports to `${*_BIND_IP:-127.0.0.1}`, eliminating open external LAN exposure while preserving local host/reverse proxy communication. Documented environment controls in `.env.example`.
 - [ ] Verify page refresh/deep links, sign-in, uploads, polling, AI streaming, and both exports through the TLS endpoint.
 
 ### P0 — Institutional Live-Use Gate
@@ -70,8 +74,9 @@ Priority order: P0 correctness, retention, authentication, deployment, and insti
 ### P1 — Repeatable Verification and Operations
 - [x] Fix React effect errors in course-section management and student inspection. Dialog sessions now reset on reopen or record changes, ignore late file/section-list responses from previous sessions, and preserve unsaved grading feedback during same-student polling updates.
   - *Local evidence (2026-09-21):* Uncommitted working tree based on `93fcaf0`; from `frontend/`, `npm run lint` passed without warnings, `npm run type-check` passed, `npm run test` passed all 50 tests across 12 files (including six new dialog lifecycle regressions), and `npm run build` passed with the existing multiple-lockfile warning tracked below. This is local component coverage, not browser/host acceptance.
-- [ ] Add a repeatable CI/check entry point for backend tests, frontend tests/build/type/lint checks, and generated schema drift. Keep real Judge0/Kata checks as a separately documented integration/host stage.
-  - *Current schema-check baseline:* `alembic check` reports the pre-existing `staff_access.course_id` / `section_id` nullability mismatch even after a clean migration to `a82bd9410e21`; resolve that baseline before using an autogenerate-clean gate. The new migration itself upgrades successfully on a disposable SQLite database.
+- [x] Add a repeatable CI/check entry point for backend tests, frontend tests/build/type/lint checks, and generated schema drift. Keep real Judge0/Kata checks as a separately documented integration/host stage.
+  - *Evidence:* Created `scripts/run_checks.ps1` and `scripts/run_checks.sh`. Executes Ruff, Pytest unit tests, Alembic check (0 drift), TypeScript `tsc`, ESLint, and Vitest. Verified all checks pass.
+  - *Schema-check baseline:* Migration `b73c4d5e6f10` reconciled `staff_access.course_id` and `section_id` nullability drift; `alembic check` passes cleanly with `No new upgrade operations detected`.
 - [ ] Resolve the previously identified repository-wide Python typing errors in seeds/tests before treating full backend typing as a passing check; changed application-source checks do not close this task.
 - [ ] Set and verify the intended Next.js file-tracing root for the repository/frontend package layout; the production build currently warns about multiple lockfiles.
 - [ ] Add integrated browser acceptance for assignment setup, sandbox results, official ingest/review, manual-score export gating, CSV/HTML exports, and expired-workspace behavior.

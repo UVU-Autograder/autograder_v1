@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autograder_dev_password}
       JUDGE0_POSTGRES_PASSWORD: ${JUDGE0_POSTGRES_PASSWORD:-judge0_dev_password}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_BIND_IP:-127.0.0.1}:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init_databases.sh:/docker-entrypoint-initdb.d/01_init_databases.sh:ro
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_BIND_IP:-127.0.0.1}:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -48,7 +48,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "2358:2358"
+      - "${JUDGE0_BIND_IP:-127.0.0.1}:2358:2358"
     environment:
       REDIS_URL: redis://redis:6379/1
       REDIS_HOST: redis
@@ -186,10 +186,15 @@ services:
       ARTIFACT_STORAGE_DIR: ${ARTIFACT_STORAGE_DIR:-/data/artifacts}
       RUN_ALEMBIC_MIGRATIONS: ${RUN_ALEMBIC_MIGRATIONS:-true}
       SEED_DATABASE: ${SEED_DATABASE:-true}
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-mock}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
+      AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
+      AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
       ENABLE_MOCK_LOGIN: ${ENABLE_MOCK_LOGIN:-true}
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
       LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}
@@ -230,10 +235,12 @@ services:
       ARTIFACT_STORAGE_DIR: ${ARTIFACT_STORAGE_DIR:-/data/artifacts}
       RUN_ALEMBIC_MIGRATIONS: "false"
       SEED_DATABASE: "false"
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-mock}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       ENABLE_MOCK_LOGIN: ${ENABLE_MOCK_LOGIN:-true}
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-5}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
       LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}

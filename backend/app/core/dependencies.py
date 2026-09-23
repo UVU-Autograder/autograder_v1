@@ -47,10 +47,18 @@ def get_current_user(
     )
 
     if user is None:
-        user = User(email=email, display_name=name, is_active=True)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        from app.core.settings import get_settings
+        settings = get_settings()
+        if settings.mock_login_enabled:
+            user = User(email=email, display_name=name, is_active=True)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account not found or pending authorization.",
+            )
 
     if not user.is_active:
         raise HTTPException(

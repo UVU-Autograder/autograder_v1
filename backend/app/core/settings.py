@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
     database_url: str = Field(
         default="sqlite+pysqlite:///:memory:",
@@ -47,7 +47,11 @@ class Settings(BaseSettings):
     )
 
     jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
-    jwt_expiration_minutes: int = Field(default=5, ge=1, validation_alias="JWT_EXPIRATION_MINUTES")
+    jwt_expiration_minutes: int = Field(default=60, ge=1, validation_alias="JWT_EXPIRATION_MINUTES")
+    environment: str = Field(default="development", validation_alias="ENVIRONMENT")
+    auth_provider: str = Field(default="mock", validation_alias="AUTH_PROVIDER")
+    azure_ad_tenant_id: str | None = Field(default=None, validation_alias="AZURE_AD_TENANT_ID")
+    azure_ad_client_id: str | None = Field(default=None, validation_alias="AZURE_AD_CLIENT_ID")
     enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
     cors_allowed_origins: str = Field(
@@ -83,7 +87,17 @@ class Settings(BaseSettings):
 
     @property
     def mock_login_enabled(self) -> bool:
+        if self.environment == "production" or self.auth_provider == "microsoft":
+            return False
         return self.enable_mock_login or self.is_sqlite
+
+    def validate_production_security(self) -> None:
+        """Validate production security invariants at startup."""
+        if self.environment == "production" or self.auth_provider == "microsoft":
+            if self.jwt_secret == "dev_fallback_secret_longer_than_32_characters_for_security_compliance":
+                raise ValueError("Production mode requires an explicit, non-default JWT_SECRET.")
+            if self.auth_provider == "microsoft" and not self.azure_ad_client_id:
+                raise ValueError("AUTH_PROVIDER=microsoft requires AZURE_AD_CLIENT_ID to be set.")
 
     @property
     def preinstalled_dependency_names(self) -> set[str]:
