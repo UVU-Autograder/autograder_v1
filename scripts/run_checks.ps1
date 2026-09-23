@@ -14,7 +14,7 @@ $Python = if (Test-Path "$RepoRoot\backend\venv\Scripts\python.exe") {
 }
 
 # 2. Backend Linting (Ruff)
-Write-Host "--> [1/6] Backend Linting (ruff)..." -ForegroundColor Yellow
+Write-Host "--> [1/7] Backend Linting (ruff)..." -ForegroundColor Yellow
 Push-Location "$RepoRoot\backend"
 try {
     & $Python -m ruff check app tests
@@ -24,8 +24,19 @@ try {
     Pop-Location
 }
 
-# 3. Backend Unit Tests
-Write-Host "--> [2/6] Backend Unit Tests (pytest)..." -ForegroundColor Yellow
+# 3. Backend Type Check (mypy)
+Write-Host "--> [2/7] Backend Type Checking (mypy)..." -ForegroundColor Yellow
+Push-Location "$RepoRoot"
+try {
+    & $Python -m mypy backend/app
+    if ($LASTEXITCODE -ne 0) { throw "Mypy static type checking failed." }
+    Write-Host "  Mypy check passed.`n" -ForegroundColor Green
+} finally {
+    Pop-Location
+}
+
+# 4. Backend Unit Tests
+Write-Host "--> [3/7] Backend Unit Tests (pytest)..." -ForegroundColor Yellow
 Push-Location "$RepoRoot\backend"
 try {
     & $Python -m pytest tests/unit -q
@@ -35,8 +46,8 @@ try {
     Pop-Location
 }
 
-# 4. Database Migration Schema Drift Check
-Write-Host "--> [3/6] Database Schema Drift Check (alembic check)..." -ForegroundColor Yellow
+# 5. Database Migration Schema Drift Check
+Write-Host "--> [4/7] Database Schema Drift Check (alembic check)..." -ForegroundColor Yellow
 Push-Location "$RepoRoot\backend"
 $TempDb = "$RepoRoot\backend\check_drift_tmp.db"
 try {
@@ -52,8 +63,8 @@ try {
     Pop-Location
 }
 
-# 5. Frontend Type Check
-Write-Host "--> [4/6] Frontend Type Check (tsc)..." -ForegroundColor Yellow
+# 6. Frontend Type Check
+Write-Host "--> [5/7] Frontend Type Check (tsc)..." -ForegroundColor Yellow
 Push-Location "$RepoRoot\frontend"
 try {
     npm run type-check
@@ -63,8 +74,8 @@ try {
     Pop-Location
 }
 
-# 6. Frontend Linting (ESLint)
-Write-Host "--> [5/6] Frontend Linting (eslint)..." -ForegroundColor Yellow
+# 7. Frontend Linting (ESLint)
+Write-Host "--> [6/7] Frontend Linting (eslint)..." -ForegroundColor Yellow
 Push-Location "$RepoRoot\frontend"
 try {
     npm run lint
@@ -74,8 +85,8 @@ try {
     Pop-Location
 }
 
-# 7. Frontend Tests (Vitest)
-Write-Host "--> [6/6] Frontend Unit Tests (vitest)..." -ForegroundColor Yellow
+# 8. Frontend Tests (Vitest)
+Write-Host "--> [7/7] Frontend Unit Tests (vitest)..." -ForegroundColor Yellow
 Push-Location "$RepoRoot\frontend"
 try {
     npm run test

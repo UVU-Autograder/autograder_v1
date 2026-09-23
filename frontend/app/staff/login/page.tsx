@@ -55,7 +55,7 @@ export default function StaffLogin() {
           // Invalidate handoff cookie immediately
           document.cookie = "auth_handoff=; Path=/; Max-Age=0; SameSite=Lax";
           window.dispatchEvent(new Event("roles-updated"));
-          router.replace("/staff/courses");
+          window.location.href = "/staff/courses";
           return;
         }
       } catch (e) {

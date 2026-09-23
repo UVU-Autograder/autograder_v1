@@ -35,6 +35,29 @@ A checklist item or pull request is complete when:
 - [ ] **On-Prem Host Evidence:** Code changes affecting execution or system capacity include host evidence (or documented spot-check logs) prior to marking complete.
 - [ ] **Documentation Parity:** Updated relevant specifications in `docs/` and `.agents/memory/context.md` if interfaces, setup, or behaviors changed.
 
+### 1.1 Standard Verification Suites & Tooling
+
+Every pull request or release milestone must execute and pass the standardized local verification commands:
+
+- **Unified Quality Gate (`npm run check`):**
+  Cross-platform entry point via `scripts/run_checks.ps1` (PowerShell) and `scripts/run_checks.sh` (POSIX). Executes 7 sequential checks:
+  1. `Backend Linting`: `ruff check app tests` (zero lint warnings/errors).
+  2. `Backend Type Checking`: `mypy backend/app` (strict static typing across all 83 backend domain files).
+  3. `Backend Unit Tests`: `pytest tests/unit -q` (all unit test assertions passing).
+  4. `Database Schema Drift`: `alembic check` (verifies 0 unmigrated schema drift against models).
+  5. `Frontend Type Checking`: `tsc --noEmit` (strict TypeScript validation).
+  6. `Frontend Linting`: `eslint` (zero lint violations).
+  7. `Frontend Unit Tests`: `vitest run` (all React component/dialog lifecycle tests passing).
+
+- **Browser Acceptance Suite (`npm run test:e2e`):**
+  Playwright E2E browser acceptance suite configured in `frontend/playwright.config.ts`. Automatically manages dual `webServer` lifecycles (FastAPI on port 8000, Next.js on port 3000):
+  - `frontend/e2e/staff-auth.spec.ts`: Unauthenticated route guards, session timeout displays, institutional email domain restrictions, local mock login, and Microsoft Entra ID handoff cookie processing.
+  - `frontend/e2e/sandbox.spec.ts`: Public catalog discovery, assignment list metadata, interactive workspace loading, and live test/score projection.
+  - `frontend/e2e/official-review.spec.ts`: Official submission cohort review, "Needs Grading" rubric filtering, interactive student inspection dialog with manual grading saves, and grades CSV / feedback ZIP export button access.
+
+- **Metadata Backup Automation:**
+  - `scripts/backup_metadata.ps1` / `scripts/backup_metadata.sh`: Dumps persistent configuration, course structure, and assignment artifacts while strictly excluding ephemeral student runs, submissions, and container workspaces.
+
 ---
 
 ## 2. Risk-Based Testing Matrix

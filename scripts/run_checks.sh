@@ -21,7 +21,7 @@ else
 fi
 
 # 2. Backend Linting (Ruff)
-echo "--> [1/6] Backend Linting (ruff)..."
+echo "--> [1/7] Backend Linting (ruff)..."
 (
     cd "${REPO_ROOT}/backend"
     "${PYTHON}" -m ruff check app tests
@@ -29,8 +29,17 @@ echo "--> [1/6] Backend Linting (ruff)..."
 echo "  Ruff check passed."
 echo ""
 
-# 3. Backend Unit Tests
-echo "--> [2/6] Backend Unit Tests (pytest)..."
+# 3. Backend Type Check (mypy)
+echo "--> [2/7] Backend Type Checking (mypy)..."
+(
+    cd "${REPO_ROOT}"
+    "${PYTHON}" -m mypy backend/app
+)
+echo "  Mypy check passed."
+echo ""
+
+# 4. Backend Unit Tests
+echo "--> [3/7] Backend Unit Tests (pytest)..."
 (
     cd "${REPO_ROOT}/backend"
     "${PYTHON}" -m pytest tests/unit -q
@@ -38,8 +47,8 @@ echo "--> [2/6] Backend Unit Tests (pytest)..."
 echo "  Backend unit tests passed."
 echo ""
 
-# 4. Database Schema Drift Check
-echo "--> [3/6] Database Schema Drift Check (alembic check)..."
+# 5. Database Schema Drift Check
+echo "--> [4/7] Database Schema Drift Check (alembic check)..."
 (
     cd "${REPO_ROOT}/backend"
     TEMP_DB="${REPO_ROOT}/backend/check_drift_tmp.db"
@@ -51,8 +60,8 @@ echo "--> [3/6] Database Schema Drift Check (alembic check)..."
 echo "  Schema drift check passed (0 drift)."
 echo ""
 
-# 5. Frontend Type Check
-echo "--> [4/6] Frontend Type Check (tsc)..."
+# 6. Frontend Type Check
+echo "--> [5/7] Frontend Type Check (tsc)..."
 (
     cd "${REPO_ROOT}/frontend"
     npm run type-check
@@ -60,8 +69,8 @@ echo "--> [4/6] Frontend Type Check (tsc)..."
 echo "  TypeScript check passed."
 echo ""
 
-# 6. Frontend Linting (ESLint)
-echo "--> [5/6] Frontend Linting (eslint)..."
+# 7. Frontend Linting (ESLint)
+echo "--> [6/7] Frontend Linting (eslint)..."
 (
     cd "${REPO_ROOT}/frontend"
     npm run lint
@@ -69,8 +78,8 @@ echo "--> [5/6] Frontend Linting (eslint)..."
 echo "  ESLint check passed."
 echo ""
 
-# 7. Frontend Tests (Vitest)
-echo "--> [6/6] Frontend Unit Tests (vitest)..."
+# 8. Frontend Tests (Vitest)
+echo "--> [7/7] Frontend Unit Tests (vitest)..."
 (
     cd "${REPO_ROOT}/frontend"
     npm run test

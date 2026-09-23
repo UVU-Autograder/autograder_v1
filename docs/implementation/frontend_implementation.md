@@ -34,7 +34,7 @@ Frontend mockup preview: https://autograder-frontend-mockup.vercel.app/
   - official-run monitoring
   - admin access management
 - Section context should appear only where it is operationally needed, such as official-run authority, run metadata, and access management.
-- Staff sessions use mock JWT login today (`@uvu.edu`). NextAuth + Microsoft OAuth is deferred. Client-side 5-minute inactivity logout, backend JWT lifespan (default 5 minutes), and sliding refresh via `x-refresh-token` are implemented.
+- Staff authentication uses institutional Microsoft Entra ID via Next.js Route Handlers (`/api/auth/microsoft/login` and `/api/auth/microsoft/callback`) with PKCE and a 60-minute JWT session token lifespan. Inactivity or token expiration redirects to `/staff/login?reason=timeout`. Pre-provisioned staff authorization is enforced: unauthorized `@uvu.edu` accounts receive a pending-authorization screen. Isolated development environments support local mock login fallback when `AUTH_PROVIDER=mock`.
 
 ## UI-Surface Responsibilities
 

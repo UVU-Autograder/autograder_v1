@@ -2,6 +2,7 @@ import json
 import logging
 import mimetypes
 from pathlib import Path
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +180,12 @@ def update_staff_setup(
     return build_staff_setup(assignment)
 
 
+def _coerce_scoring_item_type(item_type: str, label: str) -> Literal["manual", "pytest"]:
+    if item_type not in ("manual", "pytest"):
+        raise ValueError(f"Unknown item_type '{item_type}' for scoring item '{label}'")
+    return "manual" if item_type == "manual" else "pytest"
+
+
 def build_scoring_items(scoring_items: list[ScoringItemProjection]) -> list[ScoringItem]:
     return [
         ScoringItem(
@@ -186,7 +193,7 @@ def build_scoring_items(scoring_items: list[ScoringItemProjection]) -> list[Scor
             label=item.label,
             points=item.points,
             extra_credit=item.extra_credit,
-            item_type=item.item_type,
+            item_type=_coerce_scoring_item_type(item.item_type, item.label),
             pytest_marker=item.pytest_marker,
             rubric_group_key=item.rubric_group_key,
         )
@@ -195,6 +202,8 @@ def build_scoring_items(scoring_items: list[ScoringItemProjection]) -> list[Scor
 
 
 def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
+    if assignment.config is None:
+        raise ValueError(f"Assignment {assignment.slug} is missing configuration")
     config = validate_config_json(assignment.config.config_json)
     return StaffAssignmentSetup(
         course_id=assignment.course.code,

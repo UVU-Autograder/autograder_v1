@@ -132,7 +132,7 @@ def failures_from_test_results(
             passing.append(label)
             continue
         key = result.get("key") or str(label).strip().lower().replace(" ", "_")
-        failing_sub = next(
+        failing_sub: dict[str, Any] = next(
             (sub for sub in result.get("test_results", []) if sub.get("outcome") != "passed"),
             {},
         )

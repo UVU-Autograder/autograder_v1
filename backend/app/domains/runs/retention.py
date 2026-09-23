@@ -136,7 +136,7 @@ def control_lock(run_id: int | str, *, blocking: bool = True) -> Iterator[None]:
                     else:
                         import fcntl
 
-                        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)  # type: ignore[attr-defined]
                     break
                 except OSError:
                     if time.monotonic() >= deadline:
@@ -155,7 +155,7 @@ def control_lock(run_id: int | str, *, blocking: bool = True) -> Iterator[None]:
                 else:
                     import fcntl
 
-                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)  # type: ignore[attr-defined]
     finally:
         local_lock.release()
 

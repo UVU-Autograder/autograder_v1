@@ -142,6 +142,8 @@ async def create_run(
             status_code=503,
             detail="Sandbox queue is full. Please retry after capacity clears.",
         )
+    if run is None:
+        raise HTTPException(status_code=500, detail="Failed to initialize sandbox run.")
     return run
 
 

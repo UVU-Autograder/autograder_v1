@@ -193,11 +193,24 @@ def accessible_section_ids_for_course(db: Session, user: User, course_code: str)
     if user_is_admin(user):
         return None  # all sections
 
+    # Course-wide instructor or admin access
+    if any(
+        access.is_active
+        and access.course_id == course.id
+        and access.section_id is None
+        and access.role is not None
+        and access.role.name in {"admin", "instructor"}
+        for access in user.staff_access
+    ):
+        return None
+
     return [
         access.section_id
         for access in user.staff_access
         if access.is_active
         and access.course_id == course.id
+        and access.section_id is not None
+        and access.role is not None
         and access.role.name in {"admin", "instructor", "IA"}
     ]
 

@@ -12,6 +12,7 @@ from app.domains.runs.queue_admission import FULL_QUEUE_THRESHOLD, _count, trans
 
 
 def sweep(publish: Callable[[int, str], object] | None = None) -> dict:
+    publisher: Callable[[int, str], object]
     if publish is None:
         from app.domains.runs.tasks import grade_official_run
         def default_publish(run_id: int, token: str) -> object:
