@@ -1,8 +1,8 @@
 """Generate eval cases by grading mutated model solutions with the real grader.
 
-    cd backend && python -m eval.build_cases            # write eval/cases/gen_*.json
+    cd backend && python -m eval.build_cases            # write eval/cases.jsonl
     cd backend && python -m eval.build_cases --check    # just verify seeds + mutations
-    cd backend && python -m eval.build_cases --split train   # Phase 2 inputs -> training/p2/cases
+    cd backend && python -m eval.build_cases --split train   # Phase 2 inputs -> training/p2/cases.jsonl
 
 Each case starts from a seed assignment's model solution, applies one mutation
 from ``eval/mutations.py`` (a typical student bug), and runs the production
@@ -41,12 +41,13 @@ from app.integrations.ai.guardrails import DEF_RE
 from app.integrations.ai.prompts import failures_from_test_results, requirements_from_config
 
 from eval.mutations import MUTATIONS, TRAIN_MUTATIONS
+from eval.schemas import load_cases, save_cases
 
 BACKEND = Path(__file__).resolve().parents[1]
 SEEDS = BACKEND / "app" / "db" / "seeds"
-CASES_DIR = Path(__file__).parent / "cases"
-TRAIN_CASES_DIR = BACKEND / "training" / "p2" / "cases"
-SPLITS = {"eval": (MUTATIONS, CASES_DIR), "train": (TRAIN_MUTATIONS, TRAIN_CASES_DIR)}
+CASES_FILE = Path(__file__).parent / "cases.jsonl"
+TRAIN_CASES_FILE = BACKEND / "training" / "p2" / "cases.jsonl"
+SPLITS = {"eval": (MUTATIONS, CASES_FILE), "train": (TRAIN_MUTATIONS, TRAIN_CASES_FILE)}
 COURSE_DEFAULT_CONCEPTS = ["variables", "conditionals", "loops", "functions"]  # cs1410 in app/db/seed.py
 
 
@@ -275,9 +276,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="grade unmutated seeds and dry-run mutations; write nothing")
     parser.add_argument("--only", default="", help="only mutations whose case_id contains this")
     parser.add_argument("--split", choices=sorted(SPLITS), default="eval",
-                        help="eval: eval/cases (frozen fixtures); train: training/p2/cases (Phase 2 inputs)")
+                        help="eval: eval/cases.jsonl (frozen fixtures); train: training/p2/cases.jsonl (Phase 2 inputs)")
     args = parser.parse_args(argv)
-    mutations, out_dir = SPLITS[args.split]
+    mutations, out_file = SPLITS[args.split]
 
     seeds = sorted({m["seed"] for m in mutations})
     print("baseline: unmutated model solutions")
@@ -285,6 +286,7 @@ def main(argv: list[str] | None = None) -> int:
         print("a model solution does not grade clean locally; fix that before trusting generated cases")
         return 1
 
+    built_cases: list[dict] = []
     written = skipped = 0
     for mutation in mutations:
         if args.only not in mutation["case_id"]:
@@ -300,8 +302,17 @@ def main(argv: list[str] | None = None) -> int:
         written += 1
         print(f"  ok   {mutation['case_id']}: {summary}")
         if not args.check:
-            out_dir.mkdir(parents=True, exist_ok=True)
-            (out_dir / f"{mutation['case_id']}.json").write_text(json.dumps(case, indent=2) + "\n")
+            built_cases.append(case)
+
+    if not args.check and built_cases:
+        if out_file.exists():
+            existing = {c.case_id: c.model_dump() for c in load_cases(out_file)}
+            for c in built_cases:
+                existing[c["case_id"]] = c
+            save_cases(list(existing.values()), out_file)
+        else:
+            save_cases(built_cases, out_file)
+
     print(f"\n{written} case(s) {'validated' if args.check else 'written'}, {skipped} skipped")
     return 1 if skipped else 0
 

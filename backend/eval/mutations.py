@@ -252,7 +252,7 @@ MUTATIONS = [
 # =============================================================================
 # Phase 2 training inputs -- held out from MUTATIONS above.
 #
-# Built with ``python -m eval.build_cases --split train`` into training/p2/cases.
+# Built with ``python -m eval.build_cases --split train`` into training/p2/cases.jsonl.
 # Weighted toward what the v4 eval showed stock Gemma still gets wrong:
 #   * bugs whose obvious hint gives the answer away (a missing name, a keyword,
 #     an operator) -- the reviewed target has to point where to look instead;

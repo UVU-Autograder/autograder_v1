@@ -10,7 +10,7 @@ Two inputs, both easy to produce once the stack is up locally:
     python -m eval.capture --result-json result.json --code submission.py \
         --case-id ds2_missing_next --category single_failure
 
-Writes ``eval/cases/<case-id>.json``.  Review the emitted file by hand before
+Writes to ``eval/cases.jsonl``. Review the emitted case by hand before
 committing it -- `forbidden_identifiers` is auto-guessed from the student code
 and usually needs a trim, and this is also your FERPA checkpoint.
 """
@@ -24,9 +24,9 @@ from pathlib import Path
 
 import httpx
 
-from eval.schemas import EvalCase
+from eval.schemas import EvalCase, load_cases, save_cases
 
-CASES_DIR = Path(__file__).parent / "cases"
+CASES_FILE = Path(__file__).parent / "cases.jsonl"
 _DEF_RE = re.compile(r"^\s*(?:def|class)\s+([A-Za-z_]\w*)", re.M)
 
 
@@ -96,11 +96,11 @@ def main(argv: list[str] | None = None) -> int:
         notes="captured from sandbox run; reviewed by hand: NO",
     )
 
-    CASES_DIR.mkdir(exist_ok=True)
-    out = CASES_DIR / f"{args.case_id}.json"
-    out.write_text(json.dumps(case.model_dump(), indent=2) + "\n")
+    cases = load_cases(CASES_FILE) if CASES_FILE.is_file() else []
+    cases = [c for c in cases if c.case_id != case.case_id] + [case]
+    save_cases(cases, CASES_FILE)
 
-    print(f"wrote {out}")
+    print(f"saved {case.case_id} to {CASES_FILE}")
     print(f"  failures: {len(case.failures)}  forbidden_identifiers: {case.forbidden_identifiers}")
     print("\nBefore committing:")
     print("  1. Trim forbidden_identifiers to symbols the assignment actually requires.")

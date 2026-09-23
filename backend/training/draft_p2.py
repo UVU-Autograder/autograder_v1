@@ -3,7 +3,7 @@
     cd backend && ~/venvs/train/bin/python -m training.draft_p2 --endpoint vllm --model gemma4-12b-qat
 
 Writes ``training/p2/review/<case_id>.md`` for every case in
-``training/p2/cases`` that has no review file yet. A file that already exists
+``training/p2/cases.jsonl`` that has no review file yet. A file that already exists
 is never touched, so drafting again after you started editing is safe;
 ``--redraft-todo`` re-drafts only files whose status is still ``todo``.
 

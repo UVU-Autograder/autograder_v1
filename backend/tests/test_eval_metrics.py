@@ -25,7 +25,8 @@ from eval.schemas import EvalCase, load_cases
 
 from pathlib import Path
 
-CASES_DIR = Path(__file__).resolve().parents[1] / "eval" / "cases"
+CASES_FILE = Path(__file__).resolve().parents[1] / "eval" / "cases.jsonl"
+CASES_DIR = CASES_FILE
 
 
 def make_case(**overrides) -> EvalCase:
