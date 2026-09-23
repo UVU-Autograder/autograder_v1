@@ -54,7 +54,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): Sharper first hint: compare IceCream's methods with Candy's and Cookie's.
 
-status: todo
+status: accepted
 
 ```json
 {

@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `author_property`). Th
 
 > Pre-edit note (Claude): The draft was vague ('handle it in a specific way'). Now compares with the title setter, which raises the expected error. The lab4 exceptions warning is a catalog bug and is deliberately not mentioned.
 
-status: todo
+status: accepted
 
 ```json
 {

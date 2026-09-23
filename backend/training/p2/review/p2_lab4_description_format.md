@@ -46,7 +46,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `description_readonly`
 
 > Pre-edit note (Claude): The hint gave the fix ('include one of those phrases'). Now asks for a word-by-word comparison.
 
-status: todo
+status: accepted
 
 ```json
 {

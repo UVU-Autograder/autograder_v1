@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Replaced a generic extension. Order is cut off from the prompt, so the next step is general but points at maintainability.
 
-status: todo
+status: accepted
 
 ```json
 {

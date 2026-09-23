@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `getters_setters`). Th
 
 > Pre-edit note (Claude): The hint was an either/or with the answer in it. Now compares the setter line with the same line in __init__.
 
-status: todo
+status: accepted
 
 ```json
 {

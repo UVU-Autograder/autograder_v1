@@ -52,7 +52,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): No change to the substance: accurate, one root cause, the others follow.
 
-status: todo
+status: accepted
 
 ```json
 {

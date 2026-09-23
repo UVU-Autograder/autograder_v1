@@ -51,6 +51,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): Same bug as add_missing_return: merged and then also appended. The injection comment is ignored.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

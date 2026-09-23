@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessertshop_class`). 
 
 > Pre-edit note (Claude): next_step gave the fix ('convert to the correct numeric type'). Now compares with user_prompt_candy, which does it right.
 
-status: todo
+status: accepted
 
 ```json
 {

@@ -43,6 +43,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `part1_output`). Then 
 
 > Pre-edit note (Claude): The hint and next step named save() (the fix). Now compares with bears3.py, which saves its image.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

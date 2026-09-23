@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`). Then set the s
 
 > Pre-edit note (Claude): The draft misread it as a zero-padding problem. The real cause is building the text from float arithmetic.
 
-status: todo
+status: accepted
 
 ```json
 {

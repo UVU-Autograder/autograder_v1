@@ -60,7 +60,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > Pre-edit note (Claude): 5 items cut to 3; one root cause (the parameter names), the rest follow.
 
-status: todo
+status: accepted
 
 ```json
 {

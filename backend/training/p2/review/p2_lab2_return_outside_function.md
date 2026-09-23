@@ -50,6 +50,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Small edit: items 2 and 3 now say they follow from the syntax error instead of repeating the hint.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

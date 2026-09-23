@@ -56,6 +56,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`, `mul`). Then se
 
 > Pre-edit note (Claude): Both hints gave the fix. Two separate problems, each pointing to where to look, and a next step to take them one at a time.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

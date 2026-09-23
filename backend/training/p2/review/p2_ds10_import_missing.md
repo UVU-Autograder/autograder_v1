@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The hint nearly said 'import it'. Now compares with Packaging and Payable, which the file already brings in correctly.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: candy_combinable, cookie_combinable, order_combine, ds9_regression. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

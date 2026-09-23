@@ -46,6 +46,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Pre-edit note (Claude): The hint pointed at the comparison operators, which work. sort() is cut off from the prompt, so the hint asks the student to print the costs and see the direction.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_sort, student_sort_tests. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

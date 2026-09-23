@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `add`). Then set the s
 
 > Pre-edit note (Claude): The hint gave the fix ('does it return the result'). Now compares with __mul__, which returns its Money.
 
-status: todo
+status: accepted
 
 ```json
 {

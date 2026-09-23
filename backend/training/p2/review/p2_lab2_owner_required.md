@@ -49,7 +49,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `demo_
 
 > Pre-edit note (Claude): The hint gave the fix ('make owner optional'). Now compares owner with balance, which already has what owner is missing.
 
-status: todo
+status: accepted
 
 ```json
 {

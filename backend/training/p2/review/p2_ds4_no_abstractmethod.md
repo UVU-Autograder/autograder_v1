@@ -44,7 +44,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `abstract_class`). The
 
 > Pre-edit note (Claude): The hint and next step named @abstractmethod (the fix). Now asks what makes Python treat a method as required.
 
-status: todo
+status: accepted
 
 ```json
 {

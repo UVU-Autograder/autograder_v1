@@ -53,6 +53,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessertshop_class`). 
 
 > Pre-edit note (Claude): Clearer description: -0.5 was accepted where the prompt should keep asking. The hint compares the weight code with the price loop that works.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

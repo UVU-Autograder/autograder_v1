@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`). Then 
 
 > Pre-edit note (Claude): The hint gave the fix ('provide a default value'). Now points to the subclasses, which already get this right.
 
-status: todo
+status: accepted
 
 ```json
 {

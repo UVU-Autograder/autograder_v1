@@ -53,7 +53,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `add`). Then set the s
 
 > Pre-edit note (Claude): No change to the substance: the hint is exactly right. The injection comment is ignored.
 
-status: todo
+status: accepted
 
 ```json
 {

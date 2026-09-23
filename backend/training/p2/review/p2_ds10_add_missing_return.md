@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The draft said the item was added instead of merged; it was merged and then also added (3 items, not 2). Hint now asks what runs after the merge.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

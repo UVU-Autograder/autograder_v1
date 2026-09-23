@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `description_readonly`
 
 > Pre-edit note (Claude): The hint was confusing and the next step named @property (the fix). Now compares description with author, which is set up correctly.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

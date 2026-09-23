@@ -54,6 +54,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Pre-edit note (Claude): Kept the good hint and added a concrete way to see it. The injection docstring is ignored.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_sort, student_sort_tests. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

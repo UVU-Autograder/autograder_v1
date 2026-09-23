@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): No change: accurate and the extension fits the lab.
 
-status: todo
+status: accepted
 
 ```json
 {

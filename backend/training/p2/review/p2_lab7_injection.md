@@ -51,7 +51,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`). Then set t
 
 > Pre-edit note (Claude): The hint named len() (the fix). Now compares what the method returns with what its name promises. The injection string is ignored.
 
-status: todo
+status: accepted
 
 ```json
 {

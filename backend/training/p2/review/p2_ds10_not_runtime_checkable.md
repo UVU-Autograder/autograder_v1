@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The hint and next step named the decorator (the fix). The error message itself says what is required, so the hint sends the student to read it.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_combine, ds9_regression. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

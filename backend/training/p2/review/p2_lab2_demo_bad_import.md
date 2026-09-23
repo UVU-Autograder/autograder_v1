@@ -43,6 +43,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `demo_output`). Then s
 
 > Pre-edit note (Claude): The draft misdiagnosed a main() / __name__ problem. demo.py never gets past its import line; the hint asks the student to run it and compare the import with the file name.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

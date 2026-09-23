@@ -55,7 +55,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 3; the first hint gave the fix. Now points to the requirements for Student.
 
-status: todo
+status: accepted
 
 ```json
 {

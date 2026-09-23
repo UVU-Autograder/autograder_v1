@@ -54,7 +54,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): The draft blamed order_tax, but the grader never reported it: order_cost (6.69, from the Sundae) fails first, so the tax check never runs. Also the first hint gave the fix.
 
-status: todo
+status: accepted
 
 ```json
 {

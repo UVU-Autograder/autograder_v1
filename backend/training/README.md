@@ -159,7 +159,7 @@ set). Every target is a stock-model draft **edited by a person**.
 | 3. Copy drafts to the Mac | Mac | `scp -r 'dev@10.115.20.200:autograder_v1-dev/backend/training/p2/review' backend/training/p2/` |
 | 4. Edit | Mac, VS Code | each `training/p2/review/<case>.md` |
 | 5. Check progress / build | Mac or Dell | `python -m training.build_p2_dataset --status`, then without `--status` |
-| 6. Train | Dell | `train_lora --data training/data/p2 --out training/output/p2 --max-length 6144` (use the value the build prints) |
+| 6. Train | Dell | `train_lora --data training/data/p2 --out training/output/p2 --max-length 8192` (use the value the build prints) |
 
 **Editing a review file.** Read the diff (the actual bug) and what the grader
 reported, then fix the JSON at the bottom and change `status: todo` to

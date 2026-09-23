@@ -58,7 +58,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > Pre-edit note (Claude): The Candy item blamed the super() call, and its hint would lead a student to break working code. The only bug is DessertItem.__init__ missing self. Cut to 3 items; the others follow from the base class.
 
-status: todo
+status: accepted
 
 ```json
 {

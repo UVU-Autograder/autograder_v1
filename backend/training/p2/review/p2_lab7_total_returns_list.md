@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`). Then set t
 
 > Pre-edit note (Claude): The hint gave the fix ('turn a list into its length'). Now compares the return value with what the test expects.
 
-status: todo
+status: accepted
 
 ```json
 {

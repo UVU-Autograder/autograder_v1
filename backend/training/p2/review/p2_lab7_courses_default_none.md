@@ -53,7 +53,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): The hint and next step named field(default_factory=list) (the fix). Now points to the requirement text.
 
-status: todo
+status: accepted
 
 ```json
 {

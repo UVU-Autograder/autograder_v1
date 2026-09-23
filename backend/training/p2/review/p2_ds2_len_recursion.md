@@ -49,6 +49,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): what_went_wrong gave the fix ('instead of accessing the underlying list'). Now describes the RecursionError and asks the student to trace the return line.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

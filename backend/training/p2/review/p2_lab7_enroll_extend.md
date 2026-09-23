@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`). Then set t
 
 > Pre-edit note (Claude): The hint named append versus extend (an either/or with the answer). Now asks the student to print the list and look.
 
-status: todo
+status: accepted
 
 ```json
 {

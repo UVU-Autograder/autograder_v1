@@ -54,6 +54,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): The draft pointed to __str__. The reported failure is main printing objects; the untested Candy price bug is correctly not mentioned.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: ds1_regression, main_output. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

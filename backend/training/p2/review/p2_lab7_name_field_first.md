@@ -50,7 +50,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `ordering
 
 > Pre-edit note (Claude): The first hint sent the student to main's arguments, which are right; the field order in the class is the bug. Ordering follows from it.
 
-status: todo
+status: accepted
 
 ```json
 {

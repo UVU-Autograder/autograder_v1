@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `mul`). Then set the s
 
 > Pre-edit note (Claude): Kept the good hint; the next step no longer mentions type hints, which are not the problem.
 
-status: todo
+status: accepted
 
 ```json
 {

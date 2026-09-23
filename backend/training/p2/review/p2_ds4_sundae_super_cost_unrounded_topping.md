@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): Kept the good hint; order_totals now says it follows from the Sundae cost.
 
-status: todo
+status: accepted
 
 ```json
 {

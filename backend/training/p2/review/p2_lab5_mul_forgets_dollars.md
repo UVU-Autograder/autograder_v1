@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `mul`). Then set the s
 
 > Pre-edit note (Claude): The hint was vague ('correct values'). Now asks which part of the amount gets multiplied.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

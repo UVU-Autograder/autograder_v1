@@ -46,6 +46,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `eq`). Then set the st
 
 > Pre-edit note (Claude): The draft asked how 'your __eq__' works, but there is no __eq__. Now asks which listed operators the class defines.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

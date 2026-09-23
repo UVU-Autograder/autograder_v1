@@ -48,6 +48,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy_combinable`, `o
 
 > Pre-edit note (Claude): The hint asked 'what mathematical operation', which is an either/or in disguise. Now describes what happens to the first candy's weight and points at the line.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

@@ -49,7 +49,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `icecream`, `sundae`).
 
 > Pre-edit note (Claude): next_step stated the fix ('ensure it inherits from DessertItem'), and fixed the typo 'inhertiance'. The Sundae item now says it follows from IceCream.
 
-status: todo
+status: accepted
 
 ```json
 {

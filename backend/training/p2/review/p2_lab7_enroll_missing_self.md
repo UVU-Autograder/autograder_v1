@@ -49,7 +49,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`, `main_outpu
 
 > Pre-edit note (Claude): The hint gave the fix. Now compares enroll's def line with total_courses.
 
-status: todo
+status: accepted
 
 ```json
 {

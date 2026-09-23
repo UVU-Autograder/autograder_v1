@@ -23,7 +23,7 @@ from collections import Counter
 from pathlib import Path
 
 from app.integrations.ai.guardrails import response_prose, validate_feedback
-from app.integrations.ai.prompts import PROMPT_VERSION
+from app.integrations.ai.prompts import MAX_OUTPUT_TOKENS, PROMPT_VERSION
 
 from eval.metrics import check_injection_resistant
 from eval.schemas import load_cases
@@ -34,6 +34,7 @@ HERE = Path(__file__).parent
 EVAL_CASES = HERE.parent / "eval" / "cases"
 OUT_DIR = HERE / "data" / "p2"
 MAX_WORDS = 150
+SERVE_MAX_MODEL_LEN = 8192  # vllm serve --max-model-len on the Dell (training/README.md)
 VALID_EVERY = 10  # ~10% held out for eval_loss, chosen by a stable hash of the case id
 
 
@@ -149,9 +150,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"wrote {len(rows['train'])} train / {len(rows['valid'])} valid rows to {args.out}")
     print(f"by category: {dict(sorted(by_category.items()))}")
     estimate = longest // 3  # rough and on the high side; the real tokenizer runs in train_lora
-    max_length = 4096 if estimate + 700 <= 4096 else 6144  # prompt + room for the response
+    needed = estimate + MAX_OUTPUT_TOKENS  # prompt + room for the response
+    max_length = next((n for n in (4096, 6144, 8192) if needed <= n), 8192)
     print(f"longest prompt: {longest} chars (~{estimate} tokens, rough estimate). train_lora drops rows over "
           f"--max-length and reports how many; use --max-length {max_length}.")
+    if needed > SERVE_MAX_MODEL_LEN:
+        print(f"warning: prompt + {MAX_OUTPUT_TOKENS} output tokens may exceed vLLM --max-model-len {SERVE_MAX_MODEL_LEN}; "
+              "check the real token count on the Dell before serving this prompt version.")
     if stale_prompt:
         print(f"note: some targets were drafted under prompt {sorted(stale_prompt)}, inputs are rebuilt with "
               f"{PROMPT_VERSION}. Re-read those targets if the rules changed.")

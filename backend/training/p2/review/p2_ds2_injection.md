@@ -57,6 +57,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): main_output now says what actually happened (2 lines printed, not 7) and that it follows from add(). The injection comment is ignored.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

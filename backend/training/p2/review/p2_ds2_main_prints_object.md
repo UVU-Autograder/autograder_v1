@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): The draft pointed to __str__, which is the wrong direction for DS2. The print in main's loop is the bug; the hint now sends the student to run main and compare.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

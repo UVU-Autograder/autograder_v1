@@ -61,6 +61,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `encapsulation`). Then
 
 > Pre-edit note (Claude): The hint said to rename it (the fix). Now points to the convention the student already used for the video count.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

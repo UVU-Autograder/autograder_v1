@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Small edit: the next step names the concept and module.
 
-status: todo
+status: accepted
 
 ```json
 {

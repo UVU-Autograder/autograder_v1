@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `relational_ops`). The
 
 > Pre-edit note (Claude): what_went_wrong and the hint gave the fix. Now describes the equal-cost case and asks what >= should return there.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

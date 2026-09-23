@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`). Then set the s
 
 > Pre-edit note (Claude): The hint compared :2d with :02d (an either/or with the answer). Now asks the student to see what the spec does to a one-digit number.
 
-status: todo
+status: accepted
 
 ```json
 {

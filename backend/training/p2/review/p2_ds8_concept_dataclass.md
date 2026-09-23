@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The draft ignored the concept warning. Now it does not call the work done and points back to the allowed concepts.
 
-status: todo
+status: accepted
 
 ```json
 {

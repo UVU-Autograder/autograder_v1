@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `relational_ops`). The
 
 > Pre-edit note (Claude): what_went_wrong gave the fix. Now describes the result and asks the student to trace __ne__.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

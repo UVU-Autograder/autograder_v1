@@ -42,7 +42,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `combinable_protocol`)
 
 > Pre-edit note (Claude): The hint asked for the method name (the fix). Now compares the protocol with what Candy and Cookie implement.
 
-status: todo
+status: accepted
 
 ```json
 {

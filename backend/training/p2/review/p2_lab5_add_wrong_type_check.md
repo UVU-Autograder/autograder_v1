@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `add`). Then set the s
 
 > Pre-edit note (Claude): No change to the substance: the hint points exactly at the type check.
 
-status: todo
+status: accepted
 
 ```json
 {

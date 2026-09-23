@@ -51,6 +51,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `mul`). T
 
 > Pre-edit note (Claude): The hint and what_went_wrong gave the fix. Now asks the student to trace a large amount by hand.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

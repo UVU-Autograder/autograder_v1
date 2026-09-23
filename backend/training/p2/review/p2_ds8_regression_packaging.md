@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `ds7_regression`). The
 
 > Pre-edit note (Claude): next_step sent the student to Cookie too; only Candy changed. Now names the Dessert Shop 7 behavior that broke.
 
-status: todo
+status: accepted
 
 ```json
 {

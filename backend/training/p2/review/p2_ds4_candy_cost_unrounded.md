@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): The hint was an either/or with the answer in it, and next_step named round(). Now points to comparing Candy with the classes that work.
 
-status: todo
+status: accepted
 
 ```json
 {

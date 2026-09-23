@@ -46,6 +46,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The draft had it backwards (said items were NOT merged); the test found 1 item where 2 should stay separate. Order.add is cut off from the prompt, so the feedback reasons from the assertion.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_combine, ds9_regression. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

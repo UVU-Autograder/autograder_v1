@@ -57,6 +57,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 3; one root cause (field order), the rest follow.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

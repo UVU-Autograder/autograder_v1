@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The draft said 'met the core requirements' and gave a vague next step. Now names the concept and a way to rework it.
 
-status: todo
+status: accepted
 
 ```json
 {

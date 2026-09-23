@@ -51,7 +51,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): Kept the good hint; items 2 and 3 now say they follow from the Cookie cost.
 
-status: todo
+status: accepted
 
 ```json
 {

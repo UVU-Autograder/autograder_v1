@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `ds4_regression`). The
 
 > Pre-edit note (Claude): Small edit: says this is a Dessert Shop 4 behavior that broke.
 
-status: todo
+status: accepted
 
 ```json
 {

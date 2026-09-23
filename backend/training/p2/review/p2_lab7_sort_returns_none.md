@@ -44,7 +44,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): Kept the good hint; next_step named sorted() (the fix).
 
-status: todo
+status: accepted
 
 ```json
 {

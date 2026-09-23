@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Pre-edit note (Claude): The hint gave the fix ('ensure it updates the internal variable'), and the summary said Enums (PayType is a Literal). The setter is cut off from the prompt, so the feedback traces from the assertion.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_payable, student_order_tests. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

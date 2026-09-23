@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `cookie_combinable`). 
 
 > Pre-edit note (Claude): Small edit: what_went_wrong now uses the numbers from the assertion. The hint was already good.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

@@ -83,6 +83,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Tightened for a placeholder: says so plainly, one real item, demo follows from it, and next step starts from the instructions.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

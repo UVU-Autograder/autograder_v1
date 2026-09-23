@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The extension referred to views, which this class does not have. Now about the student's own choice (guard clause).
 
-status: todo
+status: accepted
 
 ```json
 {

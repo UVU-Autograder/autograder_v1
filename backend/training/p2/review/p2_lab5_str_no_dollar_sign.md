@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`). Then set the s
 
 > Pre-edit note (Claude): The hint said how to add the '$' (the fix). Now asks for a character-by-character comparison.
 
-status: todo
+status: accepted
 
 ```json
 {

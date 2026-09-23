@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_str`, `demo_o
 
 > Pre-edit note (Claude): No change to the substance: the print-versus-return question is exactly the right hint.
 
-status: todo
+status: accepted
 
 ```json
 {

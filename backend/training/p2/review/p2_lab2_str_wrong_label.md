@@ -43,6 +43,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_str`). Then s
 
 > Pre-edit note (Claude): The hint asked how to 'modify __str__ to match the label' (the fix). Now asks the student to compare word by word.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: account_str, demo_output. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

@@ -44,7 +44,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Removed 'complete' (the prompt says never to call the work complete when there is a concept warning); the next step points back to the allowed concepts.
 
-status: todo
+status: accepted
 
 ```json
 {

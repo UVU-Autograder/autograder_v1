@@ -46,7 +46,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `title_property`). The
 
 > Pre-edit note (Claude): Sharper hint: compare set_title with the author setter, which does the missing check.
 
-status: todo
+status: accepted
 
 ```json
 {

@@ -44,7 +44,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic extension replaced with one about the student's own choice (__ne__ repeats the comparison instead of reusing __eq__).
 
-status: todo
+status: accepted
 
 ```json
 {

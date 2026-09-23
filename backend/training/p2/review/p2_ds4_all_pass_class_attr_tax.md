@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic extension replaced with one about the student's own choice (tax_percent as a class attribute).
 
-status: todo
+status: accepted
 
 ```json
 {

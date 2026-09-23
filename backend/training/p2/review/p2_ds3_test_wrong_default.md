@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 
 > Pre-edit note (Claude): No change to the substance: accurate and points to the comparison the student should make.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

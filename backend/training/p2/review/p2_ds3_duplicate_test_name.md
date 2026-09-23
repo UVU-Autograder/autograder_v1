@@ -52,6 +52,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 
 > Pre-edit note (Claude): next_step told the student to add tests; the tests exist, but two names are reused so pytest only keeps one of each. Hint points to the names.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

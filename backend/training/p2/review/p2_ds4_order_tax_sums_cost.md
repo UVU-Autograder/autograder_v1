@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_totals`). Then 
 
 > Pre-edit note (Claude): what_went_wrong stated the fix; now it gives the numbers (7.98 is the order cost) and asks the student to compare order_tax with order_cost.
 
-status: todo
+status: accepted
 
 ```json
 {

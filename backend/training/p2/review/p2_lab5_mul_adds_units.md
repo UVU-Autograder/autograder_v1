@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `mul`). Then set the s
 
 > Pre-edit note (Claude): Small edit: the hint now asks the student to work the example by hand.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

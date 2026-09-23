@@ -51,7 +51,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): what_went_wrong gave the fix ('rather than multiplying'). Now states the numbers from the assertion and asks the student to work it by hand.
 
-status: todo
+status: accepted
 
 ```json
 {

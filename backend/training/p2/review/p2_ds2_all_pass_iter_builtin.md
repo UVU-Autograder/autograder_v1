@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic next step replaced with one about the student's own choice (iter(self.order) means __next__ never runs).
 
-status: todo
+status: accepted
 
 ```json
 {

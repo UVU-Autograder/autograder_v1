@@ -47,6 +47,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): The draft blamed __iter__ resetting the index; the loop never ends because __next__ never moves forward. Hint now asks what changes between calls.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: execution_error. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

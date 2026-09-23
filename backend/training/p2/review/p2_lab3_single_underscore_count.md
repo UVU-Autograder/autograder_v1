@@ -61,6 +61,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `encapsulation`). Then
 
 > Pre-edit note (Claude): The hint was close to an either/or; next_step said 'private-mangled'. Now points to the convention and the student's own attribute.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

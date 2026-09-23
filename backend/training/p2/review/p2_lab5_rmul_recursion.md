@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `mul`). Then set the s
 
 > Pre-edit note (Claude): No change to the substance: the hint is a good tracing question.
 
-status: todo
+status: accepted
 
 ```json
 {

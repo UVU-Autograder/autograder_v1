@@ -43,6 +43,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `eq`). Then set the st
 
 > Pre-edit note (Claude): The hint gave the fix ('comparing only dollars'). Now asks the student to trace two amounts that differ only in cents.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

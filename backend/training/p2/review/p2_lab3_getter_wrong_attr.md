@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `getters_setters`). Th
 
 > Pre-edit note (Claude): The hint asked which attribute to return (the fix). Now compares with get_name.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

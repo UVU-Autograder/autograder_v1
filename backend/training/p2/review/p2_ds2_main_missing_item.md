@@ -44,7 +44,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): Tightened: the hint said 'required by the prompt' (the student has no prompt) and was long. Now points to the order.add calls.
 
-status: todo
+status: accepted
 
 ```json
 {

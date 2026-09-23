@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): The hint named the topping (the fix). Now asks which part of the price 2.07 covers.
 
-status: todo
+status: accepted
 
 ```json
 {

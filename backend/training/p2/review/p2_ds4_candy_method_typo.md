@@ -56,7 +56,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > Pre-edit note (Claude): 4 items cut to 3; one root cause (the method name in Candy) explained once, the rest follow from it.
 
-status: todo
+status: accepted
 
 ```json
 {

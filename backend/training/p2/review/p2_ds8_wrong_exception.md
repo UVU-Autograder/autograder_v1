@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Pre-edit note (Claude): The draft was vague ('handle it differently'). Now states what happened and asks which kind of error fits a wrong value.
 
+> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_payable, student_order_tests. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

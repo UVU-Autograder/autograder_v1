@@ -67,7 +67,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > Pre-edit note (Claude): 5 identical items cut to 3: one root cause (the class name), the rest follow from it.
 
-status: todo
+status: accepted
 
 ```json
 {

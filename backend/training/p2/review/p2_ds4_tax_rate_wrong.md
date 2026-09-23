@@ -53,6 +53,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > Pre-edit note (Claude): The summary blamed 'how taxes are aggregated' (they are not); one root cause, the default rate, with the tax and totals following from it.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

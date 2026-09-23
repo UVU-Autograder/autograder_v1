@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `part1_output`). Then 
 
 > Pre-edit note (Claude): The hint gave the fix ('assign gray_pixel to new_pixel_map'). Now asks the student to trace where the gray value goes.
 
-status: todo
+status: accepted
 
 ```json
 {

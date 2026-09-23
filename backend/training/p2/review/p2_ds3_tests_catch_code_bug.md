@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 
 > Pre-edit note (Claude): The draft sent the student to edit the test; here the test is right and Cookie's default is wrong. Feedback credits the test and asks which side matches the assignment.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

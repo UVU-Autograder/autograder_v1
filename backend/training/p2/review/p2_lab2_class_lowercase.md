@@ -51,6 +51,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Small edit: the hint now points at the error message instead of the test file, which the student cannot see.
 
+> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
+
 status: todo
 
 ```json

@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `type_hints`). Then se
 
 > Pre-edit note (Claude): The hint asked how to write the return type (the fix). Now compares with get_name, which has one.
 
-status: todo
+status: accepted
 
 ```json
 {

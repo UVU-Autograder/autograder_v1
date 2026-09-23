@@ -42,7 +42,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Extension now about the student's choice: __repr__ passes only because print() falls back to it.
 
-status: todo
+status: accepted
 
 ```json
 {

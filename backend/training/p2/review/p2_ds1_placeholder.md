@@ -88,7 +88,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > Pre-edit note (Claude): 5 identical items cut to 1, and the 'class attribute' hint was wrong (name is an instance attribute). Placeholder: say so plainly and point to the instructions.
 
-status: todo
+status: accepted
 
 ```json
 {
