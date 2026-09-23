@@ -44,6 +44,7 @@ def create_celery_app() -> Celery:
         task_time_limit=180,        # hard kill at 3 minutes
         task_acks_late=True,        # ack after completion for reliability
         worker_prefetch_multiplier=1,  # one task at a time per worker slot
+        broker_transport_options={"queue_order_strategy": "round_robin"},
 
         # Result expiration: 1 hour matches session TTL
         result_expires=3600,

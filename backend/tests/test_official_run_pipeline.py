@@ -24,6 +24,7 @@ from app.domains.runs.tasks import (
     grade_official_run,
 )
 from test_ingestion_extractor import create_zip_bytes
+from dispatch_helpers import drain
 
 
 def test_build_model_solution_zip_uses_real_files():
@@ -145,7 +146,7 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
         mock_pipeline.return_value = mock_result
 
         # Run task directly
-        result = grade_official_run(run.id)
+        result = drain(run.id)
 
         assert mock_pipeline.call_count == 2  # 2 students in zip
         assert all(
@@ -220,7 +221,7 @@ def test_grade_official_run_writes_incremental_details(
         new_callable=AsyncMock,
         side_effect=grade_and_observe,
     ):
-        grade_official_run(run.id)
+        drain(run.id)
 
     assert seen_counts[0] == 0
     assert 1 in seen_counts

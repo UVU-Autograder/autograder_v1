@@ -9,16 +9,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from celery.exceptions import Retry
 
 from fastapi import HTTPException
-from app.domains.runs import retention
 
 from app.db.base import import_domain_models
 
 import_domain_models()
 
-from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
-from app.domains.runs.lifecycle import RunLifecycleTracker
 from app.domains.runs.mock_runner import run_mock_official_run
 from app.domains.runs.orchestrator import (
     build_model_solution_zip,
@@ -43,7 +41,6 @@ from app.domains.runs.queue_admission import (
     release_execution_slots,
     reserve_execution_slots,
 )
-from app.core.audit_log import audit_event
 from app.integrations.celery.app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -52,7 +49,9 @@ logger = logging.getLogger(__name__)
 @celery_app.task(
     name="app.domains.runs.tasks.grade_sandbox_run",
     bind=True,
-    max_retries=3,
+    max_retries=None,
+    soft_time_limit=120,
+    time_limit=180,
     default_retry_delay=5,
     acks_late=True,
 )
@@ -66,6 +65,13 @@ def grade_sandbox_run(
     stdin: str | None = None,
 ) -> dict:
     """Execute a sandbox grading run through the orchestrator pipeline."""
+    from app.domains.runs.queue_admission import claim, QueueFullError
+    try:
+        token = claim(run_id)
+    except QueueFullError:
+        raise self.retry(countdown=2, max_retries=None)
+    if token is None:
+        return {"run_id": run_id, "state": "ignored"}
     return execute_sandbox_run(
         run_id=run_id,
         zip_data_b64=zip_data_b64,
@@ -82,6 +88,8 @@ def grade_sandbox_run(
     name="app.domains.runs.tasks.validate_assignment_model_solution",
     bind=True,
     max_retries=3,
+    soft_time_limit=120,
+    time_limit=180,
     default_retry_delay=5,
     acks_late=True,
 )
@@ -195,7 +203,10 @@ def validate_assignment_model_solution(
             allowed_concepts = effective_allowed_concepts(assignment)
 
         # 5. Run the grading engine asynchronously (with execution slot tracking)
-        if not reserve_execution_slots(1):
+        from uuid import uuid4
+        from app.domains.runs.queue_admission import claim, QueueFullError
+        owner = f"validation:{self.request.id or uuid4()}"
+        if not reserve_execution_slots(1, owner=owner):
             err_payload = {
                 "passed": False,
                 "errors": ["Queue full. Model solution validation cannot execute currently."],
@@ -206,6 +217,12 @@ def validate_assignment_model_solution(
             set_run_state(run_id, "failure")
             return err_payload
 
+        try:
+            token = claim(owner)
+        except QueueFullError:
+            raise self.retry(countdown=2, max_retries=1800)
+        if token is None:
+            return {"passed": False, "errors": ["Execution attempt unavailable."], "score": 0, "max_score": max_score}
         try:
             engine = GradingEngine(
                 config=config,
@@ -222,7 +239,7 @@ def validate_assignment_model_solution(
                 asyncio.set_event_loop(None)
                 loop.close()
         finally:
-            release_execution_slots(1)
+            release_execution_slots(owner=owner)
 
         # 6. Every automated item must pass; manual rubric items are excluded.
         errors = []
@@ -256,6 +273,8 @@ def validate_assignment_model_solution(
 
         return result_payload
 
+    except Retry:
+        raise
     except Exception as exc:
         logger.exception("Model solution validation failed for assignment %s", assignment_slug)
         error_result = {
@@ -276,380 +295,57 @@ def validate_assignment_model_solution(
 @celery_app.task(
     name="app.domains.runs.tasks.grade_official_run",
     bind=True,
-    max_retries=3,
+    max_retries=None,
+    soft_time_limit=120,
+    time_limit=180,
     default_retry_delay=5,
     acks_late=True,
     ignore_result=True,
     store_errors_even_if_ignored=False,
 )
-def grade_official_run(self, run_id: int) -> dict:
+def grade_official_run(self, run_id: int, token: str | None = None) -> dict:
+    """Execute one checkpointed submission. Dispatcher owns retry/recovery."""
     from app.db.session import SessionLocal
-
-    # Claim under the same lock as cleanup. Duplicate deliveries never release slots.
-    with SessionLocal() as db:
-        with retention.run_lock(run_id):
-            run = retention.load_run(db, run_id)
-            if run.status != "queue":
-                return {"run_id": run_id, "state": run.status}
-            if not retention.available(run):
-                run.status = "failure"
-                run.failure_summary = {"error": "review_expired"}
-                db.commit()
-                release_execution_slots(run.total_submission_count or 0)
-                return {"run_id": run_id, "state": "failure"}
-            run.status = "run"
-            db.commit()
-    try:
-        return _grade_official_run(run_id)
-    except HTTPException as exc:
-        category = "review_expired" if exc.status_code == 410 else "retention_unavailable"
-        RunLifecycleTracker(run_id).mark_failure("Official review is unavailable.", category)
-        return {"run_id": run_id, "state": "failure", "failure_category": category}
-
-
-def _grade_official_run(run_id: int) -> dict:
-    """Execute official batch grading run asynchronously."""
-    import asyncio
-    import shutil
-    from pathlib import Path
-
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-
-    from app.core.settings import get_settings
-    from app.db.session import SessionLocal
-    from app.domains.assignments.models import Assignment
-    from app.domains.assignments.schemas import AssignmentConfigV1
-    from app.domains.grading.engine import (
-        GradingEngine,
-        GradingResult,
-        preload_grading_artifacts,
-    )
-    from app.domains.ingestion.extractor import (
-        group_canvas_files,
-        parse_canvas_filename,
-        prepare_student_bundle,
-        safe_extract_zip,
-    )
     from app.domains.runs.models import RunSummary
-    from app.domains.runs.service import (
-        init_manual_results,
-        list_bundle_files,
-        official_run_dir,
-        official_run_zip_path,
-        write_feedback_zip,
-        write_run_details_json,
-        write_run_grades_csv,
-    )
-    settings = get_settings()
-    zip_path = official_run_zip_path(run_id)
+    from app.domains.runs.official_execution import step
+    from app.domains.runs.dispatcher import finish_step
+    from app.domains.runs.queue_admission import claim, QueueFullError
 
-    with SessionLocal() as db:
-        run = db.scalar(select(RunSummary).where(RunSummary.id == run_id))
-        if not run:
-            logger.error("RunSummary %d not found.", run_id)
-            return {"error": "RunSummary not found"}
-
-        run.status = "run"
-        db.commit()
-
-        assignment = db.scalar(
-            select(Assignment)
-            .where(Assignment.id == run.assignment_id)
-            .options(
-                selectinload(Assignment.course),
-                selectinload(Assignment.config),
-                selectinload(Assignment.artifacts),
-            )
-        )
-        if not assignment or not assignment.config:
-            logger.error("Assignment or config not found for run %d", run_id)
-            run.status = "failure"
-            db.commit()
-            release_execution_slots(run.total_submission_count or 0)
-            set_run_state(str(run_id), "failure", {"message": "Assignment or config not found"})
-            return {"error": "Assignment or config not found"}
-
-        try:
-            config = AssignmentConfigV1.model_validate(assignment.config.config_json)
-            max_score = config.base_points
-            automated_max_score = sum(
-                item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit
-            )
-            total_submissions = run.total_submission_count
-
-            # Build artifact references
-            artifact_refs = {}
-            for art in assignment.artifacts:
-                if art.storage_ref:
-                    artifact_refs[art.artifact_key] = art.storage_ref
-
-            # Merged concepts covered list
-            from app.domains.assignments.service import effective_allowed_concepts
-
-            allowed_concepts = effective_allowed_concepts(assignment)
-            preloaded = preload_grading_artifacts(config, artifact_refs)
-            grading_engine = GradingEngine(
-                config=config,
-                artifact_refs=artifact_refs,
-                allowed_concepts=allowed_concepts,
-                preloaded_artifacts=preloaded,
-            )
-        except Exception:
-            run.status = "failure"
-            db.commit()
-            release_execution_slots(run.total_submission_count or 0)
-            set_run_state(str(run_id), "failure", {"message": "Official run setup failed."})
-            return {"error": "setup_error"}
-
-    tracker = RunLifecycleTracker(run_id, total_submissions)
-    tracker.set_running("Official run executing.")
-    audit_event(
-        "official.run_started",
-        run_id=run_id,
-        assignment_id=run.assignment_id,
-        submission_count=total_submissions,
-        workflow_type="official",
-    )
-
-    if not zip_path.exists():
-        logger.error("Official ZIP not found for run %d.", run_id)
-        audit_event(
-            "official.run_failed",
-            run_id=run_id,
-            assignment_id=run.assignment_id,
-            failure_category="zip_not_found",
-            workflow_type="official",
-        )
-        tracker.mark_failure("Official ZIP not found", "zip_not_found")
-        tracker.release_remaining_slots()
-        return {"error": "Official ZIP not found"}
-
-    run_dir = official_run_dir(run_id)
-    extract_dir = run_dir / "extracted"
-
+    if token is None:
+        # Legacy broker deliveries must never start an unbounded batch.
+        return {"run_id": run_id, "state": "ignored"}
     try:
-        with retention.access(run_id):
-            run_dir.mkdir(parents=True, exist_ok=True)
-            extract_dir.mkdir(parents=True, exist_ok=True)
-            safe_extract_zip(zip_path.read_bytes(), extract_dir)
-    except HTTPException:
-        tracker.release_remaining_slots()
-        raise
-    except Exception as e:
-        logger.error("Failed to extract official ZIP for run %d", run_id)
-        audit_event(
-            "official.run_failed",
-            run_id=run_id,
-            assignment_id=run.assignment_id,
-            failure_category="zip_extract_error",
-            workflow_type="official",
-        )
-        tracker.mark_failure("Failed to extract ZIP", type(e).__name__)
-        tracker.release_remaining_slots()
-        return {"error": "Failed to extract ZIP"}
-
+        claimed = claim(f"official:{run_id}", token)
+    except QueueFullError:
+        raise self.retry(countdown=2, max_retries=None)
+    if not claimed:
+        return {"run_id": run_id, "state": "ignored"}
     try:
-        with retention.access(run_id):
-            grouped_files, unmatched = group_canvas_files(extract_dir)
-
-        unused_slots = max(0, total_submissions - len(grouped_files))
-        if unused_slots:
-            tracker.release_slots(unused_slots)
-
-        student_results: dict = {}
-        success_count = 0
-        warning_count = 0
-        failure_count = 0
-        timeout_count = 0
-        failure_summary_counts: dict = {}
-        unmatched_names = [p.name for p in unmatched]
-        details_lock = asyncio.Lock()
-
-        def flush_run_details(*, run_status: str = "running") -> None:
-            with retention.access(run_id):
-                write_run_details_json(
-                    run_dir,
-                    {
-                        "unmatched_files": unmatched_names,
-                        "student_results": student_results,
-                        "run_status": run_status,
-                    },
-                )
-        flush_run_details(run_status="running")
-
-        async def grade_student_async(canvas_user_id: str, paths: list[Path], semaphore: asyncio.Semaphore):
-            nonlocal success_count, warning_count, failure_count, timeout_count
-
-            student_identifier = "unknown"
-            submission_id = "unknown"
-            bundle_files: list[str] = []
-            for p in paths:
-                parsed = parse_canvas_filename(p.name)
-                if parsed:
-                    student_identifier, _, submission_id, _ = parsed
-                    break
-
-            student_temp_dir = run_dir / f"student_{canvas_user_id}"
-            manual_results = init_manual_results(config.scoring_items)
-
-            try:
-                try:
-                    with retention.access(run_id):
-                        student_temp_dir.mkdir(parents=True, exist_ok=True)
-                        prepare_student_bundle(paths, student_temp_dir)
-                        bundle_files = list_bundle_files(student_temp_dir)
-                except HTTPException:
-                    raise
-                except Exception as e:
-                    async with details_lock:
-                        failure_count += 1
-                        failure_summary_counts["preparation_error"] = (
-                            failure_summary_counts.get("preparation_error", 0) + 1
-                        )
-                        student_results[canvas_user_id] = {
-                            "student_identifier": student_identifier,
-                            "submission_id": submission_id,
-                            "bundle_files": [],
-                            "bundle_file_count": 0,
-                            "success": False,
-                            "score": 0,
-                            "max_score": max_score,
-                            "automated_max_score": automated_max_score,
-                            "test_results": [],
-                            "warnings": [],
-                            "failure_category": "preparation_error",
-                            "failure_message": f"Failed to prepare submission bundle: {e!s}",
-                            "feedback_html": (
-                                f"<html><body><p>Error preparing submission: {e!s}</p></body></html>"
-                            ),
-                            "manual_results": manual_results,
-                            "overall_comment": "",
-                        }
-                        flush_run_details()
-                        tracker.update_progress(
-                            success_count,
-                            warning_count,
-                            failure_count,
-                            timeout_count,
-                            failure_summary_counts,
-                        )
-                    return
-
-                try:
-                    async with semaphore:
-                        grading_result = await grading_engine.grade_submission(
-                            bundle_dir=student_temp_dir,
-                            official_run_id=run_id,
-                        )
-                except HTTPException:
-                    raise
-                except Exception as exc:
-                    logger.error("Official submission execution failed")
-                    grading_result = GradingResult(
-                        success=False,
-                        failure_category="internal_error",
-                        failure_message=f"Grading error: {type(exc).__name__}",
-                        max_score=max_score,
-                    )
-
-                feedback_html = generate_pedagogical_feedback_html(
-                    student_identifier, grading_result, manual_results
-                )
-
-                async with details_lock:
-                    if grading_result.success:
-                        if grading_result.warnings:
-                            warning_count += 1
-                        elif grading_result.score < automated_max_score:
-                            warning_count += 1
-                        else:
-                            success_count += 1
-                    else:
-                        if grading_result.failure_category == "timeout":
-                            timeout_count += 1
-                        else:
-                            failure_count += 1
-                        cat = grading_result.failure_category or "unknown_failure"
-                        failure_summary_counts[cat] = failure_summary_counts.get(cat, 0) + 1
-
-                    student_results[canvas_user_id] = {
-                        "student_identifier": student_identifier,
-                        "submission_id": submission_id,
-                        "bundle_files": bundle_files,
-                        "bundle_file_count": len(bundle_files),
-                        "success": grading_result.success,
-                        "score": grading_result.score,
-                        "max_score": grading_result.max_score,
-                        "automated_max_score": automated_max_score,
-                        "test_results": grading_result.test_results,
-                        "warnings": [dict(w) for w in grading_result.warnings],
-                        "failure_category": grading_result.failure_category,
-                        "failure_message": grading_result.failure_message,
-                        "feedback_html": feedback_html,
-                        "manual_results": manual_results,
-                        "overall_comment": "",
-                    }
-                    flush_run_details()
-                    tracker.update_progress(
-                        success_count,
-                        warning_count,
-                        failure_count,
-                        timeout_count,
-                        failure_summary_counts,
-                    )
-            finally:
-                tracker.release_slots(1)
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            semaphore = asyncio.Semaphore(settings.judge0_max_concurrent)
-            tasks = [
-                grade_student_async(canvas_user_id, paths, semaphore)
-                for canvas_user_id, paths in grouped_files.items()
-            ]
-            outcomes = loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-            for outcome in outcomes:
-                if isinstance(outcome, BaseException):
-                    raise outcome
-        finally:
-            asyncio.set_event_loop(None)
-            loop.close()
-
-        with retention.access(run_id):
-            shutil.rmtree(extract_dir)
-
-            details_payload = {
-                "unmatched_files": unmatched_names,
-                "student_results": student_results,
-                "run_status": "complete",
-            }
-            write_run_details_json(run_dir, details_payload)
-            write_run_grades_csv(run_dir, student_results)
-            write_feedback_zip(run_dir, student_results)
-
-        tracker.mark_complete(success_count, warning_count, failure_count + timeout_count, failure_summary_counts)
-        audit_event(
-            "official.run_completed",
-            run_id=run_id,
-            assignment_id=run.assignment_id,
-            submission_count=total_submissions,
-            success_count=success_count,
-            warning_count=warning_count,
-            failure_count=failure_count,
-            timeout_count=timeout_count,
-            unmatched_count=len(unmatched),
-            workflow_type="official",
-        )
-        return {"run_id": run_id, "state": "complete", "total": total_submissions}
-    finally:
-        tracker.release_remaining_slots()
+        outcome = step(run_id, token)
+    except HTTPException as exc:
+        if exc.status_code == 410:
+            with SessionLocal() as db:
+                run = db.get(RunSummary, run_id)
+                if run:
+                    run.status = "failure"
+                    run.failure_summary = {"error": "review_expired"}
+                    db.commit()
+            finish_step(run_id, token)
+        return {"run_id": run_id, "state": "failure", "failure_category":
+                "review_expired" if exc.status_code == 410 else "execution_unavailable"}
+    except Exception:
+        # Keep the lease: dispatcher retries with a fresh generation after the
+        # hard-limit/remote-execution safety window, then fails after 3 attempts.
+        logger.error("Official execution attempt interrupted")
+        return {"run_id": run_id, "state": "failure", "failure_category": "execution_interrupted"}
+    finish_step(run_id, token)
+    return outcome
 
 
 def cleanup_expired_workspaces() -> dict:
     """Compatibility entry point; scheduling belongs to the dedicated service."""
     from app.db.session import SessionLocal
+    from app.domains.runs import retention
 
     with SessionLocal() as db:
         return retention.reconcile(db)

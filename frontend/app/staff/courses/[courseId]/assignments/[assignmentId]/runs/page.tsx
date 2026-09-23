@@ -193,6 +193,7 @@ export default function RunsPage({ params }: PageProps) {
           )}
 
           <p className="text-sm text-muted-foreground">Review access and downloads end 23 hours after upload. Export results before that deadline; automatic deletion then begins.</p>
+          <p className="text-sm text-muted-foreground">Default upload limits: 200 submissions and 50 MB per ZIP, with 1,000 unfinished official submissions across the host. Accepted batches wait for grading capacity.</p>
           <Card>
             <form onSubmit={handleIngest}>
               <CardHeader>

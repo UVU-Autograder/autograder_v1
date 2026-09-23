@@ -121,6 +121,9 @@ class MonitoringResponse(BaseModel):
     cleanup_failed_runs: int = 0
     cleanup_overdue_runs: int = 0
     cleanup_orphan_errors: int = 0
+    dispatch_service_healthy: bool = False
+    waiting_executions: int = 0
+    active_executions: int = 0
 
 
 # --- Routes ---

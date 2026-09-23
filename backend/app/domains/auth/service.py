@@ -492,9 +492,14 @@ def get_admin_monitoring_metrics(db: Session) -> dict:
             total_tokens += meta.get("total_tokens", 0)
 
     from app.domains.runs.retention import health
+    from app.domains.runs.dispatch_worker import healthy as dispatch_healthy
+    from app.domains.runs.queue_admission import _count
 
     return {
         **health(db),
+        "dispatch_service_healthy": dispatch_healthy(),
+        "waiting_executions": _count(db, "waiting"),
+        "active_executions": _count(db, "active"),
         "active_runs_count": active_runs,
         "queued_runs_count": queued_runs,
         "sandbox_runs_last_hour": sandbox_last_hour,

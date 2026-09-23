@@ -228,7 +228,6 @@ def execute_sandbox_run(
     finally:
         if not is_run_cancelled(run_id):
             try:
-                release_execution_slots(1)
+                release_execution_slots(owner=run_id)
             except Exception as rel_err:
                 logger.warning("Failed releasing sandbox slot for %s: %s", run_id, rel_err)
-

@@ -108,15 +108,15 @@ class SandboxService:
         if quota.remaining <= 0:
             return None, session, 429
 
+        run_id = f"run_{token_urlsafe(16)}"
         try:
-            waiting = reserve_execution_slots(1)
+            waiting = reserve_execution_slots(1, owner=run_id)
         except QueueFullError:
             return None, session, 503
 
         now = datetime.now(UTC)
         self._store.record_upload(session, now)
 
-        run_id = f"run_{token_urlsafe(16)}"
         record = SandboxRunRecord(
             run_id=run_id,
             session_id=session,
@@ -125,7 +125,11 @@ class SandboxService:
             queue_position=max(1, waiting),
             max_score=max_score,
         )
-        self._store.save_run(record)
+        try:
+            self._store.save_run(record)
+        except Exception:
+            release_execution_slots(owner=run_id)
+            return None, session, 503
 
 
         # Store execution payload on record
@@ -153,15 +157,22 @@ class SandboxService:
                     )
                 except Exception:
                     pass
-                grade_result = grade_sandbox_run.delay(
-                    run_id=run_id,
-                    zip_data_b64=zip_b64,
-                    config_json=config_json,
-                    artifact_refs=artifact_refs or {},
-                    allowed_concepts=allowed_concepts or [],
-                    stdin=stdin,
-                )
-                record.celery_task_id = grade_result.id
+                try:
+                    self._store.save_run(record)
+                    grade_result = grade_sandbox_run.delay(
+                        run_id=run_id,
+                        zip_data_b64=zip_b64,
+                        config_json=config_json,
+                        artifact_refs=artifact_refs or {},
+                        allowed_concepts=allowed_concepts or [],
+                        stdin=stdin,
+                    )
+                    record.celery_task_id = grade_result.id
+                    self._store.save_run(record)
+                except Exception:
+                    from app.domains.runs.queue_admission import cancel_waiting
+                    cancel_waiting(run_id)
+                    return None, session, 503
 
         status = self._status_for(record)
         return (
@@ -180,6 +191,12 @@ class SandboxService:
 
     def get_status(self, run_id: str) -> RunStatusResponse | None:
         self._expire_old_runs()
+        if self._use_celery:
+            from app.domains.runs.queue_admission import ticket_state
+            if ticket_state(run_id) == "expired":
+                from app.domains.runs.orchestrator import set_run_state
+                set_run_state(run_id, "failure", {"failure_category": "execution_interrupted",
+                    "failure_message": "Execution was interrupted. Submit again."})
 
         # Try Redis first if Celery mode is active
         if self._use_celery:
@@ -232,12 +249,15 @@ class SandboxService:
             except Exception:
                 pass
 
+        from app.domains.runs.queue_admission import cancel_waiting
+        if not cancel_waiting(run_id):
+            return "not_cancelable"
         record.state = "failure"
 
         try:
             if self._use_celery:
                 try:
-                    from app.domains.runs.tasks import mark_run_cancelled, set_run_state
+                    from app.domains.runs.orchestrator import mark_run_cancelled, set_run_state
                     from app.integrations.celery.app import celery_app
 
                     mark_run_cancelled(run_id)
@@ -247,7 +267,7 @@ class SandboxService:
                 except Exception:
                     pass
         finally:
-            release_execution_slots(1)
+            release_execution_slots(owner=run_id)
 
         return SandboxCancelResponse(
             run_id=run_id,
@@ -556,7 +576,7 @@ class SandboxService:
                 warnings.append(
                     SandboxWarning(
                         code=res_data.get("failure_category", "submission_error"),
-                        message=res_data.get("failure_message"),
+                        message=str(res_data.get("failure_message") or "Execution failed."),
                     )
                 )
 
@@ -567,7 +587,7 @@ class SandboxService:
                 max_score=res_data.get("max_score", record.max_score),
                 warnings=warnings,
                 test_summaries=test_summaries,
-                sanitized_feedback=res_data.get("failure_message") if not res_data.get("success") else "Review your results above.",
+                sanitized_feedback=str(res_data.get("failure_message") or "Execution failed.") if not res_data.get("success") else "Review your results above.",
                 file_preview=self._file_preview(),
                 raw_output=res_data.get("raw_output"),
             )
@@ -683,7 +703,7 @@ class SandboxService:
             "complete",
             "failure",
         }:
-            release_execution_slots(1)
+            release_execution_slots(owner=record.run_id)
 
     def _message_for(self, state: RunState) -> str:
         return {
