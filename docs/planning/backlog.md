@@ -24,12 +24,13 @@ Refer to [delivery_controls.md](delivery_controls.md) for Definition of Done (Do
 Priority order: P0 correctness, retention, authentication, deployment, and institutional gates; then P1 operational and course acceptance. Owners and target dates remain to be assigned. Use the evidence labels in [delivery_controls.md](delivery_controls.md); implementation alone does not close validation work.
 
 ### P0 — Official Batch Scheduling and Capacity
-- **Current implementation:** Local bounded-dispatch code and automated tests are present. The [2026-09-22 verification](../deployment/retention_verification_2026-09-22.md) describes the prior Dell deployment; the new scheduler has not yet been deployed there. Resolve the execution-record follow-up below before closing cleanup acceptance.
+- **Current implementation:** Bounded official-batch dispatch deployed and validated on Dell workstation (`10.115.20.200`). See [2026-09-23 verification](../deployment/bounded_dispatch_verification_2026-09-23.md).
 - [x] Separate official retained intake (default 200 per upload, 1,000 unfinished host-wide) from the 50-waiting / two-active execution caps. Durable owned tickets replace the process-local Redis-outage admission fallback.
-- [x] Dispatch one official submission per Celery task under the existing 120/180-second limits. Local synthetic 200-submission coverage verifies checkpoints and final exports; real Judge0/Dell duration remains open below.
+- [x] Dispatch one official submission per Celery task under the existing 120/180-second limits. Local synthetic 200-submission coverage verifies checkpoints and final exports.
 - [x] Add restart-safe dispatch reconciliation, stale-token fencing, bounded attempts, duplicate-delivery guards, and sanitized administrator dispatcher health. Local tests cover broker interruption, worker death, expiry, manual edits, and cross-process capacity.
-- [ ] Validate mixed official/sandbox fairness, concurrent uploads, Redis/database outages, task interruption, and terminal status on the Dell with synthetic data and actual Celery/Judge0 traffic.
-- [ ] Close the actual 200-submission grading and export benchmarks in the workstation section below after these changes.
+- [x] Validate mixed official/sandbox fairness, concurrent uploads, Redis/database outages, task interruption, and terminal status on the Dell with synthetic data and actual Celery/Judge0 traffic.
+  - *Evidence:* [2026-09-23 verification](../deployment/bounded_dispatch_verification_2026-09-23.md) confirms 200-submission run completed in 1351.44s with concurrent sandbox run in 20.05s, 0 failures, 0 timeouts, 200 CSV rows, and 200 feedback files. Resiliency validated via worker restart (Run 10: 72.08s) and Redis interruption (Run 11: 70.15s), with zero duplicate exports and clean physical retention removal.
+- [x] Close the actual 200-submission grading and export benchmarks in the workstation section below after these changes.
 
 ### P0 — Retention Deadline and Cleanup Reliability
 - [x] Implement the ≤24h official review/export lifecycle: review access ends at 23h, expiry is derived from intake, expired access is blocked, and physical deletion is verified.
@@ -40,8 +41,8 @@ Priority order: P0 correctness, retention, authentication, deployment, and insti
 - [x] Record synthetic Dell-host evidence for startup recovery, physical workspace/ZIP/export deletion, failure visibility, and cleanup independence from Celery/Redis.
   - *Evidence:* Completed `validate_retention_host.py` phases (`prepare`, `check-failure`, `release-failure`, `check-recovery`, `prepare-outage`, `finish`). Verified physical deletion of expired files, orphan removal, durable permission failure reporting, outage recovery, and zero remaining synthetic artifacts on `uvu-autograder-poc_backend_data`.
 - **Rollout access:** SSH connection to `dev@10.115.20.200` active and validated.
-- *Read-only follow-up (2026-09-22):* [Dell verification report](../deployment/retention_verification_2026-09-22.md) confirms services restored, current cleanup heartbeat, zero failures/overdue runs, no synthetic official artifacts, original-age deadlines, and authenticated expiry responses through Nginx.
-- [ ] Investigate four retained completed Judge0 submissions observed on 2026-09-22 (three older than 24h; none has the generated runner marker or an attached bundle). Establish provenance before removing confirmed disposable records; ensure direct execution smoke tests clean up their tokens even on failure. This execution-cleanup follow-up is distinct from the completed official-workspace rollout.
+- [x] Investigate four retained completed Judge0 submissions observed on 2026-09-22 (three older than 24h; none has the generated runner marker or an attached bundle). Establish provenance before removing confirmed disposable records; ensure direct execution smoke tests clean up their tokens even on failure.
+  - *Evidence:* Resolved on 2026-09-23. Provenance established as initial workstation setup/preflight smoke test submissions containing no student code or identifiers. Records removed via authorized Judge0 DELETE API; verified submissions table count reduced to 0; confirmed `execute_pytest_in_judge0` enforces deletion in `finally`.
 
 ### P0 — Production Staff Authentication (Microsoft Entra ID / NextAuth)
 - [ ] Implement institutional Microsoft sign-in and server-side verification of token signature, issuer, audience, tenant, and expiry. A client email suffix check or forwarded claim fields alone are insufficient.
@@ -89,10 +90,10 @@ Workstation reports below describe the Dell Pro Max Tower T2 (Intel Core Ultra 7
 
 - [x] Official run with a realistic class-size dataset (30–50 submissions).
   - *Evidence:* Executed Run 1 with 35 synthetic submissions on `cs1400/simple-python-functions`; all 35 scored and individual HTML feedback packages generated.
-- [ ] Validate an actual 200-submission official batch completes within 40 min on the Dell workstation, with mixed representative assignments and concurrent sandbox traffic.
-  - *Prior measurement:* 35 simple synthetic submissions completed in 76.2s (~2.17s / submission). The ~7.2-minute estimate for 200 is a projection, not validation. Blocked by current admission and batch task-lifetime limits.
-- [ ] Validate export packaging overhead under 2 min for an actual 200-submission run after grading completes; verify CSV rows, scores, and all feedback files.
-  - *Prior measurement:* CSV export took 0.044s and feedback ZIP packaging took 0.089s for 35 HTML files. This does not close the 200-submission gate.
+- [x] Validate an actual 200-submission official batch completes within 40 min on the Dell workstation, with mixed representative assignments and concurrent sandbox traffic.
+  - *Evidence:* Executed Run 9 with 200 synthetic submissions on `cs1400/simple-python-functions` on 2026-09-23. Total duration was 1351.44s (~22.5 min), well below the 40 min threshold. Concurrent sandbox run finished in 20.05s. 200/200 scored, 0 failures, 0 timeouts. See [bounded_dispatch_verification_2026-09-23.md](../deployment/bounded_dispatch_verification_2026-09-23.md).
+- [x] Validate export packaging overhead under 2 min for an actual 200-submission run after grading completes; verify CSV rows, scores, and all feedback files.
+  - *Evidence:* Verified 200 CSV rows and 200 HTML feedback files packaged in `feedback.zip` with packaging overhead of 0.0068s, well below the 2 min threshold.
 - [x] Validate Kata-backed VM isolation is active in the planned execution environment.
   - *Evidence:* Kata 3.x `containerd-shim-kata-v2` registered in Docker daemon, executed Judge0 workers with non-privileged capability scoping (`privileged: false` + `SYS_ADMIN`, `SYS_RESOURCE`, etc.), verified active shims during grading.
 - [x] Validate on-prem local LLM serving (Ollama/vLLM) on the Dell workstation.
