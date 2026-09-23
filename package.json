@@ -9,6 +9,7 @@
     "dev:backend": "node -e \"const {spawn}=require('child_process');const isWin=process.platform==='win32';const py=isWin?'venv\\\\Scripts\\\\python':'venv/bin/python';const p=spawn(py,['-m','uvicorn','app.main:app','--host','127.0.0.1','--port','8000','--reload','--reload-dir','app'],{cwd:'backend',stdio:'inherit'});p.on('exit',code=>process.exit(code||0));\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "check": "node -e \"const isWin=process.platform==='win32';const cmd=isWin?'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\run_checks.ps1':'bash scripts/run_checks.sh';require('child_process').execSync(cmd,{stdio:'inherit'});\"",
     "openapi:generate": "cd backend && python scripts/generate_openapi.py",
     "docker:build": "docker compose --env-file .env.local build judge0",
     "docker:up": "docker compose --env-file .env.local up -d --build",
