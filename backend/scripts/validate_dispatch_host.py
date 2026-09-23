@@ -142,14 +142,13 @@ def sandbox_state(manifest):
 
 def watch(manifest, *, timeout_seconds):
     start = time.monotonic()
+    manifest = submit_sandbox(manifest)
     sandbox_done = False
     last_completed = -1
     while time.monotonic() - start < timeout_seconds:
         data = check(manifest)
         if data["completed"] != last_completed:
             last_completed = data["completed"]
-        if data["completed"] > 0 and data["state"] not in ("complete", "failure") and manifest["sandbox_run"] is None:
-            manifest = submit_sandbox(manifest)
         if manifest["sandbox_run"] and not sandbox_done:
             sandbox_done = sandbox_state(manifest) is not None
         if data["state"] in ("complete", "failure"):
@@ -159,6 +158,7 @@ def watch(manifest, *, timeout_seconds):
                 time.sleep(20)
                 continue
             passed = (data["state"] == "complete" and data["completed"] == manifest["count"]
+                and data["failed"] == 0 and data["timeouts"] == 0
                 and data.get("csv_rows") == manifest["count"]
                 and data.get("feedback_files") == manifest["count"]
                 and data["elapsed_seconds"] < 2400
