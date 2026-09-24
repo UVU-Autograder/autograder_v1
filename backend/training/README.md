@@ -154,7 +154,7 @@ set). Every target is a stock-model draft **edited by a person**.
 
 | Step | Where | Command |
 | --- | --- | --- |
-| 1. Build inputs (already committed) | Mac | `python -m eval.build_cases --split train` → `training/p2/cases/` |
+| 1. Build inputs (already committed) | Mac | `python -m eval.build_cases --split train` → `training/p2/cases.jsonl` |
 | 2. Draft | Dell, vLLM up on :8001 | `~/venvs/train/bin/python -m training.draft_p2 --model gemma4-12b-qat` |
 | 3. Copy drafts to the Mac | Mac | `scp -r 'dev@10.115.20.200:autograder_v1-dev/backend/training/p2/review' backend/training/p2/` |
 | 4. Edit | Mac, VS Code | each `training/p2/review/<case>.md` |

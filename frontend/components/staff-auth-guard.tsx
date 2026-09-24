@@ -32,8 +32,8 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       router.push("/staff/login");
     };
 
-    // Inactivity timeout: 5 minutes (300,000ms)
-    const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
+    // Inactivity timeout: 60 minutes (3,600,000ms) to match standard session lifetime
+    const INACTIVITY_TIMEOUT = 60 * 60 * 1000;
 
     const checkInactivity = () => {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");

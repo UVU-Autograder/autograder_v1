@@ -1,4 +1,4 @@
-<!-- p2-review | case=p2_ds4_concept_dataclass | drafted_by=claude-pre-edit | prompt=v5 -->
+<!-- p2-review | case=p2_ds4_concept_dataclass | drafted_by=gemma4-12b-qat | prompt=v5 -->
 # p2_ds4_concept_dataclass
 
 **Dessert Shop 4: Abstraction** · `concept_violation` · adds a @dataclass (dataclasses, Module 11) in a Module 6 project; tests pass
@@ -25,11 +25,11 @@
 - Passing: DessertItem inherits ABC and defines abstract @abstractmethod calculate_cost(), DessertItem tax_percent attribute defaults to 7.25%, calculate_cost() computes price per weight, dozen, and scoops for subclasses, calculate_tax() computes tax based on item cost and tax_percent, Order methods order_cost() and order_tax() aggregate total prices accurately
 - Concept warnings (shown to the student in the Warnings panel): concept_warning: [dessert.py] Concept 'dataclasses' is not in the allowed list
 
-## Draft by `claude-pre-edit` (written directly, no model draft), as the student would see it
+## Draft by `gemma4-12b-qat` (prompt v5), as the student would see it
 
-All the cost and tax tests pass, and your abstract class works.
+All automated tests pass for your Dessert Shop classes.
 
-**Next step:** Your dessert.py adds a dataclass, which comes in a later module. Review this module's allowed concepts and write Box as a regular class for now, or leave it out if nothing uses it.
+**Next step:** Review the allowed concepts for this module. Notice that dataclasses come later in the course, so rework this part using standard classes.
 
 Automatic checks on the draft: pass
 
@@ -43,7 +43,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
-> Pre-edit note (Claude): New case from 4159d52 (replaces the exceptions case now that exceptions are allowed in Module 6). There is no model draft; this target was written directly.
+> Pre-edit note (Claude): New case from 4159d52 (replaces the exceptions case now that exceptions are allowed in Module 6). The draft was good; the next step now names the student's own Box dataclass and offers leaving it out, and the summary says what works.
 
 status: todo
 

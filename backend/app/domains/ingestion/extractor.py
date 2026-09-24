@@ -223,8 +223,8 @@ def group_canvas_files(extract_dir: Path) -> tuple[dict[str, list[Path]], list[P
     Returns (grouped_files, unmatched_files).
     """
     extract_dir = Path(extract_dir).resolve()
-    grouped_files = {}
-    unmatched_files = []
+    grouped_files: dict[str, list[Path]] = {}
+    unmatched_files: list[Path] = []
 
     for path in extract_dir.iterdir():
         if path.is_file():

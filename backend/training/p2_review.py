@@ -31,7 +31,8 @@ from eval.schemas import EvalCase
 
 HERE = Path(__file__).parent
 P2_DIR = HERE / "p2"
-CASES_DIR = P2_DIR / "cases"
+CASES_FILE = P2_DIR / "cases.jsonl"
+CASES_DIR = CASES_FILE
 REVIEW_DIR = P2_DIR / "review"
 
 STATUSES = ("todo", "approved", "rejected")

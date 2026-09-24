@@ -23,7 +23,7 @@
 
 ## 2. Core Features
 
-- Staff authentication: current mock JWT login accepts `@uvu.edu` addresses without verifying ownership. Institutional Microsoft authentication with explicit staff grants is active pilot-readiness work, not yet implemented.
+- Staff authentication: institutional Microsoft Entra ID authentication with pre-provisioned staff access gating and 60-minute JWT session tokens; local developer mock login fallback for development mode when `AUTH_PROVIDER=mock`.
 - Student sandbox access through globally visible sandbox-enabled assignments without student-specific authentication.
 - Progressive `Concepts Covered` enforcement using AST validation (LLM prompt context when sandbox Local LLM is enabled).
 - Retention-aware grading: sandbox wipe after results; official identifiable review/export artifacts ≤24h or until staff cleanup; Judge0/Kata artifacts deleted immediately after retrieval.
@@ -383,7 +383,35 @@ For **official** runs, the cleanup boundary at `M` means execution artifacts and
 - Sandbox Local LLM feedback is implemented as an on-demand UI beside test results, with request and streaming API paths; explanation-only, sandbox-only, and must not receive personally traceable payloads. Implementation does not imply approval for live-data use.
 - Monaco does not change the persistent data model; it is a frontend/editor dependency and a review surface backed by structured app data rather than raw submission downloads.
 
-## 6. Permissions Matrix
+## 6. Authentication and Session Architecture
+
+### Institutional Microsoft Entra ID Authentication
+- **Protocol:** OpenID Connect (OIDC) with PKCE (Proof Key for Code Exchange).
+- **Frontend Flow:** Next.js Route Handlers (`/api/auth/microsoft/login` and `/api/auth/microsoft/callback`) handle tenant authorization redirects and authorization-code exchange using Web Crypto PKCE verifiers.
+- **Session Provisioning & Handoff:**
+  - Upon token exchange, the backend authenticates the identity via `POST /auth/microsoft-login`.
+  - A short-lived, encrypted, same-site `auth_handoff` cookie delivers the session token to the client window, where it is transferred to `localStorage` and the cookie is immediately invalidated.
+- **Backend Cryptographic Verification (`backend/app/integrations/auth/microsoft.py`):**
+  - **Signature:** RS256 validated against Microsoft's public JWKS using `PyJWKClient` (keys cached for 1 hour).
+  - **Issuer:** Matches Microsoft Entra ID tenant endpoint.
+  - **Audience:** Validated against configured `AZURE_AD_CLIENT_ID`.
+  - **Tenant:** Matches configured `AZURE_AD_TENANT_ID`.
+  - **Email Constraint:** Enforces `@uvu.edu` email suffix.
+- **Pre-Provisioned Staff Access Gating:**
+  - A university Microsoft identity alone carries zero staff authority.
+  - `POST /auth/microsoft-login` requires an existing `users` record and active `staff_access` grants.
+  - Unprovisioned `@uvu.edu` accounts receive `403 Forbidden` ("Account pending staff authorization") and are blocked from accessing staff routes.
+  - Upon first verified sign-in, the user's immutable `azure_oid` is permanently bound to the `users` record.
+- **Session Tokens:**
+  - Standard JWT access token lifespan is 60 minutes (`JWT_EXPIRATION_MINUTES=60`).
+  - Inactivity and expiration timeouts trigger clean redirect to `/staff/login?reason=timeout`.
+- **Environment & Development Mock Fallback:**
+  - Production deployments require `ENVIRONMENT=production` and `AUTH_PROVIDER=microsoft`.
+  - Mock login (`POST /auth/mock-login`) is strictly disabled in production or when `AUTH_PROVIDER=microsoft` (returns 403 Forbidden).
+  - Production startup rejects development fallback secrets or missing Azure credentials (`validate_production_security()`).
+  - Isolated development supports local mock sign-in when `AUTH_PROVIDER=mock`.
+
+## 7. Permissions Matrix
 
 | Actor      | View course assignments              | Edit grading setup                                       | Launch official runs                                                 | View official run results                  | Access sandbox assignment listings                    |
 | ---------- | ------------------------------------ | -------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
@@ -404,7 +432,7 @@ Notes:
 - Target policy: instructors/IAs are limited by assigned course/section. Section-scoped enforcement is implemented on official ingest, run, and status routes (legacy null-`section_id` runs remain admin-only).
 - All app endpoints require a valid session token except auth entrypoints, public sandbox entrypoints, and health checks.
 
-## 7. Canvas ZIP Format and Filename Mapping
+## 8. Canvas ZIP Format and Filename Mapping
 
 - Official ingestion accepts Canvas-exported ZIP archives only.
 - Validation must reject:
@@ -438,7 +466,7 @@ Notes:
 - Prefer not to use live, pseudonymous, or re-identifiable Canvas data for automated validation until live-data posture is confirmed.
 - Synthetic Canvas fixtures must cover malformed ZIPs, path traversal, ambiguous filenames, unmatched files, `_LATE_` filename variants, Canvas version suffix stripping, multi-file submission bundles, and Canvas-grade CSV shape.
 
-## 8. Celery Grading Pipeline
+## 9. Celery Grading Pipeline
 
 - Both official and sandbox grading evaluate the merged effective concept list derived from current course defaults ∪ module concepts before execution.
 
@@ -512,7 +540,7 @@ Notes:
 - `cleanup_failure` is launch-blocking for live workflows and must be visible to staff/admin status surfaces without exposing sensitive detail.
 - Staff and student clients poll this endpoint every `2s` while state is `queue` or `run`, then stop polling after `complete` or `failure`.
 
-## 9. Output Formats
+## 10. Output Formats
 
 ### Staff-facing export artifacts
 
@@ -531,7 +559,7 @@ Notes:
 - May include sanitized file tree and read-only Monaco preview while the sandbox bundle remains in ephemeral storage.
 - Is not downloadable and is not stored persistently.
 
-## 10. Deployment and Environment
+## 11. Deployment and Environment
 
 - The current deployment target is the Dell workstation running the full local/on-prem stack.
 - Docker Compose supports local development and workstation operations through `docker compose -f docker-compose.yml`.

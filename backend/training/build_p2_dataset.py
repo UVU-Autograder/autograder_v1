@@ -31,7 +31,7 @@ from eval.schemas import load_cases
 from training.p2_review import CASES_DIR, REVIEW_DIR, case_messages, parse_review, parse_target
 
 HERE = Path(__file__).parent
-EVAL_CASES = HERE.parent / "eval" / "cases"
+EVAL_CASES = HERE.parent / "eval" / "cases.jsonl"
 OUT_DIR = HERE / "data" / "p2"
 MAX_WORDS = 150
 SERVE_MAX_MODEL_LEN = 8192  # vllm serve --max-model-len on the Dell (training/README.md)

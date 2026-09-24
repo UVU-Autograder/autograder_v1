@@ -9,6 +9,7 @@ a model endpoint reachable.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -69,14 +70,64 @@ class EvalCase(BaseModel):
         return {f["key"] for f in self.failures}
 
 
-def load_cases(directory: Path) -> list[EvalCase]:
-    cases = [
-        EvalCase.model_validate(json.loads(p.read_text()))
-        for p in sorted(directory.glob("*.json"))
-    ]
+def load_cases(path: Path) -> list[EvalCase]:
+    cases: list[EvalCase] = []
+    resolved: Path | None = None
+
+    if path.is_file():
+        resolved = path
+    elif path.is_dir():
+        if (path / "cases.jsonl").is_file():
+            resolved = path / "cases.jsonl"
+        else:
+            json_files = sorted(path.glob("*.json"))
+            if json_files:
+                cases = [
+                    EvalCase.model_validate(json.loads(p.read_text(encoding="utf-8")))
+                    for p in json_files
+                ]
+            else:
+                raise FileNotFoundError(f"No cases found in directory {path}")
+    elif path.with_suffix(".jsonl").is_file():
+        resolved = path.with_suffix(".jsonl")
+    else:
+        raise FileNotFoundError(f"Case dataset path not found: {path}")
+
+    if resolved:
+        if resolved.name.endswith(".jsonl"):
+            for line in resolved.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line:
+                    cases.append(EvalCase.model_validate(json.loads(line)))
+        elif resolved.name.endswith(".json"):
+            cases.append(EvalCase.model_validate(json.loads(resolved.read_text(encoding="utf-8"))))
+        else:
+            raise ValueError(f"Unsupported case file format: {resolved.name}")
+
     seen: set[str] = set()
     for case in cases:
         if case.case_id in seen:
             raise ValueError(f"duplicate case_id: {case.case_id}")
         seen.add(case.case_id)
     return cases
+
+
+def save_cases(cases: list[EvalCase | dict[str, Any]], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    for item in cases:
+        data = item.model_dump() if isinstance(item, EvalCase) else item
+        lines.append(json.dumps(data, ensure_ascii=False))
+    payload = "\n".join(lines) + ("\n" if lines else "")
+
+    tmp_path = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    try:
+        tmp_path.write_text(payload, encoding="utf-8")
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+

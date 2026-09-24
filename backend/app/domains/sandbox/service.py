@@ -1,7 +1,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
-from typing import Any
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -231,7 +231,7 @@ class SandboxService:
 
     def cancel_run(
         self, run_id: str, session_id: str | None
-    ) -> SandboxCancelResponse | str | None:
+    ) -> SandboxCancelResponse | Literal["not_cancelable"] | None:
         self._expire_old_runs()
         record = self._store.get_run(run_id)
         if record is None or record.session_id != session_id:
@@ -338,7 +338,7 @@ class SandboxService:
 
     def generate_ai_feedback(
         self, run_id: str, session_id: str | None
-    ) -> SandboxAiFeedbackResponse | str | None:
+    ) -> SandboxAiFeedbackResponse | None:
         self._expire_old_runs()
         record = self._store.get_run(run_id)
         if record is None or record.session_id != session_id:
@@ -372,7 +372,7 @@ class SandboxService:
 
     def get_result(
         self, run_id: str, session_id: str | None
-    ) -> SandboxRunResultResponse | str | None:
+    ) -> SandboxRunResultResponse | Literal["not_ready"] | None:
         self._expire_old_runs()
         record = self._store.get_run(run_id)
         if record is None or record.session_id != session_id:

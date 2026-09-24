@@ -47,10 +47,18 @@ def get_current_user(
     )
 
     if user is None:
-        user = User(email=email, display_name=name, is_active=True)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        from app.core.settings import get_settings
+        settings = get_settings()
+        if settings.mock_login_enabled:
+            user = User(email=email, display_name=name, is_active=True)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account not found or pending authorization.",
+            )
 
     if not user.is_active:
         raise HTTPException(
@@ -185,11 +193,24 @@ def accessible_section_ids_for_course(db: Session, user: User, course_code: str)
     if user_is_admin(user):
         return None  # all sections
 
+    # Course-wide instructor or admin access
+    if any(
+        access.is_active
+        and access.course_id == course.id
+        and access.section_id is None
+        and access.role is not None
+        and access.role.name in {"admin", "instructor"}
+        for access in user.staff_access
+    ):
+        return None
+
     return [
         access.section_id
         for access in user.staff_access
         if access.is_active
         and access.course_id == course.id
+        and access.section_id is not None
+        and access.role is not None
         and access.role.name in {"admin", "instructor", "IA"}
     ]
 

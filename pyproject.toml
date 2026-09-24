@@ -13,3 +13,21 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/*" = ["E402"]
 "backend/app/domains/*/models.py" = ["F821"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+exclude = [
+    "^backend/app/db/seeds/.*",
+    "^backend/training/.*",
+]
+
+[[tool.mypy.overrides]]
+module = "app.domains.*.models"
+disable_error_code = ["name-defined"]
+
+
+

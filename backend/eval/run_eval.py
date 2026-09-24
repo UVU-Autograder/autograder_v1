@@ -28,7 +28,8 @@ from eval.metrics import aggregate, score_case
 from eval.schemas import load_cases
 
 EVAL_DIR = Path(__file__).parent
-CASES_DIR = EVAL_DIR / "cases"
+CASES_FILE = EVAL_DIR / "cases.jsonl"
+CASES_DIR = CASES_FILE
 RESULTS_DIR = EVAL_DIR / "results"
 SCOREBOARD = RESULTS_DIR / "scoreboard.csv"
 

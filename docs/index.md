@@ -33,6 +33,12 @@ Current milestone: **controlled course pilot readiness**. Start with the [active
 
 ---
 
+## 🔧 Operations & Recovery (`docs/operations/`)
+* **[operator_runbook.md](./operations/operator_runbook.md):** Complete operational runbook covering service lifecycle, health verification, queue stalls, retention alerts, and incident response.
+* **[backup_and_recovery.md](./operations/backup_and_recovery.md):** Persistent course/metadata backup scripts and disaster recovery procedures with strict FERPA retention boundaries.
+
+---
+
 ## 📋 Planning & Backlog (`docs/planning/`)
 * **[backlog.md](./planning/backlog.md):** Active development backlog (product features, platform gaps, ops/validation checklist, deferred items).
 * **[delivery_controls.md](./planning/delivery_controls.md):** Definition of Done, verification standards, and release acceptance gates.

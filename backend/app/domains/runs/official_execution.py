@@ -147,7 +147,7 @@ def step(run_id: int, token: str) -> dict:
         # Recompute from the atomic checkpoint, including after a crash between
         # filesystem replacement and DB commit. Never count a submission twice.
         successes = warnings = failures = timeouts = 0
-        categories = {}
+        categories: dict[str, int] = {}
         for value in results.values():
             if value["success"]:
                 if value["warnings"] or value["score"] < value["automated_max_score"]:

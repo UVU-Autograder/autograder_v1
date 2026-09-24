@@ -12,7 +12,7 @@ Phase 2 examples should go.
 
 Each case shows what the model was given (the failures the grader reported),
 what it said (rendered the way the sandbox would show it), and the automatic
-verdicts. Code is not included -- open eval/cases/<case_id>.json for that.
+verdicts. Code is not included -- inspect eval/cases.jsonl for that.
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
 
     run = _load(args.label)
     other = _load(args.against) if args.against else None
-    cases = {c.case_id: c for c in load_cases(EVAL_DIR / "cases")}
+    cases = {c.case_id: c for c in load_cases(EVAL_DIR / "cases.jsonl")}
     other_by_id = {s["case_id"]: s for s in (other or {}).get("cases", [])}
 
     meta = run["run"]

@@ -22,11 +22,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_audit_logging()
     settings = get_settings()
+    settings.validate_production_security()
     if settings.is_sqlite:
         initialize_database(seed=True)
     yield
 
 def create_app() -> FastAPI:
+    settings = get_settings()
+    settings.validate_production_security()
     app = FastAPI(title="Autograder API", version="0.1.0", lifespan=lifespan)
     app.add_exception_handler(
         AppError,
@@ -70,7 +73,7 @@ def create_app() -> FastAPI:
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 
-    app.openapi = custom_openapi
+    app.openapi = custom_openapi  # type: ignore[method-assign]
     return app
 
 app = create_app()

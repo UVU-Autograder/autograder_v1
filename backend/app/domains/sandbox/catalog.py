@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.settings import get_settings
 from app.domains.assignments.models import Assignment
-from app.domains.assignments.service import validate_config_json
+from app.domains.assignments.service import (
+    _coerce_scoring_item_type,
+    validate_config_json,
+)
 from app.domains.courses.models import Course
 from app.domains.sandbox.schemas import (
     SandboxAssignmentDetail,
@@ -116,7 +119,7 @@ def get_sandbox_assignment(
                 label=item.label,
                 points=item.points,
                 extra_credit=item.extra_credit,
-                item_type=item.item_type,
+                item_type=_coerce_scoring_item_type(item.item_type, item.label),
                 pytest_marker=item.pytest_marker,
                 rubric_group_key=item.rubric_group_key,
                 inputs=tests_map[item.config_item_key].inputs if item.config_item_key in tests_map else None,
@@ -137,6 +140,8 @@ def get_sandbox_assignment(
 
 
 def _summary_for(assignment: Assignment, quota: UploadQuota) -> SandboxAssignmentSummary:
+    if assignment.config is None:
+        raise ValueError(f"Assignment {assignment.slug} is missing configuration")
     config = validate_config_json(assignment.config.config_json)
     return SandboxAssignmentSummary(
         id=assignment.slug,

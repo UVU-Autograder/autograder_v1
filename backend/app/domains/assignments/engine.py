@@ -26,7 +26,7 @@ class AssignmentSpecificationEngine:
     @staticmethod
     def extract_ag_markers(source_code: str) -> set[str]:
         """Parse Python source code using AST to find all pytest markers starting with 'ag_'."""
-        markers = set()
+        markers: set[str] = set()
         try:
             tree = ast.parse(source_code)
         except SyntaxError:

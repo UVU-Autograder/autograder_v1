@@ -17,7 +17,7 @@ from eval.schemas import load_cases
 from training import build_p2_dataset
 from training.p2_review import CASES_DIR, case_messages, parse_review, parse_target, render_review
 
-EVAL_CASES = Path(__file__).resolve().parents[1] / "eval" / "cases"
+EVAL_CASES = Path(__file__).resolve().parents[1] / "eval" / "cases.jsonl"
 SEEDS = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
 
 

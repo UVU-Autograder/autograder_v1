@@ -12,7 +12,7 @@ optimization, not the product.
 | Path | Role |
 | --- | --- |
 | `../app/integrations/ai/prompts.py` | **Single source of truth** for the system prompt and response schema. Eval, dataset construction, and serving all import it. Never copy this text. |
-| `cases/*.json` | Frozen fixtures. Pinned input + expectations. |
+| `cases.jsonl` | Frozen fixtures. Pinned input + expectations. |
 | `schemas.py` | `EvalCase` format and loader. |
 | `metrics.py` | The five hard scorers. Unit-tested in `tests/test_eval_metrics.py`. |
 | `client.py` | OpenAI-compatible client (LM Studio / Ollama / vLLM). |
@@ -138,7 +138,7 @@ where Phase 2 examples should go.
 
 ## Growing the case set
 
-The set is 50 cases: 7 hand-written (DS2) plus 43 generated across 13
+The set is 57 cases: 7 hand-written (DS2) plus 50 generated across CS 1410
 assignments. To add more, append to `eval/mutations.py` and re-run
 `eval.build_cases`. That is the preferred route, because the output is real
 grader output on synthetic code.

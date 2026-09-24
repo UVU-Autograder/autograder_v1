@@ -30,6 +30,46 @@
         }
       }
     },
+    "/auth/microsoft-login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Microsoft Login",
+        "description": "Institutional Microsoft sign-in endpoint.\n\nVerifies the RS256 Microsoft ID token against Microsoft's public JWKS.\nEnforces that the email has an @uvu.edu domain, matches an existing User record,\nand has active StaffAccess. Unauthorized accounts are rejected with 403 Forbidden.",
+        "operationId": "microsoft_login_auth_microsoft_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MicrosoftLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/mock-login": {
       "post": {
         "tags": [
@@ -3571,6 +3611,19 @@
         },
         "type": "object",
         "title": "ManualGradeInput"
+      },
+      "MicrosoftLoginRequest": {
+        "properties": {
+          "id_token": {
+            "type": "string",
+            "title": "Id Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_token"
+        ],
+        "title": "MicrosoftLoginRequest"
       },
       "MockLoginRequest": {
         "properties": {
