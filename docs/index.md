@@ -10,6 +10,7 @@ Current milestone: **controlled course pilot readiness**. Start with the [active
 ## 🏛️ Core Architecture & Governance (`docs/core/`)
 * **[technical_specs.md](./core/technical_specs.md):** System architecture, technology stack (FastAPI, Next.js, Celery, Postgres, Judge0, Kata), data model, and execution contracts.
 * **[decisions.md](./core/decisions.md):** Architectural, product, and implementation decision log with rationale.
+* **[sandbox_feedback_model_decision.md](./core/sandbox_feedback_model_decision.md):** Decision record for the sandbox AI feedback model (Gemma 4 12B + `cs1410-p2c`): options compared, eval evidence, training data provenance, deployment, limitations, and go-live steps.
 * **[ferpa_analysis.md](./core/ferpa_analysis.md):** Privacy posture, compliance analysis, and institutional data governance for student sandboxing and official runs.
 
 ---

@@ -1,0 +1,51 @@
+# Template for /etc/systemd/system/vllm-cs1410.service -- install it with
+#   bash backend/training/install_vllm_service.sh <adapter>
+# which fills in the at-sign placeholders below. Do not copy this file by hand.
+#
+# Serves Gemma 4 12B (w4a16) plus one reviewed LoRA adapter to the autograder's
+# sandbox feedback on 127.0.0.1:8001. The backend and worker containers use host
+# networking, so loopback is enough; nothing else on the network can reach it.
+
+[Unit]
+Description=vLLM for CS 1410 sandbox feedback (Gemma 4 12B + @ADAPTER_NAME@)
+Documentation=file://@REPO@/backend/training/README.md
+After=network-online.target
+Wants=network-online.target
+# Three failed starts in ten minutes and systemd stops retrying (see: systemctl status).
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+WorkingDirectory=@HOME@
+# The box has the NVIDIA driver but no CUDA toolkit: FlashInfer's sampler would
+# try to JIT-compile with nvcc and crash during warm-up.
+Environment=VLLM_USE_FLASHINFER_SAMPLER=0
+# Everything stays on this machine: no Hugging Face lookups, no usage telemetry.
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+Environment=VLLM_NO_USAGE_STATS=1
+Environment=DO_NOT_TRACK=1
+# 12288, not 8192: prompt v5 does not cap failure-message length, so a large
+# DS8-DS10 bundle with several long pytest failures can exceed 8k tokens. The KV
+# cache is shared across requests, so the higher limit costs nothing for the
+# usual 2-7k-token prompts.
+ExecStart=@VLLM@ serve @MODEL@ \
+    --served-model-name gemma4-12b-qat \
+    --host 127.0.0.1 --port 8001 \
+    --max-model-len 12288 \
+    --gpu-memory-utilization 0.90 \
+    --enable-lora --max-lora-rank 16 \
+    --lora-modules @ADAPTER_NAME@=@ADAPTER_DIR@ \
+    --limit-mm-per-prompt '{"image":0,"audio":0}'
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

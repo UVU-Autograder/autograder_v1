@@ -199,6 +199,46 @@ targets were drafted under an older version so you can re-read them.
 exceed the prompt's code budget, so the model sees the failure but not the
 `Order` class. Feedback there has to reason from the assertion.
 
+## Serving the reviewed adapter as a service
+
+For anything longer-lived than an eval session, run vLLM under systemd instead of
+tmux. On the Dell, as `dev`, from `~/autograder_v1-dev` (stop the tmux session
+first):
+
+```bash
+bash backend/training/install_vllm_service.sh p2c
+```
+
+It promotes `training/output/p2c` to `/data/models/adapters/cs1410-p2c` with a
+`PROVENANCE.json` (git commit, weights sha256, dataset meta), installs
+`vllm-cs1410.service` from the template in this directory, enables it at boot,
+starts it and waits until it serves `cs1410-p2c`. `--dry-run` prints every step
+and the rendered unit without changing anything. The unit:
+
+- listens on **127.0.0.1:8001 only** (the backend and worker use host
+  networking, so loopback is enough; the campus network cannot reach it);
+- runs offline with telemetry off (`HF_HUB_OFFLINE`, `VLLM_NO_USAGE_STATS`);
+- allows 12,288-token requests (prompt v5 does not cap failure messages, and the
+  shared KV cache makes the higher limit free for normal requests);
+- restarts on failure (15 s delay, gives up after 3 failures in 10 minutes).
+
+Day to day:
+
+| Task | Command |
+| --- | --- |
+| Is it up? | `systemctl status vllm-cs1410` |
+| Logs | `journalctl -u vllm-cs1410 -f` |
+| Train (needs the GPU) | `sudo systemctl stop vllm-cs1410`, train, `sudo systemctl start vllm-cs1410` |
+| Evaluate what it serves | `run_eval --endpoint http://127.0.0.1:8001/v1 --model cs1410-p2c ...` |
+| Compare other adapters | stop the service, then `serve.sh p2b p2c` (it refuses while the service runs) |
+| Ship a new adapter | `install_vllm_service.sh <name>` (restarts with the new one) |
+| Roll back | `sudo systemctl stop vllm-cs1410`, move `cs1410-<name>.bak-<time>` back to `cs1410-<name>`, `sudo systemctl start vllm-cs1410` |
+
+While the service is stopped, sandbox AI feedback falls back to the standard
+"unavailable" message; grading is unaffected. The autograder side (Jaxon) points
+at it with `LOCAL_LLM_ENDPOINT=http://127.0.0.1:8001/v1` and
+`LOCAL_LLM_MODEL=cs1410-p2c`. Why p2c: `docs/core/sandbox_feedback_model_decision.md`.
+
 ## Troubleshooting
 
 See the table in `docs/deployment/blackwell_training_setup.md`. The short version:

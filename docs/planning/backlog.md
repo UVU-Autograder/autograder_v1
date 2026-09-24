@@ -42,6 +42,16 @@ Priority order: Institutional software gates, TLS deployment verification, and i
 
 ---
 
+### P1 — Sandbox AI Feedback Model Go-Live
+
+Decision and evidence: [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md). Live use also requires the P0 Institutional Live-Use Gate above.
+
+- [ ] **Staff spot-check of `cs1410-p2c`:** Instructors or IAs score about 20 cases in the p2c eval review sheet (each case next to the untuned model; Accurate / Helpful / Tone) and record sign-off.
+- [ ] **Serve it as a service:** `bash backend/training/install_vllm_service.sh p2c` on the Dell; confirm `systemctl status vllm-cs1410` and that it lists `cs1410-p2c`.
+- [ ] **Point the stack at it:** `LOCAL_LLM_ENDPOINT=http://127.0.0.1:8001/v1`, `LOCAL_LLM_MODEL=cs1410-p2c`; verify sandbox AI feedback end to end (and through the TLS endpoint once it exists).
+- [ ] **Cap failure messages in the prompt:** keep each message's start and end so a large bundle with long pytest output stays well under the model limit; bump `PROMPT_VERSION` and re-run the eval (the adapter is tied to prompt v5).
+- [ ] **Pygame assignments (DS6, DS7, Lab 6):** not covered by the eval or training data. Evaluate before enabling AI feedback for them, or leave it off.
+
 ## Deferred Architecture Proposals — After Pilot Readiness
 
 The following are forward-looking proposals, not implemented capabilities or approved live-data workflows. Official AI, Canvas automation, and additional languages remain outside the pilot milestone.

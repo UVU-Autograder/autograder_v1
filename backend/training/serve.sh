@@ -30,6 +30,11 @@ if tmux has-session -t vllm 2>/dev/null; then
   echo "tmux session 'vllm' already exists. Stop it first: tmux kill-session -t vllm" >&2
   exit 1
 fi
+if command -v systemctl >/dev/null && systemctl is-active --quiet vllm-cs1410 2>/dev/null; then
+  echo "the vllm-cs1410 service is serving :$PORT. Evaluate against it directly, or stop it" >&2
+  echo "first to serve other adapters here: sudo systemctl stop vllm-cs1410" >&2
+  exit 1
+fi
 
 args=(serve "$MODEL" --served-model-name gemma4-12b-qat --port "$PORT" --max-model-len 8192
       --gpu-memory-utilization 0.90 --limit-mm-per-prompt '{"image":0,"audio":0}')
