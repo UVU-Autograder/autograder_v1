@@ -28,6 +28,10 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
+# Long rows (DS8-DS10 under prompt v5, ~6-7k tokens) need one large block for the
+# logits over Gemma's 262k vocabulary; without this, fragmentation alone can
+# turn a near-fit into an OOM. Must be set before torch initializes CUDA.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 DEFAULT_BASE = os.environ.get("TRAIN_BASE_MODEL", "/data/models/gemma4-12b-qat-bf16")
 
 # Conventional short-name list (what vLLM and most LoRA loaders expect in
@@ -96,7 +100,6 @@ def load_model_and_tokenizer(base: str, quantize: bool = True):
     from transformers import (
         AutoModelForCausalLM,
         AutoModelForMultimodalLM,
-        AutoTokenizer,
         BitsAndBytesConfig,
     )
 
@@ -125,6 +128,12 @@ def load_model_and_tokenizer(base: str, quantize: bool = True):
             "model_type? (Gemma 4 12B needs >= 5.10.1)\n  " + "\n  ".join(errors)
         )
 
+    return model, load_tokenizer(base)
+
+
+def load_tokenizer(base: str):
+    from transformers import AutoTokenizer
+
     tokenizer = AutoTokenizer.from_pretrained(base)
     if tokenizer.chat_template is None:
         from transformers import AutoProcessor
@@ -132,7 +141,22 @@ def load_model_and_tokenizer(base: str, quantize: bool = True):
         tokenizer.chat_template = AutoProcessor.from_pretrained(base).chat_template
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    return model, tokenizer
+    return tokenizer
+
+
+def report_lengths(base: str, data: Path) -> int:
+    """Real token counts of every row as it will be trained (no GPU, no model)."""
+    tokenizer = load_tokenizer(base)
+    lengths = []
+    for split in ("train", "valid"):
+        for line in (data / f"{split}.jsonl").read_text().splitlines():
+            lengths.append(len(render_as_served(tokenizer, json.loads(line)["messages"])["input_ids"]))
+    lengths.sort()
+    print(f"{len(lengths)} rows; tokens: median {lengths[len(lengths) // 2]}, p90 {lengths[int(len(lengths) * 0.9)]}, max {lengths[-1]}")
+    for limit in (4096, 5120, 6144, 7168, 8192):
+        print(f"  rows over {limit}: {sum(n > limit for n in lengths)}")
+    print(f"  longest 5: {lengths[-5:]}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -146,7 +170,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--alpha", type=int, default=16)
     parser.add_argument("--max-length", type=int, default=2048)
     parser.add_argument("--grad-accum", type=int, default=4)
+    parser.add_argument("--lengths-only", action="store_true", help="print real token lengths of the data and exit")
     args = parser.parse_args(argv)
+    if args.lengths_only:
+        return report_lengths(args.base, args.data)
 
     import torch
     import transformers
