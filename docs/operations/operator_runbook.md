@@ -22,6 +22,7 @@ This runbook defines operational procedures, service lifecycle controls, health 
 | `5432` | TCP | `127.0.0.1:5432` | PostgreSQL 16 (bound to localhost; no public exposure) |
 | `6379` | TCP | `127.0.0.1:6379` | Redis 7 broker & queue (bound to localhost; no public exposure) |
 | `2358` | HTTP | `127.0.0.1:2358` | Judge0 CE code execution sandbox (bound to localhost) |
+| `8001` | HTTP | `127.0.0.1:8001` | vLLM local AI model server (`vllm-cs1410.service`; Gemma 4 12B + `cs1410-p2c`; bound to localhost) |
 
 ---
 
@@ -48,6 +49,10 @@ curl -fsS http://127.0.0.1:2358/about
 
 # 4. Check systemd frontend status
 systemctl status autograder-frontend.service --no-pager
+
+# 5. Check systemd vLLM AI feedback service status & loaded models
+systemctl status vllm-cs1410.service --no-pager
+curl -fsS http://127.0.0.1:8001/v1/models
 ```
 
 ### In-App Monitoring Dashboard
@@ -65,14 +70,17 @@ Authenticated administrators can query real-time system metrics via the web UI a
 ### Starting Services
 Start services in the following order:
 ```bash
-# Step 1: Start Docker Compose infrastructure (Postgres, Redis, Judge0, Backend, Celery, Cleanup)
+# Step 1: Ensure local vLLM AI model server is active (port 8001)
+sudo systemctl start vllm-cs1410.service
+
+# Step 2: Start Docker Compose infrastructure (Postgres, Redis, Judge0, Backend, Celery, Cleanup)
 cd /home/dev/autograder_v1
 docker compose -f docker-compose.yml -f docker-compose.kata.yml up -d
 
-# Step 2: Ensure Next.js frontend systemd service is active
+# Step 3: Ensure Next.js frontend systemd service is active
 sudo systemctl start autograder-frontend.service
 
-# Step 3: Ensure Nginx is running
+# Step 4: Ensure Nginx is running
 sudo systemctl start nginx
 ```
 
@@ -170,6 +178,30 @@ bash scripts/check_env_sync.sh   # Verify active environment variables
 ```
 
 **Root cause context**: Docker Compose reads `.env` for variable substitution. If `POSTGRES_PASSWORD` / `DATABASE_URL` in `.env` don't match the password stored in the Postgres volume (set during first `initdb`), all backend services fail with `password authentication failed`. A fresh-volume rebuild re-initializes Postgres with the current `.env` values.
+
+### Scenario E: Sandbox AI Feedback Unavailable / vLLM Service Issues
+**Symptoms**: Students receive the fallback `"Feedback unavailable at this time"` message in the sandbox; AI coaching does not render.
+1. **Check vLLM service status and journal logs**:
+   ```bash
+   systemctl status vllm-cs1410.service --no-pager
+   journalctl -u vllm-cs1410.service -n 50 --no-pager
+   ```
+2. **Verify endpoint responsiveness**:
+   ```bash
+   curl -fsS http://127.0.0.1:8001/v1/models
+   ```
+3. **Restart the model server**:
+   ```bash
+   sudo systemctl restart vllm-cs1410.service
+   ```
+4. **Immediate Zero-Downtime Rollback**:
+   To roll back without taking down the model server or waiting on retraining:
+   - Change `LOCAL_LLM_MODEL=gemma4-12b-qat` in `/home/dev/autograder_v1/.env`.
+   - Restart the grading worker and backend:
+     ```bash
+     docker compose restart backend celery-worker
+     ```
+   - The stack immediately routes requests to the untuned base model (which `vllm-cs1410` serves concurrently).
 
 ---
 

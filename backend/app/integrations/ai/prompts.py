@@ -38,7 +38,9 @@ from app.integrations.ai.sanitize import sanitize_code_and_text
 # bled into non-empty submissions); the empty-submission rule is gated on the
 # v5: raised code budget (MAX_FILE_CHARS 10,000, MAX_TOTAL_CODE_CHARS 16,000)
 # so multi-class files like dessert.py (DS8-DS10, 7k-9k chars) are not truncated.
-PROMPT_VERSION = "v5"
+# v6: capped assertion failure message length in _render_failure (max 800 chars,
+# preserving 400 head and 400 tail) to prevent prompt overflow on large pytest outputs.
+PROMPT_VERSION = "v6"
 
 # Serving parameters, shared so eval measures what production runs.
 GENERATION_TEMPERATURE = 0.2
@@ -47,6 +49,7 @@ MAX_OUTPUT_TOKENS = 700
 # Code budget per prompt (from the original sandbox client).
 MAX_FILE_CHARS = 10000
 MAX_TOTAL_CODE_CHARS = 16000
+MAX_FAILURE_MESSAGE_CHARS = 800
 
 # Key used when the submission never produced test results (syntax error,
 # timeout, import failure) so the model still has a real item to cite.
@@ -179,11 +182,21 @@ def requirements_from_config(config_json: dict[str, Any] | None) -> str:
 # --------------------------------------------------------------------------
 
 
+def _truncate_message(message: str, max_chars: int = MAX_FAILURE_MESSAGE_CHARS) -> str:
+    clean_msg = sanitize_code_and_text(message)
+    if len(clean_msg) <= max_chars:
+        return clean_msg
+    head_len = max_chars // 2
+    tail_len = max_chars // 2
+    truncated_count = len(clean_msg) - (head_len + tail_len)
+    return f"{clean_msg[:head_len]}\n... [truncated {truncated_count} chars] ...\n{clean_msg[-tail_len:]}"
+
+
 def _render_failure(item: dict[str, Any]) -> str:
     clean = sanitize_code_and_text
     lines = [f"- test_key: {item['key']}", f"  label: {clean(str(item.get('label', '')))}"]
     if item.get("message"):
-        lines.append(f"  assertion: {clean(str(item['message']))}")
+        lines.append(f"  assertion: {_truncate_message(str(item['message']))}")
     if item.get("your_value") is not None:
         lines.append(f"  student_value: {clean(str(item['your_value']))}")
     if item.get("expected_value") is not None:

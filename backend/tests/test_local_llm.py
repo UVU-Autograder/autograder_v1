@@ -5,7 +5,10 @@ import unittest.mock as mock
 
 from app.integrations.ai.prompts import (
     EXECUTION_ERROR_KEY,
+    MAX_FAILURE_MESSAGE_CHARS,
     SYSTEM_PROMPT,
+    _render_failure,
+    _truncate_message,
     build_messages,
     failures_from_test_results,
     requirements_from_config,
@@ -209,4 +212,40 @@ def test_local_llm_global_code_ceiling():
     assert "[truncated]" in user_prompt or "additional files truncated" in user_prompt
     # Total code content in prompt should be bounded
     assert len(user_prompt) < 22000
+
+
+def test_truncate_message_under_limit():
+    short_msg = "AssertionError: expected 5 but got 4"
+    assert _truncate_message(short_msg) == short_msg
+
+
+def test_truncate_message_at_limit():
+    exact_msg = "x" * MAX_FAILURE_MESSAGE_CHARS
+    assert _truncate_message(exact_msg) == exact_msg
+
+
+def test_truncate_message_exceeding_limit():
+    head = "A" * 400
+    middle = "M" * 500
+    tail = "Z" * 400
+    long_msg = head + middle + tail
+    result = _truncate_message(long_msg)
+    assert result.startswith(head)
+    assert result.endswith(tail)
+    assert "... [truncated 500 chars] ..." in result
+    assert middle not in result
+
+
+def test_render_failure_truncates_long_assertion():
+    long_assertion = "assert False\n" + ("traceback line\n" * 100)
+    item = {
+        "key": "test_calc",
+        "label": "Calculator test",
+        "message": long_assertion,
+    }
+    rendered = _render_failure(item)
+    assert "- test_key: test_calc" in rendered
+    assert "label: Calculator test" in rendered
+    assert "... [truncated" in rendered
+    assert len(rendered) < len(long_assertion)
 

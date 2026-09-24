@@ -159,7 +159,7 @@ standard "feedback unavailable" message and grading is unaffected.
 | Step | Owner | Status |
 | --- | --- | --- |
 | Instructors or IAs spot-check about 20 cases in the p2c review sheet (`backend/eval/results/p2c-v5-review.md`, each case next to stock, with Accurate / Helpful / Tone columns) and record sign-off | CS 1410 staff | Open |
-| Install the service on the Dell and confirm it serves `cs1410-p2c` | Easton | Ready to run |
+| Install the service on the Dell and confirm it serves `cs1410-p2c` | Easton | **Complete** (2026-09-24; running as `vllm-cs1410.service` on port 8001) |
 | Point the stack at it (`LOCAL_LLM_ENDPOINT`, `LOCAL_LLM_MODEL`) and check sandbox AI feedback end to end | Jaxon | Open |
 | Cap failure-message length in the prompt (keep each message's start and end), bump the prompt version, re-run the eval | Jaxon / Easton | Open |
 | Decide AI feedback for DS6, DS7 and Lab 6: evaluate first, or leave it off for them | Instructors / Easton | Open |

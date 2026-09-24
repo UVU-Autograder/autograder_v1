@@ -15,6 +15,7 @@ The following subsystems are implemented, verified, and canonically documented:
 - **Quality Gates & Verification Suites:** [delivery_controls.md §1.1](delivery_controls.md#11-standard-verification-suites--tooling)
 - **Backup & Disaster Recovery:** [backup_and_recovery.md](../operations/backup_and_recovery.md)
 - **CS 1410 Assignment Modeling:** [cs1410_assignments_spec.md](../modeling/cs1410_assignments_spec.md)
+- **Sandbox AI Feedback Architecture:** [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md) (Gemma 4 12B QAT + `cs1410-p2c` LoRA adapter, deployed as systemd service `vllm-cs1410` on loopback port 8001 with rollback to `gemma4-12b-qat`)
 
 ---
 
@@ -47,20 +48,19 @@ Priority order: Institutional software gates, TLS deployment verification, and i
 
 ### P1 — Sandbox AI Feedback Model Go-Live
 
-Decision and evidence: [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md). Live use also requires the P0 Institutional Live-Use Gate above.
+Decision and evidence: [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md). Live use also requires the P0 Institutional Live-Use Gate above. (Note: `vllm-cs1410.service` installation on port 8001 is complete and running on the Dell host).
 
-- [ ] **Staff spot-check of `cs1410-p2c`:** Instructors or IAs score about 20 cases in the p2c eval review sheet (each case next to the untuned model; Accurate / Helpful / Tone) and record sign-off.
-- [ ] **Serve it as a service:** `bash backend/training/install_vllm_service.sh p2c` on the Dell; confirm `systemctl status vllm-cs1410` and that it lists `cs1410-p2c`.
-- [ ] **Point the stack at it:** `LOCAL_LLM_ENDPOINT=http://127.0.0.1:8001/v1`, `LOCAL_LLM_MODEL=cs1410-p2c`; verify sandbox AI feedback end to end (and through the TLS endpoint once it exists).
-- [ ] **Cap failure messages in the prompt:** keep each message's start and end so a large bundle with long pytest output stays well under the model limit; bump `PROMPT_VERSION` and re-run the eval (the adapter is tied to prompt v5).
-- [ ] **Pygame assignments (DS6, DS7, Lab 6):** not covered by the eval or training data. Evaluate before enabling AI feedback for them, or leave it off.
+- [ ] **Point the Stack at `vllm-cs1410`:** Set `LOCAL_LLM_ENDPOINT=http://127.0.0.1:8001/v1` and `LOCAL_LLM_MODEL=cs1410-p2c` in workstation `.env`, restart `backend` and `celery-worker`, and verify live sandbox feedback end to end (and through the TLS endpoint once provisioned).
+- [ ] **Cap Failure Messages in Prompt:** Truncate assertion messages in `prompts._render_failure` (preserving start and end) so large test bundles stay within token bounds; bump `PROMPT_VERSION` (v5 -> v6) and coordinate re-running the 57-case eval harness (`run_eval.py`).
+- [ ] **Staff Spot-Check of `cs1410-p2c`:** Instructors or IAs score ~20 cases in the p2c eval review sheet (`backend/eval/results/p2c-v5-review.md`, each case next to the untuned model; Accurate / Helpful / Tone) and record formal sign-off.
+- [ ] **Pygame Assignments Policy (DS6, DS7, Lab 6):** Not covered by eval or training data. Instructors and model owners must decide whether to evaluate synthetic mutations or leave AI feedback disabled for these three assignments (falling back to standard "feedback unavailable").
 
 ## Deferred Architecture Proposals — After Pilot Readiness
 
 The following are forward-looking proposals, not implemented capabilities or approved live-data workflows. Official AI, Canvas automation, and additional languages remain outside the pilot milestone.
 
 ### 1. Official-Run Opt-In Local LLM Feedback
-- **Goal:** On-prem, private AI coaching integrated into official Canvas ZIP grading runs, powered by the workstation's local `qwen2.5-coder:7b` model.
+- **Goal:** On-prem, private AI coaching integrated into official Canvas ZIP grading runs, powered by the workstation's local Gemma 4 12B model (`vllm-cs1410` on loopback port 8001).
 - **Privacy & Retention Constraints:**
   - Student identifiers (name, canvas_user_id, submission_id, file header comments, author tags) must be strictly stripped before prompt synthesis.
   - Only ephemeral in-memory prompt generation; no prompt caching or logging containing student code.
@@ -72,7 +72,7 @@ The following are forward-looking proposals, not implemented capabilities or app
   - **Failure Handling:** LLM timeout or error must never fail the official run; missing AI comments log an audit event and cleanly fallback to standard score report.
 - **Output Shape:**
   - Distinct `<section class="ai-coaching-section">` in the student's `feedback.html`.
-  - Explicit disclaimer: *"AI Coaching generated on-prem by local Qwen2.5-Coder. Grades are determined strictly by automated test criteria."*
+  - Explicit disclaimer: *"AI Coaching generated on-prem by local Gemma 4 12B model. Grades are determined strictly by automated test criteria."*
   - Generated feedback is included in the staff review dialog where instructors can edit or clear comments before export.
 
 ### 2. Additional Deferred Capabilities

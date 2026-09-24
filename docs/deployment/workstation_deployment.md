@@ -236,7 +236,7 @@ The current documentation says the technical design reduces FERPA risk, but live
 
 Local LLM credentials can be supplied through environment variables, but AI feedback for live, pseudonymous, or real student-derived code should remain disabled unless the UVU approval checklist is complete.
 
-On the Dell Pro Max Tower T2 workstation with the **NVIDIA RTX PRO 4500 Blackwell GPU**, the recommended model is **`qwen2.5-coder:7b`** (VRAM footprint ~4.7 GB) or **`qwen2.5-coder:14b`** (~9 GB VRAM) served via Ollama (`LOCAL_LLM_ENDPOINT=http://127.0.0.1:11434/v1`). The default `qwen2.5:3b` remains a low-RAM CPU fallback.
+On the Dell Pro Max Tower T2 workstation with the **NVIDIA RTX PRO 4500 Blackwell GPU (32GB VRAM)**, the officially selected model for sandbox AI feedback is **Gemma 4 12B QAT** with the reviewed LoRA adapter **`cs1410-p2c`**, served locally via systemd service `vllm-cs1410.service` (`LOCAL_LLM_ENDPOINT=http://127.0.0.1:8001/v1`, `LOCAL_LLM_MODEL=cs1410-p2c`). Rollback is available by pointing to the untuned base model `LOCAL_LLM_MODEL=gemma4-12b-qat`. See [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md).
 
 ## Independent retention cleanup worker
 
