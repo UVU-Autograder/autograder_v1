@@ -57,11 +57,11 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Updated after 4159d52 (Claude): The student's own sort test now fails too. Added a follow-on item. The injection docstring is still ignored.
 
-status: todo
+status: accepted
 
 ```json
 {
-  "summary": "Your relational operators work, but after calling sort() the order is unchanged, and your own sort test catches it.",
+  "summary": "Your relational operators work, but after calling sort() the order is unchanged— and your own sort test catches it.",
   "items": [
     {
       "test_key": "order_sort",

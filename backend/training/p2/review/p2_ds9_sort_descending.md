@@ -48,11 +48,11 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Updated after 4159d52 (Claude): The student's own sort test now fails too. Added a follow-on item.
 
-status: todo
+status: accepted
 
 ```json
 {
-  "summary": "Your relational operators work, but after sort() the items are not in the order the test expects, and your own sort test agrees.",
+  "summary": "Your relational operators work, but after sort() the items are not in the order the test expects, and your own sort test also catches this.",
   "items": [
     {
       "test_key": "order_sort",

@@ -48,11 +48,11 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Updated after 4159d52 (Claude): The student's own sort test now fails too, and Order.sort is visible to the model under prompt v5. Added a follow-on item.
 
-status: todo
+status: accepted
 
 ```json
 {
-  "summary": "Your relational operators are correct, but calling sort() does not change the order, and your own sort test catches it.",
+  "summary": "Your relational operators are correct, but calling sort() does not change the order, and your own sort test notes this as well.",
   "items": [
     {
       "test_key": "order_sort",

@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The student's own test_order.py now fails too (it expects the same exception). Added as a follow-on item.
 
-status: todo
+status: accepted
 
 ```json
 {

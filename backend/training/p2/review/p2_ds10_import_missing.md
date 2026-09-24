@@ -49,7 +49,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Updated after 4159d52 (Claude): Now all four tests fail on the same NameError. Cut to 3 items: one root cause, the rest follow.
 
-status: todo
+status: accepted
 
 ```json
 {

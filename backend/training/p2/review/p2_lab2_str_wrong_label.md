@@ -46,7 +46,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_str`). Then s
 
 > Updated after 4159d52 (Claude): The stricter tests now check the full string, and demo_output fails too because demo.py prints 'Name:'. Added as a follow-on item.
 
-status: todo
+status: accepted
 
 ```json
 {

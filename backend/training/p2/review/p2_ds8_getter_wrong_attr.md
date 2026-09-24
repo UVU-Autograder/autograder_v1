@@ -48,7 +48,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The stricter grading now runs the student's own test_order.py, which fails on the same bug. Added as a follow-on item.
 
-status: todo
+status: accepted
 
 ```json
 {

@@ -47,11 +47,11 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Updated after 4159d52 (Claude): The whole run now hits the time limit, so the grader reports one execution_error instead of two test failures. Rewritten around that.
 
-status: todo
+status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is written, but the submission never finished running: something loops forever.",
+  "summary": "Your class hierarchy is written, but the submission never finished running: there is something in your code that loops indefinitely.",
   "items": [
     {
       "test_key": "execution_error",

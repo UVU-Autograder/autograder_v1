@@ -47,11 +47,11 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The student's own test_order.py now fails too, on the same bug. Added as a follow-on item.
 
-status: todo
+status: accepted
 
 ```json
 {
-  "summary": "Your payment protocol and Order structure are in place, but changing the payment type does not stick. Your own tests noticed.",
+  "summary": "Your payment protocol and Order structure are in place, but changing the payment type does not stick. Your own tests note this.",
   "items": [
     {
       "test_key": "order_payable",

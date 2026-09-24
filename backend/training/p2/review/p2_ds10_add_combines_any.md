@@ -48,7 +48,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Updated after 4159d52 (Claude): The stricter tests also fail ds9_regression: the sort test adds two different candies, and Order.add merges them. Added as a follow-on item.
 
-status: todo
+status: a. epted
 
 ```json
 {

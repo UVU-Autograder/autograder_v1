@@ -47,7 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Updated after 4159d52 (Claude): The stricter tests also fail ds9_regression with the same TypeError. Added as a follow-on item.
 
-status: todo
+status: accepted
 
 ```json
 {

@@ -57,7 +57,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Updated after 4159d52 (Claude): The Candy price bug is now caught (ds1_regression), so the feedback covers both bugs instead of leaving one out. Mutation note updated to match.
 
-status: todo
+status: accepted
 
 ```json
 {
