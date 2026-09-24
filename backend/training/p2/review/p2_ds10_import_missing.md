@@ -18,8 +18,11 @@
 
 ## What the grader reported
 
+- `candy_combinable` (Candy implements Combinable protocol merging candy_weight for matching items): `E   NameError: name 'Combinable' is not defined`
+- `cookie_combinable` (Cookie implements Combinable protocol merging cookie_quantity for matching items): `E   NameError: name 'Combinable' is not defined`
 - `order_combine` (Order.add() automatically combines like items when matching item is present): `E   NameError: name 'Combinable' is not defined`
-- Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Candy implements Combinable protocol merging candy_weight for matching items, Cookie implements Combinable protocol merging cookie_quantity for matching items, DS9 Order.sort() and relational comparison operators intact
+- `ds9_regression` (DS9 Order.sort() and relational comparison operators intact): `E   NameError: name 'Combinable' is not defined`
+- Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -44,20 +47,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The hint nearly said 'import it'. Now compares with Packaging and Payable, which the file already brings in correctly.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: candy_combinable, cookie_combinable, order_combine, ds9_regression. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): Now all four tests fail on the same NameError. Cut to 3 items: one root cause, the rest follow.
 
 status: todo
 
 ```json
 {
-  "summary": "Your Combinable protocol and dessert classes are written, but dessert.py cannot find one of the names it uses.",
+  "summary": "Your Combinable protocol and dessert classes are written, but dessert.py cannot find one of the names it uses, so every test stops there.",
   "items": [
     {
-      "test_key": "order_combine",
+      "test_key": "candy_combinable",
       "what_went_wrong": "Loading dessert.py fails with \"name 'Combinable' is not defined\".",
       "hint": "Where does the name Combinable come from? Can you compare it with how Packaging and Payable get into dessert.py?"
+    },
+    {
+      "test_key": "cookie_combinable",
+      "what_went_wrong": "This test fails for the same reason.",
+      "hint": "This follows from the missing name. Fix that first."
+    },
+    {
+      "test_key": "order_combine",
+      "what_went_wrong": "This test fails for the same reason.",
+      "hint": "This clears once dessert.py can find Combinable."
     }
   ],
-  "next_step": "Check the top of dessert.py."
+  "next_step": "Check the top of dessert.py. The Dessert Shop 9 test fails for the same reason."
 }
 ```

@@ -46,9 +46,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

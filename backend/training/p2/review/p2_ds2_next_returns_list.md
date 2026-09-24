@@ -47,9 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): The hint gave the fix ('what element should be returned instead of the list'). Now asks the student to compare what __next__ picks out with what it returns.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

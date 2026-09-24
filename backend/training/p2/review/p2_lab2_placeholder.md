@@ -51,7 +51,7 @@
 
 - `account_init` (Account class initializes owner, balance, and account_number attributes): `E   AttributeError: module 'account' has no attribute 'Account'`
 - `account_str` (Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'): `E   AttributeError: module 'account' has no attribute 'Account'`
-- `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E    +  where False = hasattr(<module 'demo' from '/private/var/folders/wh/1wdfmd9n0kn0xwvpnwp_t2yc0000gq/T/ag_grade_pgc5ovr3/execution/demo.py'>, 'Account')`
+- `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E   assert ('Owner:' in '')`
 - The prompt carries SUBMISSION_NOTE: the code is empty or a placeholder.
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -83,9 +83,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Tightened for a placeholder: says so plainly, one real item, demo follows from it, and next step starts from the instructions.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

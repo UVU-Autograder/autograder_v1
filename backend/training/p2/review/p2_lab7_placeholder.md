@@ -65,7 +65,7 @@
 - `dataclass` (Student uses @dataclass(order=True) decorator with typed fields and field(default_factory=list)): `E   AttributeError: module 'student' has no attribute 'Student'`
 - `methods` (Student defines enroll(course_name) to append courses and total_courses() count method): `E   AttributeError: module 'student' has no attribute 'Student'`
 - `ordering` (Student dataclass sort_index orders list of Student instances by student ID): `E   AttributeError: module 'student' has no attribute 'Student'`
-- `main_output` (main() entrypoint instantiates Student records, tests course enrollment, and outputs summary): `E    +  where False = hasattr(<module 'student' from '/private/var/folders/wh/1wdfmd9n0kn0xwvpnwp_t2yc0000gq/T/ag_grade_r_ipwk54/execution/student.py'>, 'main')`
+- `main_output` (main() entrypoint instantiates Student records, tests course enrollment, and outputs summary): `E    +  where False = hasattr(<module 'student' from 'C:\\Users\\Jaxon\\AppData\\Local\\Temp\\ag_grade_ck70lcq6\\execution\\student.py'>, 'main')`
 - The prompt carries SUBMISSION_NOTE: the code is empty or a placeholder.
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -100,9 +100,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 2 for a placeholder: says so plainly and starts from the instructions. The ordering hint gave the fix and was removed.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

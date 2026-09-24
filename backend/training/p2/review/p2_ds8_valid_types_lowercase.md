@@ -18,7 +18,8 @@
 ## What the grader reported
 
 - `order_payable` (Order implements get_pay_type() and set_pay_type() with PayType enum validation): `E   ValueError: Invalid payment method: CARD`
-- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, Student test_order.py exists with at least 5 test cases validating Order methods, DS7 packaging interface, class structure, and output formatting intact
+- `student_order_tests` (Student test_order.py exists with at least 5 test cases validating Order methods): `E   E           Val...`
+- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, DS7 packaging interface, class structure, and output formatting intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -43,18 +44,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Pre-edit note (Claude): No change to the substance: accurate and points to the comparison.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_payable, student_order_tests. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The student's own test_order.py now fails too, on the same bug. Added as a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your Order class is correctly structured, but it rejects payment types it should accept.",
+  "summary": "Your Order class is correctly structured, but it rejects payment types it should accept, and your own tests catch it.",
   "items": [
     {
       "test_key": "order_payable",
       "what_went_wrong": "set_pay_type('CARD') raised a ValueError even though CARD is a valid payment type.",
       "hint": "Compare the values in your VALID_PAY_TYPES tuple with the PayType values defined in payment.py, character by character."
+    },
+    {
+      "test_key": "student_order_tests",
+      "what_went_wrong": "Your tests for valid pay types fail for the same reason.",
+      "hint": "This follows from VALID_PAY_TYPES. Fix that, not the tests."
     }
   ],
   "next_step": "Review VALID_PAY_TYPES in dessert.py next to PayType in payment.py."

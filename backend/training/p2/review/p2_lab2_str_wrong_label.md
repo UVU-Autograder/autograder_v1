@@ -17,8 +17,9 @@
 
 ## What the grader reported
 
-- `account_str` (Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'): `E   AssertionError: assert 'Owner: Alice' in 'Name: Alice, Balance: $100.00'`
-- Passing: Account class initializes owner, balance, and account_number attributes, demo.py executes test deposits, withdrawals, and prints account summary to stdout
+- `account_str` (Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'): `E   assert 'Owner: Alice, Balance: $100.00' in 'Name: Alice, Balance: $100.00'`
+- `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E   assert ('Owner:' in 'Name: Alice, Balance: $100.00\nName: , Balance: $0.00\n')`
+- Passing: Account class initializes owner, balance, and account_number attributes
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -43,18 +44,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_str`). Then s
 
 > Pre-edit note (Claude): The hint asked how to 'modify __str__ to match the label' (the fix). Now asks the student to compare word by word.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: account_str, demo_output. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The stricter tests now check the full string, and demo_output fails too because demo.py prints 'Name:'. Added as a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your Account initialization and demo work, but the text __str__ produces does not match the required format.",
+  "summary": "Your Account initialization works, but the text __str__ produces does not match the required format, so the demo output is off too.",
   "items": [
     {
       "test_key": "account_str",
-      "what_went_wrong": "The test expects the output to contain 'Owner: Alice', but it produced 'Name: Alice, Balance: $100.00'.",
-      "hint": "Can you compare your output with the format the assignment gives, word by word?"
+      "what_went_wrong": "The test expects 'Owner: Alice, Balance: $100.00' but got 'Name: Alice, Balance: $100.00'.",
+      "hint": "Can you compare your output with the expected text word by word?"
+    },
+    {
+      "test_key": "demo_output",
+      "what_went_wrong": "demo.py prints the same 'Name:' text, so it is missing the expected 'Owner:' lines.",
+      "hint": "This follows from __str__. Fix that first."
     }
   ],
   "next_step": "Review the __str__ method in the Account class."

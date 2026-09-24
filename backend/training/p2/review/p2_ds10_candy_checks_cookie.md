@@ -19,8 +19,8 @@
 
 ## What the grader reported
 
-- `candy_combinable` (Candy implements Combinable protocol merging candy_weight for matching items): `E    +    where can_combine = <dessert.Candy object at 0x1090923c0>.can_combine`
-- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 3 = len(<dessert.Order object at 0x109093230>)`
+- `candy_combinable` (Candy implements Combinable protocol merging candy_weight for matching items): `E    +    where can_combine = <dessert.Candy object at 0x00000270504792B0>.can_combine`
+- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 3 = len(<dessert.Order object at 0x000002705047A660>)`
 - Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Cookie implements Combinable protocol merging cookie_quantity for matching items, DS9 Order.sort() and relational comparison operators intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -49,9 +49,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy_combinable`, `o
 
 > Pre-edit note (Claude): what_went_wrong gave the fix (Cookie instead of Candy). Now states the behavior and points at the type check; order_combine follows from it.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

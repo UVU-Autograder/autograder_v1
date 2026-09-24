@@ -19,7 +19,8 @@
 ## What the grader reported
 
 - `order_combine` (Order.add() automatically combines like items when matching item is present): `E   TypeError: Instance and class checks can only be used with @runtime_checkable protocols`
-- Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Candy implements Combinable protocol merging candy_weight for matching items, Cookie implements Combinable protocol merging cookie_quantity for matching items, DS9 Order.sort() and relational comparison operators intact
+- `ds9_regression` (DS9 Order.sort() and relational comparison operators intact): `E   TypeError: Instance and class checks can only be used with @runtime_checkable protocols`
+- Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Candy implements Combinable protocol merging candy_weight for matching items, Cookie implements Combinable protocol merging cookie_quantity for matching items
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -44,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The hint and next step named the decorator (the fix). The error message itself says what is required, so the hint sends the student to read it.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_combine, ds9_regression. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The stricter tests also fail ds9_regression with the same TypeError. Added as a follow-on item.
 
 status: todo
 
@@ -56,6 +57,11 @@ status: todo
       "test_key": "order_combine",
       "what_went_wrong": "Order.add uses isinstance() with Combinable, and Python refuses because the protocol is not set up for runtime checks.",
       "hint": "Read the last line of the error closely, then look at how Combinable is declared in combine.py. What does the error say the protocol needs?"
+    },
+    {
+      "test_key": "ds9_regression",
+      "what_went_wrong": "The Dessert Shop 9 sorting test adds items to an Order, so it hits the same TypeError.",
+      "hint": "This follows from the Combinable declaration. Fix that first."
     }
   ],
   "next_step": "Review the Combinable definition in combine.py."

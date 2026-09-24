@@ -18,8 +18,8 @@
 
 ## What the grader reported
 
-- `candy_combinable` (Candy implements Combinable protocol merging candy_weight for matching items): `E    +  where 2.0 = <dessert.Candy object at 0x10bb7e3c0>.candy_weight`
-- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 2.0 = <dessert.Candy object at 0x10bb7f380>.candy_weight`
+- `candy_combinable` (Candy implements Combinable protocol merging candy_weight for matching items): `E    +  where 2.0 = <dessert.Candy object at 0x0000019DF46A9550>.candy_weight`
+- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 2.0 = <dessert.Candy object at 0x0000019DF46AACF0>.candy_weight`
 - Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Cookie implements Combinable protocol merging cookie_quantity for matching items, DS9 Order.sort() and relational comparison operators intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -48,9 +48,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy_combinable`, `o
 
 > Pre-edit note (Claude): The hint asked 'what mathematical operation', which is an either/or in disguise. Now describes what happens to the first candy's weight and points at the line.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

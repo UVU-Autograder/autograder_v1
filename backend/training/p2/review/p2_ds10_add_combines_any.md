@@ -19,9 +19,9 @@
 
 ## What the grader reported
 
-- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 1 = len(<dessert.Order object at 0x10bb0aa50>)`
-- Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Candy implements Combinable protocol merging candy_weight for matching items, Cookie implements Combinable protocol merging cookie_quantity for matching items, DS9 Order.sort() and relational comparison operators intact
-- **The changed lines are cut off by the prompt's code budget: the model sees the failure, not the code.** Good feedback here reasons from the assertion alone.
+- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 1 = len(<dessert.Order object at 0x00000191E57DA660>)`
+- `ds9_regression` (DS9 Order.sort() and relational comparison operators intact): `E     Use -v to get more diff`
+- Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Candy implements Combinable protocol merging candy_weight for matching items, Cookie implements Combinable protocol merging cookie_quantity for matching items
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -46,18 +46,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The draft had it backwards (said items were NOT merged); the test found 1 item where 2 should stay separate. Order.add is cut off from the prompt, so the feedback reasons from the assertion.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_combine, ds9_regression. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The stricter tests also fail ds9_regression: the sort test adds two different candies, and Order.add merges them. Added as a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your Combinable protocol and the Candy and Cookie combine methods are in place. Order.add is merging items that should stay separate.",
+  "summary": "Your Combinable protocol and the Candy and Cookie combine methods are in place. Order.add is merging items that should stay separate, and a Dessert Shop 9 test trips over the same thing.",
   "items": [
     {
       "test_key": "order_combine",
       "what_went_wrong": "The test expected 2 items in the order but found 1, so two items that should not combine were merged into one.",
       "hint": "When Order.add finds an item already in the order, what does it check before merging the two? Can you trace it by hand with two different candies?"
+    },
+    {
+      "test_key": "ds9_regression",
+      "what_went_wrong": "The sorting test adds two different candies, and they get merged before sort() runs, so the order is wrong.",
+      "hint": "This follows from the Order.add problem. Fix that first."
     }
   ],
   "next_step": "Review the Order.add method in dessert.py."

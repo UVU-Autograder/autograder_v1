@@ -19,7 +19,7 @@
 
 ## What the grader reported
 
-- `tax_percent` (DessertItem tax_percent attribute defaults to 7.25%): `E    +  where 8.25 = <dessert.Candy object at 0x10aef96a0>.tax_percent`
+- `tax_percent` (DessertItem tax_percent attribute defaults to 7.25%): `E    +  where 8.25 = <dessert.Candy object at 0x0000020137C886E0>.tax_percent`
 - `calculate_tax` (calculate_tax() computes tax based on item cost and tax_percent): `E     Expected: 0.14 ± 1.4e-07`
 - `order_totals` (Order methods order_cost() and order_tax() aggregate total prices accurately): `E     Expected: 0.57 ± 5.7e-07`
 - Passing: DessertItem inherits ABC and defines abstract @abstractmethod calculate_cost(), calculate_cost() computes price per weight, dozen, and scoops for subclasses
@@ -53,9 +53,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > Pre-edit note (Claude): The summary blamed 'how taxes are aggregated' (they are not); one root cause, the default rate, with the tax and totals following from it.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

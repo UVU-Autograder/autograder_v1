@@ -20,7 +20,8 @@
 ## What the grader reported
 
 - `order_payable` (Order implements get_pay_type() and set_pay_type() with PayType enum validation): `E     + cash`
-- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, Student test_order.py exists with at least 5 test cases validating Order methods, DS7 packaging interface, class structure, and output formatting intact
+- `student_order_tests` (Student test_order.py exists with at least 5 test cases validating Order methods): `E   Std...`
+- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, DS7 packaging interface, class structure, and output formatting intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -45,18 +46,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Pre-edit note (Claude): No change to the substance: accurate and points to where to look.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_payable, student_order_tests. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The student's own test_order.py now fails too, on the same bug. Added as a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your submission implements the required protocols and class structure, but the default payment type does not match.",
+  "summary": "Your submission implements the required protocols and class structure, but the default payment type does not match, and your own default test catches it.",
   "items": [
     {
       "test_key": "order_payable",
       "what_went_wrong": "A new Order's get_pay_type() returned 'cash', but the test expects 'CASH'.",
       "hint": "Check the initial value assigned to self._pay_type in the Order constructor, and compare it with the values PayType allows."
+    },
+    {
+      "test_key": "student_order_tests",
+      "what_went_wrong": "Your own default-pay-type test fails for the same reason.",
+      "hint": "This follows from the default in __init__. Fix that, not the test."
     }
   ],
   "next_step": "Review the Order.__init__ method in dessert.py."

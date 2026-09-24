@@ -18,10 +18,10 @@
 
 ## What the grader reported
 
-- `normalize` (Money normalize() carries overflow cents (>= 100) into dollars): `E    +  where 1 = <money.Money object at 0x108bb41a0>.dollars`
-- `add` (Money __add__() overloads '+' operator to add dollars and cents): `E    +  where 5 = <money.Money object at 0x108af5f90>.dollars`
-- `mul` (Money __mul__() and __rmul__() overload '*' operator for scalar multiplication): `E    +  where 0 = <money.Money object at 0x108af6990>.dollars`
-- `eq` (Money __eq__() overloads '==' operator comparing normalized total cents): `E   assert <money.Money object at 0x108bb4d70> == <money.Money object at 0x108af6d50>`
+- `normalize` (Money normalize() carries overflow cents (>= 100) into dollars): `E    +  where 1 = <money.Money object at 0x0000014E1C872BA0>.dollars`
+- `add` (Money __add__() overloads '+' operator to add dollars and cents): `E    +  where 5 = <money.Money object at 0x0000014E1C85EE90>.dollars`
+- `mul` (Money __mul__() and __rmul__() overload '*' operator for scalar multiplication): `E    +  where 0 = <money.Money object at 0x0000014E1C85F750>.dollars`
+- `eq` (Money __eq__() overloads '==' operator comparing normalized total cents): `E   assert <money.Money object at 0x0000014E1C873620> == <money.Money object at 0x0000014E1C85F9D0>`
 - Passing: Money __str__() formats currency output as '$[dollars].[cents:02d]'
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -56,9 +56,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `add`, `m
 
 > Pre-edit note (Claude): 4 items cut to 3; the hint and next step gave the fix, and the eq item misdiagnosed. One root cause: normalize never runs.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

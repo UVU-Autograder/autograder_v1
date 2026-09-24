@@ -19,7 +19,7 @@
 
 ## What the grader reported
 
-- `dessertshop_class` (DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)): `E    +  where 0.35 = <dessert.Candy object at 0x108d42c10>.candy_weight`
+- `dessertshop_class` (DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)): `E    +  where 0.35 = <dessert.Candy object at 0x000002555ACA7B10>.candy_weight`
 - Passing: DS4 ABC inheritance, cost calculations, and tax formulas intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -45,9 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessertshop_class`). 
 
 > Pre-edit note (Claude): Small edit: the hint is now a question comparing the call with Candy's __init__.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

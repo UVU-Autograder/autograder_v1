@@ -18,9 +18,8 @@
 
 ## What the grader reported
 
-- `description_readonly` (description read-only property formats 'Title by Author' and raises AttributeError on write): `E   TypeError: argument of type 'method' is not a container or iterable`
+- `description_readonly` (description read-only property formats 'Title by Author' and raises AttributeError on write): `E   TypeError: argument of type 'method' is not iterable`
 - Passing: @property title decorator validates type (str) and non-empty string constraint, @property author decorator validates type (str) and non-empty string constraint
-- Concept warnings (shown to the student in the Warnings panel): concept_warning: [book.py] Concept 'exceptions' is not in the allowed list
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -45,9 +44,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `description_readonly`
 
 > Pre-edit note (Claude): The hint was confusing and the next step named @property (the fix). Now compares description with author, which is set up correctly.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

@@ -18,7 +18,7 @@
 
 ## What the grader reported
 
-- `relational_ops` (DessertItem defines all 6 relational operators (__eq__, __ne__, __lt__, __gt__, __le__, __ge__) comparing cost): `E   assert <dessert.Candy object at 0x107c423c0> <= <dessert.Candy object at 0x107bf3110>`
+- `relational_ops` (DessertItem defines all 6 relational operators (__eq__, __ne__, __lt__, __gt__, __le__, __ge__) comparing cost): `E   assert <dessert.Candy object at 0x00000211A6EF86E0> <= <dessert.Candy object at 0x00000211A6F38050>`
 - Passing: Order.sort() sorts items in ascending order based on calculate_cost(), Student test suite includes test cases validating relational comparison operators and Order.sort(), DS8 payment interface, packaging protocols, and class hierarchy intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -44,9 +44,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `relational_ops`). The
 
 > Pre-edit note (Claude): what_went_wrong gave the fix. Now describes the equal-cost case and asks what <= should return there.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

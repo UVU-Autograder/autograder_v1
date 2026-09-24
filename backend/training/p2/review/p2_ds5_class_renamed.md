@@ -19,7 +19,7 @@
 
 ## What the grader reported
 
-- `dessertshop_class` (DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)): `E    +    where <function isclass at 0x1074e0930> = inspect.isclass`
+- `dessertshop_class` (DessertShop class defines user input methods (user_prompt_candy, user_prompt_cookie, etc.)): `E    +    where <function isclass at 0x00000177685BC180> = inspect.isclass`
 - Passing: DS4 ABC inheritance, cost calculations, and tax formulas intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -45,9 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessertshop_class`). 
 
 > Pre-edit note (Claude): No change to the substance: accurate and points to the name.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

@@ -36,7 +36,7 @@
 
 ## What the grader reported
 
-- `encapsulation` (YouTubeChannel protects attributes using private (_ and __) naming encapsulation): `E    +  and   False = hasattr(<youtube_channel.YouTubeChannel object at 0x108f942f0>, '__video_count')`
+- `encapsulation` (YouTubeChannel protects attributes using private (_ and __) naming encapsulation): `E    +  and   False = hasattr(<youtube_channel.YouTubeChannel object at 0x00000185C5062660>, '__video_count')`
 - `type_hints` (Explicit type hints added to parameters and return types on constructor and __str__()): `E    +    where <class 'inspect.Signature'> = inspect.Signature`
 - Passing: Getter and setter methods enforce validation guards against negative counts
 
@@ -66,9 +66,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `encapsulation`, `type
 
 > Pre-edit note (Claude): Both hints gave the fix. Two separate problems now, each pointing to where to look, and a next step to do them one at a time.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

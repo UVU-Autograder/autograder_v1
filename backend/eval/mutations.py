@@ -556,7 +556,7 @@ TRAIN_MUTATIONS = [
      "edits": [{"file": "dessertshop.py", "find": '    print("Total number of items in order:", len(order))\n',
                 "replace": '    print("Total number of items in order:", len(order))\n    with open("receipt.txt", "w") as receipt:\n        receipt.write(str(len(order)))\n'}]},
     {"case_id": "p2_ds2_two_bugs", "seed": "ds2", "category": "cascading_failure",
-     "notes": "two bugs, only one caught: main prints objects (main_output); the Candy price regression is not tested, so feedback must not mention it",
+     "notes": "two independent bugs: Candy stores the weight as its price (DS1 regression), and main prints objects instead of names",
      "edits": [{"file": "dessert.py", "find": "        self.price_per_pound = price_per_pound", "replace": "        self.price_per_pound = candy_weight"},
                {"file": "dessertshop.py", "find": "        print(item.name)", "replace": "        print(item)"}]},
     {"case_id": "p2_ds2_injection", "seed": "ds2", "category": "injection",

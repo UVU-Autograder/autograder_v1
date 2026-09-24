@@ -18,7 +18,7 @@
 
 ## What the grader reported
 
-- `mul` (Money __mul__() and __rmul__() overload '*' operator for scalar multiplication): `E    +  where 1 = <money.Money object at 0x1069fe0d0>.dollars`
+- `mul` (Money __mul__() and __rmul__() overload '*' operator for scalar multiplication): `E    +  where 1 = <money.Money object at 0x000002707F672C10>.dollars`
 - Passing: Money normalize() carries overflow cents (>= 100) into dollars, Money __str__() formats currency output as '$[dollars].[cents:02d]', Money __add__() overloads '+' operator to add dollars and cents, Money __eq__() overloads '==' operator comparing normalized total cents
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -44,9 +44,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `mul`). Then set the s
 
 > Pre-edit note (Claude): Small edit: the hint now asks the student to work the example by hand.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

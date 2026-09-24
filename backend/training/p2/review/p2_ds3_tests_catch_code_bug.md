@@ -19,7 +19,7 @@
 
 ## What the grader reported
 
-- `student_tests_pass` (Student test suite executes cleanly and passes all assertions): `E   test_dessert.py::test_sundae_parameterized PASSED        ...`
+- `student_tests_pass` (Student test suite executes cleanly and passes all assertions): `E   t...`
 - Passing: DS2 class hierarchy and Order class methods intact, test_dessert.py exists and defines at least 15 valid test functions
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -45,9 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 
 > Pre-edit note (Claude): The draft sent the student to edit the test; here the test is right and Cookie's default is wrong. Feedback credits the test and asks which side matches the assignment.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

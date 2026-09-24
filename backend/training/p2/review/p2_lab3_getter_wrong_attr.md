@@ -19,7 +19,7 @@
 
 ## What the grader reported
 
-- `getters_setters` (Getter and setter methods enforce validation guards against negative counts): `E    +    where get_video_count = <youtube_channel.YouTubeChannel object at 0x108db82f0>.get_video_count`
+- `getters_setters` (Getter and setter methods enforce validation guards against negative counts): `E    +    where get_video_count = <youtube_channel.YouTubeChannel object at 0x0000024F417B2660>.get_video_count`
 - Passing: YouTubeChannel protects attributes using private (_ and __) naming encapsulation, Explicit type hints added to parameters and return types on constructor and __str__()
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -45,9 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `getters_setters`). Th
 
 > Pre-edit note (Claude): The hint asked which attribute to return (the fix). Now compares with get_name.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

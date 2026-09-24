@@ -19,7 +19,8 @@
 ## What the grader reported
 
 - `order_payable` (Order implements get_pay_type() and set_pay_type() with PayType enum validation): `E   TypeError: Invalid payment method: INVALID`
-- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, Student test_order.py exists with at least 5 test cases validating Order methods, DS7 packaging interface, class structure, and output formatting intact
+- `student_order_tests` (Student test_order.py exists with at least 5 test cases validating Order methods): `E           if paym...`
+- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, DS7 packaging interface, class structure, and output formatting intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -44,18 +45,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Pre-edit note (Claude): The draft was vague ('handle it differently'). Now states what happened and asks which kind of error fits a wrong value.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_payable, student_order_tests. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The student's own test_order.py now fails too (it expects the same exception). Added as a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your protocols and Order class work, and set_pay_type does reject invalid values. It reports them with a different kind of error than the test expects.",
+  "summary": "Your protocols and Order class work, and set_pay_type does reject invalid values. It uses a different kind of error than both the grader's test and your own test expect.",
   "items": [
     {
       "test_key": "order_payable",
       "what_went_wrong": "set_pay_type('INVALID') raised a TypeError, and the test did not accept that exception.",
       "hint": "The value is a string, the right type, but not one of the allowed options. Which built-in exception is meant for that situation?"
+    },
+    {
+      "test_key": "student_order_tests",
+      "what_went_wrong": "Your invalid-pay-type test in test_order.py fails for the same reason.",
+      "hint": "Check which exception your own test expects. It is a good clue."
     }
   ],
   "next_step": "Review the raise line in set_pay_type in dessert.py."

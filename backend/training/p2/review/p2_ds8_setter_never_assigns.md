@@ -19,8 +19,8 @@
 ## What the grader reported
 
 - `order_payable` (Order implements get_pay_type() and set_pay_type() with PayType enum validation): `E     + CASH`
-- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, Student test_order.py exists with at least 5 test cases validating Order methods, DS7 packaging interface, class structure, and output formatting intact
-- **The changed lines are cut off by the prompt's code budget: the model sees the failure, not the code.** Good feedback here reasons from the assertion alone.
+- `student_order_tests` (Student test_order.py exists with at least 5 test cases validating Order methods): `E   >     ...`
+- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, DS7 packaging interface, class structure, and output formatting intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -45,18 +45,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Pre-edit note (Claude): The hint gave the fix ('ensure it updates the internal variable'), and the summary said Enums (PayType is a Literal). The setter is cut off from the prompt, so the feedback traces from the assertion.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_payable, student_order_tests. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The student's own test_order.py now fails too, on the same bug. Added as a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your payment protocol and Order structure are in place, but changing the payment type does not stick.",
+  "summary": "Your payment protocol and Order structure are in place, but changing the payment type does not stick. Your own tests noticed.",
   "items": [
     {
       "test_key": "order_payable",
       "what_went_wrong": "After set_pay_type('CARD'), get_pay_type() still returns 'CASH'.",
       "hint": "Can you trace set_pay_type with 'CARD'? After the check passes, what happens to the value that was passed in?"
+    },
+    {
+      "test_key": "student_order_tests",
+      "what_went_wrong": "Your tests for setting CARD and PHONE fail for the same reason.",
+      "hint": "This follows from set_pay_type. Fix the method, not the tests."
     }
   ],
   "next_step": "Review the set_pay_type method in the Order class."

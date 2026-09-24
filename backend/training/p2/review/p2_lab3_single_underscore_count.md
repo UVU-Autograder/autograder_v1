@@ -35,7 +35,7 @@
 
 ## What the grader reported
 
-- `encapsulation` (YouTubeChannel protects attributes using private (_ and __) naming encapsulation): `E    +  and   False = hasattr(<youtube_channel.YouTubeChannel object at 0x108dd42f0>, '__video_count')`
+- `encapsulation` (YouTubeChannel protects attributes using private (_ and __) naming encapsulation): `E    +  and   False = hasattr(<youtube_channel.YouTubeChannel object at 0x000001962D1327B0>, '__video_count')`
 - Passing: Getter and setter methods enforce validation guards against negative counts, Explicit type hints added to parameters and return types on constructor and __str__()
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -61,9 +61,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `encapsulation`). Then
 
 > Pre-edit note (Claude): The hint was close to an either/or; next_step said 'private-mangled'. Now points to the convention and the student's own attribute.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

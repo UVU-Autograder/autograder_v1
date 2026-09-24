@@ -20,7 +20,8 @@
 ## What the grader reported
 
 - `order_payable` (Order implements get_pay_type() and set_pay_type() with PayType enum validation): `E   AttributeError: 'Order' object has no attribute 'pay_type'`
-- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, Student test_order.py exists with at least 5 test cases validating Order methods, DS7 packaging interface, class structure, and output formatting intact
+- `student_order_tests` (Student test_order.py exists with at least 5 test cases validating Order methods): `E   dessert.p...`
+- Passing: PayType Enum (CASH, CARD, PHONE) and Payable protocol defined in payment.py, DS7 packaging interface, class structure, and output formatting intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -45,18 +46,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Pre-edit note (Claude): No change to the substance: accurate and points to the comparison.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_payable, student_order_tests. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The stricter grading now runs the student's own test_order.py, which fails on the same bug. Added as a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your submission implements the required protocols, but get_pay_type reaches for an attribute that does not exist.",
+  "summary": "Your submission implements the required protocols, but get_pay_type reaches for an attribute that does not exist. Your own tests caught it too.",
   "items": [
     {
       "test_key": "order_payable",
       "what_went_wrong": "get_pay_type() fails with \"'Order' object has no attribute 'pay_type'\".",
       "hint": "Look at the attribute name you set in the Order __init__ and compare it with the one get_pay_type returns."
+    },
+    {
+      "test_key": "student_order_tests",
+      "what_went_wrong": "Your pay-type tests in test_order.py fail for the same reason.",
+      "hint": "This follows from get_pay_type. Your tests are doing their job: fix the method, not the tests."
     }
   ],
   "next_step": "Review get_pay_type in the Order class in dessert.py."

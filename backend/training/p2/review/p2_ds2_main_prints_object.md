@@ -19,7 +19,7 @@
 
 ## What the grader reported
 
-- `main_output` (dessertshop.py main() constructs Order items and prints formatted receipt): `E    +  where False = any(<generator object test_main_output.<locals>.<genexpr> at 0x102e56180>)`
+- `main_output` (dessertshop.py main() constructs Order items and prints formatted receipt): `E    +  where False = any(<generator object test_main_output.<locals>.<genexpr> at 0x00000209D53C2420>)`
 - Passing: DS1 class hierarchy intact (DessertItem, Candy, Cookie, IceCream, Sundae), Order class defines order list, add() method, and len() support
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -45,9 +45,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): The draft pointed to __str__, which is the wrong direction for DS2. The print in main's loop is the bug; the hint now sends the student to run main and compare.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

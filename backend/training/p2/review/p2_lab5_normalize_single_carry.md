@@ -21,8 +21,8 @@
 
 ## What the grader reported
 
-- `normalize` (Money normalize() carries overflow cents (>= 100) into dollars): `E    +  where 1 = <money.Money object at 0x10aa68f50>.dollars`
-- `mul` (Money __mul__() and __rmul__() overload '*' operator for scalar multiplication): `E    +  where 1 = <money.Money object at 0x10aa6a5d0>.dollars`
+- `normalize` (Money normalize() carries overflow cents (>= 100) into dollars): `E    +  where 1 = <money.Money object at 0x000001A6DF5D1F90>.dollars`
+- `mul` (Money __mul__() and __rmul__() overload '*' operator for scalar multiplication): `E    +  where 1 = <money.Money object at 0x000001A6DF5D34D0>.dollars`
 - Passing: Money __str__() formats currency output as '$[dollars].[cents:02d]', Money __add__() overloads '+' operator to add dollars and cents, Money __eq__() overloads '==' operator comparing normalized total cents
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -51,9 +51,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `mul`). T
 
 > Pre-edit note (Claude): The hint and what_went_wrong gave the fix. Now asks the student to trace a large amount by hand.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

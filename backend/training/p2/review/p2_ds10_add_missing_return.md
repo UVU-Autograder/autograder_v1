@@ -17,9 +17,8 @@
 
 ## What the grader reported
 
-- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 3 = len(<dessert.Order object at 0x106f2aa50>)`
+- `order_combine` (Order.add() automatically combines like items when matching item is present): `E    +  where 3 = len(<dessert.Order object at 0x00000207634A9D30>)`
 - Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Candy implements Combinable protocol merging candy_weight for matching items, Cookie implements Combinable protocol merging cookie_quantity for matching items, DS9 Order.sort() and relational comparison operators intact
-- **The changed lines are cut off by the prompt's code budget: the model sees the failure, not the code.** Good feedback here reasons from the assertion alone.
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -44,9 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The draft said the item was added instead of merged; it was merged and then also added (3 items, not 2). Hint now asks what runs after the merge.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

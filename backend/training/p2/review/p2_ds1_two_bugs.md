@@ -27,7 +27,7 @@
 ## What the grader reported
 
 - `candy` (Candy inherits DessertItem and defines candy_weight & price_per_pound): `E   AttributeError: 'Candy' object has no attribute 'candy_weight'`
-- `sundae` (Sundae inherits IceCream and defines topping_name & topping_price): `E    +  where 0 = <dessert.Sundae object at 0x1090d1d10>.scoop_count`
+- `sundae` (Sundae inherits IceCream and defines topping_name & topping_price): `E    +  where 0 = <dessert.Sundae object at 0x0000013CD711EE90>.scoop_count`
 - Passing: DessertItem base class defines name attribute with default '', Cookie inherits DessertItem and defines cookie_quantity & price_per_dozen, IceCream inherits DessertItem and defines scoop_count & price_per_scoop
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -54,9 +54,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy`, `sundae`). Th
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

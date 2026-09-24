@@ -18,7 +18,7 @@
 
 ## What the grader reported
 
-- `account_init` (Account class initializes owner, balance, and account_number attributes): `E    +  where None = getattr(<account.Account object at 0x10b2002f0>, 'owner', None)`
+- `account_init` (Account class initializes owner, balance, and account_number attributes): `E    +  where None = getattr(<account.Account object at 0x000001CC185C2660>, 'owner', None)`
 - `account_str` (Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'): `E   AttributeError: 'Account' object has no attribute 'owner'`
 - `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E   AttributeError: 'Account' object has no attribute 'owner'`
 
@@ -51,9 +51,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): The hint gave the fix ('assign using self'). Now compares the owner line with the balance line right below it.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

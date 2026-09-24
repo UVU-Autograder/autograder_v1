@@ -17,9 +17,7 @@
 
 ## What the grader reported
 
-- `order_class` (Order class defines order list, add() method, and len() support): `E   TimeoutException: Test case execution timed out (5s limit).`
-- `main_output` (dessertshop.py main() constructs Order items and prints formatted receipt): `E   AssertionError: dessertshop.py execution failed: Test case execution timed out (5s limit).`
-- Passing: DS1 class hierarchy intact (DessertItem, Candy, Cookie, IceCream, Sundae)
+- `execution_error` (Submission could not run): `Time limit exceeded`
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -47,25 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): The draft blamed __iter__ resetting the index; the loop never ends because __next__ never moves forward. Hint now asks what changes between calls.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: execution_error. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The whole run now hits the time limit, so the grader reports one execution_error instead of two test failures. Rewritten around that.
 
 status: todo
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but looping over an Order never finishes.",
+  "summary": "Your class hierarchy is written, but the submission never finished running: something loops forever.",
   "items": [
     {
-      "test_key": "order_class",
-      "what_went_wrong": "Looping over an Order ran until the test's 5-second time limit.",
+      "test_key": "execution_error",
+      "what_went_wrong": "The run was stopped with \"Time limit exceeded\", so none of the tests could finish.",
       "hint": "Can you trace __next__ for an order with two items? Does anything change between one call and the next?"
-    },
-    {
-      "test_key": "main_output",
-      "what_went_wrong": "main timed out in its for loop for the same reason.",
-      "hint": "This follows from the __next__ problem. Fix that first."
     }
   ],
-  "next_step": "Review the __next__ method in the Order class."
+  "next_step": "Review the __next__ method in the Order class, then run dessertshop.py yourself to check it finishes."
 }
 ```

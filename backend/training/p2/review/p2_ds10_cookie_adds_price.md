@@ -18,7 +18,7 @@
 
 ## What the grader reported
 
-- `cookie_combinable` (Cookie implements Combinable protocol merging cookie_quantity for matching items): `E    +  where 12 = <dessert.Cookie object at 0x107ccaba0>.cookie_quantity`
+- `cookie_combinable` (Cookie implements Combinable protocol merging cookie_quantity for matching items): `E    +  where 12 = <dessert.Cookie object at 0x0000016000EF97F0>.cookie_quantity`
 - Passing: Combinable protocol defined in combine.py with can_combine() and combine() methods, Candy implements Combinable protocol merging candy_weight for matching items, Order.add() automatically combines like items when matching item is present, DS9 Order.sort() and relational comparison operators intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -44,9 +44,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `cookie_combinable`). 
 
 > Pre-edit note (Claude): Small edit: what_went_wrong now uses the numbers from the assertion. The hint was already good.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

@@ -20,7 +20,7 @@
 
 - `account_init` (Account class initializes owner, balance, and account_number attributes): `E   AttributeError: module 'account' has no attribute 'Account'. Did you mean: 'account'?`
 - `account_str` (Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'): `E   AttributeError: module 'account' has no attribute 'Account'. Did you mean: 'account'?`
-- `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E   ImportError: cannot import name 'Account' from 'account' (/private/var/folders/wh/1wdfmd9n0kn0xwvpnwp_t2yc0000gq/T/ag_grade_z9qad_cr/execution/account.py). Did you mean: 'account'?`
+- `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E   ImportError: cannot import name 'Account' from 'account' (C:\Users\Jaxon\AppData\Local\Temp\ag_grade_seqjb2c0\execution\account.py). Did you mean: 'account'?`
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -51,9 +51,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Small edit: the hint now points at the error message instead of the test file, which the student cannot see.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

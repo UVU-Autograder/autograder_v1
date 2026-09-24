@@ -17,7 +17,7 @@
 
 ## What the grader reported
 
-- `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E    +  where False = hasattr(None, 'Account')`
+- `demo_output` (demo.py executes test deposits, withdrawals, and prints account summary to stdout): `E   assert ('Owner:' in '')`
 - Passing: Account class initializes owner, balance, and account_number attributes, Account __str__() formats output as 'Owner: [owner], Balance: $[balance]'
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -43,9 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `demo_output`). Then s
 
 > Pre-edit note (Claude): The draft misdiagnosed a main() / __name__ problem. demo.py never gets past its import line; the hint asks the student to run it and compare the import with the file name.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

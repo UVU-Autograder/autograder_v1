@@ -17,7 +17,7 @@
 
 ## What the grader reported
 
-- `part1_output` (bears2.py filters bears_copy.jpg into a valid non-trivial bears2.jpg): `E    +    where exists = PosixPath('/private/var/folders/wh/1wdfmd9n0kn0xwvpnwp_t2yc0000gq/T/ag_grade_ymw5grmz/execution/bears2.jpg').exists`
+- `part1_output` (bears2.py filters bears_copy.jpg into a valid non-trivial bears2.jpg): `E    +    where exists = WindowsPath('C:/Users/Jaxon/AppData/Local/Temp/ag_grade__pjoluwa/execution/bears2.jpg').exists`
 - Passing: Part 1 script (bears2.py) and generated filter image (bears2.jpg) exist, Part 2 script (bears3.py) and generated composite image (bears3.jpg) exist, Submitted bears3.jpg opens as a valid non-trivial composite image
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -43,9 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `part1_output`). Then 
 
 > Pre-edit note (Claude): The hint and next step named save() (the fix). Now compares with bears3.py, which saves its image.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

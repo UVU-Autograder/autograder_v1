@@ -19,7 +19,7 @@
 
 ## What the grader reported
 
-- `order_class` (Order class defines order list, add() method, and len() support): `E    +  where 1 = len(<dessert.Order object at 0x10aa681a0>)`
+- `order_class` (Order class defines order list, add() method, and len() support): `E    +  where 1 = len(<dessert.Order object at 0x00000147570B2BA0>)`
 - `main_output` (dessertshop.py main() constructs Order items and prints formatted receipt): `E    +  where 2 = len(['Oatmeal Raisin', 'Total number of items in order: 1'])`
 - Passing: DS1 class hierarchy intact (DessertItem, Candy, Cookie, IceCream, Sundae)
 
@@ -47,9 +47,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

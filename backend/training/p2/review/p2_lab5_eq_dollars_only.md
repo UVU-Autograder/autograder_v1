@@ -17,7 +17,7 @@
 
 ## What the grader reported
 
-- `eq` (Money __eq__() overloads '==' operator comparing normalized total cents): `E   assert <money.Money object at 0x1073cc1a0> != <money.Money object at 0x10732a850>`
+- `eq` (Money __eq__() overloads '==' operator comparing normalized total cents): `E   assert <money.Money object at 0x0000015684EE2BA0> != <money.Money object at 0x0000015684ED2D50>`
 - Passing: Money normalize() carries overflow cents (>= 100) into dollars, Money __str__() formats currency output as '$[dollars].[cents:02d]', Money __add__() overloads '+' operator to add dollars and cents, Money __mul__() and __rmul__() overload '*' operator for scalar multiplication
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -43,9 +43,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `eq`). Then set the st
 
 > Pre-edit note (Claude): The hint gave the fix ('comparing only dollars'). Now asks the student to trace two amounts that differ only in cents.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {

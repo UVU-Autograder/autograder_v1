@@ -20,8 +20,8 @@
 ## What the grader reported
 
 - `order_sort` (Order.sort() sorts items in ascending order based on calculate_cost()): `E     Use -v to get more diff`
-- Passing: DessertItem defines all 6 relational operators (__eq__, __ne__, __lt__, __gt__, __le__, __ge__) comparing cost, Student test suite includes test cases validating relational comparison operators and Order.sort(), DS8 payment interface, packaging protocols, and class hierarchy intact
-- **The changed lines are cut off by the prompt's code budget: the model sees the failure, not the code.** Good feedback here reasons from the assertion alone.
+- `student_sort_tests` (Student test suite includes test cases validating relational comparison operators and Order.sort()): `E   FAIL...`
+- Passing: DessertItem defines all 6 relational operators (__eq__, __ne__, __lt__, __gt__, __le__, __ge__) comparing cost, DS8 payment interface, packaging protocols, and class hierarchy intact
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
 
@@ -46,18 +46,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Pre-edit note (Claude): Kept the good hint and added a concrete way to see it. sort() is cut off from the prompt.
 
-> Stale after 4159d52 (tightened tests): the grader now reports different failing items: order_sort, student_sort_tests. Re-check the target against the new grader output before approving.
+> Updated after 4159d52 (Claude): The student's own sort test now fails too, and Order.sort is visible to the model under prompt v5. Added a follow-on item.
 
 status: todo
 
 ```json
 {
-  "summary": "Your relational operators are correct, but calling sort() does not change the order.",
+  "summary": "Your relational operators are correct, but calling sort() does not change the order, and your own sort test catches it.",
   "items": [
     {
       "test_key": "order_sort",
       "what_went_wrong": "After order.sort(), the items are still in the order they were added.",
       "hint": "How is the list being modified or returned inside Order.sort()? Can you print order.order right after calling it?"
+    },
+    {
+      "test_key": "student_sort_tests",
+      "what_went_wrong": "Your test_order_sort fails for the same reason.",
+      "hint": "This follows from Order.sort. Fix the method, not the test."
     }
   ],
   "next_step": "Review the Order.sort() method in dessert.py."

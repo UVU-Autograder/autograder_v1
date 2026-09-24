@@ -20,7 +20,7 @@
 
 ## What the grader reported
 
-- `eq` (Money __eq__() overloads '==' operator comparing normalized total cents): `E   assert <money.Money object at 0x106eb81a0> == <money.Money object at 0x106dfa0d0>`
+- `eq` (Money __eq__() overloads '==' operator comparing normalized total cents): `E   assert <money.Money object at 0x0000027F55FF2BA0> == <money.Money object at 0x0000027F55FDEC10>`
 - Passing: Money normalize() carries overflow cents (>= 100) into dollars, Money __str__() formats currency output as '$[dollars].[cents:02d]', Money __add__() overloads '+' operator to add dollars and cents, Money __mul__() and __rmul__() overload '*' operator for scalar multiplication
 
 ## Draft by `gemma4-12b-qat` (prompt v4), as the student would see it
@@ -46,9 +46,7 @@ Edit the JSON, keeping each `test_key` as given (allowed: `eq`). Then set the st
 
 > Pre-edit note (Claude): The draft asked how 'your __eq__' works, but there is no __eq__. Now asks which listed operators the class defines.
 
-> Stale after 4159d52 (tightened tests): the assertion messages changed. Re-check the target against the new grader output before approving.
-
-status: todo
+status: accepted
 
 ```json
 {
