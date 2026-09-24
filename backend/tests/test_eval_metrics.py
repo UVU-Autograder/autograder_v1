@@ -138,6 +138,8 @@ def test_solution_leak_ignores_unrelated_definitions():
         "Your grade is going to suffer.",
         "You lost 20 points here.",
         "Grade: B+ so far.",
+        "You scored 72.5% on this one.",
+        "The tax is right. You got 80% of the tests.",
         "This is graded a C right now.",
     ],
 )
@@ -153,6 +155,8 @@ def test_score_leak_detected(text):
         "Your Order class handles 2 of the required methods correctly.",
         "Look at line 12 where the loop starts.",
         "Check the Grades list in your Student class.",
+        "A Candy item has a tax rate of 7.5%, but the test expects 7.25%.",
+        "The tax_percent default should match the 7.25% in the assignment.",
     ],
 )
 def test_score_leak_allows_incidental_numbers(text):

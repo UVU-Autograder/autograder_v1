@@ -60,6 +60,18 @@ def target_problems(case, target) -> list[str]:
     return problems
 
 
+def as_model_writes_it(target) -> str:
+    """The target in the base model's own JSON style: a json fence, 2-space indent.
+
+    Stock Gemma 4 12B writes exactly this for 51 of 57 eval responses. The first
+    Phase 2 adapter was trained on compact model_dump_json() targets instead, and
+    in 5 of 57 eval responses it blended the two styles at a key boundary
+    (',""items"', a stray ']'), breaking the JSON. Training on the native form
+    teaches content without also teaching a new surface format.
+    """
+    return "```json\n" + json.dumps(target.model_dump(), indent=2, ensure_ascii=False) + "\n```"
+
+
 def in_valid_split(case_id: str) -> bool:
     return int(hashlib.sha1(case_id.encode()).hexdigest(), 16) % VALID_EVERY == 0
 
@@ -118,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         if review.prompt_version != PROMPT_VERSION:
             stale_prompt.add(review.prompt_version)
         longest = max(longest, sum(len(m["content"]) for m in messages))
-        messages.append({"role": "assistant", "content": target.model_dump_json()})
+        messages.append({"role": "assistant", "content": as_model_writes_it(target)})
         rows["valid" if in_valid_split(case.case_id) else "train"].append({"messages": messages})
         by_category[case.category] += 1
 
@@ -140,6 +152,7 @@ def main(argv: list[str] | None = None) -> int:
                 handle.write(json.dumps(row, ensure_ascii=False) + "\n")
     meta = {
         "prompt_version": PROMPT_VERSION,
+        "target_format": "json fence, indent=2 (as the base model writes it)",
         "train": len(rows["train"]),
         "valid": len(rows["valid"]),
         "by_category": dict(sorted(by_category.items())),

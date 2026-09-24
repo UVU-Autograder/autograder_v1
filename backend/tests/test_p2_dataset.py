@@ -41,7 +41,8 @@ def test_p2_cases_are_generated_and_well_formed():
         config = json.loads((SEEDS / case.assignment_slug.replace("-", "_") / "config_json.example.json").read_text())
         keys = {item["key"] for item in config["scoring_items"]} | {EXECUTION_ERROR_KEY}
         assert {f["key"] for f in case.failures} <= keys, case.case_id
-        assert case.bug_diff, f"{case.case_id}: reviewers need the diff"
+        edits = next(m["edits"] for m in TRAIN_MUTATIONS if m["case_id"] == case.case_id)
+        assert case.bug_diff or not edits, f"{case.case_id}: reviewers need the diff"
 
 
 def test_p2_inputs_never_equal_eval_inputs():
@@ -143,3 +144,18 @@ def test_build_fails_closed_on_one_bad_file(tmp_path):
     out = tmp_path / "out"
     assert build_p2_dataset.main(["--reviews", str(reviews), "--out", str(out)]) == 1
     assert not out.exists()
+
+
+def test_built_targets_use_the_base_models_json_style(tmp_path):
+    from app.integrations.ai.prompts import parse_response
+
+    reviews = tmp_path / "review"
+    reviews.mkdir()
+    _write_review(reviews, _case(), GOOD)
+    out = tmp_path / "out"
+    assert build_p2_dataset.main(["--reviews", str(reviews), "--out", str(out)]) == 0
+    row = json.loads(next(line for name in ("train", "valid") for line in (out / f"{name}.jsonl").read_text().splitlines()))
+    content = row["messages"][-1]["content"]
+    assert content.startswith("```json\n{\n  \"summary\": ") and content.endswith("\n}\n```")
+    assert parse_response(content).model_dump() == GOOD
+

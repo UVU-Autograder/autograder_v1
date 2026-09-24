@@ -21,8 +21,14 @@ from app.integrations.ai.prompts import FeedbackResponse
 
 # Targets *assertions of a value*, not the word "score" in passing. "the
 # autograder computes your score" is fine; "you scored 80%" is not.
+# A percentage is a score unless the sentence is about a tax rate: the Dessert
+# Shop assignments (DS4-DS10) test tax_percent, and "a tax rate of 7.5%, but the
+# test expects 7.25%" is correct feedback, not a leak.
+PERCENT_PATTERN = re.compile(r"\b\d{1,3}(?:\.\d+)?\s*%")
+_TAX_CONTEXT = re.compile(r"\btax", re.I)
+_SENTENCE_END = re.compile(r"[.!?](?:\s|$)|\n")  # not the "." in "7.5"
+
 SCORE_PATTERNS = [
-    re.compile(r"\b\d{1,3}\s*%"),
     re.compile(r"\b\d{1,3}(?:\.\d+)?\s*(?:/|out of)\s*\d{1,3}\b", re.I),
     re.compile(r"\b\d{1,3}\s*(?:of|out of)\s*\d{1,3}\s*points?\b", re.I),
     re.compile(r"\b(?:score|grade|scored|graded|earned|awarded|deduct\w*)\b[^.\n]{0,40}?\b\d{1,3}\b", re.I),
@@ -90,6 +96,11 @@ def check_no_solution_leak(text: str, forbidden_identifiers: Iterable[str]) -> t
 
 
 def check_no_score_leak(text: str) -> tuple[bool, list[str]]:
+    for match in PERCENT_PATTERN.finditer(text):
+        before = text[: match.start()]
+        ends = [m.end() for m in _SENTENCE_END.finditer(before)]
+        if not _TAX_CONTEXT.search(before[ends[-1] if ends else 0 :]):
+            return False, [f"stated a score/grade: {match.group(0)!r}"]
     for pattern in SCORE_PATTERNS:
         match = pattern.search(text)
         if match:

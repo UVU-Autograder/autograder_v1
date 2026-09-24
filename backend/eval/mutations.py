@@ -786,4 +786,27 @@ TRAIN_MUTATIONS = [
     {"case_id": "p2_ds10_add_combines_any", "seed": "ds10", "category": "cascading_failure",
      "notes": "Order.add calls combine without checking can_combine first",
      "edits": [{"file": "dessert.py", "find": "                if isinstance(existing, Combinable) and existing.can_combine(item):", "replace": "                if isinstance(existing, Combinable):"}]},
+
+    # ------------------------------------------------------------- plain all-pass
+    # The first Phase 2 adapter only ever saw all-pass *alternative* solutions,
+    # each target praising that specific choice, and learned to comment on a code
+    # detail even when there is none -- inventing typos on clean eval solutions.
+    # These are the unchanged model solutions: nothing unusual to point out.
+    # (ds1, ds2, ds4, lab5, lab7, ds10 are left out: their plain solution is an eval case.)
+    {"case_id": "p2_plain_lab1_all_pass", "seed": "lab-1-image-processing", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
+    {"case_id": "p2_plain_lab2_all_pass", "seed": "lab2", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
+    {"case_id": "p2_plain_lab3_all_pass", "seed": "lab3", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
+    {"case_id": "p2_plain_lab4_all_pass", "seed": "lab4", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
+    {"case_id": "p2_plain_ds3_all_pass", "seed": "ds3", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
+    {"case_id": "p2_plain_ds5_all_pass", "seed": "ds5", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
+    {"case_id": "p2_plain_ds8_all_pass", "seed": "ds8", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
+    {"case_id": "p2_plain_ds9_all_pass", "seed": "ds9", "category": "all_pass",
+     "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
 ]
