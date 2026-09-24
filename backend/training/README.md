@@ -93,8 +93,26 @@ python3.12 -m venv ~/venvs/serve && ~/venvs/serve/bin/pip install -r backend/tra
 ```
 
 ```bash
-VLLM_USE_FLASHINFER_SAMPLER=0 ~/venvs/serve/bin/vllm serve /data/models/gemma4-12b-qat-w4a16 --served-model-name gemma4-12b-qat --port 8001 --max-model-len 8192 --gpu-memory-utilization 0.90 --enable-lora --lora-modules cs1410-smoke=backend/training/output/smoke --max-lora-rank 16 --limit-mm-per-prompt '{"image":0,"audio":0}'
+bash backend/training/serve.sh smoke
 ```
+
+`serve.sh` starts vLLM in tmux session `vllm` (so a dropped SSH connection does
+not kill it), serves each named adapter from `training/output/<name>` as
+`cs1410-<name>` with absolute paths (it works from any directory), and waits
+until the server answers, then lists what it serves. Several adapters can be
+served at once (`serve.sh p2 p2b`); with no names it serves the base model only.
+The log is `/data/vllm.log`; stop it with `tmux kill-session -t vllm`.
+
+The underlying command, for reference:
+
+```bash
+VLLM_USE_FLASHINFER_SAMPLER=0 ~/venvs/serve/bin/vllm serve /data/models/gemma4-12b-qat-w4a16 --served-model-name gemma4-12b-qat --port 8001 --max-model-len 8192 --gpu-memory-utilization 0.90 --enable-lora --lora-modules cs1410-smoke=$HOME/autograder_v1-dev/backend/training/output/smoke --max-lora-rank 16 --limit-mm-per-prompt '{"image":0,"audio":0}'
+```
+
+Adapter paths must be absolute or relative to the directory vLLM starts in; a
+path vLLM cannot find is treated as a Hugging Face repo id and fails with
+`Repo id must be in the form 'repo_name'`. Use `$HOME`, not `~`: bash does not
+expand `~` after `cs1410-smoke=`.
 
 Port 8001 because the autograder backend owns 8000. Paste back the `Maximum
 concurrency for 8192 tokens per request` line from startup.
