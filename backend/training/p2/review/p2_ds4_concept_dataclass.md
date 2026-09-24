@@ -45,7 +45,7 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): New case from 4159d52 (replaces the exceptions case now that exceptions are allowed in Module 6). The draft was good; the next step now names the student's own Box dataclass and offers leaving it out, and the summary says what works.
 
-status: todo
+status: accepted
 
 ```json
 {
