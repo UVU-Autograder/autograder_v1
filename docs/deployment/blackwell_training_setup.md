@@ -32,7 +32,7 @@ machine produces them.
 
 You cannot serve and train on one 32GB card at the same time. Training will
 saturate the GPU for hours. Schedule training against sandbox downtime, or
-accept that the POC endpoint is down while a run is in flight.
+accept that the autograder service endpoint is down while a run is in flight.
 
 ---
 

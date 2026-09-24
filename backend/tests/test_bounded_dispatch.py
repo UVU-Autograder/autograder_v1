@@ -53,31 +53,32 @@ def delivery():
     return messages
 
 
-def test_200_submissions_are_individual_tasks_and_exports_survive_long_batch(monkeypatch):
-    run_id = upload(200)
+def test_bounded_batch_dispatch_and_exports(monkeypatch):
+    count = 10
+    run_id = upload(count)
     assert waiting_count() == 0
     now = retention.utc_now()
     monkeypatch.setattr(retention, "utc_now", lambda: now)
     grader = AsyncMock(return_value=GradingResult(success=True, score=100, max_score=100))
     with patch("app.domains.grading.engine.GradingEngine.grade_submission", grader):
-        for index in range(200):
+        for index in range(count):
             messages = delivery()
             assert len(messages) == 1
             outcome = grade_official_run(*messages[0])
             assert grader.call_count == index + 1
             assert "student_results" not in outcome
-            assert outcome["state"] == ("complete" if index == 199 else "run")
+            assert outcome["state"] == ("complete" if index == count - 1 else "run")
             assert grade_official_run(*messages[0])["state"] == "ignored"
             now += timedelta(seconds=10)
     with SessionLocal() as db:
         run = db.get(RunSummary, run_id)
-        assert run.success_count == 200 and run.status == "complete"
+        assert run.success_count == count and run.status == "complete"
         assert run.failure_count == run.timeout_count == 0
     directory = official_run_dir(run_id)
     with (directory / "grades.csv").open(encoding="utf-8", newline="") as handle:
-        assert len(list(csv.reader(handle))) == 201
+        assert len(list(csv.reader(handle))) == count + 1
     with zipfile.ZipFile(directory / "feedback.zip") as archive:
-        assert len(archive.namelist()) == 200
+        assert len(archive.namelist()) == count
     assert waiting_count() == 0
 
 

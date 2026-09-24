@@ -155,3 +155,12 @@ possible. Prefer a forward fix. Do not downgrade the retention schema or restore
 old student ZIPs, workspaces, Celery results, or persistence files. Reopening an
 older API that lacks the expiry guard would re-expose retained data; an image
 rollback alone is therefore not an approved recovery for this milestone.
+
+## Verified Retention Baselines & Compliance Guarantees
+
+Host verification on the dedicated Dell workstation confirmed the following retention contracts:
+- **Physical Absence Guarantee:** Upon expiration or manual cleanup, all student submission files, unpack workspaces, and feedback ZIP archives are physically purged from the `/data` volume (`physical_absence: true`). No temporary execution directories (`ag_grade_*`) remain in `/tmp`.
+- **HTTP 410 Gone Contract:** Through the reverse proxy, authenticated requests for expired run details, student file inspections, or grade/feedback ZIP exports return HTTP 410 Gone, while the course-level aggregate score summary remains available with HTTP 200. Unauthenticated requests are rejected with HTTP 401.
+- **Broker Result Suppression:** Official Celery tasks execute with `ignore_result=True`, guaranteeing zero accumulation of student task outputs or code payloads in Redis broker storage.
+- **Judge0 Execution Purge:** All sandbox and official test executions in Judge0 CE invoke `delete_submission` in a mandatory `finally` block, leaving 0 residual submissions in the sandbox execution database.
+

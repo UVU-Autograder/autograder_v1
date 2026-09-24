@@ -57,13 +57,10 @@ done
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 2
 
-# main renamed docker-compose.poc.yml -> docker-compose.yml (d4d76bf).
 if [ -f docker-compose.yml ]; then
   COMPOSE_FILE=docker-compose.yml
-elif [ -f docker-compose.poc.yml ]; then
-  COMPOSE_FILE=docker-compose.poc.yml
 else
-  echo "no docker-compose.yml or docker-compose.poc.yml in $REPO_ROOT" >&2
+  echo "no docker-compose.yml in $REPO_ROOT" >&2
   exit 2
 fi
 
@@ -236,9 +233,16 @@ else
 fi
 rm -f /tmp/kata-uname.$$
 
+ENV_FILE=""
+if [ -f .env ]; then
+  ENV_FILE=".env"
+elif [ -f .env.local ]; then
+  ENV_FILE=".env.local"
+fi
+
 COMPOSE=(docker compose)
-if [ $EXISTING -eq 0 ] || [ -f .env.local ]; then
-  COMPOSE+=(--env-file .env.local)
+if [ -n "$ENV_FILE" ]; then
+  COMPOSE+=(--env-file "$ENV_FILE")
 fi
 COMPOSE+=(-f "$COMPOSE_FILE")
 
@@ -263,31 +267,32 @@ fi
 
 # ---------------------------------------------------------------- stack up
 if [ $EXISTING -eq 1 ]; then
-  stage "4. existing stack (read-only: no .env.local changes, no up/build)"
+  stage "4. existing stack (read-only: no env file changes, no up/build)"
 else
   stage "4. stack up"
 fi
 
 if [ $EXISTING -eq 1 ]; then
-  if [ -f .env.local ]; then
-    pass "found .env.local (not modified)"
+  if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
+    pass "found $ENV_FILE (not modified)"
     if grep -q 'network_mode: "host"' "$COMPOSE_FILE" &&
-       grep -qE '^(DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|JUDGE0_URL)=[^#]*(//|@)(postgres|app-postgres|redis|judge0):' .env.local; then
-      warn ".env.local uses compose service names with a host-networked backend; works only if something else
+       grep -qE '^(DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|JUDGE0_URL)=[^#]*(//|@)(postgres|app-postgres|redis|judge0):' "$ENV_FILE"; then
+      warn "$ENV_FILE uses compose service names with a host-networked backend; works only if something else
         resolves them. Worth checking with whoever deployed the stack."
     fi
   else
-    warn "no .env.local -- the running stack was started on compose defaults (dev passwords)"
+    warn "no env file -- the running stack was started on compose defaults (dev passwords)"
   fi
-elif [ ! -f .env.local ] && [ $STACK_RUNNING -eq 1 ]; then
+elif [ -z "$ENV_FILE" ] && [ $STACK_RUNNING -eq 1 ]; then
   # New random secrets would not match the password baked into the existing
   # Postgres volume and lock the backend out. Rebuild on the same defaults.
-  warn "no .env.local and the stack was already running: NOT generating one (new secrets would not match
+  warn "no env file and the stack was already running: NOT generating one (new secrets would not match
         the existing database volume). Rebuilding on compose defaults."
   COMPOSE=(docker compose -f "$COMPOSE_FILE")
   [ $USE_KATA -eq 1 ] && COMPOSE+=(-f docker-compose.kata.yml)
-elif [ ! -f .env.local ]; then
-  COMPOSE_FILE="$COMPOSE_FILE" python3 - <<'PY'
+elif [ -z "$ENV_FILE" ]; then
+  ENV_FILE=".env"
+  COMPOSE_FILE="$COMPOSE_FILE" ENV_FILE="$ENV_FILE" python3 - <<'PY'
 import os, re, secrets
 from pathlib import Path
 
@@ -316,19 +321,19 @@ if 'network_mode: "host"' in Path(os.environ["COMPOSE_FILE"]).read_text():
             text,
             flags=re.M,
         )
-Path(".env.local").write_text(text)
+Path(os.environ["ENV_FILE"]).write_text(text)
 PY
-  chmod 600 .env.local
-  pass "generated .env.local with random secrets (mode 600, gitignored)"
+  chmod 600 "$ENV_FILE"
+  pass "generated $ENV_FILE with random secrets (mode 600, gitignored)"
 else
-  pass "using existing .env.local"
-  grep -qE '^(POSTGRES_PASSWORD|JWT_SECRET|JUDGE0_AUTH_TOKEN)=(change-me|replace)' .env.local &&
-    warn ".env.local still has placeholder secrets from .env.example"
+  pass "using existing $ENV_FILE"
+  grep -qE '^(POSTGRES_PASSWORD|JWT_SECRET|JUDGE0_AUTH_TOKEN)=(change-me|replace)' "$ENV_FILE" &&
+    warn "$ENV_FILE still has placeholder secrets from .env.example"
   if grep -q 'network_mode: "host"' "$COMPOSE_FILE" &&
-     grep -qE '^(DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|JUDGE0_URL)=[^#]*(//|@)(postgres|app-postgres|redis|judge0):' .env.local; then
-    fail "env-hosts" ".env.local uses compose service names (postgres/redis/judge0), but backend and celery-worker run
+     grep -qE '^(DATABASE_URL|REDIS_URL|CELERY_BROKER_URL|JUDGE0_URL)=[^#]*(//|@)(postgres|app-postgres|redis|judge0):' "$ENV_FILE"; then
+    fail "env-hosts" "$ENV_FILE uses compose service names (postgres/redis/judge0), but backend and celery-worker run
         with network_mode: host where those don't resolve. Use 127.0.0.1 in DATABASE_URL, REDIS_URL,
-        CELERY_BROKER_URL and JUDGE0_URL (or delete .env.local and let this script regenerate it)."
+        CELERY_BROKER_URL and JUDGE0_URL (or delete $ENV_FILE and let this script regenerate it)."
   fi
 fi
 

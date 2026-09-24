@@ -38,13 +38,13 @@ echo "--> [2/7] Backend Type Checking (mypy)..."
 echo "  Mypy check passed."
 echo ""
 
-# 4. Backend Unit Tests
-echo "--> [3/7] Backend Unit Tests (pytest)..."
+# 4. Backend Tests
+echo "--> [3/7] Backend Tests (pytest)..."
 (
     cd "${REPO_ROOT}/backend"
-    "${PYTHON}" -m pytest tests/unit -q
+    "${PYTHON}" -m pytest tests -q
 )
-echo "  Backend unit tests passed."
+echo "  Backend tests passed."
 echo ""
 
 # 5. Database Schema Drift Check

@@ -8,8 +8,8 @@
 
 The following subsystems are implemented, verified, and canonically documented:
 
-- **Bounded Dispatch & Scheduling:** [bounded_dispatch_rollout.md](../deployment/bounded_dispatch_rollout.md) & [bounded_dispatch_verification_2026-09-23.md](../deployment/bounded_dispatch_verification_2026-09-23.md)
-- **Retention Lifecycle & 24h Cleanup:** [retention_rollout.md](../deployment/retention_rollout.md) & [retention_verification_2026-09-22.md](../deployment/retention_verification_2026-09-22.md)
+- **Bounded Dispatch & Scheduling:** [bounded_dispatch_rollout.md](../deployment/bounded_dispatch_rollout.md)
+- **Retention Lifecycle & 24h Cleanup:** [retention_rollout.md](../deployment/retention_rollout.md)
 - **Host Deployment & Kata Isolation:** [workstation_deployment.md](../deployment/workstation_deployment.md) & [operator_runbook.md](../operations/operator_runbook.md)
 - **Staff Authentication (Microsoft Entra ID):** [technical_specs.md §6](../core/technical_specs.md#6-authentication-and-session-architecture) & [frontend_implementation.md](../implementation/frontend_implementation.md)
 - **Quality Gates & Verification Suites:** [delivery_controls.md §1.1](delivery_controls.md#11-standard-verification-suites--tooling)
@@ -19,6 +19,9 @@ The following subsystems are implemented, verified, and canonically documented:
 ---
 
 ## Active Backlog — Controlled Course Pilot
+
+> [!IMPORTANT]
+> **Backlog Lifecycle Rule:** When a backlog item is complete, do not persist it in this file. Instead, record the outcome, configuration, or architectural details in the relevant documentation (`docs/`) if helpful, otherwise discard it. This file tracks only active, actionable items.
 
 Priority order: Institutional software gates, TLS deployment verification, and instructor course acceptance. Refer to [delivery_controls.md](delivery_controls.md) for Definition of Done and required evidence labels.
 
@@ -30,14 +33,14 @@ Priority order: Institutional software gates, TLS deployment verification, and i
 ### P0 — Production Deployment & TLS Verification
 
 - [ ] **End-to-End TLS Endpoint Verification:** Verify page refresh/deep links, Microsoft Entra ID sign-in, bundle uploads, polling, AI streaming, and CSV/ZIP exports through the institutional TLS endpoint (`https://...` on port 443) once campus certificates are installed on the workstation.
+- [ ] **Workstation `.env` Hardening (Azure AD Credentials):** Add institutional `AZURE_AD_CLIENT_ID`, `AZURE_AD_TENANT_ID`, and `AZURE_AD_CLIENT_SECRET` to workstation `.env` once Entra ID app registration is issued by UVU IT. (All non-credential variables, network bind IPs, and 60m expiry are already synchronized).
 
-### P1 — Operational Audit Trail
+### P1 — Testing & Verification
 
-- [ ] **Historical Host Report Commit Linking:** Attach dated, commit-specific evidence to prior host reports where commit hashes were left unrecorded. Record workload, configuration, commands, measured outcomes, and a sanitized evidence link for new runs.
+- [ ] **Entra ID Integration Test:** Perform end-to-end Microsoft Entra ID sign-in on the workstation with real Azure AD credentials. Verify PKCE flow, session token issuance, staff gating (provisioned vs unprovisioned), and session expiration. Requires Azure AD app registration.
 
 ### P1 — Course Modeling & Grading Acceptance
 
-- [ ] **CS 1410 Grading Calibration:** For every assignment in CS 1410 (Labs 1–7 and Dessert Shop 1–10), compare instructor-expected per-item and total scores against representative correct, partially correct, and incorrect synthetic solutions. Include alternate valid implementations, concept restrictions, visual/manual criteria, and exported feedback. Record instructor signoff; seed completeness alone does not close grading acceptance.
 - [ ] **CS 1400 Syllabus & Assignment Modeling:** Implement assignment seeds and test suites for CS 1400 (Fundamentals of Programming) upon receipt of official UVU syllabus and assignment specifications (replaces placeholder assignment `simple-python-functions`).
 
 ---

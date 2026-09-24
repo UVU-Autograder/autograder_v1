@@ -55,7 +55,7 @@ export default function StaffLogin() {
           // Invalidate handoff cookie immediately
           document.cookie = "auth_handoff=; Path=/; Max-Age=0; SameSite=Lax";
           window.dispatchEvent(new Event("roles-updated"));
-          window.location.href = "/staff/courses";
+          router.replace("/staff/courses");
           return;
         }
       } catch (e) {
@@ -115,6 +115,7 @@ export default function StaffLogin() {
 
   const handleMicrosoftLogin = () => {
     setIsLoading(true);
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- API route performs 302 redirect to Microsoft Entra ID
     window.location.href = "/api/auth/microsoft/login";
   };
 

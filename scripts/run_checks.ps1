@@ -35,13 +35,13 @@ try {
     Pop-Location
 }
 
-# 4. Backend Unit Tests
-Write-Host "--> [3/7] Backend Unit Tests (pytest)..." -ForegroundColor Yellow
+# 4. Backend Tests
+Write-Host "--> [3/7] Backend Tests (pytest)..." -ForegroundColor Yellow
 Push-Location "$RepoRoot\backend"
 try {
-    & $Python -m pytest tests/unit -q
-    if ($LASTEXITCODE -ne 0) { throw "Backend pytest unit tests failed." }
-    Write-Host "  Backend unit tests passed.`n" -ForegroundColor Green
+    & $Python -m pytest tests -q
+    if ($LASTEXITCODE -ne 0) { throw "Backend pytest tests failed." }
+    Write-Host "  Backend tests passed.`n" -ForegroundColor Green
 } finally {
     Pop-Location
 }

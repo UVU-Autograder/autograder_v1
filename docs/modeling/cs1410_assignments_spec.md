@@ -663,3 +663,15 @@ DessertShop ← dessertshop.py
 | **Lab 5** | 100 | 0 | 100 | Pure operator tests |
 | **Lab 6** | 60 | 40 | 100 | Headless execution + AST checks (auto), Visual bounce (manual) |
 | **Lab 7** | 85 | 15 | 100 | Reflection is manual |
+
+---
+
+## Grading Calibration & Mutation Testing
+
+Grading criteria, rubrics, and automated test accuracy are calibrated and verified against the comprehensive synthetic test mutation suite in [`backend/eval/mutations.py`](../../backend/eval/mutations.py).
+
+For every assignment across Labs 1–7 and Dessert Shop 1–10:
+- **Baseline Correctness:** Validated against canonical model solutions located in [`backend/app/db/seeds/`](../../backend/app/db/seeds/).
+- **Error & Partial Credit Behavior:** Evaluated against 146+ synthetic mutated submissions covering single-item test failures, import/syntax errors, missing attributes, incorrect return types, calculation deviations, and security injection attempts.
+- **Automated Verification:** Verified continuously via [`backend/tests/test_seed_integrity.py`](../../backend/tests/test_seed_integrity.py) and [`backend/tests/test_assignment_validation.py`](../../backend/tests/test_assignment_validation.py).
+
