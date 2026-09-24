@@ -144,6 +144,56 @@ def load_tokenizer(base: str):
     return tokenizer
 
 
+def first_supervised_position(labels) -> int:
+    """Index of the first label that counts toward the loss (the start of the response)."""
+    supervised = (labels != -100).any(dim=0).nonzero()
+    return int(supervised[0]) if len(supervised) else labels.shape[1] - 1
+
+
+def completion_logits_trainer(base_trainer):
+    """SFTTrainer that computes logits only where the loss needs them.
+
+    With loss on the response only, the prompt positions' logits are thrown
+    away -- but the stock trainer still materializes them, in fp32, over
+    Gemma's 262k vocabulary: ~5.8 GiB for a 5.7k-token DS8-DS10 row, which is
+    what ran the 32 GB card out of memory. Passing logits_to_keep makes the
+    model's lm_head run on the response positions only (one position earlier,
+    to predict the first response token). The loss is the same token-level
+    cross-entropy over the same positions, normalized the same way.
+    """
+    import torch
+    import torch.nn.functional as F
+
+    class CompletionLogitsTrainer(base_trainer):
+        def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+            mode = "train" if self.model.training else "eval"
+            labels = inputs["labels"]
+            keep = labels.shape[1] - max(first_supervised_position(labels) - 1, 0)
+            forward = {k: v for k, v in inputs.items() if k != "labels"}
+            forward["use_cache"] = False
+            outputs = model(**forward, logits_to_keep=keep)
+            logits = outputs.logits[:, :-1, :].float()
+            targets = labels[:, labels.shape[1] - keep + 1 :]
+            summed = F.cross_entropy(
+                logits.reshape(-1, logits.shape[-1]), targets.reshape(-1), ignore_index=-100, reduction="sum"
+            )
+            counted = (targets != -100).sum()
+            loss = summed / (num_items_in_batch if num_items_in_batch is not None else counted.clamp(min=1))
+
+            with torch.no_grad():
+                correct = ((logits.argmax(-1) == targets) & (targets != -100)).sum()
+                accuracy = self.accelerator.gather_for_metrics(correct).sum() / self.accelerator.gather_for_metrics(
+                    counted
+                ).sum().clamp(min=1)
+                self._metrics[mode]["mean_token_accuracy"].append(accuracy.item())
+                if mode == "train" and "attention_mask" in inputs:
+                    self._total_train_tokens += self.accelerator.gather_for_metrics(inputs["attention_mask"].sum()).sum().item()
+                    self._metrics[mode]["num_tokens"] = [self._total_train_tokens]
+            return (loss, outputs) if return_outputs else loss
+
+    return CompletionLogitsTrainer
+
+
 def report_lengths(base: str, data: Path) -> int:
     """Real token counts of every row as it will be trained (no GPU, no model)."""
     tokenizer = load_tokenizer(base)
@@ -248,10 +298,13 @@ def main(argv: list[str] | None = None) -> int:
         eval_strategy="steps",
         eval_steps=max(1, args.max_steps // 3),
         save_strategy="no",
+        # Only eval_loss is used; without this the Trainer also gathers every
+        # eval row's logits on the GPU.
+        prediction_loss_only=True,
         report_to="none",
         seed=1410,
     )
-    trainer = SFTTrainer(
+    trainer = completion_logits_trainer(SFTTrainer)(
         model=model,
         args=config,
         train_dataset=dataset["train"],
