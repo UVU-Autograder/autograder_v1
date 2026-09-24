@@ -1,4 +1,12 @@
 services:
+  postgres:
+    ports:
+      - "${KATA_POSTGRES_BIND_IP:-172.17.0.1}:5432:5432"
+
+  redis:
+    ports:
+      - "${KATA_REDIS_BIND_IP:-172.17.0.1}:6379:6379"
+
   judge0:
     runtime: ${KATA_DOCKER_RUNTIME:-kata-runtime}
     privileged: false

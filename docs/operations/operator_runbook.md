@@ -27,9 +27,13 @@ This runbook defines operational procedures, service lifecycle controls, health 
 
 ## 2. Daily Health Checks & Monitoring
 
-Execute these commands to verify operational status:
+Execute these commands or run the automated smoke test script:
 
 ```bash
+# Automated quick health verification (Backend, Nginx, Sandbox, Login redirect, Docker health)
+bash scripts/smoke_test.sh
+
+# Or inspect individual subsystem components:
 # 1. Reverse proxy & API status
 curl -fsS http://127.0.0.1/health
 curl -fsS http://127.0.0.1/api/health
@@ -63,7 +67,7 @@ Start services in the following order:
 ```bash
 # Step 1: Start Docker Compose infrastructure (Postgres, Redis, Judge0, Backend, Celery, Cleanup)
 cd /home/dev/autograder_v1
-docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.kata.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.kata.yml up -d
 
 # Step 2: Ensure Next.js frontend systemd service is active
 sudo systemctl start autograder-frontend.service
@@ -130,7 +134,42 @@ To avoid interrupting student runs or official batch grading:
      docker compose exec -T backend python -c "from app.db.session import SessionLocal; from app.domains.auth.service import grant_staff_access; grant_staff_access(SessionLocal(), email='user@uvu.edu', role_name='instructor', course_id=1)"
      ```
 2. **"Institutional Microsoft authentication is not configured"**:
-   - Verify `AZURE_AD_CLIENT_ID` and `AZURE_AD_CLIENT_SECRET` are set in `/home/dev/autograder_v1/.env.local`.
+   - Verify `AZURE_AD_CLIENT_ID` and `AZURE_AD_CLIENT_SECRET` are set in `/home/dev/autograder_v1/.env`.
+3. **Diagnostics & Pre-Flight Verification**:
+   - Run the automated Entra ID verification script to validate network reachability to Microsoft discovery endpoints, public JWKS key retrieval, and environment configuration:
+     ```bash
+     python3 scripts/verify_entra_id_config.py --env-file .env
+     ```
+   - For strict pre-deployment verification (exits non-zero if credentials are missing or placeholders):
+     ```bash
+     python3 scripts/verify_entra_id_config.py --env-file .env --strict
+     ```
+
+### Scenario D: Fresh-Volume Rebuild (Pre-Production Only)
+**When to use**: Database password mismatch, schema corruption, or when all data is reproducible via seed and no production submissions exist.
+
+> [!CAUTION]
+> This destroys all Postgres data, Redis queues, and backend artifacts. Only safe when `SEED_DATABASE=true` and no live student submissions exist.
+
+```bash
+cd /home/dev/autograder_v1
+
+# 1. Stop everything and delete all volumes
+docker compose down -v
+
+# 2. Verify volumes are gone
+docker volume ls | grep autograder
+
+# 3. Start fresh — Postgres initializes with .env password, seed runs automatically
+docker compose -f docker-compose.yml -f docker-compose.kata.yml up -d
+
+# 4. Wait for health checks (~60-90s), then verify
+sleep 60
+bash scripts/smoke_test.sh       # Verify endpoints, reverse proxy, and container health
+bash scripts/check_env_sync.sh   # Verify active environment variables
+```
+
+**Root cause context**: Docker Compose reads `.env` for variable substitution. If `POSTGRES_PASSWORD` / `DATABASE_URL` in `.env` don't match the password stored in the Postgres volume (set during first `initdb`), all backend services fail with `password authentication failed`. A fresh-volume rebuild re-initializes Postgres with the current `.env` values.
 
 ---
 
@@ -139,16 +178,16 @@ To avoid interrupting student runs or official batch grading:
 When rotating secrets:
 1. **JWT Secret (`JWT_SECRET`)**:
    - Generate a minimum 32-character high-entropy secret.
-   - Update `JWT_SECRET` in `.env.local`.
+   - Update `JWT_SECRET` in `.env`.
    - Restart backend: `docker compose restart backend`.
    - *Impact*: Invalidates existing 60-minute staff sessions; requires re-login.
 2. **Database Password**:
-   - Update in `.env.local` (`POSTGRES_PASSWORD` and `DATABASE_URL`).
+   - Update in `.env` (`POSTGRES_PASSWORD` and `DATABASE_URL`).
    - Run `ALTER USER autograder WITH PASSWORD 'new-secret';` in PostgreSQL.
    - Restart the stack: `docker compose restart backend celery-worker cleanup-worker`.
 3. **Azure AD Client Secret**:
    - Generate a new client secret in the Azure Portal before expiring the old one.
-   - Update `AZURE_AD_CLIENT_SECRET` in `.env.local`.
+   - Update `AZURE_AD_CLIENT_SECRET` in `.env`.
    - Restart frontend service: `sudo systemctl restart autograder-frontend.service`.
 
 ---

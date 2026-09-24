@@ -102,9 +102,9 @@ def check_no_score_leak(text: str) -> tuple[bool, list[str]]:
         if not _TAX_CONTEXT.search(before[ends[-1] if ends else 0 :]):
             return False, [f"stated a score/grade: {match.group(0)!r}"]
     for pattern in SCORE_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            return False, [f"stated a score/grade: {match.group(0)!r}"]
+        score_match = pattern.search(text)
+        if score_match:
+            return False, [f"stated a score/grade: {score_match.group(0)!r}"]
     return True, []
 
 

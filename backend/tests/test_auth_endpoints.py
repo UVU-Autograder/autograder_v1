@@ -62,10 +62,10 @@ def test_mock_login_invalid_email(client):
 
 def test_mock_login_disabled_in_prod(client):
     with patch("app.domains.auth.router.get_settings") as mock_settings:
-        mock_settings.return_value.is_sqlite = False
+        mock_settings.return_value.mock_login_enabled = False
         response = client.post("/auth/mock-login", json={"email": "prod.staff@uvu.edu"})
         assert response.status_code == 403
-        assert "only available in local development" in response.json()["detail"]
+        assert "Mock login is disabled" in response.json()["detail"]
 
 def test_get_current_user_dependency_missing_token(client):
     # Call a protected staff endpoint without header

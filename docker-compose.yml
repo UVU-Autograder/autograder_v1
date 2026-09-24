@@ -300,8 +300,8 @@ services:
 
 volumes:
   postgres_data:
-    name: ${POSTGRES_VOLUME_NAME:-uvu-autograder-poc_postgres_data}
+    name: ${POSTGRES_VOLUME_NAME:-uvu-autograder_postgres_data}
   redis_data:
-    name: ${REDIS_VOLUME_NAME:-uvu-autograder-poc_redis_data}
+    name: ${REDIS_VOLUME_NAME:-uvu-autograder_redis_data}
   backend_data:
-    name: ${BACKEND_VOLUME_NAME:-uvu-autograder-poc_backend_data}
+    name: ${BACKEND_VOLUME_NAME:-uvu-autograder_backend_data}

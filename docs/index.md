@@ -30,12 +30,15 @@ Current milestone: **controlled course pilot readiness**. Start with the [active
 
 ## 🚀 DevOps & Host Deployment (`docs/deployment/`)
 * **[workstation_deployment.md](./deployment/workstation_deployment.md):** Dell workstation production deployment (Ubuntu 24.04, Nginx reverse proxy, Docker Compose, retention cleanup, Judge0 capacity).
+* **[bounded_dispatch_rollout.md](./deployment/bounded_dispatch_rollout.md):** Durable execution reservation rollout, bounded Celery dispatch, and host throughput baselines.
+* **[retention_rollout.md](./deployment/retention_rollout.md):** 24-hour retention lifecycle rollout, physical file purging, and compliance guarantees.
 * **[kata_optimization.md](./deployment/kata_optimization.md):** Low-latency host tuning strategies (Hugepages, CPU pinning, microVMs) for Kata Containers backing Judge0.
 
 ---
 
 ## 🔧 Operations & Recovery (`docs/operations/`)
 * **[operator_runbook.md](./operations/operator_runbook.md):** Complete operational runbook covering service lifecycle, health verification, queue stalls, retention alerts, and incident response.
+* **[public_internet_access_plan.md](./operations/public_internet_access_plan.md):** Architecture handover specification for UVU IT (DNS, ingress firewall rules, Nginx TLS termination on port 443, Entra ID redirect URI updates).
 * **[backup_and_recovery.md](./operations/backup_and_recovery.md):** Persistent course/metadata backup scripts and disaster recovery procedures with strict FERPA retention boundaries.
 
 ---

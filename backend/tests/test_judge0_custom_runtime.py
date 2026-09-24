@@ -70,7 +70,7 @@ def test_docker_compose_seed_mount_and_timeouts():
 
 
 def test_judge0_dockerfile_skips_pgo():
-    """POC Judge0 builds skip --enable-optimizations for faster local compiles."""
+    """Judge0 builds skip --enable-optimizations for faster local compiles."""
     repo_root = Path(__file__).resolve().parents[2]
     content = (repo_root / "judge0.Dockerfile").read_text(encoding="utf-8")
     assert "--enable-optimizations" not in content
