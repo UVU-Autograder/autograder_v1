@@ -1,0 +1,35 @@
+{
+  "modules": {
+    "m1": {
+      "name": "Module 1: Expressions & Conditionals",
+      "concepts": ["variables", "expressions", "conditionals"]
+    },
+    "m2": {
+      "name": "Module 2: Loops & Iteration",
+      "concepts": ["variables", "expressions", "conditionals", "loops", "iteration"]
+    },
+    "m3": {
+      "name": "Module 3: Functions & Modularization",
+      "concepts": ["variables", "expressions", "conditionals", "loops", "functions", "strings"]
+    },
+    "m4": {
+      "name": "Module 4: Lists & Collections",
+      "concepts": ["variables", "expressions", "conditionals", "loops", "functions", "strings", "lists", "tuples"]
+    },
+    "m5": {
+      "name": "Module 5: Dictionaries & Sets",
+      "concepts": ["variables", "expressions", "conditionals", "loops", "functions", "strings", "lists", "dictionaries", "sets"]
+    },
+    "m6": {
+      "name": "Module 6: File I/O & Exceptions",
+      "concepts": ["variables", "expressions", "conditionals", "loops", "functions", "strings", "lists", "dictionaries", "file-io", "exceptions"]
+    }
+  },
+  "assignments": [
+    {
+      "module": "m1",
+      "slug": "simple-python-functions",
+      "title": "Simple Python Functions"
+    }
+  ]
+}

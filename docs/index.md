@@ -23,6 +23,7 @@ Current milestone: **controlled course pilot readiness**. Start with the [active
 
 ## 📐 Course & Assignment Modeling (`docs/modeling/`)
 * **[cs1410_assignments_spec.md](./modeling/cs1410_assignments_spec.md):** Class structures, required files, grading rubrics, and autograding strategies for all 17 CS 1410 assignments.
+* **[cs1400_scaffolding.md](./modeling/cs1400_scaffolding.md):** Course architecture, dynamic catalog schema (`cs1400_catalog.json`), and assignment onboarding guide for CS 1400.
 * **[modeling_guide.md](./modeling/modeling_guide.md):** Authoring guidelines and best practices for modeling JSON configurations and test scripts.
 * **[pygame_grading_guidelines.md](./modeling/pygame_grading_guidelines.md):** Headless execution, event/sys mocking, and manual grading strategy for Pygame coursework.
 

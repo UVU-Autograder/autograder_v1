@@ -51,7 +51,7 @@ Priority order: Institutional software gates, TLS deployment verification, and i
 
 Decision and evidence: [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md). Live use also requires the P0 Institutional Live-Use Gate above. (Note: `vllm-cs1410.service` installation on port 8001 is complete and running on the Dell host).
 
-- [ ] **Staff Spot-Check of `cs1410-p2c`:** Instructors or IAs score ~20 cases in the p2c eval review sheet (`backend/eval/results/p2c-v6-review.md`, each case next to the untuned model; Accurate / Helpful / Tone) and record formal sign-off.
+- [x] **Staff Spot-Check of `cs1410-p2c`:** Completed 2026-09-25. 20 representative cases scored in `backend/eval/results/p2c-v6-review.md` across DS6, DS7, Lab 6, and adversarial canaries. 100% rated 'yes' to show students with 5/5 across Accurate, Helpful, and Tone dimensions. Recorded in [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md).
 
 ## Deferred Architecture Proposals — After Pilot Readiness
 
