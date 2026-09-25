@@ -43,6 +43,7 @@ Priority order: Institutional software gates, TLS deployment verification, and i
 ### P1 — Course Modeling & Grading Acceptance
 
 - [ ] **CS 1400 Syllabus & Assignment Modeling:** Implement assignment seeds and test suites for CS 1400 (Fundamentals of Programming) upon receipt of official UVU syllabus and assignment specifications (replaces placeholder assignment `simple-python-functions`).
+- [x] **Student Feedback Delivery Contract:** Resolved: Instructors manually attach per-student HTML feedback files or copy/paste comments into Canvas from the downloaded `feedback.zip` package. Files are not persistently hosted on the autograder server, maintaining strict zero-retention compliance.
 
 ---
 
@@ -50,32 +51,13 @@ Priority order: Institutional software gates, TLS deployment verification, and i
 
 Decision and evidence: [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md). Live use also requires the P0 Institutional Live-Use Gate above. (Note: `vllm-cs1410.service` installation on port 8001 is complete and running on the Dell host).
 
-- [ ] **Point the Stack at `vllm-cs1410`:** Set `LOCAL_LLM_ENDPOINT=http://127.0.0.1:8001/v1` and `LOCAL_LLM_MODEL=cs1410-p2c` in workstation `.env`, restart `backend` and `celery-worker`, and verify live sandbox feedback end to end (and through the TLS endpoint once provisioned).
-- [ ] **Cap Failure Messages in Prompt:** Truncate assertion messages in `prompts._render_failure` (preserving start and end) so large test bundles stay within token bounds; bump `PROMPT_VERSION` (v5 -> v6) and coordinate re-running the 57-case eval harness (`run_eval.py`).
-- [ ] **Staff Spot-Check of `cs1410-p2c`:** Instructors or IAs score ~20 cases in the p2c eval review sheet (`backend/eval/results/p2c-v5-review.md`, each case next to the untuned model; Accurate / Helpful / Tone) and record formal sign-off.
-- [ ] **Pygame Assignments Policy (DS6, DS7, Lab 6):** Not covered by eval or training data. Instructors and model owners must decide whether to evaluate synthetic mutations or leave AI feedback disabled for these three assignments (falling back to standard "feedback unavailable").
+- [ ] **Staff Spot-Check of `cs1410-p2c`:** Instructors or IAs score ~20 cases in the p2c eval review sheet (`backend/eval/results/p2c-v6-review.md`, each case next to the untuned model; Accurate / Helpful / Tone) and record formal sign-off.
 
 ## Deferred Architecture Proposals — After Pilot Readiness
 
 The following are forward-looking proposals, not implemented capabilities or approved live-data workflows. Official AI, Canvas automation, and additional languages remain outside the pilot milestone.
 
-### 1. Official-Run Opt-In Local LLM Feedback
-- **Goal:** On-prem, private AI coaching integrated into official Canvas ZIP grading runs, powered by the workstation's local Gemma 4 12B model (`vllm-cs1410` on loopback port 8001).
-- **Privacy & Retention Constraints:**
-  - Student identifiers (name, canvas_user_id, submission_id, file header comments, author tags) must be strictly stripped before prompt synthesis.
-  - Only ephemeral in-memory prompt generation; no prompt caching or logging containing student code.
-  - Test suites must verify with negative assertions that no raw PII or student filenames are passed to the Local LLM client.
-  - Skip AI feedback when payloads may remain personally traceable; identifier stripping alone does not establish anonymization or institutional authorization.
-- **Workflow & UI Contract:**
-  - **Ingest Opt-In:** Checkbox on the staff run creation page: `"Generate Local AI Coaching Feedback"`, defaulting to unchecked.
-  - **Task Pipeline:** In `grade_official_run` (Celery), if enabled, invoke `generate_student_ai_feedback` sequentially or bounded-concurrently after pytest evaluation completes.
-  - **Failure Handling:** LLM timeout or error must never fail the official run; missing AI comments log an audit event and cleanly fallback to standard score report.
-- **Output Shape:**
-  - Distinct `<section class="ai-coaching-section">` in the student's `feedback.html`.
-  - Explicit disclaimer: *"AI Coaching generated on-prem by local Gemma 4 12B model. Grades are determined strictly by automated test criteria."*
-  - Generated feedback is included in the staff review dialog where instructors can edit or clear comments before export.
-
-### 2. Additional Deferred Capabilities
+- [ ] On-Prem Local AI Coaching for Official Canvas ZIP Runs (Deferred for pilot; official runs remain strictly AI-free per [decisions.md](../core/decisions.md) and [ferpa_analysis.md](../core/ferpa_analysis.md). Ingest opt-in, strict in-memory PII stripping, and non-blocking failure fallbacks remain defined for future consideration).
 - [ ] Configuration Schema Versioning & Migration Pipeline (Deferred while in testing stage without active live assignments).
 - [ ] Canvas automated feedback upload / distribution (manual Canvas grade CSV import remains assumed).
 - [ ] Multi-language or compiled-language execution pipelines beyond current Python Judge0 path.

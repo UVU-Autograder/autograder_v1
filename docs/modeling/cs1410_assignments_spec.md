@@ -43,7 +43,7 @@ This document is the single source of truth for modeling all 17 CS 1410 assignme
 
 ### Module Concept Mappings
 
-The effective allowed concepts for any assignment are the union of the course-level **Default concepts** and the assignment's **Module concepts**:
+The effective allowed concepts for any assignment are calculated dynamically at runtime as `(course.default_concepts ∪ cumulative concepts of modules 1..N) \ config_json.concepts.denylist` in sequence order:
 
 | Module | Concepts |
 |--------|----------|

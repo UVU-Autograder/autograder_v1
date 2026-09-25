@@ -33,6 +33,7 @@ Current milestone: **controlled course pilot readiness**. Start with the [active
 * **[bounded_dispatch_rollout.md](./deployment/bounded_dispatch_rollout.md):** Durable execution reservation rollout, bounded Celery dispatch, and host throughput baselines.
 * **[retention_rollout.md](./deployment/retention_rollout.md):** 24-hour retention lifecycle rollout, physical file purging, and compliance guarantees.
 * **[kata_optimization.md](./deployment/kata_optimization.md):** Low-latency host tuning strategies (Hugepages, CPU pinning, microVMs) for Kata Containers backing Judge0.
+* **[blackwell_training_setup.md](./deployment/blackwell_training_setup.md):** Single-custody LoRA fine-tuning and vLLM deployment on the Dell workstation (NVIDIA RTX PRO 4500 Blackwell).
 
 ---
 

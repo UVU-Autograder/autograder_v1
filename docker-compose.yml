@@ -194,10 +194,9 @@ services:
       ENABLE_MOCK_LOGIN: ${ENABLE_MOCK_LOGIN:-true}
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
-      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
-      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
-      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-none}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:8001/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-cs1410-p2c}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://10.115.20.200:3000,https://autograder-frontend-mockup.vercel.app}
     volumes:
       - backend_data:/data
@@ -240,10 +239,9 @@ services:
       ENABLE_MOCK_LOGIN: ${ENABLE_MOCK_LOGIN:-true}
       JWT_SECRET: ${JWT_SECRET:-dev_fallback_secret_longer_than_32_characters_for_security_compliance}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
-      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-ollama}
-      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}
-      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5-coder:7b}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-none}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:8001/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-cs1410-p2c}
     command: ["celery", "-A", "app.integrations.celery.app", "worker", "--loglevel=info", "-Q", "sandbox,official,default"]
     volumes:
       - backend_data:/data

@@ -58,9 +58,9 @@ class Settings(BaseSettings):
         default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://10.115.20.200:3000,https://autograder-frontend-mockup.vercel.app",
         validation_alias="CORS_ALLOWED_ORIGINS",
     )
-    local_llm_api_key: str | None = Field(default=None, validation_alias="LOCAL_LLM_API_KEY")
-    local_llm_endpoint: str | None = Field(default=None, validation_alias="LOCAL_LLM_ENDPOINT")
-    local_llm_model: str = Field(default="qwen2.5:3b", validation_alias="LOCAL_LLM_MODEL")
+    local_llm_api_key: str | None = Field(default="none", validation_alias="LOCAL_LLM_API_KEY")
+    local_llm_endpoint: str | None = Field(default="http://127.0.0.1:8001/v1", validation_alias="LOCAL_LLM_ENDPOINT")
+    local_llm_model: str = Field(default="cs1410-p2c", validation_alias="LOCAL_LLM_MODEL")
     repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
 
     @property

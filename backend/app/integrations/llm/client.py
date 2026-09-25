@@ -35,10 +35,10 @@ class LocalLLMClient:
     ) -> None:
         settings = get_settings()
         self.endpoint = (
-            endpoint or settings.local_llm_endpoint or "http://127.0.0.1:11434/v1"
+            endpoint or settings.local_llm_endpoint or "http://127.0.0.1:8001/v1"
         ).rstrip("/")
-        self.api_key = api_key or settings.local_llm_api_key or "ollama"
-        self.model = model or settings.local_llm_model or "qwen2.5:3b"
+        self.api_key = api_key or settings.local_llm_api_key or "none"
+        self.model = model or settings.local_llm_model or "cs1410-p2c"
         self.timeout = timeout_seconds
 
     def generate_chat_completion(
@@ -71,7 +71,7 @@ class LocalLLMClient:
             logger.warning("Failed to connect to Local LLM at %s", self.endpoint)
             return (
                 "⚠️ Local AI assistant is currently unreachable. "
-                "Please make sure Ollama is running (`ollama serve`) and the model is available."
+                "Please make sure the local feedback service is running and the model is available."
             )
         except httpx.TimeoutException:
             logger.warning("Local LLM request timed out at %s", self.endpoint)
@@ -123,7 +123,7 @@ class LocalLLMClient:
                             except Exception:
                                 pass
         except httpx.ConnectError:
-            yield "⚠️ Local AI assistant is currently unreachable. Please make sure Ollama is running."
+            yield "⚠️ Local AI assistant is currently unreachable. Please make sure the local feedback service is running."
         except httpx.TimeoutException:
             yield "⚠️ Local AI assistant request timed out."
         except Exception as exc:

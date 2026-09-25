@@ -11,13 +11,14 @@ This document describes the deployment architecture and operation on the dedicat
 - **Queue/State:** Redis 7 with AOF persistence.
 - **Workers:**
   - Celery worker handling `sandbox`, `official`, and `default` queues.
+  - Dedicated `dispatch-worker` polling `official_dispatches` and scheduling bounded per-submission execution tasks.
   - Independent `cleanup-worker` running 60-second retention sweeps.
 - **Execution API:** Judge0 CE on `http://127.0.0.1:2358` (image tag `uvu-autograder-judge0:latest`).
 - **Isolation:** Kata Containers VM isolation layer configured on the Ubuntu host via `docker-compose.kata.yml`.
 
 ## Files
 
-- `docker-compose.yml`: primary Compose stack for Postgres, Redis, Judge0, backend, Celery worker, and cleanup worker.
+- `docker-compose.yml`: primary Compose stack for Postgres, Redis, Judge0, backend, Celery worker, dispatch worker, and cleanup worker.
 - `docker-compose.kata.yml`: Compose override for Kata Containers VM runtime isolation.
 - `judge0.Dockerfile`: custom Judge0 image with Python 3.11.9 and allowlisted course dependencies (`uvu-autograder-judge0:latest`).
 - `scripts/init_databases.sh`: POSIX shell script that creates the `judge0` role (`CREATEDB`) and database on first Postgres volume initialization.

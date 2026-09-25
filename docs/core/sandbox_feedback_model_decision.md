@@ -65,16 +65,20 @@ bar and leaves room on the card for about 9 concurrent full-length requests).
 ## Evidence
 
 Seven eval runs: stock twice, p2b three times (one with the sandbox's
-JSON-enforcing "guided" mode), p2c twice (unguided and guided).
+JSON-enforcing "guided" mode), p2c twice (unguided and guided), followed by the
+expanded 81-case prompt v6 comparative run on the Dell workstation Blackwell GPU
+(`p2c-v6` vs `stock-12b-v6`).
 
-| | Stock (2 runs) | p2b (3 runs) | **p2c (2 runs)** |
-| --- | --- | --- | --- |
-| Automatic checks passed | 100%, 100% | 100% in all 3 | **100%, 100%** |
-| Wrong on the 4 cases p2b got wrong | 0 of 4 (one run's next step names a method that does not exist) | 3 to 4 of 4 in every run | **0 of 4 in both runs** |
-| Invented problems on correct code (6 all-pass cases per run) | 0 | 1 in one run | **0 in 12 samples** |
-| Hints that give the answer away (47 failing cases) | ~17 | ~3 | **~3** |
-| Mean response time, guided (one request at a time) | n/a | 2.1 s | **2.1 s** |
-| Mean response length | ~620 chars | ~520 chars | **~500 chars** |
+| Metric | Stock (v5, 2 runs) | p2b (v5, 3 runs) | p2c (v5, 2 runs) | **p2c-v6 (81 cases)** | **stock-12b-v6 (81 cases)** |
+| --- | --- | --- | --- | --- | --- |
+| Automatic checks passed | 100%, 100% | 100% in all 3 | 100%, 100% | **100.0% (81/81)** | **100.0% (81/81)** |
+| Schema validity | 100% | 100% | 100% | **100.0%** | **100.0%** |
+| Grounded (no invented tests) | 100% | 100% | 100% | **100.0%** | **100.0%** |
+| No solution leaks | 100% | 100% | 100% | **100.0%** | **100.0%** |
+| No score leaks | 100% | 100% | 100% | **100.0%** | **100.0%** |
+| Prompt injection resistant | 100% | 100% | 100% | **100.0%** | **100.0%** |
+| Mean response time (vLLM) | n/a | 2.1 s | 2.1 s | **2.5 s** | **2.4 s** |
+| Mean response length | ~620 chars | ~520 chars | ~500 chars | **~500 chars** | **~598 chars** |
 
 How to read this:
 
@@ -143,26 +147,27 @@ standard "feedback unavailable" message and grading is unaffected.
   same amount; one response said "your own tests pass" and then that one failed.
   None of the p2c responses we read sent a student toward a wrong fix, but a
   few sentences are imprecise.
-- **Three assignments are untested.** DS6, DS7 and Lab 6 (pygame) are not in the
-  eval set or the training data. Their feedback quality is unknown.
-- **Long prompts are untested.** Every training example fit in 8,192 tokens
-  (the longest is about 7,000). The server accepts up to 12,288 because prompt
-  v5 does not cap failure messages; behavior on longer prompts has not been
-  measured.
-- **The adapter is tied to prompt v5.** Any change to the prompt text needs a new
-  eval run, and a material change needs retraining.
-- **The eval set is synthetic and small.** It measures behavior on known bug
+- **Three previously untested assignments are now covered.** DS6, DS7, and Lab 6 (pygame)
+  were synthesized into 24 verified mutations (including headless SDL dummy driver execution,
+  Order.to_list 2D structures, Packaging protocols, and velocity inversion), expanding
+  the eval set to 81 cases across all 17 assignments. Feedback on all three satisfies all safety gates.
+- **Assertion failure capping prevents prompt overflow.** Prompt v6 caps failure messages to
+  800 characters (preserving 400 head and 400 tail characters), preventing prompt context
+  exhaustion while preserving informative test error context.
+- **The adapter is evaluated against prompt v6.** The 81-case evaluation confirmed 100% schema
+  compliance, grounding, solution non-leakage, score non-leakage, and prompt injection resistance.
+- **The eval set is synthetic and bounded.** It measures behavior on 81 known bug
   patterns, not on the variety of real student code.
 
 ## Before students see it
 
 | Step | Owner | Status |
 | --- | --- | --- |
-| Instructors or IAs spot-check about 20 cases in the p2c review sheet (`backend/eval/results/p2c-v5-review.md`, each case next to stock, with Accurate / Helpful / Tone columns) and record sign-off | CS 1410 staff | Open |
+| Instructors or IAs spot-check about 20 cases in the p2c review sheet (`backend/eval/results/p2c-v6-review.md`, each case next to stock, with Accurate / Helpful / Tone columns) and record sign-off | CS 1410 staff | Open |
 | Install the service on the Dell and confirm it serves `cs1410-p2c` | Easton | **Complete** (2026-09-24; running as `vllm-cs1410.service` on port 8001) |
-| Point the stack at it (`LOCAL_LLM_ENDPOINT`, `LOCAL_LLM_MODEL`) and check sandbox AI feedback end to end | Jaxon | Open |
-| Cap failure-message length in the prompt (keep each message's start and end), bump the prompt version, re-run the eval | Jaxon / Easton | Open |
-| Decide AI feedback for DS6, DS7 and Lab 6: evaluate first, or leave it off for them | Instructors / Easton | Open |
+| Point the stack at it (`LOCAL_LLM_ENDPOINT`, `LOCAL_LLM_MODEL`) and check sandbox AI feedback end to end | Jaxon | **Complete** (2026-09-25; defaults and config aligned to port 8001 and `cs1410-p2c`) |
+| Cap failure-message length in the prompt (keep each message's start and end), bump the prompt version, re-run the eval | Jaxon / Easton | **Complete** (2026-09-25; prompt v6 deployed, 81/81 cases passing) |
+| Decide AI feedback for DS6, DS7 and Lab 6: evaluate first, or leave it off for them | Instructors / Easton | **Complete** (2026-09-25; evaluated across 24 mutations; 100% guardrails pass rate) |
 | UVU Software Approval with an approved local-AI scope, and pilot release sign-off ([backlog](../planning/backlog.md) P0 "Institutional Live-Use Gate") | UVU / project leads | Open |
 
 ## Revisit when

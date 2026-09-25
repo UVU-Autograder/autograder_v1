@@ -43,7 +43,7 @@ def _load(label: str) -> dict:
     path = RESULTS / f"{label}.json"
     if not path.exists():
         raise SystemExit(f"no results for {label!r} at {path} -- run eval.run_eval --label {label} first")
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _shown(raw: str, labels: dict[str, str]) -> str:
@@ -119,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         lines += [RUBRIC, ""]
 
     out = RESULTS / f"{args.label}-review.md"
-    out.write_text("\n".join(lines))
+    out.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {out} ({len(run['cases'])} cases)")
     return 0
 
