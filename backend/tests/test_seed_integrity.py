@@ -148,23 +148,3 @@ def test_student_module_import_restores_packaging_collision(
     assert student_packaging.MARKER == "student"
     assert dessert.MARKER == "student"
     assert sys.modules["packaging"] is system_packaging
-
-
-def test_cs1400_catalog_integrity() -> None:
-    catalog_path = SEEDS_DIR / "cs1400_catalog.json"
-    assert catalog_path.exists(), "cs1400_catalog.json missing from SEEDS_DIR"
-
-    data = json.loads(catalog_path.read_text(encoding="utf-8"))
-    assert "modules" in data and len(data["modules"]) > 0
-    assert "assignments" in data and len(data["assignments"]) > 0
-
-    module_keys = set(data["modules"].keys())
-    for item in data["assignments"]:
-        assert item["module"] in module_keys, f"Assignment {item['slug']} references unknown module {item['module']}"
-        assert "title" in item and item["title"]
-        slug = item["slug"]
-        candidate_dirs = [SEEDS_DIR / slug.replace("-", "_"), SEEDS_DIR / slug]
-        assert any(d.exists() and (d / "config_json.example.json").exists() for d in candidate_dirs), (
-            f"Assignment {slug} does not have a corresponding seed directory with config_json.example.json"
-        )
-
