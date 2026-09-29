@@ -582,7 +582,7 @@ Notes:
 - Kata-backed VM isolation is required for the intended production execution model. A Dell workstation spot-check is recorded in the backlog; attach dated, commit-specific host evidence before release signoff.
 - Hallucination guard: pytest and tracebacks remain the correctness source of truth
 - Sandbox Local LLM: may process student code only when the payload is not personally traceable (no PII/identifiers); official AI deferred
-- Local LLM prompt ceilings: `max_file_chars = 4000`, `max_total_chars = 8000`. Individual files exceeding 4,000 characters are truncated with explicit markers (`... [file truncated]`); multi-file submissions exceeding 8,000 total characters omit remaining files with notices (`... [additional files omitted: ...]`).
+- Local LLM prompt ceilings (Prompt v6): `max_file_chars = 10000`, `max_total_chars = 16000`, `max_failure_message_chars = 800`. Individual files exceeding 10,000 characters are truncated with explicit markers (`... [file truncated]`); multi-file submissions exceeding 16,000 total characters omit remaining files with notices (`... [additional files omitted: ...]`); failure messages exceeding 800 characters preserve 400 head and 400 tail characters.
 - Local LLM logging: token usage only, stored as sanitized aggregate metadata
 
 ### Service targets and reliability guardrails

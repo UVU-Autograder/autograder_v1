@@ -25,15 +25,24 @@ echo "=== UVU Autograder Smoke Test ==="
 echo "Host: ${HOST}"
 echo ""
 
-# --- Backend API ---
-echo "[Backend API]"
-check "Health endpoint" "http://${HOST}:8000/health" "200"
-check "API via Nginx" "http://${HOST}/health" "200"
+# --- Backend API & Reverse Proxy ---
+echo "[Backend API & Reverse Proxy]"
+check "Health endpoint (Direct :8000)" "http://${HOST}:8000/health" "200"
+check "Health probe (via Nginx)" "http://${HOST}/health" "200"
+check "API prefix rewrite (/api/health)" "http://${HOST}/api/health" "200"
 
 # --- Frontend ---
 echo "[Frontend]"
 check "Sandbox page" "http://${HOST}/sandbox" "200"
 check "Login redirect" "http://${HOST}/staff/login" "200"
+
+# --- Execution Engine (Judge0) ---
+echo "[Execution Engine (Judge0)]"
+check "Judge0 language runtime (:2358)" "http://${HOST}:2358/languages" "200"
+
+# --- Local AI Feedback Service (vLLM) ---
+echo "[Local AI Feedback Service (vLLM)]"
+check "vLLM model server (:8001)" "http://${HOST}:8001/v1/models" "200"
 
 # --- Docker services ---
 if [ "$HOST" = "127.0.0.1" ] || [ "$HOST" = "localhost" ]; then

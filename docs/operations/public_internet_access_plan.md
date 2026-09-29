@@ -78,9 +78,9 @@ server {
     # Maximum bundle upload size (matches application 50MB limit)
     client_max_body_size 52M;
 
-    # Backend API Routing
+    # Backend API Routing (Strip /api prefix and proxy to FastAPI backend)
     location /api/ {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8000/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

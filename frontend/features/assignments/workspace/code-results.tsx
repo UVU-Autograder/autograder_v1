@@ -598,7 +598,7 @@ export default function CodeResults({
                 <div className="flex items-center gap-2 text-xs text-primary font-medium">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span>
-                    Analyzing code and test outputs on local Qwen 2.5...
+                    Analyzing code and test outputs on local AI tutor...
                   </span>
                 </div>
                 <div className="space-y-2 pt-1 opacity-70 animate-pulse">

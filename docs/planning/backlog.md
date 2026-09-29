@@ -12,7 +12,7 @@ The following subsystems are implemented, verified, and canonically documented:
 - **Retention Lifecycle & 24h Cleanup:** [retention_rollout.md](../deployment/retention_rollout.md)
 - **Host Deployment & Kata Isolation:** [workstation_deployment.md](../deployment/workstation_deployment.md) & [operator_runbook.md](../operations/operator_runbook.md)
 - **Staff Authentication (Microsoft Entra ID):** [technical_specs.md §6](../core/technical_specs.md#6-authentication-and-session-architecture) & [frontend_implementation.md](../implementation/frontend_implementation.md)
-- **Quality Gates & Verification Suites:** [delivery_controls.md §1.1](delivery_controls.md#11-standard-verification-suites--tooling)
+- **Quality Gates & Verification Suites:** [delivery_controls.md §1.1](delivery_controls.md#11-standard-verification-suites-tooling)
 - **Backup & Disaster Recovery:** [backup_and_recovery.md](../operations/backup_and_recovery.md)
 - **CS 1410 Assignment Modeling:** [cs1410_assignments_spec.md](../modeling/cs1410_assignments_spec.md)
 - **Sandbox AI Feedback Architecture:** [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md) (Gemma 4 12B QAT + `cs1410-p2c` LoRA adapter, deployed as systemd service `vllm-cs1410` on loopback port 8001 with rollback to `gemma4-12b-qat`)
@@ -43,15 +43,8 @@ Priority order: Institutional software gates, TLS deployment verification, and i
 ### P1 — Course Modeling & Grading Acceptance
 
 - [ ] **CS 1400 Syllabus & Assignment Modeling:** Implement assignment seeds and test suites for CS 1400 (Fundamentals of Programming) upon receipt of official UVU syllabus and assignment specifications (replaces placeholder assignment `simple-python-functions`).
-- [x] **Student Feedback Delivery Contract:** Resolved: Instructors manually attach per-student HTML feedback files or copy/paste comments into Canvas from the downloaded `feedback.zip` package. Files are not persistently hosted on the autograder server, maintaining strict zero-retention compliance.
 
 ---
-
-### P1 — Sandbox AI Feedback Model Go-Live
-
-Decision and evidence: [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md). Live use also requires the P0 Institutional Live-Use Gate above. (Note: `vllm-cs1410.service` installation on port 8001 is complete and running on the Dell host).
-
-- [x] **Staff Spot-Check of `cs1410-p2c`:** Completed 2026-09-25. 20 representative cases scored in `backend/eval/results/p2c-v6-review.md` across DS6, DS7, Lab 6, and adversarial canaries. 100% rated 'yes' to show students with 5/5 across Accurate, Helpful, and Tone dimensions. Recorded in [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md).
 
 ## Deferred Architecture Proposals — After Pilot Readiness
 

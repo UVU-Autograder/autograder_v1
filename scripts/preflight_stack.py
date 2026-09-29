@@ -18,6 +18,8 @@ What it proves, in order:
 5. One sandbox upload round-trips through intake, rate limiting, and grading.
 6. If a reverse proxy answers on port 80 (nginx on the Dell): /health and
    /api/health reach FastAPI, and / serves the Next.js frontend.
+7. Local AI model server (vLLM on :8001): /v1/models serves expected model(s)
+   (cs1410-p2c or gemma4-12b-qat).
 
 Exit code 0 only if nothing FAILed.
 """
@@ -220,6 +222,47 @@ def check_proxy(proxy: str) -> None:
         "/ -> Next.js frontend",
         f"HTTP {status} {content_type}" + ("" if ok else " -- is autograder-frontend.service running?"),
     )
+
+
+def check_vllm(endpoint: str, expected_model: str) -> None:
+    """Local vLLM AI model server on loopback (:8001): /v1/models serves expected model."""
+    base = endpoint.rstrip("/")
+    models_url = f"{base}/models" if base.endswith("/v1") else f"{base}/v1/models"
+    try:
+        status, body, _ = http("GET", models_url, timeout=10)
+    except Exception as exc:  # noqa: BLE001
+        record(
+            "vllm",
+            "WARN",
+            f"local AI model server at {models_url}",
+            f"not reachable ({type(exc).__name__}); skipped (is vllm-cs1410.service running?)",
+        )
+        return
+
+    if status != 200 or not isinstance(body, dict):
+        record("vllm", "FAIL", "GET /v1/models", f"HTTP {status} {str(body)[:150]}")
+        return
+
+    data = body.get("data", [])
+    model_ids = [m.get("id") for m in data if isinstance(m, dict) and "id" in m] if isinstance(data, list) else []
+    record("vllm", "PASS", "GET /v1/models", f"HTTP {status}, {len(model_ids)} model(s) registered")
+
+    acceptable = {expected_model, "gemma4-12b-qat", "cs1410-p2c"}
+    matched = [m for m in model_ids if m in acceptable]
+    if matched:
+        record(
+            "vllm",
+            "PASS",
+            f"model '{expected_model}' available",
+            f"matched {matched} (all served: {', '.join(model_ids)})",
+        )
+    else:
+        record(
+            "vllm",
+            "WARN",
+            f"model '{expected_model}' available",
+            f"not found in served models ({', '.join(model_ids) if model_ids else 'none'})",
+        )
 
 
 _FAILED_ITEM_RE = re.compile(r"Test case '([^']+)' failed")
@@ -439,6 +482,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sandbox-seed", default="ds2")
     parser.add_argument("--proxy", default="http://127.0.0.1", help="Reverse proxy base URL; skipped if unreachable")
     parser.add_argument("--no-proxy", action="store_true", help="Skip the reverse proxy checks")
+    parser.add_argument(
+        "--vllm",
+        default=os.environ.get("LOCAL_LLM_ENDPOINT") or env.get("LOCAL_LLM_ENDPOINT", "http://127.0.0.1:8001/v1"),
+        help="Local LLM service endpoint URL; skipped if unreachable",
+    )
+    parser.add_argument(
+        "--vllm-model",
+        default=os.environ.get("LOCAL_LLM_MODEL") or env.get("LOCAL_LLM_MODEL", "cs1410-p2c"),
+        help="Expected model identifier on vLLM server",
+    )
+    parser.add_argument("--no-vllm", action="store_true", help="Skip local vLLM AI model server checks")
     parser.add_argument("--json-out", type=Path, help="Write machine-readable results here")
     args = parser.parse_args(argv)
 
@@ -452,6 +506,9 @@ def main(argv: list[str] | None = None) -> int:
             check_proxy(args.proxy.rstrip("/"))
     else:
         check_judge0(args.judge0, args.judge0_token, args.language_id)
+
+    if not args.no_vllm:
+        check_vllm(args.vllm, args.vllm_model)
 
     failed = [r for r in results if r["status"] == "FAIL"]
     summary = {

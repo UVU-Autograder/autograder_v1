@@ -35,6 +35,7 @@ frontend/out/
 # Agentic / local agent memory
 .agents/
 .scratch/
+AGENTS.md
 
 # Accidental local tooling artifacts
 /uv.lock

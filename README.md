@@ -86,7 +86,7 @@ npm run docker:down
   sudo systemctl status autograder-frontend
   sudo systemctl restart autograder-frontend
   ```
-- **Local LLM (Ollama):** Managed via `ollama` systemd service running `qwen2.5-coder:7b` on NVIDIA GPU (port 11434).
+- **Local LLM Feedback Service:** Managed via `vllm-cs1410.service` systemd service running Gemma 4 12B QAT with the `cs1410-p2c` LoRA adapter on NVIDIA GPU (port 8001; rollback available to base model `gemma4-12b-qat`).
 
 ## Frontend
 
