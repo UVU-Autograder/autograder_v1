@@ -89,7 +89,9 @@ def http(method: str, url: str, *, body: bytes | None = None, headers: dict | No
 def find_assignment(api: str, slug: str) -> tuple[str, dict]:
     status, courses, _ = http("GET", f"{api}/sandbox/courses")
     if status != 200 or not isinstance(courses, dict):
-        sys.exit(f"cannot list sandbox courses at {api} (HTTP {status}). Is --api right? From another machine use http://<host>/api")
+        hint = ("the backend errored; see its log (docker logs <backend container>)" if status >= 500
+                else "is --api right? From another machine use http://<host>/api")
+        sys.exit(f"cannot list sandbox courses at {api} (HTTP {status}: {str(courses)[:200]}). {hint}")
     wanted = {slug, slug.replace("-", "_"), slug.replace("_", "-")}
     seen = []
     for course in courses.get("courses", []):
