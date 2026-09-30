@@ -192,8 +192,10 @@ export default function Navbar() {
           </Button>
         )}
         {oppositePath && (
-          <Button size="sm" onClick={switchRole}>
-            {isStaffArea ? "Switch to Student View" : "Switch to Staff View"}
+          <Button size="sm" asChild>
+            <Link href={oppositePath}>
+              {isStaffArea ? "Switch to Student View" : "Switch to Staff View"}
+            </Link>
           </Button>
         )}
       </div>

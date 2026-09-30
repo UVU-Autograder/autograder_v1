@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -29,44 +30,45 @@ export default function AssignmentCard({
       : `/staff/courses/${courseId}/assignments/${assignment.id}`;
 
   return (
-    <Card
-      onClick={() => router.push(linkHref)}
-      className="cursor-pointer py-3 transition-shadow hover:shadow-md hover:bg-muted/50"
-    >
-      <CardContent className="flex items-center justify-between py-0 gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex w-2.5 shrink-0 justify-center">
-            {assignment.sandbox_enabled && (
-              <span
-                className="size-2.5 rounded-full bg-success"
-                title="Sandbox enabled"
-              />
-            )}
+    <Link href={linkHref} className="block group">
+      <Card
+        className="cursor-pointer py-3 transition-shadow hover:shadow-md hover:bg-muted/50"
+      >
+        <CardContent className="flex items-center justify-between py-0 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex w-2.5 shrink-0 justify-center">
+              {assignment.sandbox_enabled && (
+                <span
+                  className="size-2.5 rounded-full bg-success"
+                  title="Sandbox enabled"
+                />
+              )}
+            </div>
+
+            <div className="min-w-0 space-y-0.5">
+              <CardTitle className="truncate text-base group-hover:text-primary transition-colors">{assignment.title}</CardTitle>
+              <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span className="uppercase tracking-wider text-muted-foreground">{assignment.language}</span>
+                <span className="text-muted-foreground">{assignment.max_score} pts</span>
+              </CardDescription>
+            </div>
           </div>
 
-          <div className="min-w-0 space-y-0.5">
-            <CardTitle className="truncate text-base">{assignment.title}</CardTitle>
-            <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              <span className="uppercase tracking-wider text-muted-foreground">{assignment.language}</span>
-              <span className="text-muted-foreground">{assignment.max_score} pts</span>
-            </CardDescription>
-          </div>
-        </div>
-
-        {mode === "staff" && (
-          <Button
-            size="sm"
-            className="shrink-0 relative z-10"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              router.push(`/staff/courses/${courseId}/assignments/${assignment.id}/runs`);
-            }}
-          >
-            <PlayIcon className="mr-1.5 size-3.5" /> Grade Now
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+          {mode === "staff" && (
+            <Button
+              size="sm"
+              className="shrink-0 relative z-10"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(`/staff/courses/${courseId}/assignments/${assignment.id}/runs`);
+              }}
+            >
+              <PlayIcon className="mr-1.5 size-3.5" /> Grade Now
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

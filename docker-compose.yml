@@ -197,7 +197,7 @@ services:
       LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-none}
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:8001/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-cs1410-p2c}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://10.115.20.200:3000,https://autograder-frontend-mockup.vercel.app}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://10.115.20.200,http://10.115.20.200:3000,https://autograder-frontend-mockup.vercel.app}
     volumes:
       - backend_data:/data
 

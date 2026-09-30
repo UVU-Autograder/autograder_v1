@@ -6,23 +6,26 @@ import { useRouter, usePathname } from "next/navigation";
 export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const isLoginPage = pathname === "/staff/login" || Boolean(pathname?.startsWith("/staff/login"));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => {
+    if (typeof window === "undefined") return null;
+    if (window.location.pathname.startsWith("/staff/login")) return true;
+    return Boolean(localStorage.getItem("token") || sessionStorage.getItem("token"));
+  });
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      if (pathname === "/staff/login") {
-        setIsAuthenticated(true);
-        return;
-      }
+    if (isLoginPage) {
+      setIsAuthenticated(true);
+      return;
+    }
 
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (!token) {
-        setIsAuthenticated(false);
-        router.push("/staff/login");
-      } else {
-        setIsAuthenticated(true);
-      }
-    });
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) {
+      setIsAuthenticated(false);
+      router.push("/staff/login");
+    } else {
+      setIsAuthenticated(true);
+    }
 
     const handleAuthError = () => {
       localStorage.removeItem("token");
@@ -37,7 +40,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
 
     const checkInactivity = () => {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (!token || pathname === "/staff/login") return;
+      if (!token || isLoginPage) return;
 
       const lastActivity = parseInt(localStorage.getItem("lastActivity") || "0");
       if (lastActivity === 0) return;
@@ -57,7 +60,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       if (now - lastRecorded < 15000) return;
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (token && pathname !== "/staff/login") {
+      if (token && !isLoginPage) {
         lastRecorded = now;
         localStorage.setItem("lastActivity", now.toString());
       }
@@ -83,7 +86,11 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       });
       window.removeEventListener("unauthorized-api-call", handleAuthError);
     };
-  }, [pathname, router]);
+  }, [isLoginPage, pathname, router]);
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   if (isAuthenticated !== true) {
     return (
