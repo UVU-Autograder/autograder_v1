@@ -136,12 +136,6 @@ export default function Navbar() {
 
   const oppositePath = getOppositePath(pathname);
 
-  const switchRole = () => {
-    if (oppositePath) {
-      router.push(oppositePath);
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("email");

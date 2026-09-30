@@ -1,37 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter, usePathname } from "next/navigation";
+
+function subscribeToStaffAuth(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener("roles-updated", onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener("roles-updated", onStoreChange);
+  };
+}
+
+function getStaffAuthSnapshot(): boolean {
+  return Boolean(localStorage.getItem("token") || sessionStorage.getItem("token"));
+}
+
+function getStaffAuthServerSnapshot(): boolean {
+  return false;
+}
 
 export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isLoginPage = pathname === "/staff/login" || Boolean(pathname?.startsWith("/staff/login"));
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => {
-    if (typeof window === "undefined") return null;
-    if (window.location.pathname.startsWith("/staff/login")) return true;
-    return Boolean(localStorage.getItem("token") || sessionStorage.getItem("token"));
-  });
+
+  const hasStaffToken = useSyncExternalStore(
+    subscribeToStaffAuth,
+    getStaffAuthSnapshot,
+    getStaffAuthServerSnapshot
+  );
 
   useEffect(() => {
-    if (isLoginPage) {
-      setIsAuthenticated(true);
-      return;
-    }
+    if (isLoginPage) return;
 
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    if (!token) {
-      setIsAuthenticated(false);
+    if (!hasStaffToken) {
       router.push("/staff/login");
-    } else {
-      setIsAuthenticated(true);
+      return;
     }
 
     const handleAuthError = () => {
       localStorage.removeItem("token");
       sessionStorage.removeItem("token");
       localStorage.removeItem("lastActivity");
-      setIsAuthenticated(false);
+      window.dispatchEvent(new Event("storage"));
       router.push("/staff/login");
     };
 
@@ -40,7 +52,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
 
     const checkInactivity = () => {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (!token || isLoginPage) return;
+      if (!token) return;
 
       const lastActivity = parseInt(localStorage.getItem("lastActivity") || "0");
       if (lastActivity === 0) return;
@@ -50,7 +62,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("token");
         sessionStorage.removeItem("token");
         localStorage.removeItem("lastActivity");
-        setIsAuthenticated(false);
+        window.dispatchEvent(new Event("storage"));
         router.push("/staff/login?reason=timeout");
       }
     };
@@ -60,7 +72,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       if (now - lastRecorded < 15000) return;
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (token && !isLoginPage) {
+      if (token) {
         lastRecorded = now;
         localStorage.setItem("lastActivity", now.toString());
       }
@@ -68,7 +80,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
 
     // Listen to user activity events
     const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart", "click"];
-    events.forEach(event => {
+    events.forEach((event) => {
       window.addEventListener(event, updateActivity);
     });
 
@@ -81,18 +93,18 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
     window.addEventListener("unauthorized-api-call", handleAuthError);
     return () => {
       clearInterval(intervalId);
-      events.forEach(event => {
+      events.forEach((event) => {
         window.removeEventListener(event, updateActivity);
       });
       window.removeEventListener("unauthorized-api-call", handleAuthError);
     };
-  }, [isLoginPage, pathname, router]);
+  }, [hasStaffToken, isLoginPage, router]);
 
   if (isLoginPage) {
     return <>{children}</>;
   }
 
-  if (isAuthenticated !== true) {
+  if (!hasStaffToken) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="text-center font-medium text-muted-foreground" role="status">

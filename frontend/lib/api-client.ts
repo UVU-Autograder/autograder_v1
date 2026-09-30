@@ -13,12 +13,12 @@ export class ApiError extends Error {
 function getBaseUrl(): string {
     const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
     if (typeof window !== "undefined" && window.location.hostname) {
+        if (!window.location.port || window.location.port === "80" || window.location.port === "443") {
+            return `${window.location.protocol}//${window.location.hostname}/api`;
+        }
         const hasCustomConfig = configured && !configured.includes("localhost") && !configured.includes("127.0.0.1");
         if (hasCustomConfig) {
             return configured;
-        }
-        if (!window.location.port || window.location.port === "80" || window.location.port === "443") {
-            return `${window.location.protocol}//${window.location.hostname}/api`;
         }
         const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
         if (!isLocalHost) {
