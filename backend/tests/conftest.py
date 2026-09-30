@@ -41,6 +41,16 @@ def reset_database():
 
     from app.domains.runs.orchestrator import clear_local_orchestrator_cache
 
+    # drop_all() empties whatever DATABASE_URL points at. Inside a deployed
+    # container that is the live Postgres, which is how a stack ends up with
+    # only alembic_version left. The suite only ever needs SQLite.
+    if engine.url.get_backend_name() != "sqlite":
+        pytest.exit(
+            f"refusing to run database tests against {engine.url.render_as_string(hide_password=True)}: "
+            "set DATABASE_URL=sqlite+pysqlite:///:memory:",
+            returncode=2,
+        )
+
     import_domain_models()
     clear_local_orchestrator_cache()
     Base.metadata.drop_all(bind=engine)
