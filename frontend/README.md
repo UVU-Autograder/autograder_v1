@@ -1,10 +1,3 @@
 # Frontend
 
-Next.js App Router UI for the UVU Autograder.
-
-See the [root README](../README.md) for setup, docs links, and npm layout.
-
-```bash
-npm install
-npm run dev
-```
+Next.js UI. Follow [Running](../docs/running.md) for frontend-only checks or local UI with the on-prem API; [System](../docs/system.md) records stack/capabilities.

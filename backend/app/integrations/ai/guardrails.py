@@ -8,7 +8,7 @@ One definition, two callers:
 - the eval harness (``eval.metrics``) scores the same checks offline.
 
 Keeping them in one place means the eval measures exactly what production
-enforces. See docs/core/technical_specs.md line 31: pytest is the correctness
+enforces. See docs/system.md (Public sandbox): pytest is the correctness
 source of truth; the model explains and never re-grades.
 """
 

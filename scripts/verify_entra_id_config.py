@@ -136,7 +136,7 @@ def main() -> int:
         for w in warnings:
             print(f"     - {w}")
         print("\n  Network and Microsoft discovery infrastructure: VERIFIED OK.")
-        print("  Action: Request App Registration from UVU IT using docs/operations/public_internet_access_plan.md.")
+        print("  Action: Request App Registration from UVU IT using docs/guides/workstation.md.")
         if args.strict:
             return 1
     else:

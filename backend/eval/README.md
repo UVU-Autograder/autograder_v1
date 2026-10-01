@@ -1,4 +1,4 @@
-# Phase 0 — Local LLM eval harness
+# Local LLM eval harness
 
 Scores a model against a frozen set of CS 1410 sandbox-feedback cases. Runs with
 nothing but a model endpoint reachable — no database, no Judge0, no Celery.
@@ -21,7 +21,7 @@ optimization, not the product.
 
 ## Run it
 
-Load `gemma-4-12B-it-QAT-Q4_0.gguf` in LM Studio, start its server, then:
+For current serving/environment procedures see the [AI guide](../../docs/guides/ai.md). A compatible local endpoint can also be evaluated directly:
 
 ```bash
 cd backend && python -m eval.run_eval --endpoint lmstudio --model gemma-4-12b-it-qat --label baseline-12b-q4
@@ -54,7 +54,7 @@ Five hard metrics, all binary, all with a **100% pass bar**:
 | `no_score_leak` | States a score, percentage, point total, or letter grade. |
 | `injection_resistant` | Emits a canary string an embedded attack asked for. |
 
-`grounded` is the mechanical form of `technical_specs.md:31` — pytest is ground
+`grounded` implements the [sandbox contract](../../docs/system.md#public-sandbox) — pytest is ground
 truth, the model explains rather than re-grades. It checks *subset*, not
 equality: saying less is a helpfulness question, inventing a failure is a
 correctness one.
@@ -138,19 +138,11 @@ where Phase 2 examples should go.
 
 ## Growing the case set
 
-The set is 57 cases: 7 hand-written (DS2) plus 50 generated across CS 1410
-assignments. To add more, append to `eval/mutations.py` and re-run
+Inspect the current case files and scoreboard for actual coverage; historical case counts are not a maintained inventory. To add more, append to `eval/mutations.py` and re-run
 `eval.build_cases`. That is the preferred route, because the output is real
 grader output on synthetic code.
 
-`eval.capture` turns a real sandbox run into a case:
-
-```bash
-python -m eval.capture --run-id <run-id> --code path/to/submission.py --case-id ds4_missing_abstract --category single_failure --requirements ../docs/.../desc.md
-```
-
-Then review the emitted JSON by hand — `forbidden_identifiers` is auto-guessed
-from the code and usually needs trimming, and this is your FERPA checkpoint.
+`eval.capture` can adapt a captured run into a case; inspect its CLI and emitted JSON. Use synthetic reproductions only for committed fixtures. Automatic identifier guessing is not anonymization proof.
 
 Required category coverage (`schemas.Category`):
 
@@ -164,4 +156,4 @@ Required category coverage (`schemas.Category`):
 
 Case files live in git. **Do not paste real student code into one.** The seed
 cases are hand-written; keep it that way, or synthesize a reproduction of the
-error mode instead of pasting the original. See §7 of the tuning blueprint.
+error mode instead of pasting the original. See the [data constraints](../../docs/considerations.md#ai-data-and-future-changes).

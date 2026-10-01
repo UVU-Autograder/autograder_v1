@@ -13,7 +13,7 @@ the rendered text; eval scoreboard rows and training metadata record it.
 
 The model answers in JSON (``FeedbackResponse``) so that the runtime can check
 it mechanically before a student sees it -- see ``guardrails``. pytest is the
-correctness source of truth (docs/core/technical_specs.md line 31); the model
+correctness source of truth (docs/system.md (Public sandbox)); the model
 explains and never re-grades.
 """
 

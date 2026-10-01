@@ -63,7 +63,7 @@ def main() -> int:
     try:
         import torch
     except ImportError:
-        check(False, "torch importable", "see docs/deployment/blackwell_training_setup.md")
+        check(False, "torch importable", "see docs/guides/ai.md")
         return report()
 
     check(True, "torch version", torch.__version__)
@@ -151,7 +151,7 @@ def report() -> int:
     print()
     if failed:
         print(f"{len(failed)} check(s) failed: {', '.join(failed)}")
-        print("See docs/deployment/blackwell_training_setup.md")
+        print("See docs/guides/ai.md")
         return 1
     print("Stack looks good. Safe to download the base model and start training.")
     return 0

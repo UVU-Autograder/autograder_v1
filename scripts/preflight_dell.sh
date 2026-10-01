@@ -186,13 +186,12 @@ rlimit_flags=$(grep -cE 'ENABLE_PER_PROCESS_AND_THREAD_(TIME|MEMORY)_LIMIT: "tru
 if [ "$cgroup_fs" = "cgroup2fs" ] && [ "$rlimit_flags" -ge 4 ]; then
   warn "cgroup v2 host; Judge0 runs in rlimit mode (ENABLE_PER_PROCESS_AND_THREAD_*_LIMIT) so no GRUB change or reboot
         is needed if stage 5 passes. Limits are per-process rather than cgroup-accounted -- acceptable with Kata's VM
-        boundary, weaker without it. See docs/deployment/workstation_deployment.md (Cgroups section)."
+        boundary, weaker without it. See docs/guides/workstation.md (Install Kata and start infrastructure)."
 elif [ "$cgroup_fs" = "cgroup2fs" ]; then
-  fail "cgroup-v2" "host is on cgroup v2 and Judge0 rlimit mode is not enabled in $COMPOSE_FILE. Either set
-        ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT/MEMORY_LIMIT=\"true\" on judge0 + judge0-worker, or switch the host to
-        cgroup v1 (reboots; walkthrough in docs/deployment/blackwell_training_setup.md):
-          echo 'GRUB_CMDLINE_LINUX=\"\$GRUB_CMDLINE_LINUX systemd.unified_cgroup_hierarchy=0\"' | sudo tee /etc/default/grub.d/99-cgroup-v1.cfg
-          sudo update-grub && sudo reboot"
+  fail "cgroup-v2" "host is on cgroup v2 and Judge0 rlimit mode is not enabled in $COMPOSE_FILE. Review
+        ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT/MEMORY_LIMIT=\"true\" on judge0 + judge0-worker and the actual Kata
+        guest configuration. See docs/guides/workstation.md (Install Kata and start infrastructure). Host boot changes do not
+        fix the Kata guest's cgroup hierarchy."
 elif [ "$cgroup_fs" = "tmpfs" ]; then
   pass "cgroup v1 (hybrid/legacy) -- compatible with Judge0 isolate"
 else

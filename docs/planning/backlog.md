@@ -1,56 +1,52 @@
-# UVU Autograder — Active Development Backlog
+# Temporary backlog — controlled course pilot
 
-> **Product Goal:** On-prem, retention-aware Python grading with a public student sandbox, staff assignment setup, and official Canvas ZIP runs. Sandbox and execution artifacts have immediate cleanup boundaries; official review/export data has a ≤24h maximum retention contract.
-> **Deployment Status:** Dell workstation (`10.115.20.200`) deployment active with Kata-isolated execution, bounded batch scheduling, independent cleanup worker, Nginx reverse proxy (port 80), and Microsoft Entra ID authentication.
-> **Next Milestone:** Institutional UVU software approval, TLS certificate deployment, instructor grading calibration, and controlled course pilot.
+This is the sole active work list until the planned GitHub Issues/Projects transfer. After transfer, replace the README/backlog references with actual tracker links and remove this file; keep no mirror. Completed-task history belongs in neither place unless needed as scoped verification evidence.
 
-## Source of Truth & Completed Foundations
+Current behavior is in [System](../system.md), operating checks in [Running](../running.md) and institutional requirements in [Considerations](../considerations.md). Tasks below distinguish repository gaps from host facts that still need verification. Planning direction: keep the pilot on the university workstation; assess cloud hosting later. Product items record intended work, not implemented capabilities. This documentation work did not test the workstation or obtain approval.
 
-The following subsystems are implemented, verified, and canonically documented:
+## P0 — institutional scope and deployment
 
-- **Bounded Dispatch & Scheduling:** [bounded_dispatch_rollout.md](../deployment/bounded_dispatch_rollout.md)
-- **Retention Lifecycle & 24h Cleanup:** [retention_rollout.md](../deployment/retention_rollout.md)
-- **Host Deployment & Kata Isolation:** [workstation_deployment.md](../deployment/workstation_deployment.md) & [operator_runbook.md](../operations/operator_runbook.md)
-- **Staff Authentication (Microsoft Entra ID):** [technical_specs.md §6](../core/technical_specs.md#6-authentication-and-session-architecture) & [frontend_implementation.md](../implementation/frontend_implementation.md)
-- **Quality Gates & Verification Suites:** [delivery_controls.md §1.1](delivery_controls.md#11-standard-verification-suites-tooling)
-- **Backup & Disaster Recovery:** [backup_and_recovery.md](../operations/backup_and_recovery.md)
-- **CS 1410 Assignment Modeling:** [cs1410_assignments_spec.md](../modeling/cs1410_assignments_spec.md)
-- **Sandbox AI Feedback Architecture:** [sandbox_feedback_model_decision.md](../core/sandbox_feedback_model_decision.md) (Gemma 4 12B QAT + `cs1410-p2c` LoRA adapter, deployed as systemd service `vllm-cs1410` on loopback port 8001 with rollback to `gemma4-12b-qat`)
+- [ ] **UVU approval and data scope:** Record Software Approval/ATSC completion, approved official workflow/infrastructure/data scope and separately approved local-AI scope where applicable. Technical readiness does not close this action.
+- [ ] **Pilot release signoff:** Confirm team responsibilities and record acceptance against the [release checks](../running.md#verify-a-release), using synthetic/approved anonymized data. Include browser acceptance, privacy/cleanup proof, integrated host workload evidence and recovery ownership.
+- [ ] **TLS endpoint:** Obtain/install institutional certificates and verify refresh/deep links, Microsoft sign-in, uploads, polling, validated AI feedback and CSV/ZIP exports through the actual HTTPS endpoint.
+- [ ] **Entra registration and deployment configuration:** Obtain institutional app credentials, configure backend and frontend envs consistently, disable mock/development credentials and confirm callback/issuer/tenant/audience. Verify the actual active env file and service account; existing reports are inconsistent. The live staff pilot waits for institutional SSO approval; development mock login is not its fallback.
+- [ ] **Proxy auth-path fix:** Bundled Nginx `/api/` handling sends Next.js `/api/auth/microsoft/*` handlers to FastAPI. Correct path ownership and exercise login/callback through the proxy before claiming integrated identity works. Sources: [TLS asset](../../scripts/nginx/autograder-tls.conf), [Next.js auth](../../frontend/app/api/auth/microsoft/).
+- [ ] **Service-exposure verification:** Backend Dockerfile uses `--host 0.0.0.0` under host networking. Enforce intended API restriction; verify base/Kata merged DB/broker bindings (gateway exception), firewall and actual listeners. Do not equate static audit results with live loopback isolation.
+- [ ] **Scoped staff authorization:** Audit/fix course/assignment route scope against active grants. Course listings/concept mutation currently require staff only; assignment mutations add admin/instructor role without course scope. Verify IA read-only course/config authority and denial across unauthorized courses, while retaining existing official section checks. Sources: [courses router](../../backend/app/domains/courses/router.py), [assignments router](../../backend/app/domains/assignments/router.py).
+- [ ] **Audit readiness and logging:** Close the [root-filter coverage gap](../considerations.md#retention-and-data-boundaries) and verify actual levels, handlers, destinations, exception/access-log redaction, access permissions, rotation and retention across services. Produce scoped evidence of denial for unauthenticated, unauthorized and cross-section access, restricted listeners/files/logs/backups, and physical deletion. Use synthetic canaries, not real identifiers. Python JSON audit events exist; logger choice alone does not establish outsider exclusion. Decide whether extra observability tooling is needed only after these requirements are defined.
 
----
+## P1 — evidence and course acceptance
 
-## Active Backlog — Controlled Course Pilot
+- [ ] **Real Entra integration:** After credentials/routing are ready, test provisioned/unprovisioned accounts, active grants, Azure OID binding, PKCE/handoff, session/refresh/inactivity behavior and mock-login exclusion.
+- [ ] **Instructor grading calibration:** Obtain course-owner acceptance for each assignment in the pilot, including representative correct/incorrect submissions, partial credit, student-authored tests, reflections/assets and manual visual criteria. Seed/mutation and AI guardrail checks do not substitute for this.
+- [ ] **Regular backups and restore rehearsal:** Fix/verify backup asset paths for Compose's named `/data` volume, DB role/name overrides and required history/projection recovery. Current scripts can skip actual instructor assets and omit config history/derived projections. Rehearse isolated restore without student artifacts; then assign an owner, frequency, retention, controlled destination and failure alerts. Define acceptable lost setup changes (RPO) and recovery time (RTO) before selecting the schedule.
+- [ ] **Release-specific host proof:** Attach dated commit/config/workload evidence for Kata isolation, immediate Judge0 deletion/non-retrievability, retention failure/orphan/outage recovery, real 200-submission batch plus sandbox fairness and worker/broker interruption recovery. Historical baselines have incomplete revision metadata; include representative failures/timeouts and physical absence.
+- [ ] **50-active-user capacity:** Test 50 browser users submitting into bounded queued grading, including uploads, polling and AI demand alongside official work. Define acceptable request latency, queue wait, rejection behavior and workload mix. Keep the current execution cap until measurements justify a change; 50 waiting jobs is not 50-user capacity proof. Determine whether API load balancing or additional execution hosts are needed while preserving global slot ownership, sessions and artifact access.
+- [ ] **Failure tolerance:** Define outage/recovery targets and recovery procedures for worker, broker, database, model-service, host, disk and power failures. Extend host evidence/restore drills to that scope and confirm AI loss leaves grading usable. Single-host reconciliation/restarts do not provide automatic failover; record any retention violation during downtime rather than treating recovery as on-time deletion.
+- [ ] **Dependency and image maintenance:** Set a regular vulnerability/update review cadence for Python/npm dependencies, Judge0, Kata and GPU tooling. Record tested versions, maintenance responsibility and rollback/recovery steps. Run relevant grading, isolation and model checks before applying upgrades; avoid automatic runtime upgrades that bypass compatibility checks.
+- [ ] **Host fact reconciliation:** Record actual hardware/GPU memory, installed services, active checkout/env and public DNS. Replace conflicting 24GB/32GB and account/binding claims with scoped observations.
+- [ ] **CS1400 modeling:** Obtain official syllabus/assignment specifications before replacing `simple-python-functions` with real seeds/tests.
 
-> [!IMPORTANT]
-> **Backlog Lifecycle Rule:** When a backlog item is complete, do not persist it in this file. Instead, record the outcome, configuration, or architectural details in the relevant documentation (`docs/`) if helpful, otherwise discard it. This file tracks only active, actionable items.
+## Planned product improvements
 
-Priority order: Institutional software gates, TLS deployment verification, and instructor course acceptance. Refer to [delivery_controls.md](delivery_controls.md) for Definition of Done and required evidence labels.
+- [ ] **Frontend independence during workstation outages:** Component/unit checks run locally, but course/assignment pages still require API data. Add synthetic fixtures for representative data-backed screens and interactions so UI development/testing can continue without the on-prem machine, including server-rendered and browser requests. Keep fixture mode separate from real grading and staff production authentication.
+- [ ] **First-use demo cards:** Separate student and instructor guidance. Students should reach an upload/run and understand results; instructors should reach assignment setup/reference validation and official review/export. Use synthetic examples and clear next actions. Confirm placement and first-task success criteria through user sessions.
+- [ ] **UI changes from real feedback:** Observe students and instructors completing those tasks; collect friction, confusion and accessibility findings without retaining student submissions. Prioritize concrete issues and verify revised flows with the same audience. Demo cards are one proposed aid, not a substitute for usability evidence.
+- [ ] **Student workspace file renaming:** Rename files before the next grading submission, not only their display labels. Extend the existing editable [workspace](../../frontend/features/assignments/workspace/) and ZIP builder; handle invalid names, collisions, open tabs, binary assets and required-file warnings. Resubmit a new bundle; do not rewrite an in-flight/completed result or any official intake. Automatic source/import rewrites are not part of this proposal.
+- [ ] **Assignment summaries for students and AI:** Add an instructor-maintained summary to the database, authoring API/UI and student overview; supply that same version to sandbox AI with sanitization, length limits and prompt/eval/training parity. Canvas remains the full course-content authority and pytest the scoring authority. Today the catalog description is the title and AI context uses automated scoring labels. Decide summary format, editing ownership and snapshot semantics with course versioning.
+- [ ] **Published master-course versions and notices:** Publish course/assignment updates with version/change information; sections keep their adopted version until an instructor explicitly adopts a release. Show affected section instructors an in-app notice and adoption state. Define publisher permissions, optional section overrides, compatibility/rollback and which changes require a new release. Existing course-owned assignments/config history do not implement section version pinning or notices; running official batches must retain their snapshot.
 
-### P0 — Institutional Live-Use Gate
+## Future planning questions
 
-- [ ] **UVU Software Approval & Data Scope:** Record formal completion of institutional UVU Software Approval and approved workflow/data scope before live-course deployment. Canonical analysis in [ferpa_analysis.md](../core/ferpa_analysis.md); technical readiness alone does not close this gate.
-- [ ] **Pilot Release Signoff:** Record release signoff against [delivery_controls.md](delivery_controls.md), including responsible operators and separately approved local-AI scope. Use synthetic or approved anonymized fixtures for release validation.
+- [ ] **Cloud hosting assessment:** After the workstation pilot, decide the problem and service scope before comparing AWS EC2 with Google Cloud Compute Engine: API/UI only, metadata, isolated grading and/or AI. Assess approved providers, data boundary, hybrid connectivity, shared scheduling/storage, isolation, recovery, operating cost and maintenance responsibility. No provider, migration or load-balanced architecture is selected.
+- [ ] **Open-source/university collaboration:** Resolve institutional/code/content ownership and whether a public release is desired. If pursued, select the approved license, permitted seed/model/test content, contribution/review ownership and collaboration model with other universities before publication. The repository scan found no project license; no release is authorized by this task.
+- [ ] **Funding and purchasing questions:** What funding horizon/budget is available, who can pursue it, and which departmental, grant or university-partnership routes are eligible? What would additional funding buy: development and maintenance time, grading/accessibility review, recovery storage/power/network resilience or measured CPU/RAM/GPU capacity? Compare proposals against the 50-user/recovery targets and ongoing operating cost. Funding routes, purchasing priorities, acceptable lost setup work and downtime are unanswered; no budget, schedule or equipment purchase is selected.
 
-### P0 — Production Deployment & TLS Verification
+## Deferred proposals
 
-- [ ] **End-to-End TLS Endpoint Verification:** Verify page refresh/deep links, Microsoft Entra ID sign-in, bundle uploads, polling, AI streaming, and CSV/ZIP exports through the institutional TLS endpoint (`https://...` on port 443) once campus certificates are installed on the workstation.
-- [ ] **Workstation `.env` Hardening (Azure AD Credentials):** Add institutional `AZURE_AD_CLIENT_ID`, `AZURE_AD_TENANT_ID`, and `AZURE_AD_CLIENT_SECRET` to workstation `.env` once Entra ID app registration is issued by UVU IT. (All non-credential variables, network bind IPs, and 60m expiry are already synchronized).
+These are future work, not supported or authorized pilot capabilities:
 
-### P1 — Testing & Verification
-
-- [ ] **Entra ID Integration Test:** Perform end-to-end Microsoft Entra ID sign-in on the workstation with real Azure AD credentials. Verify PKCE flow, session token issuance, staff gating (provisioned vs unprovisioned), and session expiration. Requires Azure AD app registration.
-
-### P1 — Course Modeling & Grading Acceptance
-
-- [ ] **CS 1400 Syllabus & Assignment Modeling:** Implement assignment seeds and test suites for CS 1400 (Fundamentals of Programming) upon receipt of official UVU syllabus and assignment specifications (replaces placeholder assignment `simple-python-functions`).
-
----
-
-## Deferred Architecture Proposals — After Pilot Readiness
-
-The following are forward-looking proposals, not implemented capabilities or approved live-data workflows. Official AI, Canvas automation, and additional languages remain outside the pilot milestone.
-
-- [ ] On-Prem Local AI Coaching for Official Canvas ZIP Runs (Deferred for pilot; official runs remain strictly AI-free per [decisions.md](../core/decisions.md) and [ferpa_analysis.md](../core/ferpa_analysis.md). Ingest opt-in, strict in-memory PII stripping, and non-blocking failure fallbacks remain defined for future consideration).
-- [ ] Configuration Schema Versioning & Migration Pipeline (Deferred while in testing stage without active live assignments).
-- [ ] Canvas automated feedback upload / distribution (manual Canvas grade CSV import remains assumed).
-- [ ] Multi-language or compiled-language execution pipelines beyond current Python Judge0 path.
+- [ ] Official-run AI coaching: needs explicit product/data approval, validated sanitization and non-blocking fallback; current official grading remains AI-free.
+- [ ] Config schema versioning/migration pipeline, when real assignment compatibility requires it.
+- [ ] Canvas automated feedback distribution/API integration; current flow uses staff CSV import and manual HTML feedback distribution.
+- [ ] Additional/compiled languages beyond the Python runtime.
