@@ -214,7 +214,7 @@ def test_create_assignment_invalid_course(client, admin_token):
         json=payload,
         headers=headers,
     )
-    assert response.status_code == 400
+    assert response.status_code == 404
 
 
 def test_delete_assignment_success(client, instructor_token, db_session):

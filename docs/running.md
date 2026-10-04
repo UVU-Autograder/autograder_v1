@@ -52,6 +52,9 @@ These are real shared-host requests: uploads consume quotas and staff edits chan
 | Browser regression suite | `npm run test:e2e`; first install Chromium with `npx playwright install chromium` from `frontend/` |
 | Full repository gate | `npm install`, `npm run setup:backend`, then `npm run check` |
 | Static deployment audit | `npm run check:deployment` with backend Python environment active |
+| Synthetic sandbox run | `python scripts/mock_sandbox_run.py CASE_ID --api http://10.115.20.200/api` |
+| AI feedback load test | `python scripts/mock_sandbox_load.py` on host with vLLM active |
+
 
 The existing [Playwright configuration](../frontend/playwright.config.ts) starts/reuses a local Python API; it is not a frontend-only or shared-host test runner. Full checks need Python 3.11+ and isolated test configuration. Backend fixtures reset tables: never point pytest at the on-prem database.
 

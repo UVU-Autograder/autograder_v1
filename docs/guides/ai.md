@@ -64,3 +64,19 @@ Draft while serving; review/approve targets before the strict builder. Choose a 
 [Eval tooling](../../backend/eval/README.md) owns cases/metrics; [training tools](../../backend/training/README.md) own CLI details. Compare models under matching cases/prompt/decoding; unguided checks native schema ability, guided matches production. Hard checks do not replace staff review of diagnosis/helpfulness.
 
 For failures, inspect `journalctl -u vllm-cs1410 -n 50 --no-pager` and the earlier EngineCore error. Re-run GPU kernel preflight for torch/NF4 failures; verify absolute adapter paths and model-license access. AI downtime must leave grading usable.
+
+## Sandbox load and end-to-end verification
+
+Test live sandbox grading and feedback without student data using synthetic eval cases:
+
+```bash
+# Exercise a single synthetic case end to end (standard library only)
+python scripts/mock_sandbox_run.py --list
+python scripts/mock_sandbox_run.py CASE_ID --api http://10.115.20.200/api
+
+# Load-test concurrent student feedback on the workstation (levels 1, 2, 4, 8, 16)
+python scripts/mock_sandbox_load.py --levels 1,2,4,8,16 --requests 48
+```
+
+The load tester grades synthetic runs through Judge0, then triggers simultaneous AI feedback requests, reporting p50/p95/max latency, throughput, fallback causes (timeout at 30s limit, guardrail, unreachable), vLLM queue depth, KV cache utilization, and GPU metrics via `nvidia-smi`.
+

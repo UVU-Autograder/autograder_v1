@@ -14,13 +14,16 @@ from app.domains.courses.schemas import (
 )
 
 
-def list_staff_courses(db: Session) -> StaffCourseListResponse:
-    rows = db.execute(
+def list_staff_courses(db: Session, allowed_course_ids: list[int] | None = None) -> StaffCourseListResponse:
+    query = (
         select(Course, func.count(Assignment.id))
         .outerjoin(Course.assignments)
         .where(Course.is_active.is_(True))
-        .group_by(Course.id)
-        .order_by(Course.code)
+    )
+    if allowed_course_ids is not None:
+        query = query.where(Course.id.in_(allowed_course_ids))
+    rows = db.execute(
+        query.group_by(Course.id).order_by(Course.code)
     ).all()
     return StaffCourseListResponse(
         courses=[

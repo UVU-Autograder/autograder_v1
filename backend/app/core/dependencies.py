@@ -1,8 +1,11 @@
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from app.domains.courses.models import Course
 
 from app.core.auth_utils import decode_access_token
 from app.db.session import get_db
@@ -131,6 +134,104 @@ def user_is_admin(user: User) -> bool:
         access.is_active and access.role is not None and access.role.name == "admin"
         for access in user.staff_access
     )
+
+
+def accessible_course_ids(db: Session, user: User) -> list[int] | None:
+    """Return course IDs the user may access, or None if admin (all courses)."""
+    if user_is_admin(user):
+        return None
+
+    from sqlalchemy import select
+    from app.domains.courses.models import Course
+
+    course_ids: set[int] = {
+        access.course_id
+        for access in user.staff_access
+        if access.is_active
+        and access.course_id is not None
+        and access.role is not None
+        and access.role.name in {"admin", "instructor", "IA"}
+    }
+
+    assigned_courses = db.scalars(
+        select(Course.id).where(
+            (Course.instructor_id == user.id) | (Course.ia_id == user.id),
+            Course.is_active.is_(True),
+        )
+    ).all()
+    course_ids.update(assigned_courses)
+
+    return sorted(list(course_ids))
+
+
+def assert_course_access(
+    db: Session,
+    user: User,
+    *,
+    course_code: str,
+    allow_ia: bool = True,
+    write_access: bool = False,
+) -> "Course":
+    """Require active staff access for course_code, enforcing IA read-only restrictions."""
+    from sqlalchemy import select
+    from app.domains.courses.models import Course
+
+    course = db.scalar(
+        select(Course).where(
+            Course.code == course_code,
+            Course.is_active.is_(True),
+        )
+    )
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found.",
+        )
+
+    if user_is_admin(user):
+        return course
+
+    is_instructor = (
+        course.instructor_id == user.id
+        or any(
+            access.is_active
+            and access.course_id == course.id
+            and access.role is not None
+            and access.role.name in {"admin", "instructor"}
+            for access in user.staff_access
+        )
+    )
+    if is_instructor:
+        return course
+
+    is_ia = (
+        course.ia_id == user.id
+        or any(
+            access.is_active
+            and access.course_id == course.id
+            and access.role is not None
+            and access.role.name == "IA"
+            for access in user.staff_access
+        )
+    )
+    if is_ia:
+        if write_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Instructional Assistants have read-only access to course configurations.",
+            )
+        if not allow_ia:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted for Instructional Assistants.",
+            )
+        return course
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="No staff access for this course.",
+    )
+
 
 
 

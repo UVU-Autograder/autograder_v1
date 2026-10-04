@@ -3,7 +3,13 @@ import io
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
-from app.core.dependencies import DbSession, require_role, require_staff
+from app.core.dependencies import (
+    DbSession,
+    assert_course_access,
+    require_role,
+    require_staff,
+)
+from app.domains.auth.models import User
 from app.domains.assignments.schemas import (
     ArtifactListResponse,
     ArtifactMetadata,
@@ -41,7 +47,9 @@ def create_new_assignment(
     course_id: str,
     payload: AssignmentCreate,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ) -> StaffAssignmentSetup:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
     try:
         assignment = create_assignment(db, course_id, payload)
         return build_staff_setup(assignment)
@@ -61,7 +69,9 @@ def delete_assignment(
     course_id: str,
     assignment_id: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
     success = deactivate_assignment(db, course_id, assignment_id)
     if not success:
         raise HTTPException(
@@ -75,7 +85,9 @@ def read_assignment_setup(
     course_id: str,
     assignment_id: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ) -> StaffAssignmentSetup:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=True, write_access=False)
     setup = get_staff_setup(db, course_id, assignment_id)
     if setup is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
@@ -92,7 +104,9 @@ def write_assignment_setup(
     assignment_id: str,
     payload: StaffAssignmentSetupUpdate,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ) -> StaffAssignmentSetup:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
     setup = update_staff_setup(db, course_id, assignment_id, payload)
     if setup is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
@@ -104,7 +118,9 @@ def validate_assignment(
     course_id: str,
     assignment_id: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
     from app.domains.assignments.validation import run_preflight_validation
 
     errors = run_preflight_validation(db, course_id, assignment_id)
@@ -116,7 +132,9 @@ def validate_model_solution(
     course_id: str,
     assignment_id: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
     from app.domains.assignments.validation import run_preflight_validation
 
     errors = run_preflight_validation(db, course_id, assignment_id)
@@ -139,7 +157,10 @@ def validate_model_solution(
 def get_validation_status(
     course_id: str,
     assignment_id: str,
+    db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=True, write_access=False)
     from app.domains.runs.tasks import get_run_result, get_run_state
 
     run_id = f"val:{course_id}:{assignment_id}"
@@ -175,7 +196,9 @@ def get_assignment_artifacts(
     course_id: str,
     assignment_id: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ) -> ArtifactListResponse:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=True, write_access=False)
     artifacts = list_artifacts(db, course_id, assignment_id)
     if artifacts is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
@@ -198,7 +221,9 @@ async def upload_assignment_artifact(
     artifact_key: str = Form(...),
     artifact_type: str = Form(...),
     file: UploadFile = File(...),
+    current_user: User = Depends(require_staff),
 ) -> ArtifactMetadata:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
     content = await file.read()
     artifact = save_artifact(
         db=db,
@@ -223,7 +248,9 @@ def delete_assignment_artifact(
     assignment_id: str,
     artifact_key: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ):
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
     success = delete_artifact(db, course_id, assignment_id, artifact_key)
     if not success:
         raise HTTPException(status_code=404, detail="Artifact or Assignment not found.")
@@ -236,7 +263,9 @@ def download_assignment_artifact(
     assignment_id: str,
     artifact_key: str,
     db: DbSession,
+    current_user: User = Depends(require_staff),
 ) -> StreamingResponse:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=True, write_access=False)
     res = get_artifact_content(db, course_id, assignment_id, artifact_key)
     if res is None:
         raise HTTPException(status_code=404, detail="Artifact not found.")
