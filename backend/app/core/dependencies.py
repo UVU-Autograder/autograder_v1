@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import Depends, HTTPException, Response, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
+    request: Request,
     db: DbSession,
     response: Response,
     credentials: Annotated[
@@ -69,15 +70,19 @@ def get_current_user(
             detail="User is inactive.",
         )
 
+    if request is not None:
+        request.state.actor_user_id = user.id
+
     # Generate new token with sliding expiration
     from app.core.auth_utils import create_access_token
-    refreshed_token = create_access_token(email=email, display_name=name)
+    refreshed_token = create_access_token(email=email, display_name=name, user_id=user.id)
     response.headers["x-refresh-token"] = refreshed_token
 
     return user
 
 
 def get_optional_user(
+    request: Request,
     db: DbSession,
     response: Response,
     credentials: Annotated[
@@ -88,7 +93,10 @@ def get_optional_user(
     if not credentials:
         return None
     try:
-        return get_current_user(db, response, credentials)
+        user = get_current_user(db=db, response=response, request=request, credentials=credentials)
+        if request is not None and user is not None:
+            request.state.actor_user_id = user.id
+        return user
     except HTTPException:
         return None
 

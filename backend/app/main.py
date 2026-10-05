@@ -7,11 +7,12 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.router import api_router
 from app.core.audit_log import configure_audit_logging
-from app.core.exception_handlers import AppError, app_error_handler
+from app.core.exception_handlers import AppError, app_error_handler, http_exception_handler
 from app.core.settings import get_settings
 from app.db.seed import initialize_database
 
@@ -36,6 +37,13 @@ def create_app() -> FastAPI:
         cast(
             Callable[[Request, Exception], JSONResponse],
             app_error_handler,
+        ),
+    )
+    app.add_exception_handler(
+        StarletteHTTPException,
+        cast(
+            Callable[[Request, Exception], JSONResponse],
+            http_exception_handler,
         ),
     )
     settings = get_settings()

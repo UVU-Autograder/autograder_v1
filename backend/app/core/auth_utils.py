@@ -6,16 +6,22 @@ from fastapi import HTTPException, status
 from app.core.settings import get_settings
 
 
-def create_access_token(email: str, display_name: str | None = None) -> str:
+def create_access_token(
+    email: str,
+    display_name: str | None = None,
+    user_id: int | None = None,
+) -> str:
     """Create a signed JWT token for the user."""
     settings = get_settings()
     expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expiration_minutes)
 
-    payload = {
+    payload: dict[str, object] = {
         "email": email.strip().lower(),
         "name": display_name,
         "exp": expire,
     }
+    if user_id is not None:
+        payload["user_id"] = user_id
 
     encoded_jwt = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return encoded_jwt

@@ -20,7 +20,7 @@ Use synthetic or completely anonymized validation data; mapped pseudonyms are no
 
 The independent [cleanup worker](../backend/app/domains/runs/cleanup_worker.py) reconciles at startup/every 60 seconds, tombstones access, retries deletion and reports overdue files. Database outages fail closed. Downtime preventing physical deletion remains a violation to resolve. Institutional handling applies to staff-downloaded exports.
 
-Logs/AI payloads exclude identifiers, code, raw filenames, traceback bodies and detailed feedback. [Python JSON audit logging](../backend/app/core/audit_log.py) allowlists fields, but its root-only filter does not establish process-wide redaction; destinations/coverage/access/rotation need verification. Any approved sensitive debugging trace must be purged within 24h.
+Logs/AI payloads exclude identifiers, code, raw filenames, traceback bodies and detailed feedback. [Python JSON audit logging](../backend/app/core/audit_log.py) allowlists fields and enforces process-wide redaction and traceback scrubbing via `RedactingFormatter` and framework logger wrappers; host destinations/rotation need verification. Any approved sensitive debugging trace must be purged within 24h.
 
 Back up only approved persistent metadata/instructor assets, excluding student detail and broker/results. [Recovery](guides/workstation.md#back-up-and-restore) describes current script limitations.
 

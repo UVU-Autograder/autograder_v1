@@ -85,7 +85,7 @@ def microsoft_login(request: MicrosoftLoginRequest, db: DbSession):
     if updated:
         db.commit()
 
-    token = create_access_token(email=email, display_name=user.display_name)
+    token = create_access_token(email=email, display_name=user.display_name, user_id=user.id)
 
     return {
         "access_token": token,
@@ -132,7 +132,7 @@ def mock_login(request: MockLoginRequest, db: DbSession):
         )
         assert user is not None
 
-    token = create_access_token(email=email, display_name=user.display_name)
+    token = create_access_token(email=email, display_name=user.display_name, user_id=user.id)
 
     return {
         "access_token": token,

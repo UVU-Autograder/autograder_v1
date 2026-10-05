@@ -4,10 +4,12 @@ import logging
 import sys
 import time
 
+from app.core.audit_log import configure_audit_logging
 from app.db.base import import_domain_models
 from app.domains.runs import retention
 
 import_domain_models()
+configure_audit_logging()
 
 
 def heartbeat(healthy: bool, counts: dict) -> None:
