@@ -6,6 +6,29 @@ For web access/local frontend testing, use [Running](../running.md). For worksta
 
 The Linux host needs Docker/Compose, `/dev/kvm`, Kata, Node/npm and Nginx; AI additionally needs its [GPU environment](ai.md). Preserve existing credentials/volumes. For first setup, copy [.env.example](../../.env.example) to `.env.local`, replacing development credentials.
 
+### Verified Host Environment (Dell Precision 5860)
+
+The dedicated on-prem workstation (`10.115.20.200`, hostname `CET-D24728`) operates with the following verified hardware, system, and network specifications:
+
+- **Host Model:** Dell Precision 5860 Tower (`CET-D24728`).
+- **Operating System & Kernel:** Ubuntu 24.04 LTS (kernel `6.17.0-1032-oem x86_64`).
+- **Accelerator / GPU:** NVIDIA RTX PRO 4500 Blackwell (32,623 MiB / 32 GB VRAM).
+  - VRAM allocation: ~30.6 GB allocated to KV cache and model weights (`vllm-cs1410.service`), ~1.5 GB free.
+- **Local AI Feedback Service:** `vllm-cs1410.service` serving Gemma 4 12B QAT (W4A16) base model + `cs1410-p2c` reviewed LoRA adapter on `127.0.0.1:8001` (host loopback only).
+- **Network Listeners & Perimeter:**
+  - External Listeners (`0.0.0.0`): Nginx reverse proxy (`:80`) and OpenSSH (`:22`).
+  - Internal Loopback Listeners (`127.0.0.1`): FastAPI backend (`:8000`), Next.js frontend (`:3000`), vLLM (`:8001`), Judge0 (`:2358`), PostgreSQL (`:5432`), Redis (`:6379`).
+  - Network isolation: External connection attempts directly to `:8000` or `:3000` are actively refused; all application traffic is required to route through Nginx.
+- **Storage & Volume Layout:**
+  - Host filesystem `/data`: dedicated storage for base LLM model weights (`/data/models/gemma4-12b-qat-w4a16`) and LoRA adapters (`/data/models/adapters/`).
+  - Docker Named Volumes:
+    - `uvu-autograder_backend_data`: mounted at `/data` in backend and worker containers for instructor artifacts (`/data/artifacts`), zero-retention workspaces (`/data/workspaces`), and retention manifests (`/data/retention`).
+    - `uvu-autograder_postgres_data`: persistent PostgreSQL 16 database storage (`/var/lib/postgresql/data`).
+    - `uvu-autograder_redis_data`: persistent Redis 7 AOF store (`/data`).
+- **Active Checkout & Runtime User:**
+  - Path: `/home/dev/autograder_v1` on branch `dev`.
+  - Service user: `dev` (uid 1003, gid 1003, groups: `sudo`, `docker`, `ollama`).
+
 | Setting | Host-network requirement |
 | --- | --- |
 | `DATABASE_URL` | Application PostgreSQL at `127.0.0.1:5432`; match initialized credentials |
@@ -52,7 +75,7 @@ sudo nginx -t
 
 First install/adapt the [frontend unit](../../scripts/autograder-frontend.service) for the real user, checkout and npm path, and install the reviewed [HTTP](../../scripts/nginx/autograder-http.conf)/[TLS](../../scripts/nginx/autograder-tls.conf) proxy asset. Reload Nginx only after validation. Register the actual `/api/auth/microsoft/callback` origin with Entra; provision institutional DNS/certificates for live use.
 
-The bundled proxy intercepts Next.js auth routes, and the backend image binds `0.0.0.0` under host networking. Resolve [deployment gaps](../planning/backlog.md#p0--institutional-scope-and-deployment) and verify actual listeners before shared/live operation.
+The bundled proxy routes Next.js auth routes directly to Next.js, and internal services (FastAPI `:8000`, Next.js `:3000`, vLLM `:8001`, PostgreSQL `:5432`, Redis `:6379`, Judge0 `:2358`) bind strictly to `127.0.0.1` under host networking with verified loopback isolation, ensuring all external traffic passes through Nginx.
 
 ## Check health and monitor
 
@@ -77,15 +100,17 @@ For a drained shutdown use `dc down` without `-v`. Prefer forward fixes; older r
 
 ## Back up and restore
 
-[Bash](../../scripts/backup_metadata.sh) and [PowerShell](../../scripts/backup_metadata.ps1) allowlist persistent metadata. They omit config history/derived scoring rows and archive checkout-local assets, potentially skipping Compose's actual named-volume assets. Fix/verify coverage before treating them as recovery backups; exclude student detail.
+[Bash](../../scripts/backup_metadata.sh) and [PowerShell](../../scripts/backup_metadata.ps1) allowlist persistent metadata (`alembic_version`, `roles`, `users`, `courses`, `staff_access`, `sections`, `modules`, `assignments`, `assignment_configs`, `assignment_config_history`, `assignment_artifacts`, `scoring_items`) while strictly excluding ephemeral runs, workspaces, and student code (FERPA boundary).
 
-For a verified layout:
+Instructor test artifacts are extracted directly from Compose's named volume `backend_data` (`/data/artifacts` inside the `backend` container), falling back to `${REPO_ROOT}/data/artifacts` in local environments. Database operations respect `POSTGRES_USER` and `POSTGRES_DB` configuration overrides.
+
+For a verified backup:
 
 ```bash
 bash scripts/backup_metadata.sh --backup --output-dir /approved/metadata-backup
 bash scripts/backup_metadata.sh --restore /approved/metadata-backup
 ```
 
-PowerShell uses `-Backup -OutputDir` or `-RestoreDir`. Verify DB role/name assumptions; rehearse on an isolated matching schema, rebuilding projections and validating assets/synthetic grading. Schedule/ownership/recovery targets remain in the backlog.
+PowerShell uses `-Backup -OutputDir <Path>` or `-RestoreDir <Path>`. Always test restores on an isolated matching schema. Schedule, frequency, retention, and offsite disaster recovery ownership remain documented in the backlog.
 
 [Dispatch](../../backend/scripts/validate_dispatch_host.py) and [retention](../../backend/scripts/validate_retention_host.py) validators own synthetic batch/failure/outage procedures. Review CLI/phase order, keep manifests and run permission checks as the application user. They are maintenance tests, not daily health checks.

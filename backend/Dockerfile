@@ -23,7 +23,10 @@ RUN useradd --create-home --shell /usr/sbin/nologin autograder \
     && mkdir -p /data/artifacts /data/workspaces \
     && chown -R autograder:autograder /app /data
 
+ENV UVICORN_HOST=127.0.0.1 \
+    UVICORN_PORT=8000
+
 USER autograder
 
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host ${UVICORN_HOST:-127.0.0.1} --port ${UVICORN_PORT:-8000}"]

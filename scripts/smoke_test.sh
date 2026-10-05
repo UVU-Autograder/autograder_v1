@@ -11,7 +11,9 @@ FAIL=0
 
 check() {
   local label="$1" url="$2" expect="$3"
-  status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+  status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || true)
+  status="${status:-000}"
+  status="${status:0:3}"
   if [ "$status" = "$expect" ]; then
     echo "  ✓ ${label}: HTTP ${status}"
     PASS=$((PASS + 1))
@@ -27,7 +29,11 @@ echo ""
 
 # --- Backend API & Reverse Proxy ---
 echo "[Backend API & Reverse Proxy]"
-check "Health endpoint (Direct :8000)" "http://${HOST}:8000/health" "200"
+if [ "$HOST" = "127.0.0.1" ] || [ "$HOST" = "localhost" ]; then
+  check "Health endpoint (Direct :8000)" "http://${HOST}:8000/health" "200"
+else
+  check "Direct :8000 loopback isolation (refused)" "http://${HOST}:8000/health" "000"
+fi
 check "Health probe (via Nginx)" "http://${HOST}/health" "200"
 check "API prefix rewrite (/api/health)" "http://${HOST}/api/health" "200"
 
@@ -38,11 +44,19 @@ check "Login redirect" "http://${HOST}/staff/login" "200"
 
 # --- Execution Engine (Judge0) ---
 echo "[Execution Engine (Judge0)]"
-check "Judge0 language runtime (:2358)" "http://${HOST}:2358/languages" "200"
+if [ "$HOST" = "127.0.0.1" ] || [ "$HOST" = "localhost" ]; then
+  check "Judge0 language runtime (:2358)" "http://${HOST}:2358/languages" "200"
+else
+  check "Direct :2358 loopback isolation (refused)" "http://${HOST}:2358/languages" "000"
+fi
 
 # --- Local AI Feedback Service (vLLM) ---
 echo "[Local AI Feedback Service (vLLM)]"
-check "vLLM model server (:8001)" "http://${HOST}:8001/v1/models" "200"
+if [ "$HOST" = "127.0.0.1" ] || [ "$HOST" = "localhost" ]; then
+  check "vLLM model server (:8001)" "http://${HOST}:8001/v1/models" "200"
+else
+  check "Direct :8001 loopback isolation (refused)" "http://${HOST}:8001/v1/models" "000"
+fi
 
 # --- Docker services ---
 if [ "$HOST" = "127.0.0.1" ] || [ "$HOST" = "localhost" ]; then

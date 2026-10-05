@@ -1,7 +1,15 @@
 name: uvu-autograder
 
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "5"
+
 services:
   postgres:
+    <<: *default-logging
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -21,6 +29,7 @@ services:
       retries: 10
 
   redis:
+    <<: *default-logging
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
@@ -36,6 +45,7 @@ services:
 
   # Build with `docker compose build judge0` after judge0.Dockerfile changes; day-to-day `up` reuses uvu-autograder-judge0:latest.
   judge0:
+    <<: *default-logging
     build:
       context: .
       dockerfile: judge0.Dockerfile
@@ -82,6 +92,7 @@ services:
 
   # Languages table is created by Judge0 on first boot, so seed after Judge0 is healthy.
   judge0-language-seed:
+    <<: *default-logging
     image: postgres:16-alpine
     restart: "no"
     depends_on:
@@ -109,6 +120,7 @@ services:
       ]
 
   judge0-worker:
+    <<: *default-logging
     build:
       context: .
       dockerfile: judge0.Dockerfile
@@ -152,6 +164,7 @@ services:
     command: ["/bin/sh", "-c", "cd /api && bundle exec rake resque:work QUEUE=*"]
 
   backend:
+    <<: *default-logging
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -167,6 +180,8 @@ services:
       judge0-language-seed:
         condition: service_completed_successfully
     environment:
+      UVICORN_HOST: ${UVICORN_HOST:-127.0.0.1}
+      UVICORN_PORT: ${UVICORN_PORT:-8000}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder}
       REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379/0}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
@@ -198,10 +213,12 @@ services:
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:8001/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-cs1410-p2c}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://10.115.20.200,http://10.115.20.200:3000,https://autograder-frontend-mockup.vercel.app}
+    command: ["sh", "-c", "exec uvicorn app.main:app --host ${UVICORN_HOST:-127.0.0.1} --port ${UVICORN_PORT:-8000}"]
     volumes:
       - backend_data:/data
 
   celery-worker:
+    <<: *default-logging
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -247,6 +264,7 @@ services:
       - backend_data:/data
 
   dispatch-worker:
+    <<: *default-logging
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -274,6 +292,7 @@ services:
 
   # Independent of Redis and grading workers; starts after schema migration.
   cleanup-worker:
+    <<: *default-logging
     build:
       context: .
       dockerfile: backend/Dockerfile

@@ -36,17 +36,23 @@ if (Test-Path $EnvFile) {
 }
 
 $MetadataTables = @(
+    "alembic_version",
     "roles",
     "users",
-    "staff_access",
     "courses",
+    "staff_access",
     "sections",
     "modules",
     "assignments",
     "assignment_configs",
+    "assignment_config_history",
     "assignment_artifacts",
-    "alembic_version"
+    "scoring_items"
 )
+
+# Resolve database credentials from environment or defaults
+$PgUser = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "autograder" }
+$PgDb = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { "autograder" }
 
 function Do-Backup {
     Write-Host "=== UVU Autograder: Initiating Persistent Metadata Backup ===" -ForegroundColor Cyan
@@ -67,22 +73,40 @@ function Do-Backup {
     $DataSqlPath = Join-Path $OutputDir "metadata_data.sql"
     $SchemaSqlPath = Join-Path $OutputDir "metadata_schema.sql"
 
-    # Execute pg_dump inside postgres container
-    & docker @ComposeArgs exec -T postgres pg_dump -U autograder -d autograder --data-only --inserts @TableArgs | Out-File -FilePath $DataSqlPath -Encoding utf8
-    & docker @ComposeArgs exec -T postgres pg_dump -U autograder -d autograder --schema-only @TableArgs | Out-File -FilePath $SchemaSqlPath -Encoding utf8
+    # Execute pg_dump inside postgres container using configured credentials
+    & docker @ComposeArgs exec -T postgres pg_dump -U $PgUser -d $PgDb --data-only --inserts @TableArgs | Out-File -FilePath $DataSqlPath -Encoding utf8
+    & docker @ComposeArgs exec -T postgres pg_dump -U $PgUser -d $PgDb --schema-only @TableArgs | Out-File -FilePath $SchemaSqlPath -Encoding utf8
 
     Write-Host "  Database dump complete: metadata_data.sql" -ForegroundColor Green
 
     # 2. Archive Assignment Test Artifacts (Instructor-owned only)
     Write-Host "--> Archiving instructor assignment artifacts..." -ForegroundColor Yellow
-    $ArtifactSrc = Join-Path $RepoRoot "data\artifacts"
     $ArtifactZip = Join-Path $OutputDir "artifacts.zip"
 
-    if (Test-Path $ArtifactSrc) {
+    $ContainerRunning = $false
+    try {
+        $backendId = (& docker @ComposeArgs ps -q backend 2>$null).Trim()
+        if ($backendId) { $ContainerRunning = $true }
+    } catch {}
+
+    if ($ContainerRunning) {
+        Write-Host "  Copying from backend container named volume (/data/artifacts)..." -ForegroundColor Gray
+        $TempDir = Join-Path $OutputDir "temp_artifacts"
+        if (Test-Path $TempDir) { Remove-Item -Recurse -Force $TempDir }
+        New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+        & docker @ComposeArgs cp "backend:/data/artifacts" $TempDir
+        $CopiedArtifacts = Join-Path $TempDir "artifacts"
+        if (Test-Path $CopiedArtifacts) {
+            Compress-Archive -Path "$CopiedArtifacts\*" -DestinationPath $ArtifactZip -Force
+            Remove-Item -Recurse -Force $TempDir
+            Write-Host "  Artifact archive complete from container volume: artifacts.zip" -ForegroundColor Green
+        }
+    } elseif (Test-Path (Join-Path $RepoRoot "data\artifacts")) {
+        $ArtifactSrc = Join-Path $RepoRoot "data\artifacts"
         Compress-Archive -Path "$ArtifactSrc\*" -DestinationPath $ArtifactZip -Force
-        Write-Host "  Artifact archive complete: artifacts.zip" -ForegroundColor Green
+        Write-Host "  Artifact archive complete from host: artifacts.zip" -ForegroundColor Green
     } else {
-        Write-Host "  Notice: $ArtifactSrc not found. Skipping artifact archive." -ForegroundColor Gray
+        Write-Host "  Notice: artifacts not found. Creating placeholder." -ForegroundColor Gray
     }
 
     # 3. Create Manifest
@@ -125,16 +149,34 @@ function Do-Restore {
     }
 
     Write-Host "--> Restoring database metadata..." -ForegroundColor Yellow
-    Get-Content $DataSqlPath -Raw | & docker @ComposeArgs exec -T -i postgres psql -U autograder -d autograder
+    Get-Content $DataSqlPath -Raw | & docker @ComposeArgs exec -T -i postgres psql -U $PgUser -d $PgDb
 
     $ArtifactZip = Join-Path $SourceDir "artifacts.zip"
     if (Test-Path $ArtifactZip) {
         Write-Host "--> Restoring assignment artifacts..." -ForegroundColor Yellow
+        $TempRestoreDir = Join-Path $SourceDir "temp_restore"
+        if (Test-Path $TempRestoreDir) { Remove-Item -Recurse -Force $TempRestoreDir }
+        New-Item -ItemType Directory -Path $TempRestoreDir -Force | Out-Null
+        Expand-Archive -Path $ArtifactZip -DestinationPath $TempRestoreDir -Force
+
+        $ContainerRunning = $false
+        try {
+            $backendId = (& docker @ComposeArgs ps -q backend 2>$null).Trim()
+            if ($backendId) { $ContainerRunning = $true }
+        } catch {}
+
+        if ($ContainerRunning) {
+            Write-Host "  Restoring to backend container named volume (/data/artifacts)..." -ForegroundColor Gray
+            & docker @ComposeArgs cp "$TempRestoreDir\." "backend:/data/artifacts"
+        }
+
         $ArtifactDest = Join-Path $RepoRoot "data\artifacts"
         if (-not (Test-Path $ArtifactDest)) {
             New-Item -ItemType Directory -Path $ArtifactDest -Force | Out-Null
         }
-        Expand-Archive -Path $ArtifactZip -DestinationPath $ArtifactDest -Force
+        Copy-Item -Path "$TempRestoreDir\*" -Destination $ArtifactDest -Recurse -Force
+        Remove-Item -Recurse -Force $TempRestoreDir
+        Write-Host "  Artifact restore complete." -ForegroundColor Green
     }
 
     Write-Host "`n=== Metadata Restore Complete ===" -ForegroundColor Green

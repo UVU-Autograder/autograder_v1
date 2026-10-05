@@ -54,3 +54,6 @@ backend/training/output/
 /cs1410.zip
 *.zip
 !backend/app/db/seeds/**/*.zip
+
+# Backup archives
+/backups/

@@ -34,7 +34,11 @@ Write-Host "=== UVU Autograder Smoke Test ===" -ForegroundColor Cyan
 Write-Host "Host: $TargetHost`n"
 
 Write-Host "[Backend API & Reverse Proxy]" -ForegroundColor Yellow
-Check-Endpoint "Health endpoint (Direct :8000)" "http://${TargetHost}:8000/health" 200
+if ($TargetHost -eq "127.0.0.1" -or $TargetHost -eq "localhost") {
+    Check-Endpoint "Health endpoint (Direct :8000)" "http://${TargetHost}:8000/health" 200
+} else {
+    Check-Endpoint "Direct :8000 loopback isolation (refused)" "http://${TargetHost}:8000/health" 0
+}
 Check-Endpoint "Health probe (via Nginx)" "http://${TargetHost}/health" 200
 Check-Endpoint "API prefix rewrite (/api/health)" "http://${TargetHost}/api/health" 200
 
@@ -43,10 +47,18 @@ Check-Endpoint "Sandbox page" "http://${TargetHost}/sandbox" 200
 Check-Endpoint "Login redirect" "http://${TargetHost}/staff/login" 200
 
 Write-Host "[Execution Engine (Judge0)]" -ForegroundColor Yellow
-Check-Endpoint "Judge0 language runtime (:2358)" "http://${TargetHost}:2358/languages" 200
+if ($TargetHost -eq "127.0.0.1" -or $TargetHost -eq "localhost") {
+    Check-Endpoint "Judge0 language runtime (:2358)" "http://${TargetHost}:2358/languages" 200
+} else {
+    Check-Endpoint "Direct :2358 loopback isolation (refused)" "http://${TargetHost}:2358/languages" 0
+}
 
 Write-Host "[Local AI Feedback Service (vLLM)]" -ForegroundColor Yellow
-Check-Endpoint "vLLM model server (:8001)" "http://${TargetHost}:8001/v1/models" 200
+if ($TargetHost -eq "127.0.0.1" -or $TargetHost -eq "localhost") {
+    Check-Endpoint "vLLM model server (:8001)" "http://${TargetHost}:8001/v1/models" 200
+} else {
+    Check-Endpoint "Direct :8001 loopback isolation (refused)" "http://${TargetHost}:8001/v1/models" 0
+}
 
 if ($TargetHost -eq "127.0.0.1" -or $TargetHost -eq "localhost") {
     Write-Host "[Docker Services]" -ForegroundColor Yellow

@@ -233,6 +233,26 @@ def audit_network_isolation(env_vars: dict[str, str], is_strict: bool) -> None:
         else:
             record_fail("network", "docker-compose.yml port bindings", "One or more services expose raw ports without bind variable defaults")
 
+    # Inspect backend Dockerfile loopback bind
+    backend_dockerfile = REPO_ROOT / "backend" / "Dockerfile"
+    if backend_dockerfile.is_file():
+        dockerfile_text = backend_dockerfile.read_text(encoding="utf-8")
+        if "--host 0.0.0.0" in dockerfile_text:
+            record_fail("network", "backend/Dockerfile network bind", "Hardcoded --host 0.0.0.0 exposed under host networking")
+        elif "127.0.0.1" in dockerfile_text:
+            record_pass("network", "backend/Dockerfile network bind", "Bound strictly to loopback 127.0.0.1")
+        else:
+            record_warn("network", "backend/Dockerfile network bind", "Loopback 127.0.0.1 not explicitly configured in Dockerfile")
+
+    # Inspect frontend systemd unit template
+    frontend_service = REPO_ROOT / "scripts" / "autograder-frontend.service"
+    if frontend_service.is_file():
+        fe_text = frontend_service.read_text(encoding="utf-8")
+        if "127.0.0.1" in fe_text and "0.0.0.0" not in fe_text:
+            record_pass("network", "autograder-frontend.service network bind", "Bound strictly to loopback 127.0.0.1:3000")
+        else:
+            record_fail("network", "autograder-frontend.service network bind", "Frontend service template not restricted to loopback 127.0.0.1")
+
     # Inspect vLLM service definition
     vllm_service = REPO_ROOT / "backend" / "training" / "vllm-cs1410.service"
     if vllm_service.is_file():
@@ -243,6 +263,14 @@ def audit_network_isolation(env_vars: dict[str, str], is_strict: bool) -> None:
             record_fail("network", "vllm-cs1410.service network bind", "vLLM service definition not bound to 127.0.0.1:8001")
     else:
         record_warn("network", "vllm-cs1410.service network bind", f"Service file not found at {vllm_service}")
+
+    # Inspect docker-compose.yml container log rotation limits
+    if dc_file.is_file():
+        dc_text = dc_file.read_text(encoding="utf-8")
+        if "max-size:" in dc_text and "max-file:" in dc_text:
+            record_pass("network", "docker-compose.yml log rotation", "Explicit max-size and max-file caps configured")
+        else:
+            record_warn("network", "docker-compose.yml log rotation", "Missing explicit container log rotation caps")
 
 
 # --- Section 4: Retention Contracts ---
