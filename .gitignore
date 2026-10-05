@@ -55,5 +55,8 @@ backend/training/output/
 *.zip
 !backend/app/db/seeds/**/*.zip
 
+# Frontend Deployment Artifacts
+.vercel/
+
 # Backup archives
 /backups/
