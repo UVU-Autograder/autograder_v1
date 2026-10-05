@@ -10,7 +10,7 @@ import {
   EditorLayoutState,
   OpenFile,
 } from './editor-layout';
-import { readFilesAsOpenFiles } from './file-utils';
+import { languageFromFilename, readFilesAsOpenFiles } from './file-utils';
 
 import { Assignment } from '@/features/assignments/types';
 
@@ -40,6 +40,7 @@ type AssignmentFileContextType = {
   uploadFiles: (files: FileList | File[]) => Promise<void>;
   updateFileContent: (filename: string, content: string) => void;
   deleteFile: (filename: string) => void;
+  renameFile: (oldFilename: string, newFilename: string) => boolean;
 };
 
 const AssignmentFileContext = createContext<AssignmentFileContextType | null>(null);
@@ -68,7 +69,7 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
       file = {
         filename,
         content: options?.content ?? '',
-        language: options?.language ?? 'python',
+        language: options?.language ?? languageFromFilename(filename),
         category: options?.category ?? 'workspace',
       };
       setFiles((prev) => ({ ...prev, [filename]: file! }));
@@ -229,6 +230,56 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
     });
   };
 
+  const renameFile = (oldFilename: string, newFilename: string): boolean => {
+    const trimmedOld = oldFilename.trim();
+    const trimmedNew = newFilename.trim();
+    if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) return false;
+
+    const existing = files[trimmedOld];
+    if (!existing || existing.category !== 'workspace') return false;
+    if (files[trimmedNew]) return false;
+
+    setFiles((prev) => {
+      const target = prev[trimmedOld];
+      if (!target || prev[trimmedNew]) return prev;
+      const next = { ...prev };
+      delete next[trimmedOld];
+      next[trimmedNew] = {
+        ...target,
+        filename: trimmedNew,
+        language: target.kind === 'image' ? 'image' : languageFromFilename(trimmedNew),
+      };
+      return next;
+    });
+
+    setEditorLayout((prev) => {
+      const nextPanes = { ...prev.panes };
+      let changed = false;
+
+      for (const [paneId, pane] of Object.entries(prev.panes)) {
+        const tabIndex = pane.tabs.indexOf(trimmedOld);
+        const isActive = pane.activeTab === trimmedOld;
+
+        if (tabIndex !== -1 || isActive) {
+          changed = true;
+          const nextTabs = [...pane.tabs];
+          if (tabIndex !== -1) {
+            nextTabs[tabIndex] = trimmedNew;
+          }
+          nextPanes[paneId] = {
+            ...pane,
+            tabs: nextTabs,
+            activeTab: isActive ? trimmedNew : pane.activeTab,
+          };
+        }
+      }
+
+      return changed ? { ...prev, panes: nextPanes } : prev;
+    });
+
+    return true;
+  };
+
   const { panes, layout, activePaneId } = editorLayout;
 
   return (
@@ -251,6 +302,7 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
         uploadFiles,
         updateFileContent,
         deleteFile,
+        renameFile,
       }}
     >
       {children}

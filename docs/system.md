@@ -25,7 +25,7 @@ Course defaults and module concepts inherit through the selected module; assignm
 
 ## Public sandbox
 
-Students need no account. They discover active sandbox assignments, upload/create/edit/delete their own workspace files, download their files/ZIP, and submit the current bundle. Provided assignment material is read-only; renaming is planned.
+Students need no account. They discover active sandbox assignments, upload/create/edit/delete their own workspace files, download their files/ZIP, and submit the current bundle. Provided assignment material is read-only; workspace file renaming is supported with real-time validation, multi-pane tab sync, and required entrypoint checks.
 
 Results include projected scores, stdout, test/assertion outcomes, expected/actual I/O, diffs and concept warnings. Session-bound results are transient (normally one hour); queued work can be canceled. There is no persistent student attempt history or server-generated sandbox export.
 

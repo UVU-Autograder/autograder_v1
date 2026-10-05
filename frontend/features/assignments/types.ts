@@ -94,6 +94,7 @@ export type Assignment = AssignmentsDetails & {
     rubric: RubricItem[];
     rubric_groups: RubricGroup[];
     completion_requirements: CompletionRequirement[];
+    config_json?: AssignmentConfigV1;
 };
 
 export type AssignmentsResponse = {

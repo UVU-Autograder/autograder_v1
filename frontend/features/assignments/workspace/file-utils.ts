@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import type { OpenFile } from './editor-layout';
+import type { Assignment } from '@/features/assignments/types';
 
 const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
   py: 'python',
@@ -31,9 +32,85 @@ const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
 };
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
+const ILLEGAL_FILENAME_CHARS = /[/\\:*?"<>|]/;
 
 export function basename(filename: string) {
   return filename.split(/[/\\]/).pop() ?? filename;
+}
+
+export function sanitizeFilename(filename: string): string {
+  return filename
+    .trim()
+    .replace(/^(\.\.[/\\])+/, '')
+    .replace(/[/\\]/g, '_');
+}
+
+export function validateFilename(
+  filename: string,
+  existingFiles: string[],
+  currentFilename?: string
+): { valid: boolean; error?: string } {
+  const trimmed = filename.trim();
+  if (!trimmed) {
+    return { valid: false, error: 'Filename cannot be empty.' };
+  }
+  if (trimmed.length > 255) {
+    return { valid: false, error: 'Filename must be 255 characters or fewer.' };
+  }
+  if (ILLEGAL_FILENAME_CHARS.test(trimmed)) {
+    return { valid: false, error: 'Filename contains invalid characters (/ \\ : * ? " < > |).' };
+  }
+  if (
+    trimmed === '.' ||
+    trimmed === '..' ||
+    trimmed.startsWith('../') ||
+    trimmed.startsWith('..\\')
+  ) {
+    return { valid: false, error: 'Relative path navigation is not permitted.' };
+  }
+  const isDuplicate = existingFiles.some(
+    (existing) =>
+      existing !== currentFilename &&
+      existing.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (isDuplicate) {
+    return { valid: false, error: `A file named "${trimmed}" already exists.` };
+  }
+  return { valid: true };
+}
+
+export function checkBundleRequirements(
+  files: Record<string, OpenFile>,
+  assignment?: Assignment | null
+): {
+  hasRequiredEntrypoint: boolean;
+  expectedEntrypoint: string | null;
+  missingRequiredFiles: string[];
+} {
+  const entrypoint = assignment?.config_json?.bundle?.entrypoint ?? null;
+  const workspaceFiles = Object.values(files)
+    .filter((f) => f.category === 'workspace')
+    .map((f) => f.filename);
+
+  const hasRequiredEntrypoint = !entrypoint || workspaceFiles.includes(entrypoint);
+
+  const missingRequiredFiles: string[] = [];
+  const requiredFileConfigs = assignment?.config_json?.bundle?.file_requirements ?? [];
+  for (const req of requiredFileConfigs) {
+    if (req.paths && req.paths.length > 0) {
+      for (const requiredPath of req.paths) {
+        if (!workspaceFiles.includes(requiredPath)) {
+          missingRequiredFiles.push(requiredPath);
+        }
+      }
+    }
+  }
+
+  return {
+    hasRequiredEntrypoint,
+    expectedEntrypoint: entrypoint,
+    missingRequiredFiles,
+  };
 }
 
 export function languageFromFilename(filename: string) {
@@ -47,6 +124,7 @@ export function isImageFilename(filename: string) {
   const extension = basename(filename).split('.').pop()?.toLowerCase();
   return Boolean(extension && IMAGE_EXTENSIONS.has(extension));
 }
+
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

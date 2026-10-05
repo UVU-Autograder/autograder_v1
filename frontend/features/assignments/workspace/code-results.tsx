@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,9 +21,9 @@ import type {
 } from "@/features/assignments/types";
 import VisualDiffViewer from "@/components/visual-diff-viewer";
 import MarkdownRenderer from "@/components/markdown-renderer";
-import { Sparkles, Loader2, RefreshCw, Bot } from "lucide-react";
+import { Sparkles, Loader2, RefreshCw, Bot, AlertTriangle } from "lucide-react";
 import { useAssignmentFile } from "./assignment-file-context";
-import { createSubmissionBundle } from "./file-utils";
+import { checkBundleRequirements, createSubmissionBundle } from "./file-utils";
 
 function cleanTestMessage(message: string | null | undefined): string {
   if (!message) return "";
@@ -125,7 +125,11 @@ export default function CodeResults({
   maxScore,
   initialQuota,
 }: CodeResultsProps) {
-  const { files } = useAssignmentFile();
+  const { files, assignment } = useAssignmentFile();
+  const bundleStatus = useMemo(
+    () => checkBundleRequirements(files, assignment),
+    [files, assignment]
+  );
   const [showCheckCode] = useState(true);
   const [showFeedback, setShowFeedback] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
@@ -391,6 +395,14 @@ export default function CodeResults({
           />
         </div>
       </details>
+      {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span>
+            Required entrypoint <strong>{bundleStatus.expectedEntrypoint}</strong> is missing from workspace files.
+          </span>
+        </div>
+      )}
       <Button
         onClick={handleRunCode}
         disabled={isLoading || isQuotaExceeded}
