@@ -270,7 +270,10 @@ _FAILED_ITEM_RE = re.compile(r"Test case '([^']+)' failed")
 
 def manual_item_keys(assignment_id: str) -> set[str]:
     """Scoring-item keys the seed config marks as manual (staff-graded, no pytest)."""
-    config_path = SEEDS_DIR / assignment_id.replace("-", "_") / "config_json.example.json"
+    seed_folder = SEEDS_DIR / assignment_id
+    if not seed_folder.exists():
+        seed_folder = SEEDS_DIR / assignment_id.replace("-", "_")
+    config_path = seed_folder / "config.json"
     try:
         items = json.loads(config_path.read_text()).get("scoring_items", [])
     except (OSError, ValueError):
@@ -412,7 +415,10 @@ def check_sandbox(api: str, seed: str, timeout_s: float) -> None:
     course_id, assignment = target
 
     seed_dir = SEEDS_DIR / seed
-    config = json.loads((seed_dir / "config_json.example.json").read_text())
+    if not seed_dir.exists():
+        seed_dir = SEEDS_DIR / seed.replace("-", "_")
+    config_path = seed_dir / "config.json"
+    config = json.loads(config_path.read_text())
     filenames = [
         a["display_filename"]
         for a in config.get("artifacts", {}).values()

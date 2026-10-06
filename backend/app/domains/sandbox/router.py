@@ -122,6 +122,10 @@ async def create_run(
 
     allowed_concepts = effective_allowed_concepts(db_assignment)
 
+    run_config = dict(db_assignment.config.config) if db_assignment.config and db_assignment.config.config else {}
+    if db_assignment.description and not run_config.get("description"):
+        run_config["description"] = db_assignment.description
+
     run, session, error_status = sandbox_service.create_run(
         course_id=course_id,
         assignment_id=assignment_id,
@@ -129,7 +133,7 @@ async def create_run(
         assignment_exists=True,
         max_score=assignment.max_score,
         zip_data=zip_data,
-        config_json=db_assignment.config.config_json,
+        config=run_config,
         artifact_refs=artifact_refs,
         allowed_concepts=allowed_concepts,
         stdin=stdin,

@@ -59,7 +59,7 @@ def grade_sandbox_run(
     self,
     run_id: str,
     zip_data_b64: str,
-    config_json: dict,
+    config: dict,
     artifact_refs: dict[str, str],
     allowed_concepts: list[str],
     stdin: str | None = None,
@@ -75,7 +75,7 @@ def grade_sandbox_run(
     return execute_sandbox_run(
         run_id=run_id,
         zip_data_b64=zip_data_b64,
-        config_json=config_json,
+        config=config,
         artifact_refs=artifact_refs,
         allowed_concepts=allowed_concepts,
         stdin=stdin,
@@ -137,7 +137,7 @@ def validate_assignment_model_solution(
             assignment = get_assignment_for_course(db, course_code, assignment_slug)
             if not assignment or not assignment.config:
                 raise ValueError("Assignment config not found.")
-            config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+            config = AssignmentConfigV1.model_validate(assignment.config.config)
             max_score = sum(
                 item.points
                 for item in config.scoring_items

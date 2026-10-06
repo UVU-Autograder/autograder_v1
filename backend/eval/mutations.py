@@ -384,7 +384,7 @@ MUTATIONS = [
                 "replace": "    y = -10"}]},
 
     # ------------------------------------------------------------- lab1
-    {"case_id": "gen_lab1_wrong_output_name", "seed": "lab-1-image-processing", "category": "single_failure",
+    {"case_id": "gen_lab1_wrong_output_name", "seed": "lab1", "category": "single_failure",
      "notes": "saves to the wrong output filename",
      "edits": [{"file": "bears2.py", "find": "file_out = 'bears2.jpg'", "replace": "file_out = 'bears_gray.jpg'"}]},
 ]
@@ -430,20 +430,20 @@ P2_INJECT_DS2 = (
 
 TRAIN_MUTATIONS = [
     # ------------------------------------------------------------- lab1 (m1)
-    {"case_id": "p2_lab1_part1_never_saves", "seed": "lab-1-image-processing", "category": "single_failure",
+    {"case_id": "p2_lab1_part1_never_saves", "seed": "lab1", "category": "single_failure",
      "notes": "bears2.py builds the grayscale image but never calls save()",
      "edits": [{"file": "bears2.py", "find": "new_image.save(file_out_path)", "replace": "# new_image.save(file_out_path)"}]},
-    {"case_id": "p2_lab1_blank_output", "seed": "lab-1-image-processing", "category": "single_failure",
+    {"case_id": "p2_lab1_blank_output", "seed": "lab1", "category": "single_failure",
      "notes": "bears2.py computes gray but never writes it into the new pixel map (all-black image)",
      "edits": [{"file": "bears2.py", "find": "        new_pixel_map[x, y] = (gray, gray, gray)", "replace": "        gray_pixel = (gray, gray, gray)"}]},
-    {"case_id": "p2_lab1_wrong_input_name", "seed": "lab-1-image-processing", "category": "single_failure",
+    {"case_id": "p2_lab1_wrong_input_name", "seed": "lab1", "category": "single_failure",
      "notes": "bears2.py opens bears.jpg, which does not exist (FileNotFoundError)",
      "edits": [{"file": "bears2.py", "find": "filename = 'bears_copy.jpg'", "replace": "filename = 'bears.jpg'"}]},
-    {"case_id": "p2_lab1_concept_type_hints", "seed": "lab-1-image-processing", "category": "concept_violation",
+    {"case_id": "p2_lab1_concept_type_hints", "seed": "lab1", "category": "concept_violation",
      "notes": "annotated variables (type hints, Module 2) in a Module 1 lab; output is correct",
      "edits": [{"file": "bears2.py", "find": "width, height = orig_image.size",
                 "replace": "width: int = orig_image.size[0]\nheight: int = orig_image.size[1]"}]},
-    {"case_id": "p2_lab1_all_pass_main_function", "seed": "lab-1-image-processing", "category": "all_pass",
+    {"case_id": "p2_lab1_all_pass_main_function", "seed": "lab1", "category": "all_pass",
      "notes": "valid alternative: bears3.py wrapped in a main() function",
      "edits": [{"file": "bears3.py", "find": "from PIL import Image\n", "replace": "from PIL import Image\n\n\ndef main():\n    pass\n"},
                {"file": "bears3.py", "find": "new_image.save(file_out_path)", "replace": "new_image.save(file_out_path)\nmain()"}]},
@@ -934,7 +934,7 @@ TRAIN_MUTATIONS = [
     # detail even when there is none -- inventing typos on clean eval solutions.
     # These are the unchanged model solutions: nothing unusual to point out.
     # (ds1, ds2, ds4, lab5, lab7, ds10 are left out: their plain solution is an eval case.)
-    {"case_id": "p2_plain_lab1_all_pass", "seed": "lab-1-image-processing", "category": "all_pass",
+    {"case_id": "p2_plain_lab1_all_pass", "seed": "lab1", "category": "all_pass",
      "notes": "unchanged model solution: nothing unusual to point out", "edits": []},
     {"case_id": "p2_plain_lab2_all_pass", "seed": "lab2", "category": "all_pass",
      "notes": "unchanged model solution: nothing unusual to point out", "edits": []},

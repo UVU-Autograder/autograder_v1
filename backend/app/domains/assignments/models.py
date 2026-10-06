@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     event,
     func,
@@ -86,6 +87,7 @@ class Assignment(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     module_id: Mapped[int | None] = mapped_column(ForeignKey("modules.id", ondelete="SET NULL"), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     course: Mapped["Course"] = relationship(back_populates="assignments")
     module: Mapped["Module | None"] = relationship(back_populates="assignments")
@@ -114,7 +116,7 @@ class AssignmentConfig(Base):
         ForeignKey("assignments.id", ondelete="CASCADE"),
         unique=True,
     )
-    config_json: Mapped[dict] = mapped_column(JSON)
+    config: Mapped[dict] = mapped_column(JSON)
     version: Mapped[int] = mapped_column(Integer, default=1)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -130,7 +132,7 @@ class AssignmentConfigHistory(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     assignment_id: Mapped[int] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
-    config_json: Mapped[dict] = mapped_column(JSON)
+    config: Mapped[dict] = mapped_column(JSON)
     version: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -57,7 +57,7 @@ def step(run_id: int, token: str) -> dict:
                 ))
                 if not assignment or not assignment.config:
                     raise ValueError("assignment_unavailable")
-                config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+                config = AssignmentConfigV1.model_validate(assignment.config.config)
                 artifact_refs = {a.artifact_key: a.storage_ref for a in assignment.artifacts if a.storage_ref}
                 concepts = effective_allowed_concepts(assignment)
             preloaded = preload_grading_artifacts(config, artifact_refs)

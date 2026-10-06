@@ -53,13 +53,16 @@ def load_cases() -> dict[str, dict]:
 
 def bundle_for(case: dict) -> bytes:
     """The case's (mutated) Python files plus the seed's other submitted files (images, reflections)."""
-    files = dict(case["code_files"])
-    config = json.loads((SEEDS / case["assignment_slug"].replace("-", "_") / "config_json.example.json").read_text())
+    seed_folder = SEEDS / case["assignment_slug"]
+    if not seed_folder.exists():
+        seed_folder = SEEDS / case["assignment_slug"].replace("-", "_")
+    cfg_file = seed_folder / "config.json"
+    config = json.loads(cfg_file.read_text())
     extra: dict[str, bytes] = {}
     for art in config.get("artifacts", {}).values():
         name = art.get("display_filename")
         if art.get("type") == "model_solution" and name and name not in files:
-            path = SEEDS / case["assignment_slug"].replace("-", "_") / name
+            path = seed_folder / name
             if path.is_file():
                 extra[name] = path.read_bytes()
     buffer = io.BytesIO()

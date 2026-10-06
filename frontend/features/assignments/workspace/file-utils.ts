@@ -87,7 +87,7 @@ export function checkBundleRequirements(
   expectedEntrypoint: string | null;
   missingRequiredFiles: string[];
 } {
-  const entrypoint = assignment?.config_json?.bundle?.entrypoint ?? null;
+  const entrypoint = assignment?.config?.bundle?.entrypoint ?? null;
   const workspaceFiles = Object.values(files)
     .filter((f) => f.category === 'workspace')
     .map((f) => f.filename);
@@ -95,7 +95,7 @@ export function checkBundleRequirements(
   const hasRequiredEntrypoint = !entrypoint || workspaceFiles.includes(entrypoint);
 
   const missingRequiredFiles: string[] = [];
-  const requiredFileConfigs = assignment?.config_json?.bundle?.file_requirements ?? [];
+  const requiredFileConfigs = assignment?.config?.bundle?.file_requirements ?? [];
   for (const req of requiredFileConfigs) {
     if (req.paths && req.paths.length > 0) {
       for (const requiredPath of req.paths) {

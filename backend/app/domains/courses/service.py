@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.domains.assignments.models import Assignment
-from app.domains.assignments.service import validate_config_json
+from app.domains.assignments.service import validate_config
 from app.domains.courses.models import Course, Module
 from app.domains.courses.schemas import (
     CourseConceptsResponse,
@@ -54,7 +54,7 @@ def list_staff_assignments(db: Session, course_code: str) -> StaffAssignmentList
     for assignment in sorted(course.assignments, key=lambda item: item.slug):
         if not assignment.is_active or assignment.config is None:
             continue
-        config = validate_config_json(assignment.config.config_json)
+        config = validate_config(assignment.config.config)
         assignments.append(
             StaffAssignmentSummary(
                 id=assignment.slug,

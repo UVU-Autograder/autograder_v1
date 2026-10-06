@@ -18,12 +18,12 @@ The submitted file must define:
 
 ## Files In This Example
 
-- `config_json.example.json`: example value for `assignment_configs.config_json`.
+- `config.json`: seed value for `assignment_configs.config_json`.
 - `assignment_tests.py`: the pytest file artifact for the assignment.
 - `model_solution.py`: instructor-owned model solution file body. During model-solution validation, this body is placed at the required bundle path `student_functions.py`.
 - `pytest.ini`: support-file example that registers the app grading markers.
 
-In production, `config_json.example.json` would be stored in `assignment_configs.config_json`. The Python and INI files would be stored through `assignment_artifacts` using generated opaque storage references.
+In production, `config.json` would be stored in `assignment_configs.config_json`. The Python and INI files would be stored through `assignment_artifacts` using generated opaque storage references.
 
 ## Student Bundle Shape
 

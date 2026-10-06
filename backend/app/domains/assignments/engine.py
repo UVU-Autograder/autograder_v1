@@ -69,14 +69,14 @@ class AssignmentSpecificationEngine:
             errors.append(f"Assignment '{assignment_slug}' not found.")
             return errors
 
-        if assignment.config is None or not assignment.config.config_json:
-            errors.append("Assignment is missing configuration json.")
+        if assignment.config is None or not assignment.config.config:
+            errors.append("Assignment is missing configuration.")
             return errors
 
-        config_json = assignment.config.config_json
+        config_raw = assignment.config.config
 
         try:
-            config = AssignmentConfigV1.model_validate(config_json)
+            config = AssignmentConfigV1.model_validate(config_raw)
         except ValidationError as e:
             for err in e.errors():
                 loc = " -> ".join(str(part) for part in err.get("loc", ()))
@@ -186,7 +186,7 @@ class AssignmentSpecificationEngine:
         if assignment is None or not assignment.config:
             raise ValueError(f"Assignment '{assignment_slug}' configuration not found.")
 
-        config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+        config = AssignmentConfigV1.model_validate(assignment.config.config)
         max_score = sum(item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit)
 
         model_artifacts = {

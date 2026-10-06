@@ -3,10 +3,12 @@
 import React from "react";
 import { Assignment, ConceptMetadata } from "@/features/assignments/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import MarkdownRenderer from "@/components/markdown-renderer";
 import {
   CheckCircle2Icon,
   AlertCircleIcon,
   ShieldCheckIcon,
+  FileTextIcon,
 } from "lucide-react";
 
 type ProblemOverviewProps = {
@@ -46,6 +48,24 @@ export function ProblemOverview({
           </div>
         </div>
       </div>
+
+      {/* Assignment Description / Instructions */}
+      {assignment.description ? (
+        <Card data-testid="assignment-description-card">
+          <CardHeader className="py-3 px-4 flex flex-row items-center gap-2">
+            <FileTextIcon className="w-4 h-4 text-primary" />
+            <CardTitle className="text-sm font-semibold text-foreground">
+              Assignment Description
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-3 px-4">
+            <MarkdownRenderer
+              content={assignment.description}
+              className="text-xs text-foreground leading-relaxed"
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Constraints & Submission Rules */}
       {constraints.length > 0 && (

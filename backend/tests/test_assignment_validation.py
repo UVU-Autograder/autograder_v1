@@ -102,7 +102,7 @@ def test_add():
 def test_rev():
     pass
 """
-    # config_json requires: add_numbers, reverse_words, count_vowels
+    # config requires: add_numbers, reverse_words, count_vowels
     # We save this pytest file
     save_artifact(
         db=db_session,

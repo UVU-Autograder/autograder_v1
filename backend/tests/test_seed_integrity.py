@@ -13,6 +13,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from app.db.seed import SEEDS_DIR, resolve_seed_artifact_path
 from app.db.seeds.shared.python_autograder_helpers import import_student_modules
 from app.domains.assignments.schemas import AssignmentConfigV1
+from app.domains.assignments.service import resolve_seed_description
 
 TYPED_ASSIGNMENTS = frozenset(
     {"ds1", "ds2", "ds3", "ds4", "ds5", "ds6", "ds7", "ds8", "ds9", "ds10", "lab6"}
@@ -56,8 +57,8 @@ def get_assignment_seed_dirs() -> list[Path]:
 
 @pytest.mark.parametrize("seed_dir", get_assignment_seed_dirs(), ids=lambda d: d.name)
 def test_seed_directory_integrity(seed_dir: Path) -> None:
-    config_file = seed_dir / "config_json.example.json"
-    assert config_file.exists(), f"Missing config_json.example.json in {seed_dir.name}"
+    config_file = seed_dir / "config.json"
+    assert config_file.exists(), f"Missing config.json in {seed_dir.name}"
 
     with open(config_file, "r", encoding="utf-8") as f:
         config_data = json.load(f)
@@ -66,6 +67,9 @@ def test_seed_directory_integrity(seed_dir: Path) -> None:
         config = AssignmentConfigV1.model_validate(config_data)
     except ValidationError as exc:
         pytest.fail(f"Config validation failed for {seed_dir.name}: {exc}")
+
+    desc = resolve_seed_description(seed_dir)
+    assert desc, f"{seed_dir.name} is missing description file (description.html or description.md)"
 
     artifacts = config_data.get("artifacts", {})
     model_filenames = {

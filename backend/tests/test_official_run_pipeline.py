@@ -382,7 +382,7 @@ async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_worksp
     assert assignment.config is not None
 
     # Load configuration
-    config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+    config = AssignmentConfigV1.model_validate(assignment.config.config)
 
     # 2. Get artifact refs
     artifact_refs = {}

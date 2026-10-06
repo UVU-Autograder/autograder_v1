@@ -54,6 +54,7 @@ export type ArtifactConfig = {
 };
 
 export type AssignmentConfigV1 = {
+    description?: string | null;
     bundle: BundleConfig;
     artifacts?: Record<string, ArtifactConfig>;
     concepts?: {
@@ -78,6 +79,7 @@ export type AssignmentsDetails = {
     id: string;
     course_id: string;
     title: string;
+    description?: string | null;
     sandbox_enabled: boolean;
     language: string;
     max_score: number;
@@ -94,7 +96,7 @@ export type Assignment = AssignmentsDetails & {
     rubric: RubricItem[];
     rubric_groups: RubricGroup[];
     completion_requirements: CompletionRequirement[];
-    config_json?: AssignmentConfigV1;
+    config?: AssignmentConfigV1;
 };
 
 export type AssignmentsResponse = {
@@ -199,6 +201,7 @@ export type StaffAssignmentSetup = {
     course_id: string;
     assignment_id: string;
     title: string;
+    description?: string | null;
     language: string;
     sandbox_enabled: boolean;
     canvas_ref: string | null;
@@ -209,7 +212,7 @@ export type StaffAssignmentSetup = {
     rubric_groups?: RubricGroup[];
     completion_requirements?: CompletionRequirement[];
     artifacts: StaffArtifact[];
-    config_json: AssignmentConfigV1;
+    config: AssignmentConfigV1;
     module_id?: number | null;
     effective_allowed_concepts?: string[];
 };
@@ -217,6 +220,7 @@ export type StaffAssignmentSetup = {
 export type AssignmentCreatePayload = {
     slug: string;
     title: string;
+    description?: string | null;
     language: string;
     canvas_ref?: string | null;
     sandbox_enabled?: boolean;

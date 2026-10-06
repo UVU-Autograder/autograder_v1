@@ -29,13 +29,13 @@ Students need no account. They discover active sandbox assignments, upload/creat
 
 Results include projected scores, stdout, test/assertion outcomes, expected/actual I/O, diffs and concept warnings. Session-bound results are transient (normally one hour); queued work can be canceled. There is no persistent student attempt history or server-generated sandbox export.
 
-AI receives sanitized code and grounded failures, validates its complete response before streaming, and falls back when unavailable/invalid. It explains; it never changes grades or supplies solutions. Current assignment descriptions are titles, and AI requirements derive from automated scoring labels.
+AI receives sanitized code and grounded failures, validates its complete response before streaming, and falls back when unavailable/invalid. It explains; it never changes grades or supplies solutions. Assignment markdown summaries are rendered for students in the problem overview, sanitized and truncated to 1,000 characters for AI prompts (`PROMPT_VERSION = "v7"`), and kept in sync with automated scoring requirements.
 
 ## Assignment setup and scoring
 
 Staff use the wizard/artifact editors to configure bundles, automated/manual items and models, run preflight, and validate reference solutions. CS1410 has 17 packages; CS1400 uses `simple-python-functions`. Pygame combines headless tests with manual visual criteria.
 
-Canonical `assignment_configs.config_json` includes bundle paths/globs, pytest/model/support artifacts, unified scoring items, concept policy, completion thresholds, dependencies and rubric groups. Stable scoring keys map to `ag_<key>` markers; all tests sharing a key must pass for its points. Extra credit can exceed the base total; completion thresholds are separate. Database scoring rows are derived projections.
+Canonical `assignment_configs.config` includes bundle paths/globs, pytest/model/support artifacts, unified scoring items, concept policy, completion thresholds, dependencies and rubric groups; instructor-authored markdown/HTML instructions persist on `assignments.description`. Stable scoring keys map to `ag_<key>` markers; all tests sharing a key must pass for its points. Extra credit can exceed the base total; completion thresholds are separate. Database scoring rows are derived projections.
 
 Student runs receive pytest/support assets, excluding model solutions. AST checks detect syntax, blocked constructs and concept policy; pytest determines correctness. [Authoring](guides/assignments.md) links models, examples and helpers.
 

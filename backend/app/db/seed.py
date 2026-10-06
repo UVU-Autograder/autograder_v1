@@ -15,8 +15,8 @@ from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Module, Section
 
 SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
-EXAMPLE_DIR = SEEDS_DIR / "simple_python_functions"
-EXAMPLE_CONFIG = EXAMPLE_DIR / "config_json.example.json"
+EXAMPLE_DIR = SEEDS_DIR / "simple-python-functions"
+EXAMPLE_CONFIG = EXAMPLE_DIR / "config.json"
 CS1410_CATALOG = SEEDS_DIR / "cs1410_catalog.json"
 
 

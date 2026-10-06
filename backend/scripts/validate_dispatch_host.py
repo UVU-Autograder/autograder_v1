@@ -33,7 +33,7 @@ from app.domains.runs.service import official_run_dir, official_run_zip_path
 
 import_domain_models()
 MANIFEST = retention.control_root() / "dispatch_validation_manifest.json"
-MODEL = Path(__file__).resolve().parents[1] / "app/db/seeds/simple_python_functions/model_solution.py"
+MODEL = Path(__file__).resolve().parents[1] / "app/db/seeds/simple-python-functions/model_solution.py"
 
 
 def report(**values):

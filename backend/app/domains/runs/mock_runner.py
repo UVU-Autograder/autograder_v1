@@ -41,7 +41,7 @@ def run_mock_official_run(run_id: int) -> None:
         config = None
         if assignment and assignment.config:
             try:
-                config = AssignmentConfigV1.model_validate(assignment.config.config_json)
+                config = AssignmentConfigV1.model_validate(assignment.config.config)
                 max_score = config.base_points
             except Exception:
                 pass

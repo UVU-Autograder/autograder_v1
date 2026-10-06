@@ -46,6 +46,8 @@ type AssignmentEditorContextType = {
   // Metadata
   title: string;
   setTitle: (t: string) => void;
+  description: string;
+  setDescription: (d: string) => void;
   moduleId: number | null;
   setModuleId: (m: number | null) => void;
   sandboxEnabled: boolean;
@@ -138,6 +140,7 @@ export function AssignmentEditorProvider({
 
   // General Metadata
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [moduleId, setModuleId] = useState<number | null>(null);
   const [sandboxEnabled, setSandboxEnabled] = useState(true);
   const [language, setLanguage] = useState("python");
@@ -230,6 +233,7 @@ export function AssignmentEditorProvider({
       ]);
 
       setTitle(setupData.title || "");
+      setDescription(setupData.description || setupData.config?.description || "");
       setModuleId(setupData.module_id ?? null);
       setSandboxEnabled(setupData.sandbox_enabled ?? true);
       setLanguage(setupData.language || "python");
@@ -238,7 +242,7 @@ export function AssignmentEditorProvider({
       setCourseDefaultConcepts(courseConcepts.default_concepts || []);
       setCourseModules(courseConcepts.modules || []);
 
-      const cfg = setupData.config_json || ({} as AssignmentConfigV1);
+      const cfg = setupData.config || ({} as AssignmentConfigV1);
       const bundle = cfg.bundle || { entrypoint: "main.py" };
       setEntrypoint(bundle.entrypoint || "main.py");
 
@@ -621,7 +625,7 @@ export function AssignmentEditorProvider({
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      // Build artifacts dict for config_json reference check
+      // Build artifacts dict for config reference check
       const artifactsDict: Record<string, { type: "pytest_file" | "model_solution" | "support_file"; display_filename?: string }> = {};
       artifacts.forEach((art) => {
         const artType = (["pytest_file", "model_solution", "support_file"].includes(art.artifact_type)
@@ -642,7 +646,11 @@ export function AssignmentEditorProvider({
         ? rubricGroups
         : scoringItems.map((item) => ({ key: item.key, label: item.label }));
 
-      const configJson: AssignmentConfigV1 = {
+      const trimmedDescription = description.trim();
+      const finalDescription = trimmedDescription === "" ? null : trimmedDescription;
+
+      const config: AssignmentConfigV1 = {
+        description: finalDescription,
         bundle: {
           entrypoint,
           file_requirements: fileRequirements,
@@ -660,9 +668,10 @@ export function AssignmentEditorProvider({
 
       await apiClient.put(`/staff/courses/${courseId}/assignments/${assignmentId}/setup`, {
         title,
+        description: finalDescription,
         sandbox_enabled: sandboxEnabled,
         module_id: moduleId,
-        config_json: configJson,
+        config,
       });
 
       setSaveSuccess(true);
@@ -714,6 +723,8 @@ export function AssignmentEditorProvider({
 
         title,
         setTitle,
+        description,
+        setDescription,
         moduleId,
         setModuleId,
         sandboxEnabled,
