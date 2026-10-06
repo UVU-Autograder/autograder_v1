@@ -1,4 +1,4 @@
-import { apiClient, ApiError, resolveUrl } from "@/lib/api-client";
+import { apiClient, ApiError, isMockApiEnabled, resolveUrl } from "@/lib/api-client";
 import {
   Assignment,
   AssignmentsResponse,
@@ -174,6 +174,13 @@ export async function streamSandboxAiFeedback(
   sessionId: string,
   onChunk: (chunk: string) => void,
 ): Promise<string> {
+  if (isMockApiEnabled()) {
+    const feedback = await getSandboxAiFeedback(runId, sessionId);
+    const text = feedback.ai_feedback || "All tests passed cleanly.";
+    onChunk(text);
+    return text;
+  }
+
   const url = resolveUrl(`/sandbox/runs/${runId}/ai-feedback/stream`);
   const response = await fetch(url, {
     method: "POST",

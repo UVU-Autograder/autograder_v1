@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, isMockApiEnabled } from "@/lib/api-client";
 
 function getOppositePath(pathname: string): string | null {
   if (pathname.startsWith("/staff")) {
@@ -108,6 +108,11 @@ export default function Navbar() {
     getRolesSnapshot,
     getRolesServerSnapshot,
   );
+  const [isMockActive, setIsMockActive] = useState(false);
+
+  useEffect(() => {
+    setIsMockActive(isMockApiEnabled());
+  }, []);
   const roles: string[] = JSON.parse(rolesJson);
   const isAdmin = hasStaffToken && roles.includes("admin");
 
@@ -179,6 +184,11 @@ export default function Navbar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {isMockActive && (
+          <span className="rounded bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            Mock API
+          </span>
+        )}
         <ThemeToggle />
         {isStaffLoggedIn && (
           <Button variant="outline" size="sm" onClick={handleLogout}>

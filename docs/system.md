@@ -6,7 +6,7 @@ Canvas owns course content and official grades. The autograder owns grading conf
 
 | Layer | Stack / maintained source |
 | --- | --- |
-| Frontend | Next.js App Router, React, TypeScript, Tailwind/Shadcn/Radix, Monaco, JSZip; [routes](../frontend/app/), [features](../frontend/features/), [dependencies](../frontend/package.json) |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind/Shadcn/Radix, Monaco, JSZip; offline development mode (`npm run dev`) with synthetic backend fixtures; [routes](../frontend/app/), [features](../frontend/features/), [dependencies](../frontend/package.json) |
 | API and database | FastAPI, Pydantic v2, SQLAlchemy, Alembic; Python 3.11+, PostgreSQL, SQLite development mode; [domains](../backend/app/domains/), [dependencies](../backend/requirements.txt) |
 | Assignment/grading | Specification and grading engines, AST inspection, pytest, result normalization/parsing; [assignments](../backend/app/domains/assignments/), [grading](../backend/app/domains/grading/), [AST](../backend/app/integrations/ast_checker/) |
 | Scheduling and cleanup | Celery/Redis transport, PostgreSQL execution tickets/dispatch records, shared-volume locks and independent dispatch/cleanup workers; [runs](../backend/app/domains/runs/) |
@@ -18,8 +18,8 @@ Canvas owns course content and official grades. The autograder owns grading conf
 Generated [OpenAPI](schemas/openapi.json) and [assignment JSON Schema](schemas/config_v1.schema.json) describe interfaces; source models own their shape.
 
 ## Hierarchy and administration
-
-**Course → modules → assignments**, alongside **course → sections**. Assignments are course-owned; sections scope official runs and staff grants. Admins manage courses/sections, staff roles/grants and monitoring. Instructors author assignments and grade granted sections; IAs review/grade granted sections without editing setup. Required access scopes and known enforcement gaps are in the [backlog](planning/backlog.md).
+ 
+**Course → modules → assignments**, alongside **course → sections**. Assignments are course-owned; sections scope official runs and staff grants. Admins manage courses/sections, staff roles/grants and monitoring. Course-scoped staff authorization is strictly enforced: instructors hold full read/write authority over assigned courses, IAs receive read-only setup access with 403 on mutations, and unassigned staff are denied access across courses, assignments, and artifacts. Section-scoped authority governs official runs.
 
 Course defaults and module concepts inherit through the selected module; assignment denylists subtract concepts. Assignment configuration/history and instructor artifacts persist. Published master-course versions, section adoption and update notices are planned work.
 
@@ -61,7 +61,7 @@ Durable tickets, checkpoints and ownership leases support bounded admission, fai
 The target is 50 active users with queued grading. Deployment is single-host with reconciliation/restarts, not automatic host failover. Cloud/load balancing and additional languages remain future work.
 
 ## Staff identity, administration and access
-
-Entra verifies university identity; active staff provisioning/grants supply authority. Backend checks tenant/issuer/audience, binds Azure OID, and issues JWTs. JWT and UI inactivity defaults are 60 minutes, with token refresh and sign-in redirects. Production/Microsoft mode disables mock login and rejects the default JWT secret.
-
-Routes are grouped under `/sandbox`, `/staff/login`, `/staff/courses` and `/staff/admin`. Section authorization precedes expired-run responses. [Considerations](considerations.md) owns privacy/retention; [Running](running.md) owns access/testing.
+ 
+Entra verifies university identity; active staff provisioning/grants supply authority. Backend checks tenant/issuer/audience, binds Azure OID, and issues JWTs. JWT and UI inactivity defaults are 60 minutes, with sliding token refresh (`x-refresh-token`), cross-tab session tracking (`useSyncExternalStore`), and sign-in redirects. Production/Microsoft mode disables mock login and rejects default secrets. Nginx enforces longest-prefix routing (`/api/auth/microsoft/`) directly to Next.js (`127.0.0.1:3000`) ahead of general `/api/` routing to FastAPI (`127.0.0.1:8000`), while internal services operate under strict loopback isolation (`127.0.0.1`).
+ 
+Routes are grouped under `/sandbox`, `/staff/login`, `/staff/courses` and `/staff/admin`. Section authorization precedes expired-run responses. Process-wide audit logging scrubs PII and exception tracebacks across all framework loggers, emitting structured `"auth.access_denied"` records on 401/403 events. [Considerations](considerations.md) owns privacy/retention; [Running](running.md) owns access/testing.

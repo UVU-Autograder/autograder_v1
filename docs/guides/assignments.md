@@ -13,7 +13,7 @@ IAs read setup without editing it. Student workspace editing is separate from in
 
 ## Seed workflow
 
-The [CS1410 catalog](../../backend/app/db/seeds/cs1410_catalog.json) owns all 17 titles/module placements. [Packages](../../backend/app/db/seeds/) contain configs, format-agnostic descriptions (`description.html` or `description.md`), explicit tests, standalone models and resources. CS1400 remains a placeholder.
+The [CS1410 catalog](../../backend/app/db/seeds/cs1410_catalog.json) owns all 17 titles/module placements. [Packages](../../backend/app/db/seeds/) contain configs, markdown descriptions (`description.md`), explicit tests, standalone models and resources. CS1400 remains a placeholder.
 
 Use [AssignmentConfigV1](../../backend/app/domains/assignments/schemas.py) and an [actual config](../../backend/app/db/seeds/simple-python-functions/config.json). Use `scoring_items`, top-level dependencies and `pytest_file`/`model_solution`/`support_file` artifacts. Each scoring key maps to a pytest marker:
 

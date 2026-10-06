@@ -22,7 +22,7 @@ npm --prefix frontend test
 npm --prefix frontend run dev
 ```
 
-Open `http://localhost:3000`; stop with Ctrl+C. Types, lint and Vitest component/unit tests need no backend, Python, Docker or GPU. The local server starts while the workstation is down, but course/assignment pages currently need API data. The [offline UI gap](planning/backlog.md#planned-product-improvements) is tracked for correction.
+Open `http://localhost:3000`; stop with Ctrl+C. Types, lint and Vitest component/unit tests need no backend, Python, Docker or GPU. In development mode, the frontend automatically serves offline synthetic fixtures (`npm --prefix frontend run dev`), showing a `Mock API` badge in the navbar and populating representative courses, assignments, instant sandbox executions, AI coaching, and staff review screens. To connect to a live backend instead, run `npm --prefix frontend run dev:live` (`NEXT_PUBLIC_MOCK_API=false`). Mock mode is strictly locked off in production builds.
 
 Use the frontend command above: root `npm run dev` starts a local backend as well.
 
@@ -49,6 +49,7 @@ These are real shared-host requests: uploads consume quotas and staff edits chan
 | Check | Command from repository root |
 | --- | --- |
 | Frontend production build | `npm --prefix frontend run build` |
+| Backend test suite | `pytest backend/tests -q` (with `backend/venv` active) |
 | Browser regression suite | `npm run test:e2e`; first install Chromium with `npx playwright install chromium` from `frontend/` |
 | Full repository gate | `npm install`, `npm run setup:backend`, then `npm run check` |
 | Static deployment audit | `npm run check:deployment` with backend Python environment active |
@@ -58,7 +59,7 @@ These are real shared-host requests: uploads consume quotas and staff edits chan
 
 The existing [Playwright configuration](../frontend/playwright.config.ts) starts/reuses a local Python API; it is not a frontend-only or shared-host test runner. Full checks need Python 3.11+ and isolated test configuration. Backend fixtures reset tables: never point pytest at the on-prem database.
 
-Activate `backend/venv` before direct Python commands: `backend\venv\Scripts\Activate.ps1` in PowerShell or `source backend/venv/bin/activate` in Bash. Regenerate changed contracts with `python backend/scripts/generate_schema.py` and `python backend/scripts/generate_openapi.py`; use Alembic migrations for database changes.
+Activate `backend/venv` before direct Python commands: `backend\venv\Scripts\Activate.ps1` in PowerShell or `source backend/venv/bin/activate` in Bash. Regenerate changed contracts with `python backend/scripts/generate_schema.py` and `python backend/scripts/generate_openapi.py` (or `npm run openapi:generate`); use Alembic migrations for database changes.
 
 ## Verify a release
 
