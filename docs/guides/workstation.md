@@ -111,6 +111,6 @@ bash scripts/backup_metadata.sh --backup --output-dir /approved/metadata-backup
 bash scripts/backup_metadata.sh --restore /approved/metadata-backup
 ```
 
-PowerShell uses `-Backup -OutputDir <Path>` or `-RestoreDir <Path>`. Always test restores on an isolated matching schema. Schedule, frequency, retention, and offsite disaster recovery ownership remain documented in the backlog.
+PowerShell uses `-Backup -OutputDir <Path>` or `-RestoreDir <Path>`. Always test restores on an isolated matching schema. Schedule, frequency, retention, and offsite disaster recovery ownership remain documented in [GitHub Issues](https://github.com/UVU-Autograder/autograder_v1/issues) ([#27](https://github.com/UVU-Autograder/autograder_v1/issues/27)).
 
 [Dispatch](../../backend/scripts/validate_dispatch_host.py) and [retention](../../backend/scripts/validate_retention_host.py) validators own synthetic batch/failure/outage procedures. Review CLI/phase order, keep manifests and run permission checks as the application user. They are maintenance tests, not daily health checks.

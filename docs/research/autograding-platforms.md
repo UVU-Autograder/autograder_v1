@@ -8,7 +8,7 @@ Keep the current FastAPI/Next.js, Canvas-batch and Judge0/Kata architecture for 
 
 The most consequential finding is that **host isolation, reliable scoring and grading reproducibility are separate properties**. Kata protects a host boundary; it does not make a pytest process that imports student code a trusted result producer. A run snapshot stabilizes an executing batch; our current implementation creates it at first execution, leaving a queued batch exposed to intervening assignment edits. A correct reference solution passing tests does not establish that incorrect solutions fail. These are better investments than acquiring another course platform.
 
-This document is a research reference and a set of proposed decisions. It does not authorize a deployment, change product/privacy policy, implement features or create a second task tracker. [The temporary backlog](../planning/backlog.md) remains the sole active work list. Accepted proposals should be folded into that existing backlog or its eventual GitHub replacement, rather than tracked in parallel here.
+This document is a research reference and a set of proposed decisions. It does not authorize a deployment, change product/privacy policy, implement features or create a second task tracker. Active proposals are tracked as [GitHub Issues](https://github.com/UVU-Autograder/autograder_v1/issues), rather than tracked in parallel here.
 
 ## Reading map
 
@@ -312,7 +312,7 @@ Extend the existing meaningful suites rather than mirror implementation details 
 | Piston | [MIT text](https://github.com/engineer-man/piston/blob/de2b365ac759670a3a0d13ea208a0869a92c7e64/LICENSE) | Isolate and downloaded language packages are separate components |
 | Anubis | [MIT](https://github.com/AnubisLMS/Anubis/blob/894ed020997ff22235e0d4b42a6f5dd9ea14f5e7/LICENSE) | IDE/cluster/Git infrastructure has its own support and data obligations |
 
-This table reports source metadata, not legal guidance or institutional approval. UVU's own ownership/public-release questions remain in the existing backlog. No upstream code was copied into the application. Independently implemented patterns still need technical review and an operating owner; a permissive license does not make a large integration inexpensive.
+This table reports source metadata, not legal guidance or institutional approval. UVU's own ownership/public-release questions remain tracked in [GitHub Issues](https://github.com/UVU-Autograder/autograder_v1/issues) ([#48](https://github.com/UVU-Autograder/autograder_v1/issues/48)). No upstream code was copied into the application. Independently implemented patterns still need technical review and an operating owner; a permissive license does not make a large integration inexpensive.
 
 Before any actual dependency adoption, check the exact release and current support/security notices for the chosen component. The inspected default-branch commit is a reproducible research snapshot, not a recommendation to deploy that revision. Prefer maintained small dependencies already needed by the course over importing a whole platform's assumptions.
 

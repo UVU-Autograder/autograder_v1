@@ -4,7 +4,7 @@ Choose one of these three workflows. New clones need Git, npm and Node 22.12+ wi
 
 ## Access the full on-prem stack
 
-The reported workstation is `10.115.20.200`. DNS/TLS and institutional SSO remain [open deployment work](planning/backlog.md).
+The reported workstation is `10.115.20.200`. DNS/TLS and institutional SSO remain [open deployment work](https://github.com/UVU-Autograder/autograder_v1/issues?q=is%3Aissue+is%3Aopen+label%3A%22area%3A+ops%22) ([#20](https://github.com/UVU-Autograder/autograder_v1/issues/20), [#21](https://github.com/UVU-Autograder/autograder_v1/issues/21)).
 
 For the reported LAN HTTP configuration, open `http://10.115.20.200/sandbox` or `/staff/login`; API health is `http://10.115.20.200/api/health` and the API explorer is `/api/docs`. The host runs the UI, API, database, workers, Judge0/Kata and local AI; browser access needs no local services.
 
@@ -77,4 +77,4 @@ On 2026-10-06, the package smoke passed on the Dell using a temporary copy of th
 
 ## Verify a release
 
-Record commit/configuration, commands, results and limitations using synthetic data. Exercise permissions/SSO, archive rejection, model/scoring failures/timeouts, AI fallback, manual/export gating, immediate Judge0 deletion and 23h/24h cleanup/recovery. Validate 200 submissions plus sandbox work within 40 minutes, exports within two minutes, Kata isolation and persistent-only restore. Detailed launch actions remain in the backlog.
+Record commit/configuration, commands, results and limitations using synthetic data. Exercise permissions/SSO, archive rejection, model/scoring failures/timeouts, AI fallback, manual/export gating, immediate Judge0 deletion and 23h/24h cleanup/recovery. Validate 200 submissions plus sandbox work within 40 minutes, exports within two minutes, Kata isolation and persistent-only restore. Detailed launch actions remain tracked in [GitHub Issues](https://github.com/UVU-Autograder/autograder_v1/issues) ([#19](https://github.com/UVU-Autograder/autograder_v1/issues/19)).

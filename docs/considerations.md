@@ -1,6 +1,6 @@
 # Privacy and future constraints
 
-These are engineering requirements, not institutional signoff. Detailed approval/security work and future questions live in the [backlog](planning/backlog.md).
+These are engineering requirements, not institutional signoff. Detailed approval/security work and future questions live in [GitHub Issues](https://github.com/UVU-Autograder/autograder_v1/issues).
 
 ## Institutional authorization
 
@@ -28,6 +28,6 @@ Back up only approved persistent metadata and instructor assets, excluding stude
 
 AI is sandbox-only, explanation-only and university-local, with sanitization and unavailable-feedback fallback. Training uses reviewed synthetic seed mutations; preserve provenance, held-out separation and prompt/eval/serving parity. Student corpora require separate data/retention approval; model weights are not deletable review workspaces. Keep data/training on university-controlled hardware.
 
-The pilot stays on the workstation with Judge0/Kata VM isolation, restricted listeners and TLS/Entra for live operation. Cloud/external AI, persistent histories, Canvas integration or altered isolation require an explicit approved scope. Open-source ownership/licensing and funding remain unanswered backlog questions.
+The pilot stays on the workstation with Judge0/Kata VM isolation, restricted listeners and TLS/Entra for live operation. Cloud/external AI, persistent histories, Canvas integration or altered isolation require an explicit approved scope. Open-source ownership/licensing and funding remain tracked in GitHub Issues ([#48](https://github.com/UVU-Autograder/autograder_v1/issues/48), [#49](https://github.com/UVU-Autograder/autograder_v1/issues/49)).
 
 Institutional references: [UVU FERPA](https://www.uvu.edu/registration/ferpa/index.html), [system procurement](https://www.uvu.edu/biservices/system-procurement-implementation.html), [ATSC](https://www.uvu.edu/biservices/governance.html), [policy manual](https://www.uvu.edu/policies/manual/). Confirm current requirements with UVU.
