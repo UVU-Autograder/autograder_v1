@@ -396,7 +396,7 @@ export default function CodeResults({
         </div>
       </details>
       {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
-        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs">
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-warning font-medium text-xs">
           <AlertTriangle className="size-4 shrink-0" />
           <span>
             Required entrypoint <strong>{bundleStatus.expectedEntrypoint}</strong> is missing from workspace files.

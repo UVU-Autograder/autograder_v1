@@ -61,6 +61,20 @@ The existing [Playwright configuration](../frontend/playwright.config.ts) starts
 
 Activate `backend/venv` before direct Python commands: `backend\venv\Scripts\Activate.ps1` in PowerShell or `source backend/venv/bin/activate` in Bash. Regenerate changed contracts with `python backend/scripts/generate_schema.py` and `python backend/scripts/generate_openapi.py` (or `npm run openapi:generate`); use Alembic migrations for database changes.
 
+## Official package rollout and smoke check
+
+Pause official intake and drain queued/running batches before upgrading from execution-time snapshots. Deploy the API, Celery worker and development mock code from the same revision. There is no legacy-package backfill or execution compatibility path; completed review/export work remains available until normal expiry. Drain batches before subsequent runtime/seed deployments too, because package capture freezes requested parameters and grading assets, not the running image or host grading implementation.
+
+During the drained window, run [validate_grading_package_host.py](../backend/scripts/validate_grading_package_host.py) inside the rebuilt backend container using its deployed environment:
+
+```bash
+dc exec -T backend python scripts/validate_grading_package_host.py --course cs1400 --assignment simple-python-functions
+```
+
+`dc` is the configured Compose command in [Workstation](guides/workstation.md#install-kata-and-start-infrastructure). Select an instructor-owned synthetic assignment with validated model fixtures. This check reads metadata without changing assignments or creating official runs, submits one real synthetic execution using captured parameters despite changed process-local defaults, and verifies expected scoring, deletion and Judge0 non-retrievability. It prints only boolean checks and refuses an unfinished workload; it does not prove deployed API/worker admission or capacity. Then use a designated synthetic course/section for an actual upload, review/export and cleanup check before reopening intake. Keep detailed evidence transient and record only revision/configuration and aggregate outcomes.
+
+On 2026-10-06, the package smoke passed on the Dell using a temporary copy of the changed source against its PostgreSQL/Judge0 services; running checkout/services were not replaced. This is source-level host evidence, not a completed deployment or pilot approval.
+
 ## Verify a release
 
 Record commit/configuration, commands, results and limitations using synthetic data. Exercise permissions/SSO, archive rejection, model/scoring failures/timeouts, AI fallback, manual/export gating, immediate Judge0 deletion and 23h/24h cleanup/recovery. Validate 200 submissions plus sandbox work within 40 minutes, exports within two minutes, Kata isolation and persistent-only restore. Detailed launch actions remain in the backlog.

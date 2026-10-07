@@ -41,7 +41,9 @@ Student runs receive pytest/support assets, excluding model solutions. AST check
 
 ## Official grading and review
 
-Staff select a granted section and upload a Canvas ZIP. Safe extraction groups student files, normalizes Canvas/version suffixes, reports unmatched files and resolves collisions by keeping the larger file. Runs snapshot grading setup/artifacts/manual criteria.
+Staff select a granted section and upload a Canvas ZIP. Safe extraction groups student files, normalizes Canvas/version suffixes, reports unmatched files and resolves collisions by keeping the larger file. Before dispatch readiness, intake captures a versioned [grading package](../backend/app/domains/runs/grading_package.py): configuration/version, effective concepts, description, pytest/support bytes, generated runner, fallback helper and effective execution limits/dependency declarations. Required grading assets, filenames and digests are validated before admission. Model bytes, credentials and storage paths are excluded.
+
+Official workers and the development mock runner use that package; subsequent assignment edits cannot change a queued batch's rubric, files or requested execution parameters. A missing/corrupt/unsupported package fails the run before execution and cannot produce exports. Package and temporary files expire with the official workspace. Runtime images and installed dependency versions are not pinned by this mechanism; upgrades require draining batches and follow the [rollout checks](running.md#official-package-rollout-and-smoke-check).
 
 Review provides counters, cohort histogram/filters, read-only files, isolated HTML previews, manual scores and item/overall comments. Every manual item must be completed before export. Outputs are a Canvas-grade CSV and per-student HTML `feedback.zip`; comments appear in HTML. Staff import/distribute these manually. There is no Canvas write-back or official AI.
 

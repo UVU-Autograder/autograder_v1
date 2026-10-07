@@ -1,23 +1,17 @@
 """One official submission per invocation, with workspace-only checkpoints."""
 import asyncio
-import base64
-import json
 import shutil
 import time
 from contextlib import contextmanager
 
 from fastapi import HTTPException
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.db.session import SessionLocal
-from app.domains.assignments.models import Assignment
-from app.domains.assignments.schemas import AssignmentConfigV1
-from app.domains.assignments.service import effective_allowed_concepts
-from app.domains.grading.engine import GradingEngine, GradingResult, PreloadedArtifacts, preload_grading_artifacts
+from app.domains.grading.engine import GradingEngine, GradingResult
 from app.domains.ingestion.extractor import group_canvas_files, parse_canvas_filename, prepare_student_bundle, safe_extract_zip
 from app.domains.runs import retention
 from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
+from app.domains.runs.grading_package import GradingPackageError, load_package
 from app.domains.runs.models import ExecutionTicket
 from app.domains.runs.queue_admission import transaction
 from app.domains.runs.service import (
@@ -29,10 +23,12 @@ from app.domains.runs.service import (
 @contextmanager
 def attempt_access(run_id: int, token: str):
     # Order is always run -> scheduler. The dispatcher never takes a run lock.
-    with retention.access(run_id) as run, transaction() as db:
-        ticket = db.get(ExecutionTicket, f"official:{run_id}")
-        if not ticket or ticket.token != token or ticket.state != "active" or retention.as_utc(ticket.expires_at) <= retention.utc_now():
-            raise HTTPException(409, "Execution attempt is no longer current.")
+    with retention.access(run_id) as run:
+        with transaction() as db:
+            ticket = db.get(ExecutionTicket, f"official:{run_id}")
+            if not ticket or ticket.token != token or ticket.state != "active" or retention.as_utc(ticket.expires_at) <= retention.utc_now():
+                raise HTTPException(409, "Execution attempt is no longer current.")
+        # Keep the run guard, but release scheduling authority before file reads.
         yield run
 
 
@@ -45,35 +41,18 @@ def step(run_id: int, token: str) -> dict:
             run = retention.load_run(db, run_id)
             if run.status in ("complete", "failure"):
                 return {"run_id": run_id, "state": run.status}
-            assignment_id = run.assignment_id
+            try:
+                package = load_package(run_id, assignment_id=run.assignment_id)
+            except GradingPackageError as exc:
+                run.status = "failure"
+                run.failure_summary = {"error": exc.category}
+                db.commit()
+                return {"run_id": run_id, "state": "failure", "failure_category": exc.category}
             run.status = "run"
             db.commit()
-        directory.mkdir(parents=True, exist_ok=True)
-        snapshot_path = directory / "grading_snapshot.json"
-        if not snapshot_path.exists():
-            with SessionLocal() as db:
-                assignment = db.scalar(select(Assignment).where(Assignment.id == assignment_id).options(
-                    selectinload(Assignment.course), selectinload(Assignment.config), selectinload(Assignment.artifacts),
-                ))
-                if not assignment or not assignment.config:
-                    raise ValueError("assignment_unavailable")
-                config = AssignmentConfigV1.model_validate(assignment.config.config)
-                artifact_refs = {a.artifact_key: a.storage_ref for a in assignment.artifacts if a.storage_ref}
-                concepts = effective_allowed_concepts(assignment)
-            preloaded = preload_grading_artifacts(config, artifact_refs)
-            snapshot = {"config": config.model_dump(mode="json"), "concepts": concepts,
-                "files": {name: base64.b64encode(content).decode("ascii") for name, content in preloaded.files.items()},
-                "pytest_filenames": preloaded.pytest_filenames}
-            temporary = snapshot_path.with_suffix(".tmp")
-            temporary.write_text(json.dumps(snapshot), encoding="utf-8")
-            temporary.replace(snapshot_path)
-        snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
-        config = AssignmentConfigV1.model_validate(snapshot["config"])
-        concepts = snapshot["concepts"]
-        preloaded = PreloadedArtifacts(
-            files={name: base64.b64decode(content) for name, content in snapshot["files"].items()},
-            pytest_filenames=snapshot["pytest_filenames"],
-        )
+        config = package.config
+        concepts = package.concepts
+        preloaded = package.preloaded_artifacts()
         if not details_path.exists():
             safe_extract_zip(official_run_zip_path(run_id).read_bytes(), extracted)
             groups, unmatched = group_canvas_files(extracted)
@@ -110,7 +89,8 @@ def step(run_id: int, token: str) -> dict:
         automated_max = sum(item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit)
         if prepared:
             engine = GradingEngine(config=config, artifact_refs={}, allowed_concepts=concepts,
-                preloaded_artifacts=preloaded)
+                preloaded_artifacts=preloaded, execution_parameters=package.execution_parameters,
+                runner_source=package.runner_source, fallback_helper=package.fallback_helper.decode())
             try:
                 result = asyncio.run(engine.grade_submission(bundle_dir=bundle, official_run_id=run_id))
             except HTTPException:

@@ -49,11 +49,11 @@ export async function handleMockRequest<T>(
     return makeMockResponse(MOCK_SANDBOX_COURSES) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/sandbox\/courses\/\d+\/assignments$/) && method === "GET") {
+  if (normalizedPath.match(/^\/sandbox\/courses\/[^/]+\/assignments$/) && method === "GET") {
     return makeMockResponse(MOCK_ASSIGNMENTS_CS1410) as { data: T; response: Response };
   }
 
-  const sandboxAssignmentMatch = normalizedPath.match(/^\/sandbox\/courses\/\d+\/assignments\/([^\/]+)$/);
+  const sandboxAssignmentMatch = normalizedPath.match(/^\/sandbox\/courses\/[^/]+\/assignments\/([^/]+)$/);
   if (sandboxAssignmentMatch && method === "GET") {
     const slug = sandboxAssignmentMatch[1];
     const assignment = slug === "ds1" ? MOCK_ASSIGNMENT_DETAILS_DS1 : MOCK_ASSIGNMENT_DETAILS_LAB1;
@@ -67,7 +67,7 @@ export async function handleMockRequest<T>(
   // 2. Sandbox run lifecycle
   if (
     (normalizedPath === "/sandbox/runs" ||
-      Boolean(normalizedPath.match(/^\/sandbox\/courses\/\d+\/assignments\/[^\/]+\/runs$/))) &&
+      Boolean(normalizedPath.match(/^\/sandbox\/courses\/[^/]+\/assignments\/[^\/]+\/runs$/))) &&
     method === "POST"
   ) {
     const createPayload = {
@@ -120,14 +120,62 @@ export async function handleMockRequest<T>(
 
   // 3. Staff authentication
   if (normalizedPath === "/auth/mock-login" && method === "POST") {
+    let email = "dev.staff@uvu.edu";
+    let displayName: string | null = "Lead Instructor";
+    if (init?.body) {
+      try {
+        const bodyObj = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        if (bodyObj && typeof bodyObj.email === "string" && bodyObj.email.trim()) {
+          email = bodyObj.email.trim().toLowerCase();
+        }
+        if (bodyObj && typeof bodyObj.display_name === "string" && bodyObj.display_name.trim()) {
+          displayName = bodyObj.display_name.trim();
+        } else if (email !== "dev.staff@uvu.edu") {
+          const prefix = email.split("@")[0];
+          displayName = prefix
+            .split(/[._-]/)
+            .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+            .join(" ");
+        }
+      } catch {
+        // preserve defaults on unparseable body
+      }
+    }
     const loginPayload = {
       access_token: "mock-jwt-token-lead-staff",
       token_type: "bearer",
-      email: "dev.staff@uvu.edu",
-      display_name: "Lead Instructor",
+      email,
+      display_name: displayName,
       roles: ["admin", "instructor"],
     };
     return makeMockResponse(loginPayload) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/auth/me" && method === "GET") {
+    let email = "dev.staff@uvu.edu";
+    let displayName: string | null = "Lead Instructor";
+    let roles = ["admin", "instructor"];
+    if (typeof window !== "undefined") {
+      try {
+        const storedEmail = localStorage.getItem("email");
+        if (storedEmail) email = storedEmail;
+        const storedName = localStorage.getItem("displayName");
+        if (storedName) displayName = storedName;
+        const storedRoles = localStorage.getItem("roles");
+        if (storedRoles) {
+          const parsed = JSON.parse(storedRoles);
+          if (Array.isArray(parsed) && parsed.length > 0) roles = parsed;
+        }
+      } catch {
+        // Fall back to defaults
+      }
+    }
+    const mePayload = {
+      email,
+      display_name: displayName,
+      roles,
+    };
+    return makeMockResponse(mePayload) as { data: T; response: Response };
   }
 
   // 4. Staff courses & concepts
@@ -135,7 +183,7 @@ export async function handleMockRequest<T>(
     return makeMockResponse(MOCK_STAFF_COURSES) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/\d+\/concepts$/)) {
+  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/concepts$/)) {
     if (method === "PUT") {
       return makeMockResponse({ status: "updated" }) as { data: T; response: Response };
     }
@@ -149,7 +197,7 @@ export async function handleMockRequest<T>(
   }
 
   // 5. Staff assignment setup & artifacts
-  const setupMatch = normalizedPath.match(/^\/staff\/courses\/\d+\/assignments\/([^\/]+)\/setup$/);
+  const setupMatch = normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/([^\/]+)\/setup$/);
   if (setupMatch) {
     if (method === "PUT" && init?.body) {
       try {
@@ -166,7 +214,7 @@ export async function handleMockRequest<T>(
     return makeMockResponse(currentAssignmentSetup) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/\d+\/assignments\/[^\/]+\/artifacts\/[^\/]+$/) && method === "GET") {
+  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/artifacts\/[^\/]+$/) && method === "GET") {
     const sampleCode = `# Mock instructor test artifact
 import pytest
 
@@ -177,15 +225,15 @@ def test_invert():
     return makeMockResponse(sampleCode, 200, "text/plain") as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/\d+\/assignments\/[^\/]+\/artifacts$/) && method === "POST") {
+  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/artifacts$/) && method === "POST") {
     return makeMockResponse({ status: "uploaded" }) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/\d+\/assignments\/[^\/]+\/model-solution\/validate$/)) {
+  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/model-solution\/validate$/)) {
     return makeMockResponse({ status: "valid", error: null }) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/\d+\/assignments\/[^\/]+\/model-solution\/status$/)) {
+  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/model-solution\/status$/)) {
     return makeMockResponse({ status: "valid", error: null }) as { data: T; response: Response };
   }
 
@@ -202,7 +250,7 @@ def test_invert():
     return makeMockResponse({ ready: true, issues: [] }) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/\d+\/assignments\/[^\/]+\/runs$/) && method === "POST") {
+  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/runs$/) && method === "POST") {
     return makeMockResponse({
       run_id: 101,
       status: "created",

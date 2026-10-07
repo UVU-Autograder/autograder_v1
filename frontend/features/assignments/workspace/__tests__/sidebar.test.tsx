@@ -84,10 +84,11 @@ describe("AssignmentSidebar - Renaming & Bundle Indicators", () => {
     expect(screen.getByText("entrypoint")).toBeDefined();
   });
 
-  it("shows missing entrypoint warning when entrypoint is absent", async () => {
+  it("does not render missing entrypoint warning in sidebar when entrypoint is absent", async () => {
     render(<TestWrapper initialFiles={["helper.py"]} />);
 
-    expect(await screen.findByText(/Missing entrypoint: main.py/)).toBeDefined();
+    expect(await screen.findByText("helper.py")).toBeDefined();
+    expect(screen.queryByText(/Missing entrypoint/)).toBeNull();
   });
 
   it("allows renaming a file via inline form", async () => {

@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
 from app.core.audit_log import audit_event
+from app.db.session import SessionLocal
 from app.domains.assignments.service import get_assignment_for_course
-from app.domains.assignments.validation import run_preflight_validation
 from app.domains.courses.models import Course, Section
 from app.domains.ingestion.extractor import (
     ExtractionError,
@@ -18,12 +19,15 @@ from app.domains.ingestion.extractor import (
 )
 from app.domains.runs.models import OfficialDispatch, RunSummary
 from app.domains.runs import retention
+from app.domains.runs.grading_package import (
+    PackageCaptureError, atomic_write, capture_package, load_package, write_package,
+)
 from app.domains.runs.orchestrator import set_run_state
 from app.domains.runs.queue_admission import (
     backpressure_snapshot,
     eta_band_for_position,
 )
-from app.domains.runs.service import get_workspaces_dir, official_run_zip_path
+from app.domains.runs.service import get_workspaces_dir, official_run_dir, official_run_zip_path
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,30 @@ class IngestError(Exception):
     def __init__(self, message: str, *, status_code: int = 400) -> None:
         super().__init__(message)
         self.status_code = status_code
+
+
+def resolve_failed_admission(run_id: int) -> Literal["admitted", "failed", "unknown"]:
+    """Recheck durable readiness before removing any possibly admitted inputs."""
+    try:
+        with retention.run_lock(run_id), SessionLocal() as recovery:
+            run = recovery.get(RunSummary, run_id)
+            dispatch = recovery.get(OfficialDispatch, run_id)
+            if dispatch and dispatch.ready:
+                return "admitted"
+            if run:
+                run.status = "failure"
+                run.failure_summary = {"error": "ingestion_error"}
+                if dispatch:
+                    dispatch.ready = False
+                recovery.commit()
+            # Only remove after confirming this batch is not dispatchable and
+            # recording failure. The retention helper validates all target paths.
+            retention._delete_files(run_id)
+            return "failed"
+    except Exception:
+        # Files stay under normal retention/orphan reconciliation on DB or disk loss.
+        logger.warning("Official admission recovery could not be confirmed")
+        return "unknown"
 
 
 class SubmissionIngestionEngine:
@@ -80,12 +108,6 @@ class SubmissionIngestionEngine:
         if section is None:
             raise IngestError("Section not found for this course.", status_code=404)
 
-        preflight_errors = run_preflight_validation(db, course_id, assignment_id)
-        if preflight_errors:
-            raise IngestError(
-                "Assignment is not ready for grading: " + "; ".join(preflight_errors)
-            )
-
         try:
             submission_count = count_canvas_submissions(content)
         except ExtractionError as exc:
@@ -103,6 +125,16 @@ class SubmissionIngestionEngine:
                 status_code=413,
             )
 
+        try:
+            package = capture_package(course_id, assignment_id)
+        except PackageCaptureError as exc:
+            raise IngestError("Assignment is not ready for grading: " + str(exc)) from None
+
+        assignment_pk, course_pk, section_pk = assignment.id, course.id, section.id
+        if package.assignment_id != assignment_pk:
+            raise IngestError("Assignment changed during intake. Retry the upload.", status_code=409)
+
+        run_id: int | None = None
         try:
             run = RunSummary(
                 workflow_type="official",
@@ -132,6 +164,7 @@ class SubmissionIngestionEngine:
                     raise IngestError("Official intake capacity is full. Retry later.", status_code=429)
                 db.add(run)
                 db.flush()
+                run_id = run.id
                 db.add(OfficialDispatch(run_id=run.id, ready=False,
                     next_attempt_at=retention.utc_now(), attempts=0))
                 db.commit()
@@ -139,13 +172,41 @@ class SubmissionIngestionEngine:
 
             with retention.access(run.id, db):
                 get_workspaces_dir().mkdir(parents=True, exist_ok=True)
-                official_run_zip_path(run.id).write_bytes(content)
+                directory = official_run_dir(run.id)
+                directory.mkdir(parents=True, exist_ok=True)
+                atomic_write(official_run_zip_path(run.id), content, temporary_directory=directory)
+                write_package(run.id, package)
+                load_package(run.id, assignment_id=assignment_pk)
                 dispatch = db.get(OfficialDispatch, run.id)
                 if dispatch is None:
                     raise IngestError("Official intake record is unavailable.", status_code=503)
+                db.refresh(run)
+                if run.status != "queue":
+                    raise IngestError("Official intake was interrupted. Retry the upload.", status_code=503)
                 dispatch.ready = True
                 db.commit()
+        except Exception as exc:
+            try:
+                db.rollback()
+            except Exception:
+                logger.warning("Official intake transaction reset unavailable")
+            recovered = resolve_failed_admission(run_id) if run_id is not None else "failed"
+            if recovered == "admitted":
+                # Commit may have reached the server before the connection failed.
+                # Never delete its inputs or pretend the accepted batch failed.
+                try:
+                    db.refresh(run)
+                except Exception:
+                    raise IngestError("Official intake is queued but its status is temporarily unavailable.", status_code=503) from None
+            elif isinstance(exc, IngestError):
+                raise
+            else:
+                raise IngestError("Official intake could not be confirmed. Check run status before retrying.",
+                                  status_code=503 if recovered == "unknown" else 500) from None
 
+        # Durable admission is complete. Cache/log/mock failures must never roll
+        # back readiness, overwrite run status or delete committed package files.
+        try:
             queue_position = None
             set_run_state(
                 str(run.id),
@@ -164,35 +225,28 @@ class SubmissionIngestionEngine:
                 },
             )
 
-            if not settings.sandbox_use_celery:
-                from app.domains.runs.tasks import run_mock_official_run
-
-                run_mock_official_run(run.id)
-                db.refresh(run)
-
+        except Exception:
+            logger.warning("Official intake status cache update unavailable")
+        try:
             audit_event(
                 "official.ingest_queued",
                 run_id=run.id,
-                assignment_id=assignment.id,
-                course_id=course.id,
-                section_id=section.id,
+                assignment_id=assignment_pk,
+                course_id=course_pk,
+                section_id=section_pk,
                 actor_user_id=actor_user_id,
                 submission_count=submission_count,
                 workflow_type="official",
             )
+        except Exception:
+            logger.warning("Official intake audit emission unavailable")
+        if not settings.sandbox_use_celery:
+            from app.domains.runs.tasks import run_mock_official_run
 
-            return run
-        except Exception as exc:
-            if "run" in locals() and isinstance(run, RunSummary) and run.id is not None:
-                try:
-                    with retention.run_lock(run.id):
-                        official_run_zip_path(run.id).unlink(missing_ok=True)
-                    run.status = "failure"
-                    run.failure_summary = {"error": "ingestion_error"}
-                    db.commit()
-                except Exception:
-                    pass
-            if isinstance(exc, OSError):
-                raise IngestError("Failed to persist submission archive.", status_code=500) from exc
-            raise
+            try:
+                run_mock_official_run(run.id)
+                db.refresh(run)
+            except Exception:
+                logger.warning("Official development mock execution unavailable")
+        return run
 

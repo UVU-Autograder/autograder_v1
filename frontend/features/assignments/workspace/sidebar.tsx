@@ -13,7 +13,6 @@ import {
   PencilIcon,
   CheckIcon,
   XIcon,
-  AlertTriangleIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackLink } from "@/components/back-link";
@@ -259,13 +258,6 @@ export function AssignmentSidebar({
         )}
 
         <div className="space-y-0.5 flex-1 overflow-y-auto min-h-0 pt-1">
-          {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
-            <div className="flex items-center gap-1.5 px-2 py-1.5 mb-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md">
-              <AlertTriangleIcon className="size-3.5 shrink-0" />
-              <span className="truncate">Missing entrypoint: {bundleStatus.expectedEntrypoint}</span>
-            </div>
-          )}
-
           {workspaceFiles.length > 0 ? (
             workspaceFiles.map((filename) =>
               renamingFilename === filename ? (

@@ -11,6 +11,8 @@
 
 IAs read setup without editing it. Student workspace editing is separate from instructor grading assets.
 
+Official intake validates and copies the configured pytest/support assets before dispatch. Missing files, stored-hash mismatches, type mismatches, conflicting basenames and the reserved `runner.py` destination reject intake. The admitted configuration, rubric, concepts and grading bytes remain fixed for the entire batch; corrections apply to a new upload, not a queued or partly graded batch. Models are checked for readiness but their bytes are excluded from the execution package. Helper precedence remains configured instructor helper, existing student helper, then captured built-in fallback.
+
 ## Seed workflow
 
 The [CS1410 catalog](../../backend/app/db/seeds/cs1410_catalog.json) owns all 17 titles/module placements. [Packages](../../backend/app/db/seeds/) contain configs, markdown descriptions (`description.md`), explicit tests, standalone models and resources. CS1400 remains a placeholder.

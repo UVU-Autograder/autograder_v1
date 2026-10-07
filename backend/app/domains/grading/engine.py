@@ -16,6 +16,7 @@ from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.grading.executor import execute_pytest_in_judge0
 from app.domains.grading.result_parser import PytestRunResult, calculate_scores
+from app.domains.grading.runtime import ExecutionParameters, PreloadedArtifacts, load_fallback_helper
 from app.domains.ingestion.extractor import (
     ExtractionError,
     safe_extract_zip,
@@ -59,14 +60,6 @@ class GradingResult:
         return data
 
 
-@dataclass(frozen=True)
-class PreloadedArtifacts:
-    """Assignment artifacts loaded once per official run."""
-
-    files: dict[str, bytes]
-    pytest_filenames: list[str]
-
-
 def preload_grading_artifacts(
     config: AssignmentConfigV1,
     artifact_refs: dict[str, str],
@@ -103,12 +96,20 @@ class GradingEngine:
         artifact_refs: dict[str, str],
         allowed_concepts: list[str],
         preloaded_artifacts: PreloadedArtifacts | None = None,
+        execution_parameters: ExecutionParameters | None = None,
+        runner_source: str | None = None,
+        fallback_helper: bytes | None = None,
     ) -> None:
         self.config = config
         self.artifact_refs = artifact_refs
         self.allowed_concepts = allowed_concepts
         self.preloaded_artifacts = preloaded_artifacts
         self.settings = get_settings()
+        self.execution_parameters = execution_parameters
+        self.runner_source = runner_source
+        self.fallback_helper = fallback_helper
+        if execution_parameters is not None and (runner_source is None or fallback_helper is None):
+            raise ValueError("Frozen execution requires captured runner and helper inputs")
 
     def grade_submission_sync(
         self,
@@ -201,19 +202,13 @@ class GradingEngine:
 
             helpers_target = exec_dir / "python_autograder_helpers.py"
             if not helpers_target.exists():
-                domain_helpers = (
-                    Path(__file__).resolve().parent / "resources" / "python_autograder_helpers.py"
-                )
-                shared_helpers = (
-                    Path(__file__).resolve().parents[2]
-                    / "db"
-                    / "seeds"
-                    / "shared"
-                    / "python_autograder_helpers.py"
-                )
-                source_path = domain_helpers if domain_helpers.exists() else shared_helpers
-                if source_path.exists():
-                    helpers_target.write_bytes(source_path.read_bytes())
+                if self.fallback_helper is not None:
+                    helpers_target.write_bytes(self.fallback_helper)
+                else:
+                    try:
+                        helpers_target.write_bytes(load_fallback_helper())
+                    except FileNotFoundError:
+                        pass
 
             if not test_filenames:
                 result.failure_category = "validation_error"
@@ -228,13 +223,21 @@ class GradingEngine:
                         "outputs": test.outputs,
                     }
 
+            parameters = self.execution_parameters or ExecutionParameters(
+                language_id=self.settings.judge0_language_id,
+                cpu_time_limit=float(self.settings.test_execution_timeout_seconds),
+                preinstalled_dependencies=sorted(self.settings.preinstalled_dependency_names),
+            )
             outcome = await execute_pytest_in_judge0(
                 exec_dir,
                 test_filenames=test_filenames,
                 test_cases=test_cases_map,
                 entrypoint_module=Path(self.config.bundle.entrypoint).stem,
-                language_id=self.settings.judge0_language_id,
-                cpu_time_limit=float(self.settings.test_execution_timeout_seconds),
+                language_id=parameters.language_id,
+                cpu_time_limit=parameters.cpu_time_limit,
+                wall_time_limit=parameters.wall_time_limit,
+                memory_limit=parameters.memory_limit,
+                runner_source=self.runner_source,
                 dependencies=self.config.dependencies,
                 stdin=stdin,
             )

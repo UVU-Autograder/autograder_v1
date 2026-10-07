@@ -48,7 +48,7 @@ def _seed_cs1400(
     course = Course(
         code="cs1400",
         title="Fundamentals of Programming",
-        term="Spring 2026",
+        term="Fall 2026",
         default_concepts=["variables", "conditionals"],
         instructor=staff_user,
     )
@@ -97,7 +97,7 @@ def _seed_cs1410(
     course = Course(
         code="cs1410",
         title="Object-Oriented Programming",
-        term="Spring 2026",
+        term="Fall 2026",
         default_concepts=["variables", "conditionals", "loops", "functions"],
         instructor=staff_user,
     )

@@ -12,6 +12,9 @@ from typing import Any
 import httpx
 from typing_extensions import Self
 
+DEFAULT_WALL_TIME_LIMIT = 20.0
+DEFAULT_MEMORY_LIMIT = 262144
+
 # ---------------------------------------------------------------------------
 # Custom exceptions
 # ---------------------------------------------------------------------------
@@ -109,8 +112,8 @@ class Judge0Client:
         additional_files_b64: str | None = None,
         stdin: str | None = None,
         cpu_time_limit: float = 10.0,
-        wall_time_limit: float = 20.0,
-        memory_limit: int = 262144,
+        wall_time_limit: float = DEFAULT_WALL_TIME_LIMIT,
+        memory_limit: int = DEFAULT_MEMORY_LIMIT,
     ) -> str:
         """Submit code to Judge0 for execution.
 

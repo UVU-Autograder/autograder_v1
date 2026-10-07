@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, isMockApiEnabled } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +22,13 @@ type LoginResponse = {
   roles?: string[];
 };
 
+function getSafeReturnTo(target: string | null | undefined): string {
+  if (target && target.startsWith("/staff") && !target.startsWith("/staff/login")) {
+    return target;
+  }
+  return "/staff/courses";
+}
+
 export default function StaffLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("dev.staff@uvu.edu");
@@ -29,10 +36,13 @@ export default function StaffLogin() {
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
-  const isMockAllowed = process.env.NEXT_PUBLIC_AUTH_PROVIDER !== "microsoft";
+  const isMockAllowed = isMockApiEnabled() || process.env.NEXT_PUBLIC_AUTH_PROVIDER !== "microsoft";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const returnToParam = getSafeReturnTo(params.get("return_to"));
 
     // Check for auth_handoff cookie from Microsoft callback
     const cookieMatch = document.cookie.match(/(?:^|;\s*)auth_handoff=([^;]*)/);
@@ -44,6 +54,7 @@ export default function StaffLogin() {
           email: string;
           roles: string[];
           displayName?: string;
+          returnTo?: string;
         };
         if (data.token) {
           localStorage.setItem("token", data.token);
@@ -55,7 +66,7 @@ export default function StaffLogin() {
           // Invalidate handoff cookie immediately
           document.cookie = "auth_handoff=; Path=/; Max-Age=0; SameSite=Lax";
           window.dispatchEvent(new Event("roles-updated"));
-          router.replace("/staff/courses");
+          router.replace(getSafeReturnTo(data.returnTo || returnToParam));
           return;
         }
       } catch (e) {
@@ -63,7 +74,6 @@ export default function StaffLogin() {
       }
     }
 
-    const params = new URLSearchParams(window.location.search);
     const authToken = params.get("auth_token");
     const authError = params.get("error");
     const reason = params.get("reason");
@@ -80,7 +90,7 @@ export default function StaffLogin() {
         localStorage.setItem("displayName", nameParam);
       }
       window.dispatchEvent(new Event("roles-updated"));
-      router.replace("/staff/courses");
+      router.replace(returnToParam);
       return;
     }
 
@@ -109,14 +119,17 @@ export default function StaffLogin() {
 
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (token && !authError && !authToken) {
-      router.replace("/staff/courses");
+      router.replace(returnToParam);
     }
   }, [router]);
 
   const handleMicrosoftLogin = () => {
     setIsLoading(true);
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get("return_to");
+    const qs = returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : "";
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- API route performs 302 redirect to Microsoft Entra ID
-    window.location.href = "/api/auth/microsoft/login";
+    window.location.href = `/api/auth/microsoft/login${qs}`;
   };
 
   const handleMockSubmit = async (e: React.FormEvent) => {
@@ -140,12 +153,16 @@ export default function StaffLogin() {
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("email", data.email);
       localStorage.setItem("roles", JSON.stringify(data.roles ?? []));
-      window.dispatchEvent(new Event("roles-updated"));
+      localStorage.setItem("lastActivity", Date.now().toString());
       if (data.display_name) {
         localStorage.setItem("displayName", data.display_name);
       }
+      window.dispatchEvent(new Event("roles-updated"));
+      window.dispatchEvent(new Event("storage"));
 
-      router.push("/staff/courses");
+      const params = new URLSearchParams(window.location.search);
+      const destination = getSafeReturnTo(params.get("return_to"));
+      router.push(destination);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed.");
@@ -178,7 +195,7 @@ export default function StaffLogin() {
           {/* Primary Institutional Microsoft Sign-In */}
           <Button
             type="button"
-            className="w-full bg-[#008240] hover:bg-[#006633] text-white font-semibold py-2.5 flex items-center justify-center gap-2 shadow-sm"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 flex items-center justify-center gap-2 shadow-sm"
             onClick={handleMicrosoftLogin}
             disabled={isLoading}
           >

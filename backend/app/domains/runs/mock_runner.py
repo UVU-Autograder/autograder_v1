@@ -9,10 +9,9 @@ import json
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
-from app.domains.assignments.models import Assignment
-from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.runs.models import RunSummary
 from app.domains.runs import retention
+from app.domains.runs.grading_package import GradingPackageError, load_package
 from app.domains.runs.orchestrator import set_run_state
 from app.domains.runs.queue_admission import release_execution_slots
 from app.domains.runs.service import (
@@ -33,18 +32,18 @@ def run_mock_official_run(run_id: int) -> None:
         with retention.access(run_id, db):
             if run.status != "queue":
                 return
+            try:
+                package = load_package(run_id, assignment_id=run.assignment_id)
+            except GradingPackageError as exc:
+                run.status = "failure"
+                run.failure_summary = {"error": exc.category}
+                db.commit()
+                return
             run.status = "run"
             db.commit()
 
-        assignment = db.scalar(select(Assignment).where(Assignment.id == run.assignment_id))
-        max_score = 100
-        config = None
-        if assignment and assignment.config:
-            try:
-                config = AssignmentConfigV1.model_validate(assignment.config.config)
-                max_score = config.base_points
-            except Exception:
-                pass
+        config = package.config
+        max_score = config.base_points
 
         mock_manual_results = init_manual_results(config.scoring_items) if config else {}
         automated_max_score = (

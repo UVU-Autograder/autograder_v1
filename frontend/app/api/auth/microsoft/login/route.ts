@@ -56,5 +56,17 @@ export async function GET(request: Request) {
         path: "/",
     });
 
+    const requestUrl = new URL(request.url);
+    const returnTo = requestUrl.searchParams.get("return_to");
+    if (returnTo && returnTo.startsWith("/staff") && !returnTo.startsWith("/staff/login")) {
+        cookieStore.set("auth_return_to", returnTo, {
+            httpOnly: true,
+            secure: isSecure,
+            sameSite: "lax",
+            maxAge: 600,
+            path: "/",
+        });
+    }
+
     return NextResponse.redirect(authUrl.toString());
 }

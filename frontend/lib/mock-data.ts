@@ -25,16 +25,16 @@ import type {
 export const MOCK_SANDBOX_COURSES: SandboxCoursesResponse = {
   courses: [
     {
-      id: "1",
-      title: "CS 1410: Object-Oriented Programming",
-      term: "Fall 2026",
-      sandbox_enabled_assignments: 17,
-    },
-    {
-      id: "2",
-      title: "CS 1400: Introduction to Programming",
+      id: "cs1400",
+      title: "Fundamentals of Programming",
       term: "Fall 2026",
       sandbox_enabled_assignments: 1,
+    },
+    {
+      id: "cs1410",
+      title: "Object-Oriented Programming",
+      term: "Fall 2026",
+      sandbox_enabled_assignments: 17,
     },
   ],
 };
@@ -42,16 +42,16 @@ export const MOCK_SANDBOX_COURSES: SandboxCoursesResponse = {
 export const MOCK_STAFF_COURSES: StaffCoursesResponse = {
   courses: [
     {
-      id: "1",
-      title: "CS 1410: Object-Oriented Programming",
-      term: "Fall 2026",
-      assignment_count: 17,
-    },
-    {
-      id: "2",
-      title: "CS 1400: Introduction to Programming",
+      id: "cs1400",
+      title: "Fundamentals of Programming",
       term: "Fall 2026",
       assignment_count: 1,
+    },
+    {
+      id: "cs1410",
+      title: "Object-Oriented Programming",
+      term: "Fall 2026",
+      assignment_count: 17,
     },
   ],
 };
@@ -80,7 +80,7 @@ export const MOCK_ADMIN_COURSES: CourseAdminDetail[] = [
   {
     id: 2,
     code: "CS 1400",
-    title: "Introduction to Programming",
+    title: "Fundamentals of Programming",
     term: "Fall 2026",
     is_active: true,
     instructor_id: 1,
@@ -94,11 +94,11 @@ export const MOCK_ADMIN_COURSES: CourseAdminDetail[] = [
 ];
 
 export const MOCK_ASSIGNMENTS_CS1410: AssignmentsResponse = {
-  course_id: "1",
+  course_id: "cs1410",
   assignments: [
     {
       id: "lab1",
-      course_id: "1",
+      course_id: "cs1410",
       title: "Lab 1 - Image Processing",
       description:
         "In this lab, you will implement image filtering operations using 2D pixel arrays, PPM image header parsing, grayscale transformation, and pixel brightness adjustments.",
@@ -410,7 +410,7 @@ export const MOCK_SANDBOX_AI_FEEDBACK: SandboxAiFeedbackResponse = {
 };
 
 export const MOCK_STAFF_ASSIGNMENT_SETUP_LAB1: StaffAssignmentSetup = {
-  course_id: "1",
+  course_id: "cs1410",
   assignment_id: "lab1",
   title: "Lab 1 - Image Processing",
   description: "## Lab 1: Image Processing\n\nImplement image filtering operations.",

@@ -3,9 +3,24 @@ from app.domains.runs import retention
 from app.domains.runs.dispatcher import sweep
 from app.domains.runs.models import OfficialDispatch, RunSummary
 from app.domains.runs.tasks import grade_official_run
+from app.domains.runs.grading_package import capture_package, write_package
+
+
+def prepare_package(run_id):
+    """Explicitly supply the intake package for tests constructing runs by hand."""
+    with SessionLocal() as db:
+        run = db.get(RunSummary, run_id)
+        course_code, assignment_slug = run.assignment.course.code, run.assignment.slug
+    package = capture_package(course_code, assignment_slug)
+    with retention.access(run_id):
+        write_package(run_id, package)
 
 
 def register(run_id):
+    with SessionLocal() as db:
+        needs_intake = db.get(OfficialDispatch, run_id) is None
+    if needs_intake:
+        prepare_package(run_id)
     with SessionLocal() as db:
         if not db.get(OfficialDispatch, run_id):
             db.add(OfficialDispatch(run_id=run_id, ready=True, attempts=0,

@@ -79,13 +79,16 @@ describe("Frontend Mock API & Interception Layer", () => {
     });
 
     it("fetches course assignments correctly", async () => {
-      const result = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1410>("/sandbox/courses/1/assignments");
+      const result = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1410>("/sandbox/courses/cs1410/assignments");
       expect(result).toEqual(MOCK_ASSIGNMENTS_CS1410);
+
+      const legacyResult = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1410>("/sandbox/courses/1/assignments");
+      expect(legacyResult).toEqual(MOCK_ASSIGNMENTS_CS1410);
     });
 
     it("fetches single assignment details with full rubric and description", async () => {
       const result = await apiClient.get<typeof MOCK_ASSIGNMENT_DETAILS_LAB1>(
-        "/sandbox/courses/1/assignments/lab1"
+        "/sandbox/courses/cs1410/assignments/lab1"
       );
       expect(result.id).toBe("lab1");
       expect(result.rubric.length).toBeGreaterThan(0);
@@ -119,11 +122,25 @@ describe("Frontend Mock API & Interception Layer", () => {
     });
 
     it("performs staff mock login and stores token", async () => {
-      const loginRes = await apiClient.post<{ access_token: string; roles: string[] }>("/auth/mock-login", {
-        email: "dev.staff@uvu.edu",
+      const loginRes = await apiClient.post<{ access_token: string; email: string; display_name: string; roles: string[] }>("/auth/mock-login", {
+        email: "custom.staff@uvu.edu",
+        display_name: "Custom Staff",
       });
       expect(loginRes.access_token).toBeTruthy();
+      expect(loginRes.email).toBe("custom.staff@uvu.edu");
+      expect(loginRes.display_name).toBe("Custom Staff");
       expect(loginRes.roles).toContain("instructor");
+    });
+
+    it("fetches authenticated staff profile via /auth/me in mock mode", async () => {
+      localStorage.setItem("email", "custom.staff@uvu.edu");
+      localStorage.setItem("displayName", "Custom Staff");
+      localStorage.setItem("roles", JSON.stringify(["admin", "instructor"]));
+
+      const meRes = await apiClient.get<{ email: string; display_name: string | null; roles: string[] }>("/auth/me");
+      expect(meRes.email).toBe("custom.staff@uvu.edu");
+      expect(meRes.display_name).toBe("Custom Staff");
+      expect(meRes.roles).toEqual(["admin", "instructor"]);
     });
 
     it("fetches staff courses and concepts", async () => {

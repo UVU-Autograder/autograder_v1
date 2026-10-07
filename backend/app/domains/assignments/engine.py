@@ -86,11 +86,40 @@ class AssignmentSpecificationEngine:
             errors.append(f"Invalid configuration format: {e}")
             return errors
 
+        contents: dict[str, bytes] = {}
+        available_models: set[str] = set()
+        stored = {artifact.artifact_key: artifact for artifact in assignment.artifacts}
+        for key, artifact in config.artifacts.items():
+            record = stored.get(key)
+            if not record or not record.storage_ref:
+                continue
+            try:
+                path = resolve_storage_ref(record.storage_ref)
+                if artifact.type == "model_solution":
+                    if path.is_file():
+                        available_models.add(key)
+                else:
+                    contents[key] = path.read_bytes()
+            except (OSError, ValueError):
+                errors.append(f"Artifact '{key}' is unavailable.")
+        return errors + self.validate_captured_specification(
+            config, contents, available_models, get_settings().preinstalled_dependency_names,
+        )
+
+    def validate_captured_specification(
+        self,
+        config: AssignmentConfigV1,
+        contents: dict[str, bytes],
+        available_models: set[str],
+        preinstalled_dependencies: set[str],
+    ) -> list[str]:
+        """Validate the exact captured inputs without resolving live storage again."""
+        errors: list[str] = []
         unsupported_deps = sorted(
             {
                 dep
                 for dep in config.dependencies
-                if dep.lower() not in get_settings().preinstalled_dependency_names
+                if dep.lower() not in preinstalled_dependencies
             }
         )
         if unsupported_deps:
@@ -99,9 +128,8 @@ class AssignmentSpecificationEngine:
                 + ", ".join(unsupported_deps)
             )
 
-        pytest_artifacts = [
-            art for art in assignment.artifacts if art.artifact_type == "pytest_file"
-        ]
+        pytest_artifacts = [key for key, art in config.artifacts.items()
+                            if art.type == "pytest_file" and key in contents]
         if not pytest_artifacts:
             errors.append("At least one 'pytest_file' artifact is required.")
             return errors
@@ -127,42 +155,23 @@ class AssignmentSpecificationEngine:
                         f"Missing model solution artifact for file requirement '{req.label}' (none of {req.paths} found)."
                     )
 
-        artifacts_by_key = {
-            artifact.artifact_key: artifact for artifact in assignment.artifacts
-        }
         for key in model_configs:
-            stored = artifacts_by_key.get(key)
-            if stored is None or not stored.storage_ref:
+            if key not in available_models:
                 errors.append(
                     f"Model solution artifact '{key}' is missing physical file reference."
                 )
-                continue
-            try:
-                resolve_storage_ref(stored.storage_ref)
-            except FileNotFoundError:
-                errors.append(
-                    f"Model solution artifact file not found for key '{key}'."
-                )
+
+        for key, artifact in config.artifacts.items():
+            if artifact.type != "model_solution" and key not in contents:
+                errors.append(f"Required grading artifact '{key}' is unavailable.")
 
         pytest_markers = set()
-        for artifact in pytest_artifacts:
-            if not artifact.storage_ref:
-                errors.append(
-                    f"Pytest artifact '{artifact.artifact_key}' is missing physical file reference."
-                )
-                continue
+        for key in pytest_artifacts:
             try:
-                path = resolve_storage_ref(artifact.storage_ref)
-                content = path.read_text(encoding="utf-8")
+                content = contents[key].decode("utf-8")
                 pytest_markers.update(self.extract_ag_markers(content))
-            except FileNotFoundError:
-                errors.append(
-                    f"Pytest artifact file not found for key '{artifact.artifact_key}'."
-                )
-            except Exception as e:
-                errors.append(
-                    f"Failed to read/parse pytest file '{artifact.artifact_key}': {e}"
-                )
+            except UnicodeDecodeError:
+                errors.append(f"Pytest artifact '{key}' is not UTF-8 text.")
 
         if errors:
             return errors

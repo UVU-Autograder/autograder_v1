@@ -24,7 +24,7 @@ from app.domains.runs.tasks import (
     grade_official_run,
 )
 from test_ingestion_extractor import create_zip_bytes
-from dispatch_helpers import drain
+from dispatch_helpers import drain, prepare_package
 
 
 def test_build_model_solution_zip_uses_real_files():
@@ -95,7 +95,8 @@ def test_run_mock_official_run_success(db_session: Session, temp_workspaces: Pat
     db_session.commit()
     db_session.refresh(run)
 
-    # 2. Run mock official run
+    # 2. Supply the intake snapshot, then run mock official execution.
+    prepare_package(run.id)
     run_mock_official_run(run.id)
 
     # 3. Verify database updates

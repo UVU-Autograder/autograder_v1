@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { SunIcon, MoonIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function subscribeTheme(onStoreChange: () => void) {
   window.addEventListener("storage", onStoreChange);
@@ -30,7 +31,7 @@ function subscribeMounted(onStoreChange: () => void) {
   return () => {};
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string } = {}) {
   const mounted = useSyncExternalStore(
     subscribeMounted,
     () => true,
@@ -62,7 +63,7 @@ export function ThemeToggle() {
       <Button
         variant="ghost"
         size="icon"
-        className="opacity-0 cursor-default"
+        className={cn("opacity-0 cursor-default", className)}
         aria-hidden="true"
         tabIndex={-1}
       />
@@ -76,7 +77,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
       aria-label="Toggle theme"
-      className="text-muted-foreground hover:text-foreground cursor-pointer"
+      className={cn("text-muted-foreground hover:text-foreground cursor-pointer", className)}
     >
       {theme === "light" ? (
         <MoonIcon className="size-4" />

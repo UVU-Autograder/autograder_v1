@@ -40,7 +40,7 @@ export default function AssignmentsPage({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
-            <p className="text-muted-foreground mt-1">{data.course_id}</p>
+            <p className="text-muted-foreground mt-1 uppercase font-mono">{data.course_id}</p>
           </div>
           {mode === "staff" && (
             <div className="flex gap-2">

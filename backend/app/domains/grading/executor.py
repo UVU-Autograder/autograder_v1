@@ -17,6 +17,8 @@ from app.core.audit_log import audit_event
 from app.domains.grading.result_parser import PytestRunResult, parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
 from app.integrations.judge0.client import (
+    DEFAULT_MEMORY_LIMIT,
+    DEFAULT_WALL_TIME_LIMIT,
     Judge0CleanupError,
     Judge0Error,
     create_judge0_client,
@@ -55,8 +57,10 @@ async def execute_pytest_in_judge0(
     language_id: int,
     cpu_time_limit: float,
     dependencies: list[str] | None = None,
-    memory_limit: int = 262144,
+    memory_limit: int = DEFAULT_MEMORY_LIMIT,
     stdin: str | None = None,
+    wall_time_limit: float = DEFAULT_WALL_TIME_LIMIT,
+    runner_source: str | None = None,
 ) -> ExecutionOutcome:
     """Generate runner, submit to Judge0, parse stdout, enforce cleanup.
 
@@ -67,7 +71,7 @@ async def execute_pytest_in_judge0(
     sets ``failure_category`` to ``cleanup_failure``.
     """
     outcome = ExecutionOutcome()
-    runner_source = generate_runner_script(
+    runner_source = runner_source if runner_source is not None else generate_runner_script(
         test_filenames,
         test_cases,
         entrypoint_module,
@@ -85,6 +89,7 @@ async def execute_pytest_in_judge0(
                 additional_files_b64=additional_files_b64,
                 cpu_time_limit=cpu_time_limit,
                 memory_limit=memory_limit,
+                wall_time_limit=wall_time_limit,
                 stdin=stdin if stdin else None,
             )
             submission_result = await judge0.poll_submission(token)

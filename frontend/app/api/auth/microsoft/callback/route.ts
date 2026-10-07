@@ -118,11 +118,19 @@ export async function GET(request: Request) {
         };
 
         const isSecure = origin.startsWith("https://");
+        const savedReturnTo = cookieStore.get("auth_return_to")?.value;
+        cookieStore.delete("auth_return_to");
+        const safeReturnTo =
+            savedReturnTo && savedReturnTo.startsWith("/staff") && !savedReturnTo.startsWith("/staff/login")
+                ? savedReturnTo
+                : "/staff/courses";
+
         const handoffPayload = {
             token: authResult.access_token,
             email: authResult.email,
             roles: authResult.roles || [],
             displayName: authResult.display_name || "",
+            returnTo: safeReturnTo,
         };
 
         cookieStore.set("auth_handoff", JSON.stringify(handoffPayload), {
@@ -133,7 +141,11 @@ export async function GET(request: Request) {
             path: "/",
         });
 
-        return NextResponse.redirect(new URL("/staff/login", origin));
+        const redirectUrl = new URL("/staff/login", origin);
+        if (safeReturnTo !== "/staff/courses") {
+            redirectUrl.searchParams.set("return_to", safeReturnTo);
+        }
+        return NextResponse.redirect(redirectUrl);
     } catch {
         return NextResponse.redirect(
             new URL("/staff/login?error=backend_connection_failed", origin)
