@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,7 @@ from app.integrations.judge0.client import (
     JUDGE0_STATUS_MAP,
     Judge0CleanupError,
     Judge0Client,
+    Judge0SubmissionError,
     Judge0TimeoutError,
     judge0_failure_for_status,
 )
@@ -263,3 +265,51 @@ def test_judge0_failure_for_status_returns_mapped_failures() -> None:
     assert judge0_failure_for_status(11)[0] == "timeout"
     assert judge0_failure_for_status(13)[0] == "internal_error"
     assert judge0_failure_for_status(14)[0] == "compile_error"
+
+
+# ---------------------------------------------------------------------------
+# 9. check_language_available and error propagation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_submission_includes_response_body_on_http_error(
+    client_no_auth: Judge0Client,
+) -> None:
+    req = httpx.Request("POST", "http://test/submissions")
+    resp = httpx.Response(422, request=req, text='{"language_id": ["language with id 711 doesn\'t exist"]}')
+    http_err = httpx.HTTPStatusError("Client error '422 Unprocessable Entity'", request=req, response=resp)
+    client_no_auth._client.post = AsyncMock(side_effect=http_err)
+
+    with pytest.raises(Judge0SubmissionError) as exc_info:
+        await client_no_auth.create_submission(source_code="print(1)", language_id=711)
+
+    assert '{"language_id": ["language with id 711 doesn\'t exist"]}' in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_check_language_available_returns_true_when_present_and_unarchived(
+    client_no_auth: Judge0Client,
+) -> None:
+    client_no_auth._client.get = AsyncMock(
+        return_value=_json_response([
+            {"id": 71, "name": "Python (3.8.1)", "is_archived": False},
+            {"id": 711, "name": "Python (3.11.9)", "is_archived": False},
+        ])
+    )
+    assert await client_no_auth.check_language_available(711) is True
+
+
+@pytest.mark.asyncio
+async def test_check_language_available_returns_false_when_archived_or_missing(
+    client_no_auth: Judge0Client,
+) -> None:
+    client_no_auth._client.get = AsyncMock(
+        return_value=_json_response([
+            {"id": 71, "name": "Python (3.8.1)", "is_archived": False},
+            {"id": 711, "name": "Python (3.11.9)", "is_archived": True},
+        ])
+    )
+    assert await client_no_auth.check_language_available(711) is False
+    assert await client_no_auth.check_language_available(999) is False
+

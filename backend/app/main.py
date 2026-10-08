@@ -26,6 +26,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings.validate_production_security()
     if settings.is_sqlite:
         initialize_database(seed=True)
+    if settings.environment != "test":
+        try:
+            from app.db.seed import seed_judge0_language
+            from app.integrations.judge0.client import create_judge0_client
+
+            async with create_judge0_client() as judge0:
+                is_ready = await judge0.check_language_available(settings.judge0_language_id)
+                if not is_ready:
+                    logger.warning(
+                        "Judge0 language runtime %d not detected at %s. Attempting auto-seed...",
+                        settings.judge0_language_id,
+                        settings.judge0_url,
+                    )
+                    seed_judge0_language()
+                    if not await judge0.check_language_available(settings.judge0_language_id):
+                        logger.error(
+                            "Judge0 language runtime %d is still unavailable at %s. "
+                            "Submissions will fail until seed_judge0_language_311.sql is applied.",
+                            settings.judge0_language_id,
+                            settings.judge0_url,
+                        )
+                    else:
+                        logger.info("Successfully seeded Judge0 language %d.", settings.judge0_language_id)
+        except Exception as exc:
+            logger.debug("Judge0 startup readiness check skipped or failed: %s", exc)
     yield
 
 def create_app() -> FastAPI:

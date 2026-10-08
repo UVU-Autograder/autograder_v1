@@ -59,7 +59,90 @@ dc ps
 
 The [entrypoint](../../backend/scripts/docker-entrypoint.sh) waits for DB readiness, migrates and optionally seeds; the language-seed service registers 711. DB initialization scripts run only on empty volumes. Changing env passwords does not update existing database roles.
 
+On startup, the FastAPI application lifespan verifies that language 711 is present in Judge0, automatically seeding it into PostgreSQL if missing. If Judge0's PostgreSQL database is ever reset independently without restarting the backend, re-seed language 711 manually:
+```bash
+dc run --rm judge0-language-seed
+# or directly via SQL:
+docker exec -i uvu-autograder-postgres-1 psql -U autograder -d judge0 < scripts/seed_judge0_language_311.sql
+```
+
 Kata uses QEMU/runtime-rs and `/etc/kata-containers/runtime-rs/configuration.toml`. Preserve the overlay's non-privileged explicit capabilities and Judge0 per-process/thread rlimits. Host GRUB changes do not fix guest cgroups. Add runtime dependencies in [Judge0's image](../../judge0.Dockerfile).
+
+## Pinned grading runtime profile (Judge0 & Kata)
+
+The execution sandbox operates on a single pinned grading profile to ensure exact reproducibility between instructor authoring and student sandbox execution ([Issue #28](https://github.com/UVU-Autograder/autograder_v1/issues/28)):
+
+| Parameter | Specification | Source of truth |
+| --- | --- | --- |
+| **Base Image** | `judge0/judge0:1.13.1` (`linux/amd64`, Debian Buster archive mirrors) | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Language ID** | `711` (`Python (3.11.9)`) | [scripts/seed_judge0_language_311.sql](../../scripts/seed_judge0_language_311.sql) |
+| **Python Binary** | `/usr/local/python-3.11.9/bin/python3.11` (compiled CPython 3.11.9) | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Package Installer** | `pip==24.3.1`, `setuptools==75.8.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Test Runner** | `pytest==8.4.2` | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Allowlisted Packages** | `pillow==11.3.0`, `pygame==2.6.1`, `tabulate==0.9.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Memory Cap (Sandbox)** | `128 MB` (`131072 KB`), container hard limit `256 MB` | `DEFAULT_MEMORY_LIMIT` in [client.py](../../backend/app/integrations/judge0/client.py) |
+| **Execution Timeouts** | Per-run `30s` (host cap `<= 60s`), wall time `10s` | `TEST_EXECUTION_TIMEOUT_SECONDS` in [docker-compose.yml](../../docker-compose.yml) |
+| **Upload Payload Cap** | `50 MB` (`52,428,800 bytes`) | `MAX_UPLOAD_BYTES` in [audit_deployment_readiness.py](../../scripts/audit_deployment_readiness.py) |
+| **Headless Drivers** | `SDL_VIDEODRIVER="dummy"`, `SDL_AUDIODRIVER="dummy"` | [pygame_test_helpers.py](../../backend/app/db/seeds/shared/pygame_test_helpers.py) |
+
+## Dependency maintenance cadence and rollback runbook
+
+Package updates, OS upgrades, and runtime adjustments must follow an explicit review cadence and verified rollback procedure:
+
+### 1. Recurring Maintenance Cadence
+- **Schedule:** Monthly review executed on the 1st of every calendar month.
+- **Vulnerability Scanning:**
+  - Python packages: `pip audit` against the backend virtualenv and the Judge0 runtime profile.
+  - Node / Web packages: `npm audit` within `frontend/`.
+  - Base OS & Containers: `docker scout cves` or `trivy image uvu-autograder-judge0:latest`.
+- **Dependency Drift Guard:** Do not install unpinned packages; updates must explicitly update both `judge0.Dockerfile` and `backend/requirements.txt` with tested pin values.
+
+### 2. Candidate Update Validation Procedure
+Before deploying any dependency or runtime image change to production:
+1. **Create Pre-Update Image Backup:**
+   ```bash
+   BACKUP_TAG="uvu-autograder-judge0:$(date +%Y%m%d)-backup"
+   docker tag uvu-autograder-judge0:latest "$BACKUP_TAG"
+   ```
+2. **Build Candidate Image:**
+   ```bash
+   dc build judge0
+   ```
+3. **Execute Static & Runtime Contract Checks:**
+   ```bash
+   backend/venv/Scripts/python -m pytest backend/tests/test_judge0_custom_runtime.py
+   backend/venv/Scripts/python -m pytest backend/tests/test_seed_integrity.py
+   ```
+4. **Execute Calibration Suite:**
+   Run the full pilot calibration test suite across OOP (`ds1`), I/O (`lab1`), and Pygame (`lab6`):
+   ```bash
+   backend/venv/Scripts/python -m pytest backend/tests/test_grading_calibration.py
+   ```
+5. **Run Deployment Readiness Audit:**
+   ```bash
+   backend/venv/Scripts/python scripts/audit_deployment_readiness.py
+   ```
+
+### 3. Immediate Rollback Runbook
+If an updated package causes subtle grading discrepancies, timeout regressions, or AST check failures:
+1. **Dismount Active Containers:**
+   ```bash
+   dc stop judge0 judge0-workers
+   ```
+2. **Retag Last Known Good Image:**
+   ```bash
+   docker tag "$BACKUP_TAG" uvu-autograder-judge0:latest
+   ```
+3. **Restart Judge0 Execution Engine:**
+   ```bash
+   dc up -d --no-deps judge0 judge0-workers
+   ```
+4. **Verify Rollback Integrity:**
+   ```bash
+   backend/venv/Scripts/python -m pytest backend/tests/test_grading_calibration.py
+   curl -fsS http://127.0.0.1:2358/languages
+   ```
+   Confirm language ID 711 returns healthy and all calibration manifests pass without discrepancy.
 
 ## Build and start the frontend and proxy
 

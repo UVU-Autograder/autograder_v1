@@ -31,6 +31,8 @@ PY
 
   if [ "${SEED_DATABASE:-false}" = "true" ]; then
     python -m app.db.seed
+  else
+    python -c "from app.db.seed import seed_judge0_language; seed_judge0_language()" 2>/dev/null || true
   fi
 fi
 

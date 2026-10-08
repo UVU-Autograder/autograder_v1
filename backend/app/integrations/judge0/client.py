@@ -166,8 +166,16 @@ class Judge0Client:
             )
             response.raise_for_status()
         except httpx.HTTPError as exc:
+            detail = ""
+            if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+                try:
+                    text = exc.response.text.strip()
+                    if text:
+                        detail = f": {text}"
+                except Exception:
+                    pass
             raise Judge0SubmissionError(
-                f"Failed to create Judge0 submission at {self._client.base_url}: {exc}"
+                f"Failed to create Judge0 submission at {self._client.base_url}: {exc}{detail}"
             ) from exc
 
         data = response.json()
@@ -263,6 +271,24 @@ class Judge0Client:
             raise Judge0CleanupError(
                 f"Failed to delete Judge0 submission {token}: {exc}"
             ) from exc
+
+    async def check_language_available(self, language_id: int) -> bool:
+        """Return True if language_id exists and is unarchived in Judge0."""
+        try:
+            response = await self._client.get("/languages")
+            if response.status_code != 200:
+                return False
+            data = response.json()
+            if isinstance(data, list):
+                return any(
+                    isinstance(lang, dict)
+                    and lang.get("id") == language_id
+                    and not lang.get("is_archived", False)
+                    for lang in data
+                )
+        except Exception:
+            return False
+        return False
 
     # -- lifecycle -----------------------------------------------------------
 
