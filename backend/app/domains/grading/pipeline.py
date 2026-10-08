@@ -16,22 +16,23 @@ from typing import Any, Callable
 from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.grading.executor import ExecutionOutcome, execute_pytest_in_judge0
+from app.domains.grading.protocols import (
+    LanguageStrategy,
+    ParsedOutcome,
+)
 from app.domains.grading.result_parser import PytestRunResult, calculate_scores
 from app.domains.grading.runtime import (
     ExecutionParameters,
     PreloadedArtifacts,
     load_fallback_helper,
 )
+from app.domains.grading.strategies import get_strategy
 from app.domains.ingestion.extractor import (
     ExtractionError,
     safe_extract_zip,
-    validate_submission_bundle,
 )
 from app.integrations.artifacts.resolver import load_artifact_content
-from app.integrations.ast_checker.validator import (
-    ASTCheckResult,
-    ASTCodeInspector,
-)
+from app.integrations.ast_checker.validator import ASTCheckResult
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +91,10 @@ class EvaluationReport:
     warnings: list[dict[str, Any]] = field(default_factory=list)
     failure_category: str | None = None
     failure_message: str | None = None
+    compiler_errors: list[str] = field(default_factory=list)
     ast_result: ASTCheckResult | None = None
     pytest_result: PytestRunResult | None = None
+    parsed_outcome: ParsedOutcome | None = None
 
     def to_dict(self, run_id: str | None = None) -> dict[str, Any]:
         """Serialize EvaluationReport into a standardized dictionary for state tracking and Redis."""
@@ -104,6 +107,8 @@ class EvaluationReport:
             "failure_category": self.failure_category,
             "failure_message": self.failure_message,
         }
+        if self.compiler_errors:
+            data["compiler_errors"] = self.compiler_errors
         if run_id is not None:
             data["run_id"] = run_id
         return data
@@ -151,6 +156,7 @@ class GradingPipeline:
         execution_parameters: ExecutionParameters | None = None,
         runner_source: str | None = None,
         fallback_helper: bytes | None = None,
+        strategy: LanguageStrategy | None = None,
         *,
         executor_fn: Callable[..., Any] | None = None,
         load_artifact_fn: Callable[[str], bytes] | None = None,
@@ -167,6 +173,7 @@ class GradingPipeline:
         if execution_parameters is not None and (runner_source is None or fallback_helper is None):
             raise ValueError("Frozen execution requires captured runner and helper inputs")
 
+        self.strategy = strategy or get_strategy(getattr(self.config.bundle, "language", "python"))
         self.executor_fn = executor_fn or execute_pytest_in_judge0
         self.load_artifact_fn = load_artifact_fn or load_artifact_content
         self.load_fallback_helper_fn = load_fallback_helper_fn or load_fallback_helper
@@ -274,30 +281,19 @@ class GradingPipeline:
     ) -> bool:
         """Stage 1: Validate bundle structure and check AST concept rules.
 
+        Delegates to the configured language strategy.
         Returns True if checks pass, False if execution is blocked.
         """
-        try:
-            validate_submission_bundle(exec_dir, self.config)
-        except ValueError as exc:
-            category = "missing_required_file"
-            msg = str(exc)
-            if "entrypoint" in msg.lower():
-                category = "ambiguous_entrypoint"
-            report.failure_category = category
-            report.failure_message = msg
-            return False
+        outcome = self.strategy.static_analysis(exec_dir, self.config, self.allowed_concepts)
+        if outcome.ast_result is not None:
+            report.ast_result = outcome.ast_result
 
-        inspector = ASTCodeInspector(allowed_concepts=self.allowed_concepts)
-        ast_result = inspector.inspect_directory(exec_dir)
-        report.ast_result = ast_result
+        for finding in outcome.warnings:
+            report.warnings.append(finding)
 
-        for finding in ast_result.warnings:
-            report.warnings.append({"code": finding.code, "message": finding.message})
-
-        if ast_result.is_blocked:
-            report.failure_category = "concept_blocked"
-            blocked_msgs = [f.message for f in ast_result.blocked]
-            report.failure_message = "; ".join(blocked_msgs)
+        if not outcome.passed:
+            report.failure_category = outcome.failure_category
+            report.failure_message = outcome.failure_message
             return False
 
         return True
@@ -313,20 +309,21 @@ class GradingPipeline:
         """
         test_filenames = self._inject_artifacts(exec_dir)
 
-        helpers_target = exec_dir / "python_autograder_helpers.py"
-        if not helpers_target.exists():
-            if self.fallback_helper is not None:
-                helpers_target.write_bytes(self.fallback_helper)
-            else:
-                try:
-                    helpers_target.write_bytes(self.load_fallback_helper_fn())
-                except FileNotFoundError:
-                    pass
+        if self.strategy.language_name == "python":
+            helpers_target = exec_dir / "python_autograder_helpers.py"
+            if not helpers_target.exists():
+                if self.fallback_helper is not None:
+                    helpers_target.write_bytes(self.fallback_helper)
+                else:
+                    try:
+                        helpers_target.write_bytes(self.load_fallback_helper_fn())
+                    except FileNotFoundError:
+                        pass
 
-        if not test_filenames:
-            report.failure_category = "validation_error"
-            report.failure_message = "No pytest file artifacts found for this assignment."
-            return None
+            if not test_filenames:
+                report.failure_category = "validation_error"
+                report.failure_message = "No pytest file artifacts found for this assignment."
+                return None
 
         test_cases_map: dict[str, dict[str, list[str]]] = {}
         for test in self.config.scoring_items:
@@ -377,14 +374,24 @@ class GradingPipeline:
 
     def _stage_normalization(
         self,
-        pytest_result: PytestRunResult,
+        pytest_result: PytestRunResult | None,
         report: EvaluationReport,
     ) -> None:
         """Stage 4: Parse test outcomes and calculate rubric points."""
-        score, test_details = calculate_scores(pytest_result, self.config.scoring_items)
-        report.score = score
-        report.test_results = test_details
-        report.success = True
+        if pytest_result is not None:
+            score, test_details = calculate_scores(pytest_result, self.config.scoring_items)
+            report.score = score
+            report.test_results = test_details
+            report.success = True
+        elif report.parsed_outcome is not None:
+            report.score = report.parsed_outcome.score
+            report.test_results = report.parsed_outcome.test_results
+            report.success = report.parsed_outcome.success
+            if report.parsed_outcome.failure_category:
+                report.failure_category = report.parsed_outcome.failure_category
+                report.failure_message = report.parsed_outcome.failure_message
+            if report.parsed_outcome.compiler_errors:
+                report.compiler_errors = report.parsed_outcome.compiler_errors
 
     def _inject_artifacts(self, exec_dir: Path) -> list[str]:
         """Write assignment artifacts into exec_dir; return pytest filenames."""

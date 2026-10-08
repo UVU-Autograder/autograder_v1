@@ -3046,6 +3046,12 @@
             },
             "type": "array",
             "title": "File Requirements"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "description": "Target programming language for execution (e.g. 'python', 'cpp', 'c', 'web')",
+            "default": "python"
           }
         },
         "type": "object",

@@ -17,6 +17,7 @@ from app.domains.grading.pipeline import (
     SubmissionPayload,
     preload_grading_artifacts,
 )
+from app.domains.grading.protocols import LanguageStrategy
 from app.domains.grading.runtime import ExecutionParameters, PreloadedArtifacts, load_fallback_helper
 from app.integrations.artifacts.resolver import load_artifact_content
 
@@ -48,6 +49,7 @@ class GradingEngine:
         execution_parameters: ExecutionParameters | None = None,
         runner_source: str | None = None,
         fallback_helper: bytes | None = None,
+        strategy: LanguageStrategy | None = None,
     ) -> None:
         self.config = config
         self.artifact_refs = artifact_refs
@@ -57,6 +59,7 @@ class GradingEngine:
         self.execution_parameters = execution_parameters
         self.runner_source = runner_source
         self.fallback_helper = fallback_helper
+        self.strategy = strategy
         if execution_parameters is not None and (runner_source is None or fallback_helper is None):
             raise ValueError("Frozen execution requires captured runner and helper inputs")
 
@@ -70,6 +73,7 @@ class GradingEngine:
             execution_parameters=self.execution_parameters,
             runner_source=self.runner_source,
             fallback_helper=self.fallback_helper,
+            strategy=self.strategy,
             executor_fn=execute_pytest_in_judge0,
             load_artifact_fn=load_artifact_content,
             load_fallback_helper_fn=load_fallback_helper,

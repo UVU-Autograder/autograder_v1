@@ -35,6 +35,10 @@ class FileRequirementConfig(BaseModel):
 class BundleConfig(BaseModel):
     entrypoint: str = Field(min_length=1)
     file_requirements: list[FileRequirementConfig] = Field(default_factory=list)
+    language: str = Field(
+        default="python",
+        description="Target programming language for execution (e.g. 'python', 'cpp', 'c', 'web')",
+    )
 
     def derived_required_files(self) -> list[str]:
         paths: list[str] = []
@@ -145,8 +149,10 @@ class AssignmentConfigV1(BaseModel):
             raise ValueError(f"duplicate scoring item keys: {', '.join(duplicate_keys)}")
 
         artifact_types = [artifact.type for artifact in self.artifacts.values()]
-        if artifact_types.count("pytest_file") < 1:
-            raise ValueError("at least one pytest_file artifact is required")
+        if self.bundle.language == "python" and artifact_types.count("pytest_file") < 1:
+            raise ValueError("at least one pytest_file artifact is required for python assignments")
+        elif self.bundle.language != "python" and len(artifact_types) < 1:
+            raise ValueError("at least one artifact is required")
 
         artifact_keys = list(self.artifacts)
         duplicate_artifacts = sorted({key for key in artifact_keys if artifact_keys.count(key) > 1})
