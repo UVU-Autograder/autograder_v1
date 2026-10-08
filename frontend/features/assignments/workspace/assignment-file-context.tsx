@@ -10,17 +10,18 @@ import {
   EditorLayoutState,
   OpenFile,
 } from './editor-layout';
-import { languageFromFilename, readFilesAsOpenFiles } from './file-utils';
-
+import { readFilesAsOpenFiles } from './file-utils';
+import { WorkspaceVFS } from './vfs/workspace-vfs';
 import { Assignment } from '@/features/assignments/types';
 
-type AssignmentFileContextType = {
+export type AssignmentFileContextType = {
   assignment?: Assignment;
   files: Record<string, OpenFile>;
   panes: EditorLayoutState['panes'];
   layout: EditorLayoutState['layout'];
   activePaneId: string;
   dragTab: DragTabData | null;
+  vfs: WorkspaceVFS;
   openFileByName: (
     filename: string,
     options?: { content?: string; language?: string; category?: OpenFile['category'] }
@@ -47,7 +48,14 @@ const AssignmentFileContext = createContext<AssignmentFileContextType | null>(nu
 
 const INITIAL_PANE_ID = createPaneId();
 
-export function AssignmentFileProvider({ children, assignment }: { children: ReactNode; assignment?: Assignment }) {
+export function AssignmentFileProvider({
+  children,
+  assignment,
+}: {
+  children: ReactNode;
+  assignment?: Assignment;
+}) {
+  const vfsRef = useRef<WorkspaceVFS>(new WorkspaceVFS());
   const [files, setFiles] = useState<Record<string, OpenFile>>({});
   const [editorLayout, setEditorLayout] = useState<EditorLayoutState>({
     panes: {
@@ -63,16 +71,14 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
     filename: string,
     options?: { content?: string; language?: string; category?: OpenFile['category'] }
   ) => {
-    let file = files[filename];
+    let file = vfsRef.current.readFile(filename);
 
     if (!file) {
-      file = {
-        filename,
-        content: options?.content ?? '',
-        language: options?.language ?? languageFromFilename(filename),
+      file = vfsRef.current.writeFile(filename, options?.content ?? '', {
+        language: options?.language,
         category: options?.category ?? 'workspace',
-      };
-      setFiles((prev) => ({ ...prev, [filename]: file! }));
+      });
+      setFiles(vfsRef.current.getAllFilesRecord());
     }
 
     setEditorLayout((prev) => {
@@ -164,13 +170,15 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
     const filenames = openFiles.map((file) => file.filename);
     const lastFilename = filenames[filenames.length - 1];
 
-    setFiles((prev) => {
-      const next = { ...prev };
-      for (const file of openFiles) {
-        next[file.filename] = file;
-      }
-      return next;
-    });
+    for (const file of openFiles) {
+      vfsRef.current.writeFile(file.filename, file.content, {
+        category: file.category,
+        language: file.language,
+        kind: file.kind,
+      });
+    }
+
+    setFiles(vfsRef.current.getAllFilesRecord());
 
     setEditorLayout((prev) => {
       const pane = prev.panes[prev.activePaneId];
@@ -196,25 +204,18 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
   };
 
   const updateFileContent = (filename: string, content: string) => {
-    setFiles((prev) => {
-      const existing = prev[filename];
-      if (!existing || existing.content === content) return prev;
-      return {
-        ...prev,
-        [filename]: {
-          ...existing,
-          content,
-        },
-      };
-    });
+    const existing = vfsRef.current.readFile(filename);
+    if (!existing || existing.content === content) return;
+
+    vfsRef.current.writeFile(filename, content);
+    setFiles(vfsRef.current.getAllFilesRecord());
   };
 
   const deleteFile = (filename: string) => {
-    setFiles((prev) => {
-      const next = { ...prev };
-      delete next[filename];
-      return next;
-    });
+    const deleted = vfsRef.current.deleteFile(filename);
+    if (!deleted) return;
+
+    setFiles(vfsRef.current.getAllFilesRecord());
 
     setEditorLayout((prev) => {
       let nextLayout = { ...prev };
@@ -233,24 +234,11 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
   const renameFile = (oldFilename: string, newFilename: string): boolean => {
     const trimmedOld = oldFilename.trim();
     const trimmedNew = newFilename.trim();
-    if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) return false;
 
-    const existing = files[trimmedOld];
-    if (!existing || existing.category !== 'workspace') return false;
-    if (files[trimmedNew]) return false;
+    const success = vfsRef.current.renameFile(trimmedOld, trimmedNew);
+    if (!success) return false;
 
-    setFiles((prev) => {
-      const target = prev[trimmedOld];
-      if (!target || prev[trimmedNew]) return prev;
-      const next = { ...prev };
-      delete next[trimmedOld];
-      next[trimmedNew] = {
-        ...target,
-        filename: trimmedNew,
-        language: target.kind === 'image' ? 'image' : languageFromFilename(trimmedNew),
-      };
-      return next;
-    });
+    setFiles(vfsRef.current.getAllFilesRecord());
 
     setEditorLayout((prev) => {
       const nextPanes = { ...prev.panes };
@@ -291,6 +279,7 @@ export function AssignmentFileProvider({ children, assignment }: { children: Rea
         layout,
         activePaneId,
         dragTab,
+        vfs: vfsRef.current,
         openFileByName,
         setActiveTab,
         setActivePane,

@@ -19,8 +19,13 @@ def main():
     schema_dir.mkdir(parents=True, exist_ok=True)
 
     openapi_path = schema_dir / "openapi.json"
-    openapi_path.write_text(json.dumps(openapi_schema, indent=2), encoding="utf-8")
-    print(f"OpenAPI Schema successfully written to: {openapi_path}")
+    new_content = json.dumps(openapi_schema, indent=2)
+    current_content = openapi_path.read_text(encoding="utf-8") if openapi_path.exists() else None
+    if current_content != new_content:
+        openapi_path.write_text(new_content, encoding="utf-8")
+        print(f"OpenAPI Schema updated at: {openapi_path}")
+    else:
+        print(f"OpenAPI Schema up to date at: {openapi_path}")
 
 if __name__ == "__main__":
     main()

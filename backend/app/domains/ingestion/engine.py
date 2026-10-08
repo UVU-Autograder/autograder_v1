@@ -13,9 +13,10 @@ from app.core.audit_log import audit_event
 from app.db.session import SessionLocal
 from app.domains.assignments.service import get_assignment_for_course
 from app.domains.courses.models import Course, Section
-from app.domains.ingestion.extractor import (
-    ExtractionError,
-    count_canvas_submissions,
+from app.domains.ingestion.extractor import ExtractionError
+from app.domains.ingestion.parser import (
+    CanvasArchiveParser,
+    CanvasParsingError,
 )
 from app.domains.runs.models import OfficialDispatch, RunSummary
 from app.domains.runs import retention
@@ -108,9 +109,11 @@ class SubmissionIngestionEngine:
         if section is None:
             raise IngestError("Section not found for this course.", status_code=404)
 
+        parser = CanvasArchiveParser(default_max_bytes=settings.max_upload_bytes)
         try:
-            submission_count = count_canvas_submissions(content)
-        except ExtractionError as exc:
+            batch = parser.parse_archive_bytes(content, max_total_size=settings.max_upload_bytes)
+            submission_count = batch.submission_count
+        except (CanvasParsingError, ExtractionError) as exc:
             raise IngestError(f"Invalid or unsafe ZIP file: {exc}") from exc
 
         if submission_count == 0:

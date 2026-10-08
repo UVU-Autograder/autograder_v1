@@ -1,40 +1,19 @@
 "use client";
 
+import { use } from "react";
 import { DownloadIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
-import { use, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { reviewAvailable, retentionMessage } from "@/features/runs/lib/retention";
-import { apiClient } from "@/lib/api-client";
-import type { RunStatusResponse } from "@/features/assignments/types";
+import { retentionMessage } from "@/features/runs/lib/retention";
 import { runProcessedCount } from "@/features/assignments/types";
-import {
-  getAdaptivePollDelayMs,
-  getRunStatus,
-  sleep,
-} from "@/features/assignments/api";
-import {
-  staffRunCsvExportPath,
-  staffRunFeedbackExportPath,
-  staffRunManualGradesPath,
-} from "@/features/staff/api";
 import { GradeHistogram } from "@/features/runs/components/grade-histogram";
 import { StudentFilterToolbar } from "@/features/runs/components/student-filter-toolbar";
 import { StudentReviewCard } from "@/features/runs/components/student-review-card";
 import { StudentInspectDialog } from "@/features/runs/components/student-inspect-dialog";
-import {
-  filterStudents,
-  hasUngradedManualItems,
-  sortStudentsByName,
-} from "@/features/runs/lib/student-filter";
-import type {
-  RunSummary,
-  RunDetailsResponse,
-  ManualGradeSaveResponse,
-  StudentRunDetail,
-  StatusFilter,
-} from "@/features/runs/types";
+import { useRunStatusPolling } from "@/features/runs/hooks/use-run-status-polling";
+import { useStudentRunFilters } from "@/features/runs/hooks/use-student-run-filters";
+import { useManualGrading } from "@/features/runs/hooks/use-manual-grading";
 
 type PageProps = {
   params: Promise<{ courseId: string; assignmentId: string; runId: string }>;
@@ -42,341 +21,48 @@ type PageProps = {
 
 export default function RunDetailPage({ params }: PageProps) {
   const { courseId, assignmentId, runId } = use(params);
-  const [summary, setSummary] = useState<RunSummary | null>(null);
-  const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
-  const [details, setDetailsState] = useState<RunDetailsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const {
+    summary,
+    runStatus,
+    details,
+    setDetails,
+    isLoading,
+    error: pollingError,
+    reviewUnavailable,
+    isCleaning,
+    handleCleanup,
+    handleCsvExport,
+    handleFeedbackExport,
+  } = useRunStatusPolling({ courseId, assignmentId, runId });
 
-  const [selectedCanvasId, setSelectedCanvasId] = useState<string | null>(null);
-  const [isInspectOpen, setIsInspectOpen] = useState(false);
-  const [isSavingGrades, setIsSavingGrades] = useState(false);
+  const {
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    filterCounts,
+    filteredStudents,
+  } = useStudentRunFilters(details?.students);
 
-  const summaryRef = useRef<RunSummary | null>(null);
-  const blockedRef = useRef(false);
-  const [reviewUnavailable, setReviewUnavailable] = useState(false);
-  const [isCleaning, setIsCleaning] = useState(false);
-  const basePath = `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}`;
+  const {
+    selectedStudent,
+    isInspectOpen,
+    isSavingGrades,
+    success,
+    error: manualError,
+    handleInspectStudent,
+    handleInspectOpenChange,
+    handleSaveManualGrades,
+  } = useManualGrading({
+    courseId,
+    assignmentId,
+    runId,
+    details,
+    setDetails,
+  });
 
-  const clearReview = useCallback(() => {
-    blockedRef.current = true;
-    setReviewUnavailable(true);
-    setDetailsState(null);
-    setSelectedCanvasId(null);
-    setIsInspectOpen(false);
-  }, []);
-
-  const setDetails = useCallback((value: RunDetailsResponse | null) => {
-    if (value && (blockedRef.current || !reviewAvailable(summaryRef.current))) return;
-    setDetailsState(value);
-  }, []);
-
-  const acceptSummary = useCallback((value: RunSummary) => {
-    summaryRef.current = value;
-    setSummary(value);
-    if (!reviewAvailable(value)) clearReview();
-  }, [clearReview]);
-
-  useEffect(() => {
-    let active = true;
-    const refresh = async () => {
-      try {
-        const value = await apiClient.get<RunSummary>(basePath);
-        if (active) acceptSummary(value);
-      } catch { /* Existing summary/error handling owns connection errors. */ }
-    };
-    const timer = setInterval(() => {
-      if (summaryRef.current && !reviewAvailable(summaryRef.current)) clearReview();
-    }, 1000);
-    const poll = setInterval(() => void refresh(), 15000);
-    const expired = (event: Event) => {
-      const path = (event as CustomEvent<string>).detail;
-      if (path.startsWith(`${basePath}/`)) clearReview();
-    };
-    window.addEventListener("official-review-expired", expired);
-    return () => {
-      active = false;
-      clearInterval(timer);
-      clearInterval(poll);
-      window.removeEventListener("official-review-expired", expired);
-    };
-  }, [basePath, acceptSummary, clearReview]);
-
-  const handleCleanup = async () => {
-    setIsCleaning(true);
-    try {
-      await apiClient.post(`${basePath}/cleanup`, {});
-      clearReview();
-      acceptSummary(await apiClient.get<RunSummary>(basePath));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Cleanup failed.");
-      try { acceptSummary(await apiClient.get<RunSummary>(basePath)); } catch { clearReview(); }
-    } finally { setIsCleaning(false); }
-  };
-
-  const selectedStudent = useMemo(
-    () =>
-      details?.students.find(
-        (student) => student.canvas_id === selectedCanvasId,
-      ) ?? null,
-    [details, selectedCanvasId],
-  );
-
-  const filterCounts = useMemo(() => {
-    const counts = { all: 0, ungraded: 0, graded: 0, failed: 0 };
-    for (const s of details?.students ?? []) {
-      counts.all += 1;
-      const isUngraded =
-        Object.keys(s.manual_results ?? {}).length > 0 &&
-        hasUngradedManualItems(s);
-      if (isUngraded) {
-        counts.ungraded += 1;
-      } else {
-        counts.graded += 1;
-      }
-      if (s.status === "failure") {
-        counts.failed += 1;
-      }
-    }
-    return counts;
-  }, [details?.students]);
-
-  const filteredStudents = useMemo(
-    () => filterStudents(details?.students ?? [], searchQuery, statusFilter),
-    [details?.students, searchQuery, statusFilter],
-  );
-
-  const handleInspectStudent = (student: StudentRunDetail) => {
-    setSelectedCanvasId(student.canvas_id);
-    setIsInspectOpen(true);
-  };
-
-  const handleInspectOpenChange = (open: boolean) => {
-    setIsInspectOpen(open);
-    if (!open) {
-      setSelectedCanvasId(null);
-    }
-  };
-
-  const handleSaveManualGrades = async (
-    canvasId: string,
-    grades: Record<string, { score: number | null; comments: string }>,
-    overallComment: string,
-    saveAndNext = false,
-  ) => {
-    if (!details) return;
-    setIsSavingGrades(true);
-    try {
-      const updatedStudent = await apiClient.post<ManualGradeSaveResponse>(
-        staffRunManualGradesPath(
-          courseId,
-          assignmentId,
-          runId,
-          canvasId,
-        ),
-        {
-          grades,
-          overall_comment: overallComment,
-        },
-      );
-      const updatedStudents = details.students.map((student) =>
-        student.canvas_id === canvasId ? updatedStudent : student,
-      );
-      setDetails({
-        ...details,
-        ...updatedStudent.manual_progress,
-        students: updatedStudents,
-      });
-      setSuccess(
-        Object.keys(grades).length > 0
-          ? "Grades and feedback saved."
-          : "Feedback saved.",
-      );
-      setTimeout(() => setSuccess(null), 3000);
-
-      if (saveAndNext) {
-        const currentIndex = updatedStudents.findIndex(
-          (student) => student.canvas_id === canvasId,
-        );
-        const remainingQueue = [
-          ...updatedStudents.slice(currentIndex + 1),
-          ...updatedStudents.slice(0, currentIndex),
-        ];
-        const nextUngraded = remainingQueue.find((student) =>
-          Object.values(student.manual_results).some(
-            (item) => item.score === null,
-          ),
-        );
-        if (nextUngraded) {
-          setSelectedCanvasId(nextUngraded.canvas_id);
-        } else {
-          setIsInspectOpen(false);
-          setSelectedCanvasId(null);
-        }
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save manual grades.",
-      );
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setIsSavingGrades(false);
-    }
-  };
-
-  useEffect(() => {
-    let active = true;
-    Promise.resolve().then(() => {
-      if (active) {
-        blockedRef.current = false;
-        summaryRef.current = null;
-        setReviewUnavailable(false);
-        setDetailsState(null);
-        setIsLoading(true);
-        setError(null);
-      }
-    });
-
-    const loadData = async () => {
-      try {
-        const summaryData = await apiClient.get<RunSummary>(
-          `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}`,
-        );
-        if (!active) return;
-        acceptSummary(summaryData);
-
-        try {
-          const detailsData = await apiClient.get<RunDetailsResponse>(
-            `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/details`,
-          );
-          if (!active) return;
-          setDetails({
-            ...detailsData,
-            students: sortStudentsByName(detailsData.students),
-          });
-        } catch {
-          if (!active) return;
-          if (summaryData.status === "queue" || summaryData.status === "run") {
-            setDetails(null);
-          }
-        }
-      } catch (err) {
-        if (!active) return;
-        setError(
-          err instanceof Error ? err.message : "Failed to load run details.",
-        );
-      } finally {
-        if (!active) return;
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-    return () => {
-      active = false;
-    };
-  }, [courseId, assignmentId, runId, acceptSummary, setDetails]);
-
-  useEffect(() => {
-    const status = summary?.status;
-    if (status !== "queue" && status !== "run") {
-      return;
-    }
-
-    let cancelled = false;
-
-    const refreshFinished = async (state: string) => {
-      const [summaryData, detailsData] = await Promise.all([
-        apiClient.get<RunSummary>(
-          `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}`,
-        ),
-        state === "complete"
-          ? apiClient.get<RunDetailsResponse>(
-              `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/details`,
-            )
-          : Promise.resolve(null),
-      ]);
-      if (cancelled) return;
-      acceptSummary(summaryData);
-      if (detailsData) {
-        setDetails({
-          ...detailsData,
-          students: sortStudentsByName(detailsData.students),
-        });
-      }
-    };
-
-    const pollRun = async () => {
-      let attempt = 0;
-      while (!cancelled) {
-        try {
-          const statusData = await getRunStatus(`/runs/${runId}/status`);
-          if (cancelled) return;
-          setRunStatus(statusData);
-          if (
-            statusData.state === "complete" ||
-            statusData.state === "failure"
-          ) {
-            cancelled = true;
-            await refreshFinished(statusData.state);
-            return;
-          }
-
-          // Fetch intermediate details while run is in progress
-          try {
-            const detailsData = await apiClient.get<RunDetailsResponse>(
-              `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/details`,
-            );
-            if (!cancelled && detailsData) {
-              setDetails({
-                ...detailsData,
-                students: sortStudentsByName(detailsData.students),
-              });
-            }
-          } catch {
-            // Details may not exist briefly at start of a run.
-          }
-        } catch {
-          if (cancelled) return;
-        }
-        await sleep(getAdaptivePollDelayMs(attempt));
-        attempt += 1;
-      }
-    };
-
-    void pollRun();
-    return () => {
-      cancelled = true;
-    };
-  }, [summary?.status, courseId, assignmentId, runId, acceptSummary, setDetails]);
-
-  const handleCsvExport = async () => {
-    setError(null);
-    try {
-      await apiClient.download(
-        staffRunCsvExportPath(courseId, assignmentId, runId),
-        `run-${runId}-grades.csv`,
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "CSV export failed.");
-    }
-  };
-
-  const handleFeedbackExport = async () => {
-    setError(null);
-    try {
-      await apiClient.download(
-        staffRunFeedbackExportPath(courseId, assignmentId, runId),
-        `run-${runId}-feedback.zip`,
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Feedback export failed.");
-    }
-  };
+  const error = pollingError || manualError;
 
   if (isLoading) {
     return (
@@ -407,8 +93,17 @@ export default function RunDetailPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={handleCleanup}
-              disabled={isCleaning || !summary || summary.status === "queue" || summary.status === "run" || summary.retention_state === "deleted"}>
+            <Button
+              variant="outline"
+              onClick={handleCleanup}
+              disabled={
+                isCleaning ||
+                !summary ||
+                summary.status === "queue" ||
+                summary.status === "run" ||
+                summary.retention_state === "deleted"
+              }
+            >
               {isCleaning ? "Cleaning…" : "Delete review data"}
             </Button>
             <Button
@@ -437,7 +132,9 @@ export default function RunDetailPage({ params }: PageProps) {
             </Button>
           </div>
         </div>
-        <p role="status" className="mb-6 text-sm text-muted-foreground">{retentionMessage(summary)}</p>
+        <p role="status" className="mb-6 text-sm text-muted-foreground">
+          {retentionMessage(summary)}
+        </p>
         {details && !details.exports_ready && (
           <p className="-mt-4 mb-6 text-right text-xs text-warning font-medium">
             Exports unlock after every manual rubric item has a score.
@@ -459,7 +156,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 {runStatus.counters.failed > 0 &&
                   `, ${runStatus.counters.failed} failed`}
                 {runStatus.counters.running > 0 &&
-                  ` Â· ${runStatus.counters.running} in progress`}
+                  ` · ${runStatus.counters.running} in progress`}
               </p>
             </div>
           )}
@@ -504,7 +201,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 {!details || details.students.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">
                     {summary?.status === "queue" || summary?.status === "run"
-                      ? "Grading in progressâ€¦ student results will appear here as they finish."
+                      ? "Grading in progress… student results will appear here as they finish."
                       : "No student details returned."}
                   </p>
                 ) : filteredStudents.length === 0 ? (
@@ -527,16 +224,18 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {!reviewUnavailable && <StudentInspectDialog
-          isOpen={isInspectOpen}
-          onOpenChange={handleInspectOpenChange}
-          student={selectedStudent}
-          courseId={courseId}
-          assignmentId={assignmentId}
-          runId={runId}
-          onSaveManualGrades={handleSaveManualGrades}
-          isSavingGrades={isSavingGrades}
-        />}
+        {!reviewUnavailable && (
+          <StudentInspectDialog
+            isOpen={isInspectOpen}
+            onOpenChange={handleInspectOpenChange}
+            student={selectedStudent}
+            courseId={courseId}
+            assignmentId={assignmentId}
+            runId={runId}
+            onSaveManualGrades={handleSaveManualGrades}
+            isSavingGrades={isSavingGrades}
+          />
+        )}
       </div>
     </div>
   );
