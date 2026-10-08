@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
     cors_allowed_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://10.115.20.200,http://10.115.20.200:3000,https://autograder-frontend-mockup.vercel.app",
+        default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://autograder-frontend-mockup.vercel.app",
         validation_alias="CORS_ALLOWED_ORIGINS",
     )
     local_llm_api_key: str | None = Field(default="none", validation_alias="LOCAL_LLM_API_KEY")

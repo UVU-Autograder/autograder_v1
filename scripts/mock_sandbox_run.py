@@ -2,7 +2,7 @@
 """Mock a student's sandbox run end to end, with synthetic code only.
 
     python3 scripts/mock_sandbox_run.py --list
-    python3 scripts/mock_sandbox_run.py CASE_ID --api http://10.115.20.200/api
+    python3 scripts/mock_sandbox_run.py CASE_ID --api http://<host>/api
     python3 scripts/mock_sandbox_run.py CASE_ID --save-zip ~/Desktop/mock.zip
 
 Takes an eval case (a deliberately broken copy of an instructor's model
