@@ -239,3 +239,52 @@ class AssignmentSpecificationEngine:
             "artifact_refs": artifact_refs,
             "allowed_concepts": allowed_concepts,
         }
+
+    def verify_calibration(
+        self,
+        config: AssignmentConfigV1,
+        preloaded_artifacts: Any,
+        cases: list[Any],
+        executor_fn: Any = None,
+    ) -> list[str]:
+        """Verify calibration cases against the assignment rubric.
+
+        Unresolved scoring discrepancies return as error strings to block
+        assignment publication.
+        """
+        import asyncio
+        import concurrent.futures
+        from app.domains.grading.calibration import verify_assignment_calibration
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                discrepancies = pool.submit(
+                    asyncio.run,
+                    verify_assignment_calibration(
+                        config=config,
+                        preloaded_artifacts=preloaded_artifacts,
+                        cases=cases,
+                        executor_fn=executor_fn,
+                    ),
+                ).result()
+        else:
+            discrepancies = asyncio.run(
+                verify_assignment_calibration(
+                    config=config,
+                    preloaded_artifacts=preloaded_artifacts,
+                    cases=cases,
+                    executor_fn=executor_fn,
+                )
+            )
+
+        return [
+            f"Calibration discrepancy in '{d.case_id}' ({d.category}): {d.detail}"
+            for d in discrepancies
+        ]
+
+
