@@ -1,14 +1,8 @@
-import { getSandboxCourses } from "@/features/courses/api";
-import CoursesPage from "@/features/courses/courses-page";
+import SandboxCoursesClient from "@/features/courses/sandbox-courses-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
-    let data: Awaited<ReturnType<typeof getSandboxCourses>>;
-    try {
-        data = await getSandboxCourses();
-    } catch {
-        throw new Error("Failed to load sandbox courses.");
-    }
-    return <CoursesPage data={data} mode="sandbox" />;
+// Courses load in the browser: the API is reachable only from clients on the campus VPN.
+export default function Page() {
+    return <SandboxCoursesClient />;
 }

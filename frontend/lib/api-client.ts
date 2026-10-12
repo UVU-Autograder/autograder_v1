@@ -31,6 +31,10 @@ export function isMockApiEnabled(): boolean {
 function getBaseUrl(): string {
     const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
     if (typeof window !== "undefined" && window.location.hostname) {
+        // An https API on another host (e.g. the Vercel frontend calling the VPN-only API) wins over same-origin /api.
+        if (configured?.startsWith("https://") && new URL(configured).host !== window.location.host) {
+            return configured;
+        }
         if (!window.location.port || window.location.port === "80" || window.location.port === "443") {
             return `${window.location.protocol}//${window.location.hostname}/api`;
         }
