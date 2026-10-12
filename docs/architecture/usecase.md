@@ -46,8 +46,8 @@ flowchart LR
     Instructor --- UC6 & UC7 & UC8 & UC9
     Admin --- UC14 & UC15 & UC16
     IA --- UC12 & UC10 & UC11
-    IA -.-|"view only"| UC6
-    IA -.-|"view only"| UC7
+    IA ---|"{view only}"| UC6
+    IA ---|"{view only}"| UC7
 
     %% ---------- Relationships ----------
     UC4 -.->|"«extend»"| UC3
@@ -58,7 +58,20 @@ flowchart LR
     UC3 & UC8 & UC9 --- Judge0
     UC4 --- AI
     UC12 --- Entra
-    Canvas -.->|"ZIP export"| UC9
+    UC9 ---|"manual ZIP export"| Canvas
     UC11 -.->|"imported manually into"| Canvas
 
 ```
+
+## Legend
+
+| Symbol | Meaning |
+| --- | --- |
+| Rounded box | **Actor**: a person who uses the system |
+| Oval | **Use case**: a goal an actor achieves with the system |
+| Double-bordered box | **External system** (secondary actor) that takes part in a use case |
+| Solid line | **Association**: the actor or external system takes part in the use case |
+| Solid line with `{…}` | **Constrained association**: the actor takes part with the stated restriction |
+| Solid arrow labelled `inherits` | **Generalisation**: the actor can do everything the target actor can, plus its own use cases |
+| Dashed arrow labelled `«include»` | **Include**: the source use case always performs the target use case |
+| Dashed arrow labelled `«extend»` | **Extend**: the source use case optionally adds behaviour to the target use case |
