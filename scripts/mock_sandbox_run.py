@@ -53,6 +53,7 @@ def load_cases() -> dict[str, dict]:
 
 def bundle_for(case: dict) -> bytes:
     """The case's (mutated) Python files plus the seed's other submitted files (images, reflections)."""
+    files = dict(case["code_files"])
     seed_folder = SEEDS / case["assignment_slug"]
     if not seed_folder.exists():
         seed_folder = SEEDS / case["assignment_slug"].replace("-", "_")
@@ -141,6 +142,15 @@ def request_feedback(api: str, run_id: str, session: str, timeout: float = 180) 
     if status != 200 or not isinstance(feedback, dict):
         raise MockError(f"AI feedback request failed: HTTP {status} {str(feedback)[:300]}")
     return feedback
+
+
+def request_feedback_stream(api: str, run_id: str, session: str, timeout: float = 180) -> dict:
+    """The streaming endpoint the sandbox UI calls first; returns the same shape as request_feedback."""
+    status, text, _ = http("POST", f"{api}/sandbox/runs/{run_id}/ai-feedback/stream",
+                           headers={"X-Sandbox-Session": session}, timeout=timeout)
+    if status != 200:
+        raise MockError(f"AI feedback stream failed: HTTP {status} {str(text)[:300]}")
+    return {"run_id": run_id, "ai_feedback": text if isinstance(text, str) else json.dumps(text), "model": None}
 
 
 def is_fallback(text: str) -> bool:
