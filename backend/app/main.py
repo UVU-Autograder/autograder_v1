@@ -54,6 +54,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["x-refresh-token"],
+        allow_private_network=True,
     )
     @app.middleware("http")
     async def private_cache_control(
