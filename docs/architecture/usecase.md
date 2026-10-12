@@ -59,7 +59,7 @@ flowchart LR
     UC4 --- AI
     UC12 --- Entra
     UC9 ---|"manual ZIP export"| Canvas
-    UC11 -.->|"imported manually into"| Canvas
+    UC11 ---|"imported manually into"| Canvas
 
 ```
 
