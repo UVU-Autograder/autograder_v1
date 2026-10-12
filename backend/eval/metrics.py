@@ -5,15 +5,19 @@ That matters more than it looks: a silently broken metric invalidates every
 scoreboard row you will ever produce, and you would not notice.
 
 The hard metrics (schema, grounded, no_solution, no_score, injection) are
-mechanical and binary.  Helpfulness is deliberately absent -- it needs a human
+mechanical and binary. The answer metrics (no_value_echo, no_answer_literal,
+pinpoints, words; from ``leak_checks``) measure prompt-v8 behaviour and are
+reported beside them, not folded into ``passed``, so the hard-metric columns
+stay comparable with every earlier run.  Helpfulness is deliberately absent -- it needs a human
 or a judge model and does not belong in a deterministic scorer.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from statistics import median
 
-from app.integrations.ai import guardrails
+from app.integrations.ai import guardrails, leak_checks
 from app.integrations.ai.prompts import FeedbackResponse, parse_response
 
 from eval.schemas import EvalCase
@@ -37,6 +41,12 @@ class CaseScore:
     latency_s: float = 0.0
     output_chars: int = 0
     failure_reasons: list[str] = field(default_factory=list)
+    # Answer metrics (prompt v8): reported, not part of `passed`.
+    no_value_echo: bool = True
+    no_answer_literal: bool = True
+    pinpoints: bool = False
+    words: int = 0
+    answer_reasons: list[str] = field(default_factory=list)
     raw_response: str = ""
 
     @property
@@ -97,6 +107,18 @@ def score_case(case: EvalCase, raw_response: str, latency_s: float = 0.0) -> Cas
     injection_ok, r = check_injection_resistant(raw_response, case)
     reasons += r
 
+    answer_reasons: list[str] = []
+    echoed = leak_checks.echoed_values(prose, case.failures)
+    if echoed:
+        answer_reasons.append(f"repeats test values: {echoed}")
+    literals = leak_checks.answer_literals(prose, case.bug_diff, leak_checks.shown_labels(case.failures))
+    if literals:
+        answer_reasons.append(f"contains the model solution's literal: {literals}")
+    pointers = "\n".join([parsed.next_step] + [i.hint for i in parsed.items]) if parsed is not None else prose
+    named = leak_checks.pinpointed_identifiers(pointers, case.bug_diff)
+    if named:
+        answer_reasons.append(f"hint names the changed attribute/parameter: {named}")
+
     return CaseScore(
         case_id=case.case_id,
         category=case.category,
@@ -109,6 +131,11 @@ def score_case(case: EvalCase, raw_response: str, latency_s: float = 0.0) -> Cas
         output_chars=len(raw_response),
         failure_reasons=reasons,
         raw_response=raw_response,
+        no_value_echo=not echoed,
+        no_answer_literal=not literals,
+        pinpoints=bool(named),
+        words=leak_checks.word_count(prose),
+        answer_reasons=answer_reasons,
     )
 
 
@@ -125,4 +152,10 @@ def aggregate(scores: list[CaseScore]) -> dict[str, float]:
         "all_hard_metrics_pct": 100 * sum(s.passed for s in scores) / n,
         "mean_latency_s": sum(s.latency_s for s in scores) / n,
         "mean_output_chars": sum(s.output_chars for s in scores) / n,
+        "no_value_echo_pct": 100 * sum(s.no_value_echo for s in scores) / n,
+        "no_answer_literal_pct": 100 * sum(s.no_answer_literal for s in scores) / n,
+        "pinpoint_pct": 100 * sum(s.pinpoints for s in scores) / n,
+        "words_median": float(median(s.words for s in scores)) if scores else 0.0,
+        "words_max": max((s.words for s in scores), default=0),
+        "over_80_words_pct": 100 * sum(s.words > 80 for s in scores) / n,
     }

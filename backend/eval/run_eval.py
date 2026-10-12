@@ -2,7 +2,7 @@
 
     python -m eval.run_eval --endpoint lmstudio --model gemma-4-12b-it-qat --label baseline-12b
 
-Appends one row per run to ``eval/results/scoreboard.csv`` and writes the full
+Appends one row per run to ``eval/results/scoreboard_v8.csv`` and writes the full
 per-case transcript to ``eval/results/<label>.json`` so a regression can be read
 back rather than re-run.
 """
@@ -31,7 +31,9 @@ EVAL_DIR = Path(__file__).parent
 CASES_FILE = EVAL_DIR / "cases.jsonl"
 CASES_DIR = CASES_FILE
 RESULTS_DIR = EVAL_DIR / "results"
-SCOREBOARD = RESULTS_DIR / "scoreboard.csv"
+# The answer metrics (prompt v8) added columns; a CSV's header is written once, so
+# they start a new file and the old scoreboard.csv keeps its rows intact.
+SCOREBOARD = RESULTS_DIR / "scoreboard_v8.csv"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -83,6 +85,8 @@ def main(argv: list[str] | None = None) -> int:
             scores.append(score)
             mark = "ok  " if score.passed else "FAIL"
             detail = "" if score.passed else f"  <- {'; '.join(score.failure_reasons)}"
+            if score.answer_reasons:
+                detail += f"  [answer: {'; '.join(score.answer_reasons)}]"
             print(f"[{i:>3}/{len(cases)}] {mark} {case.case_id} ({score.latency_s:.1f}s){detail}")
     finally:
         client.close()

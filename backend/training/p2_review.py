@@ -42,10 +42,11 @@ STATUS_RE = re.compile(r"^status:\s*(\S+)\s*$", re.MULTILINE)
 EDIT_MARKER = "## Your version"
 
 CHECKLIST = """\
-- The hint and next step point to **where to look**, never what to write. Naming the function that has the bug is fine; naming a missing method, the operator or value to use, or an either/or with the answer in it is not.
+- The hint and next step point to **where to look**, never what to write. Naming the function that has the bug is fine; naming a missing method, the operator or value to use, the exact attribute or parameter to change, or an either/or with the answer in it is not.
+- No values from the test results: not the student's value, not the expected one (the student already sees both). Describe the difference in words.
 - Every sentence matches the assertion and the diff above. Nothing about bugs the grader did not report.
 - One root cause is explained once; the other items say they follow from it.
-- Encouraging, plain language, starts with what works, under 150 words.
+- Encouraging, plain language, starts with what works, one sentence per field, under 80 words.
 - all-pass cases keep `"items": []`."""
 
 

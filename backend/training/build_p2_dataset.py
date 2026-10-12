@@ -1,13 +1,16 @@
 """Build the Phase 2 training set from approved review files.
 
-    cd backend && python -m training.build_p2_dataset            # write training/data/p2
+    cd backend && python -m training.build_p2_dataset            # write training/data/p3
     cd backend && python -m training.build_p2_dataset --status   # progress only
 
 Only files marked ``status: approved`` are used. Every approved target must pass
 the same runtime gate the sandbox applies before a student sees feedback
 (``guardrails.validate_feedback``), plus the prompt's own limits (at most 3
-items, no repeated test_key, under 150 words, no injection canary). One bad file
-fails the build with its name and reason; nothing is written until all pass.
+items, no repeated test_key, under 80 words, no injection canary) and the
+prompt-v8 answer checks (``leak_checks``): no value from the failing tests
+repeated, no literal that only the model solution has, and no hint or next step
+that names an attribute or parameter from the changed lines. One bad file fails
+the build with its name and reason; nothing is written until all pass.
 
 Model inputs are rebuilt from the case files with the current prompt module,
 so rows match what the sandbox sends today. The eval set stays held out: a row
@@ -22,6 +25,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from app.integrations.ai import leak_checks
 from app.integrations.ai.guardrails import response_prose, validate_feedback
 from app.integrations.ai.prompts import MAX_OUTPUT_TOKENS, PROMPT_VERSION
 
@@ -32,8 +36,8 @@ from training.p2_review import CASES_DIR, REVIEW_DIR, case_messages, parse_revie
 
 HERE = Path(__file__).parent
 EVAL_CASES = HERE.parent / "eval" / "cases.jsonl"
-OUT_DIR = HERE / "data" / "p2"
-MAX_WORDS = 150
+OUT_DIR = HERE / "data" / "p3"
+MAX_WORDS = 80
 SERVE_MAX_MODEL_LEN = 8192  # vllm serve --max-model-len on the Dell (training/README.md)
 VALID_EVERY = 10  # ~10% held out for eval_loss, chosen by a stable hash of the case id
 
@@ -49,9 +53,20 @@ def target_problems(case, target) -> list[str]:
         problems.append("the same test_key appears twice")
     if case.failures and not keys:
         problems.append("the grader reported failures but the response has no items")
-    words = len(response_prose(target).split())
+    prose = response_prose(target)
+    words = leak_checks.word_count(prose)
     if words > MAX_WORDS:
         problems.append(f"{words} words; the prompt asks for under {MAX_WORDS}")
+    echoed = leak_checks.echoed_values(prose, case.failures)
+    if echoed:
+        problems.append(f"repeats values from the test results ({', '.join(echoed)}); describe the difference in words")
+    answers = leak_checks.answer_literals(prose, case.bug_diff, leak_checks.shown_labels(case.failures))
+    if answers:
+        problems.append(f"contains what to type ({', '.join(answers)}), found only in the model solution")
+    pointers = "\n".join([target.next_step] + [item.hint for item in target.items])
+    named = leak_checks.pinpointed_identifiers(pointers, case.bug_diff)
+    if named:
+        problems.append(f"hint/next step names the exact attribute or parameter to change ({', '.join(named)})")
     if not target.summary.strip() or not target.next_step.strip():
         problems.append("summary and next_step must not be empty")
     for item in target.items:

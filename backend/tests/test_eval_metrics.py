@@ -327,3 +327,30 @@ def test_empty_eval_cases_are_flagged_as_placeholders():
             code_files=case.code_files or None,
         )[1]["content"]
         assert "SUBMISSION_NOTE" in user, case.case_id
+
+
+def test_answer_metrics_are_reported_but_not_part_of_passed():
+    case = make_case(
+        failures=[{"key": "order_class", "label": "Order class", "message": "E   assert 1 == 2"}],
+        bug_diff="-        self.order.append(item)\n+        self.order = [item]\n",
+    )
+    leaky = json.dumps({
+        "summary": "Order keeps 1 item; the test expects 2.",
+        "items": [{"test_key": "order_class", "what_went_wrong": "Only the last item stays.",
+                   "hint": "What does self.order hold after the second add?"}],
+        "next_step": "Review Order.add.",
+    })
+    score = score_case(case, leaky)
+    assert score.passed
+    assert not score.no_value_echo and score.pinpoints and score.no_answer_literal
+    assert score.words > 0 and score.answer_reasons
+
+    clean = json.dumps({
+        "summary": "Your classes work; the order loses items.",
+        "items": [{"test_key": "order_class", "what_went_wrong": "Only the most recent item stays in the order.",
+                   "hint": "What happens to earlier items when add runs again?"}],
+        "next_step": "Review Order.add.",
+    })
+    summary = aggregate([score, score_case(case, clean)])
+    assert summary["no_value_echo_pct"] == 50 and summary["pinpoint_pct"] == 50
+    assert summary["over_80_words_pct"] == 0 and summary["words_max"] > 0
