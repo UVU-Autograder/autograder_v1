@@ -1,11 +1,12 @@
 "use client";
 
 import { use } from "react";
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, CheckCircle2Icon, PlayIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { retentionMessage } from "@/features/runs/lib/retention";
+import { hasUngradedManualItems } from "@/features/runs/lib/student-filter";
 import { runProcessedCount } from "@/features/assignments/types";
 import { GradeHistogram } from "@/features/runs/components/grade-histogram";
 import { StudentFilterToolbar } from "@/features/runs/components/student-filter-toolbar";
@@ -63,6 +64,14 @@ export default function RunDetailPage({ params }: PageProps) {
   });
 
   const error = pollingError || manualError;
+  const ungradedStudents = (details?.students ?? []).filter(
+    hasUngradedManualItems,
+  );
+  const totalStudentsCount =
+    details?.total_students ?? details?.students.length ?? 0;
+  const completedManualCount =
+    details?.completed_students ??
+    Math.max(0, totalStudentsCount - ungradedStudents.length);
 
   if (isLoading) {
     return (
@@ -93,6 +102,14 @@ export default function RunDetailPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {ungradedStudents.length > 0 && !reviewUnavailable && (
+              <Button
+                onClick={() => handleInspectStudent(ungradedStudents[0])}
+              >
+                <PlayIcon className="mr-2 size-4" /> Grade Next Ungraded (
+                {ungradedStudents.length})
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleCleanup}
@@ -135,11 +152,64 @@ export default function RunDetailPage({ params }: PageProps) {
         <p role="status" className="mb-6 text-sm text-muted-foreground">
           {retentionMessage(summary)}
         </p>
-        {details && !details.exports_ready && (
-          <p className="-mt-4 mb-6 text-right text-xs text-warning font-medium">
-            Exports unlock after every manual rubric item has a score.
-          </p>
+        {details && details.requires_manual_grading && !reviewUnavailable && (
+          <div className="mb-6 rounded-lg border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-1.5 flex-1">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-foreground flex items-center gap-1.5">
+                  {details.exports_ready ? (
+                    <>
+                      <CheckCircle2Icon className="size-4 text-success" />
+                      All manual rubric items graded — Ready for Canvas export
+                    </>
+                  ) : (
+                    <>
+                      Manual Grading Progress ({completedManualCount} /{" "}
+                      {totalStudentsCount} students complete)
+                    </>
+                  )}
+                </span>
+                <span className="text-muted-foreground font-mono">
+                  {totalStudentsCount > 0
+                    ? Math.round(
+                        (completedManualCount / totalStudentsCount) * 100,
+                      )
+                    : 100}
+                  %
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{
+                    width: `${
+                      totalStudentsCount > 0
+                        ? Math.min(
+                            100,
+                            Math.round(
+                              (completedManualCount / totalStudentsCount) * 100,
+                            ),
+                          )
+                        : 100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+            {!details.exports_ready && (
+              <p className="text-xs text-warning font-medium shrink-0">
+                Exports unlock after every manual rubric item has a score.
+              </p>
+            )}
+          </div>
         )}
+        {details &&
+          !details.requires_manual_grading &&
+          !details.exports_ready && (
+            <p className="-mt-4 mb-6 text-right text-xs text-warning font-medium">
+              Exports unlock after every manual rubric item has a score.
+            </p>
+          )}
 
         {runStatus &&
           (runStatus.state === "queue" || runStatus.state === "run") &&
@@ -229,6 +299,8 @@ export default function RunDetailPage({ params }: PageProps) {
             isOpen={isInspectOpen}
             onOpenChange={handleInspectOpenChange}
             student={selectedStudent}
+            students={filteredStudents}
+            onSelectStudent={handleInspectStudent}
             courseId={courseId}
             assignmentId={assignmentId}
             runId={runId}

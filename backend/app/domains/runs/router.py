@@ -542,12 +542,14 @@ def update_student_manual_grades(
                 },
                 overall_comment=req.overall_comment,
                 update_overall_comment="overall_comment" in req.model_fields_set,
+                adjudicated_automated_score=req.adjudicated_automated_score,
+                update_adjudicated_score="adjudicated_automated_score" in req.model_fields_set,
             )
             grading_result = GradingResult(
                 success=result["success"],
                 failure_category=result["failure_category"],
                 failure_message=result["failure_message"],
-                score=result["score"],
+                score=result["score"] or 0,
                 max_score=result["max_score"],
                 test_results=result["test_results"],
                 warnings=result["warnings"],
@@ -557,6 +559,7 @@ def update_student_manual_grades(
                 grading_result,
                 result["manual_results"],
                 result.get("overall_comment", ""),
+                requires_adjudication=bool(result.get("requires_adjudication")),
             )
             return result
 

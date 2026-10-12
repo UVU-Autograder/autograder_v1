@@ -229,12 +229,43 @@ def test_invert():
     return makeMockResponse({ status: "uploaded" }) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/model-solution\/validate$/)) {
-    return makeMockResponse({ status: "valid", error: null }) as { data: T; response: Response };
+  if (
+    normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/model-solution\/validate$/) ||
+    normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/validate-model-solution$/)
+  ) {
+    return makeMockResponse({ status: "queued", run_id: "val:mock" }) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/model-solution\/status$/)) {
-    return makeMockResponse({ status: "valid", error: null }) as { data: T; response: Response };
+  if (
+    normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/model-solution\/status$/) ||
+    normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/validation-status$/)
+  ) {
+    return makeMockResponse({ status: "success", errors: [], score: 100, max_score: 100 }) as {
+      data: T;
+      response: Response;
+    };
+  }
+
+  if (
+    normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^\/]+\/ai-generate-tests$/) &&
+    method === "POST"
+  ) {
+    const generated = `import pytest
+import main
+
+
+@pytest.mark.ag_edge_cases
+def test_edge_cases_boundary():
+    """Verifies boundary and empty-input behavior."""
+    assert hasattr(main, "__name__"), "Expected main module to load cleanly on boundary inputs."
+`;
+    return makeMockResponse({
+      generated_code: generated,
+      suggested_items: [{ key: "edge_cases", label: "Boundary & Edge Cases", points: 10 }],
+      explanation:
+        "Generated boundary and edge-case pytest checks annotated with `@pytest.mark.ag_edge_cases`.",
+      used_fallback: false,
+    }) as { data: T; response: Response };
   }
 
   // 6. Staff official runs & review

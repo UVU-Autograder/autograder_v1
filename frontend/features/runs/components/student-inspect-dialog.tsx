@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
-import { FileIcon } from "lucide-react";
+import {
+  FileIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CheckCheckIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,7 +43,8 @@ function buildManualGradesDraft(
 function initialInspectTab(student: StudentRunDetail | null): string {
   if (!student) return "feedback";
   const manualCount = Object.keys(student.manual_results ?? {}).length;
-  return manualCount > 0 && hasUngradedManualItems(student)
+  return Boolean(student.requires_adjudication) ||
+    (manualCount > 0 && hasUngradedManualItems(student))
     ? "manual"
     : "feedback";
 }
@@ -47,6 +53,8 @@ export interface StudentInspectDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   student: StudentRunDetail | null;
+  students?: StudentRunDetail[];
+  onSelectStudent?: (student: StudentRunDetail) => void;
   courseId: string;
   assignmentId: string;
   runId: string;
@@ -55,6 +63,7 @@ export interface StudentInspectDialogProps {
     grades: Record<string, { score: number | null; comments: string }>,
     overallComment: string,
     saveAndNext: boolean,
+    adjudicatedAutomatedScore?: number | null,
   ) => Promise<void>;
   isSavingGrades: boolean;
 }
@@ -80,6 +89,8 @@ function StudentInspectDialogSession({
   isOpen,
   onOpenChange,
   student,
+  students = [],
+  onSelectStudent,
   courseId,
   assignmentId,
   runId,
@@ -102,6 +113,9 @@ function StudentInspectDialogSession({
   const [overallCommentDraft, setOverallCommentDraft] = useState(
     () => student?.overall_comment || "",
   );
+  const [adjudicatedScoreDraft, setAdjudicatedScoreDraft] = useState<number | null>(
+    () => (student?.requires_adjudication ? null : (student?.automated_score ?? null)),
+  );
 
   const isManualDraftDirty = useMemo(() => {
     if (!student) return false;
@@ -111,11 +125,102 @@ function StudentInspectDialogSession({
         { score: item.score, comments: item.comments || "" },
       ]),
     );
+    const initialAdjudicated = student.requires_adjudication
+      ? null
+      : (student.automated_score ?? null);
     return (
       JSON.stringify(manualGradesDraft) !== JSON.stringify(savedGrades) ||
-      overallCommentDraft !== (student.overall_comment || "")
+      overallCommentDraft !== (student.overall_comment || "") ||
+      adjudicatedScoreDraft !== initialAdjudicated
     );
-  }, [manualGradesDraft, overallCommentDraft, student]);
+  }, [manualGradesDraft, overallCommentDraft, adjudicatedScoreDraft, student]);
+
+  const currentStudentIndex = useMemo(
+    () => students.findIndex((s) => s.canvas_id === student.canvas_id),
+    [students, student.canvas_id],
+  );
+  const prevStudent =
+    currentStudentIndex > 0 ? students[currentStudentIndex - 1] : null;
+  const nextStudent =
+    currentStudentIndex >= 0 && currentStudentIndex < students.length - 1
+      ? students[currentStudentIndex + 1]
+      : null;
+
+  const navigateToStudent = useCallback(
+    (target: StudentRunDetail | null) => {
+      if (!target || !onSelectStudent) return;
+      if (
+        isManualDraftDirty &&
+        !window.confirm("Discard unsaved feedback or grading changes?")
+      ) {
+        return;
+      }
+      onSelectStudent(target);
+    },
+    [isManualDraftDirty, onSelectStudent],
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (!isSavingGrades) {
+          if (student.requires_adjudication) {
+            void onSaveManualGrades(
+              student.canvas_id,
+              manualGradesDraft,
+              overallCommentDraft,
+              e.shiftKey,
+              adjudicatedScoreDraft,
+            );
+          } else {
+            void onSaveManualGrades(
+              student.canvas_id,
+              manualGradesDraft,
+              overallCommentDraft,
+              e.shiftKey,
+            );
+          }
+        }
+        return;
+      }
+      const targetEl = e.target as HTMLElement | null;
+      const isEditable =
+        targetEl &&
+        (targetEl.tagName === "INPUT" ||
+          targetEl.tagName === "TEXTAREA" ||
+          targetEl.isContentEditable ||
+          Boolean(targetEl.closest(".monaco-editor")));
+      if (isEditable) return;
+
+      if (e.key === "ArrowLeft" || e.key === "k") {
+        if (prevStudent) {
+          e.preventDefault();
+          navigateToStudent(prevStudent);
+        }
+      } else if (e.key === "ArrowRight" || e.key === "j") {
+        if (nextStudent) {
+          e.preventDefault();
+          navigateToStudent(nextStudent);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isOpen,
+    isSavingGrades,
+    student.canvas_id,
+    student.requires_adjudication,
+    manualGradesDraft,
+    overallCommentDraft,
+    adjudicatedScoreDraft,
+    onSaveManualGrades,
+    prevStudent,
+    nextStudent,
+    navigateToStudent,
+  ]);
 
   const loadFileContent = useCallback(
     async (canvasId: string, filepath: string) => {
@@ -234,13 +339,48 @@ function StudentInspectDialogSession({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="flex h-[min(90vh,56rem)] w-[min(96vw,72rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="shrink-0 border-b border-border p-6 pr-12">
-          <DialogTitle className="text-xl font-bold text-foreground">
-            {student?.student_name}
-          </DialogTitle>
-          <DialogDescription className="mt-1 text-xs text-muted-foreground">
-            Canvas ID: {student?.canvas_id} | Score: {student?.score} /{" "}
-            {student?.max_score} pts
-          </DialogDescription>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <DialogTitle className="text-xl font-bold text-foreground">
+                {student?.student_name}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-xs text-muted-foreground">
+                Canvas ID: {student?.canvas_id} | Score:{" "}
+                {student?.requires_adjudication || student?.score === null
+                  ? "Pending Adjudication"
+                  : student?.score}{" "}
+                / {student?.max_score} pts
+              </DialogDescription>
+            </div>
+
+            {onSelectStudent && students.length > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-mono">
+                  {currentStudentIndex + 1} / {students.length}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!prevStudent}
+                  onClick={() => navigateToStudent(prevStudent)}
+                  title="Previous student (← or K)"
+                >
+                  <ChevronLeftIcon className="size-4 mr-1" /> Prev
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!nextStudent}
+                  onClick={() => navigateToStudent(nextStudent)}
+                  title="Next student (→ or J)"
+                >
+                  Next <ChevronRightIcon className="size-4 ml-1" />
+                </Button>
+              </div>
+            )}
+          </div>
         </DialogHeader>
 
         <Tabs
@@ -262,20 +402,22 @@ function StudentInspectDialogSession({
               >
                 Code Explorer
               </TabsTrigger>
-              {student && Object.keys(student.manual_results ?? {}).length > 0 && (
-                <TabsTrigger
-                  value="manual"
-                  className="relative data-[state=active]:bg-background data-[state=active]:text-foreground"
-                >
-                  Manual Grading
-                  {hasUngradedManualItems(student) && (
-                    <span
-                      aria-hidden
-                      className="absolute top-1 right-1 size-1.5 rounded-full bg-destructive"
-                    />
-                  )}
-                </TabsTrigger>
-              )}
+              {student &&
+                (Object.keys(student.manual_results ?? {}).length > 0 ||
+                  Boolean(student.requires_adjudication)) && (
+                  <TabsTrigger
+                    value="manual"
+                    className="relative data-[state=active]:bg-background data-[state=active]:text-foreground"
+                  >
+                    Manual Grading
+                    {hasUngradedManualItems(student) && (
+                      <span
+                        aria-hidden
+                        className="absolute top-1 right-1 size-1.5 rounded-full bg-destructive"
+                      />
+                    )}
+                  </TabsTrigger>
+                )}
             </TabsList>
           </div>
 
@@ -332,6 +474,9 @@ function StudentInspectDialogSession({
                         manualGradesDraft,
                         overallCommentDraft,
                         false,
+                        student.requires_adjudication
+                          ? adjudicatedScoreDraft
+                          : undefined,
                       );
                     }}
                     className="px-4 py-2 text-xs"
@@ -463,13 +608,46 @@ function StudentInspectDialogSession({
             className="min-h-0 flex-1 overflow-y-auto p-6"
           >
             <div className="mx-auto max-w-3xl space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">
-                  Manual Rubric Grading
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Score each criterion and add optional student-facing feedback.
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Manual Rubric Grading
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Score each criterion and add optional student-facing
+                    feedback. Tip: Press{" "}
+                    <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[10px]">
+                      Ctrl+Enter
+                    </kbd>{" "}
+                    to save.
+                  </p>
+                </div>
+                {Object.keys(student?.manual_results ?? {}).length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setManualGradesDraft((prev) =>
+                        Object.fromEntries(
+                          Object.entries(student.manual_results ?? {}).map(
+                            ([key, item]) => [
+                              key,
+                              {
+                                score: item.points,
+                                comments:
+                                  prev[key]?.comments ?? item.comments ?? "",
+                              },
+                            ],
+                          ),
+                        ),
+                      );
+                    }}
+                  >
+                    <CheckCheckIcon className="mr-1.5 size-4 text-success" />
+                    Mark All Full Points
+                  </Button>
+                )}
               </div>
 
               <div className="rounded-lg border border-border bg-card p-4">
@@ -478,9 +656,50 @@ function StudentInspectDialogSession({
                     Automated results
                   </h4>
                   <span className="font-mono text-xs text-muted-foreground">
-                    {student?.automated_score} / {student?.automated_max_score}
+                    {student?.requires_adjudication ||
+                    student?.automated_score === null
+                      ? "Pending Adjudication"
+                      : student?.automated_score}{" "}
+                    / {student?.automated_max_score}
                   </span>
                 </div>
+                {student?.requires_adjudication && (
+                  <div className="mb-3 rounded border border-warning/40 bg-warning/10 p-3 text-xs space-y-2">
+                    <p className="font-semibold text-foreground">
+                      Adjudication Required ({student.failure_category || "infrastructure_failure"})
+                    </p>
+                    <p className="text-muted-foreground">
+                      Automated execution failed due to a grader infrastructure or test harness issue rather than student code. Assign an adjudicated automated score to unlock exports.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <label
+                        htmlFor="adjudicated-automated-score"
+                        className="font-medium text-foreground"
+                      >
+                        Adjudicated Automated Score:
+                      </label>
+                      <Input
+                        id="adjudicated-automated-score"
+                        type="number"
+                        min={0}
+                        max={student.automated_max_score}
+                        step={1}
+                        value={adjudicatedScoreDraft ?? ""}
+                        placeholder="—"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const raw = e.target.value;
+                          setAdjudicatedScoreDraft(
+                            raw === "" ? null : Number(raw),
+                          );
+                        }}
+                        className="h-8 w-24 border-input bg-background text-center font-mono text-xs text-foreground"
+                      />
+                      <span className="text-muted-foreground">
+                        / {student.automated_max_score} pts
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   {(student?.automated_results ?? []).map((item) => (
                     <div
@@ -511,16 +730,64 @@ function StudentInspectDialogSession({
                       score: item.score,
                       comments: item.comments || "",
                     };
+                    const halfPoints = Math.round((item.points / 2) * 10) / 10;
+                    const setPresetScore = (preset: number) => {
+                      setManualGradesDraft((prev) => ({
+                        ...prev,
+                        [key]: {
+                          ...prev[key],
+                          score: preset,
+                          comments: prev[key]?.comments ?? "",
+                        },
+                      }));
+                    };
                     return (
                       <div
                         key={key}
                         className="space-y-3 rounded-lg border border-border bg-card p-4"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-sm font-semibold text-foreground">
                             {item.label}
                           </span>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setPresetScore(0)}
+                                className={`rounded border px-2 py-0.5 font-mono text-xs transition-colors cursor-pointer ${
+                                  draft.score === 0
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                0
+                              </button>
+                              {item.points > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPresetScore(halfPoints)}
+                                  className={`rounded border px-2 py-0.5 font-mono text-xs transition-colors cursor-pointer ${
+                                    draft.score === halfPoints
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  50% ({halfPoints})
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setPresetScore(item.points)}
+                                className={`rounded border px-2 py-0.5 font-mono text-xs transition-colors cursor-pointer ${
+                                  draft.score === item.points
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                Full ({item.points})
+                              </button>
+                            </div>
                             <Input
                               type="number"
                               min={0}
@@ -580,12 +847,22 @@ function StudentInspectDialogSession({
                   variant="outline"
                   onClick={() => {
                     if (!student) return;
-                    void onSaveManualGrades(
-                      student.canvas_id,
-                      manualGradesDraft,
-                      overallCommentDraft,
-                      false,
-                    );
+                    if (student.requires_adjudication) {
+                      void onSaveManualGrades(
+                        student.canvas_id,
+                        manualGradesDraft,
+                        overallCommentDraft,
+                        false,
+                        adjudicatedScoreDraft,
+                      );
+                    } else {
+                      void onSaveManualGrades(
+                        student.canvas_id,
+                        manualGradesDraft,
+                        overallCommentDraft,
+                        false,
+                      );
+                    }
                   }}
                   className="px-4 py-2 text-xs"
                 >
@@ -596,12 +873,22 @@ function StudentInspectDialogSession({
                   disabled={isSavingGrades}
                   onClick={() => {
                     if (!student) return;
-                    void onSaveManualGrades(
-                      student.canvas_id,
-                      manualGradesDraft,
-                      overallCommentDraft,
-                      true,
-                    );
+                    if (student.requires_adjudication) {
+                      void onSaveManualGrades(
+                        student.canvas_id,
+                        manualGradesDraft,
+                        overallCommentDraft,
+                        true,
+                        adjudicatedScoreDraft,
+                      );
+                    } else {
+                      void onSaveManualGrades(
+                        student.canvas_id,
+                        manualGradesDraft,
+                        overallCommentDraft,
+                        true,
+                      );
+                    }
                   }}
                   className="px-4 py-2 text-xs"
                 >

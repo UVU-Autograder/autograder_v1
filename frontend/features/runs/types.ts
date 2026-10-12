@@ -31,9 +31,11 @@ export type StudentRunDetail = {
   canvas_id: string;
   bundle_files: string[];
   bundle_file_count: number;
-  score: number;
+  score: number | null;
   max_score: number;
   status: "success" | "failure" | "warning";
+  failure_category?: string | null;
+  requires_adjudication?: boolean;
   feedback_preview: string;
   feedback_html: string;
   manual_results: Record<
@@ -49,7 +51,7 @@ export type StudentRunDetail = {
     points_awarded: number;
     points: number;
   }[];
-  automated_score: number;
+  automated_score: number | null;
   automated_max_score: number;
 };
 

@@ -164,3 +164,20 @@ async def test_pipeline_evaluate_success_and_sync(base_config: AssignmentConfigV
     sync_report = pipeline.evaluate_sync(payload)
     assert sync_report.success
     assert sync_report.score == 10
+
+
+@pytest.mark.anyio
+async def test_pipeline_reserved_filename_blocked(base_config: AssignmentConfigV1) -> None:
+    pipeline = GradingPipeline(config=base_config, artifact_refs={}, allowed_concepts=["functions"])
+    payload = SubmissionPayload.from_files(
+        {
+            "main.py": b"def main(): pass",
+            "conftest.py": b"# attempt to override pytest hooks",
+        }
+    )
+
+    report = await pipeline.evaluate(payload)
+    assert not report.success
+    assert report.failure_category == "reserved_filename"
+    assert "conftest.py" in (report.failure_message or "")
+

@@ -2661,6 +2661,72 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/ai-generate-tests": {
+      "post": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Ai Generate Assignment Tests",
+        "operationId": "ai_generate_assignment_tests_staff_courses__course_id__assignments__assignment_id__ai_generate_tests_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AITestAuthoringRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AITestAuthoringResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses/{course_id}/assignments/{assignment_id}/submissions/ingest": {
       "post": {
         "tags": [
@@ -2730,6 +2796,86 @@
   },
   "components": {
     "schemas": {
+      "AITestAuthoringRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "generate",
+              "edge_cases",
+              "refine"
+            ],
+            "title": "Mode",
+            "default": "generate"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction",
+            "description": "Instructor specification, function signature, or refinement prompt."
+          },
+          "current_test_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 25000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Test Code",
+            "description": "Current tests.py source code in the editor."
+          },
+          "target_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Target Keys",
+            "description": "Optional scoring keys to target."
+          }
+        },
+        "type": "object",
+        "title": "AITestAuthoringRequest"
+      },
+      "AITestAuthoringResponse": {
+        "properties": {
+          "generated_code": {
+            "type": "string",
+            "title": "Generated Code"
+          },
+          "suggested_items": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedScoringItem"
+            },
+            "type": "array",
+            "title": "Suggested Items"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "used_fallback": {
+            "type": "boolean",
+            "title": "Used Fallback",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_code",
+          "explanation"
+        ],
+        "title": "AITestAuthoringResponse"
+      },
       "ArtifactConfig": {
         "properties": {
           "type": {
@@ -4723,6 +4869,17 @@
             "minimum": 0.0,
             "title": "Max Score"
           },
+          "failure_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Category"
+          },
           "warnings": {
             "items": {
               "$ref": "#/components/schemas/SandboxWarning"
@@ -5541,6 +5698,29 @@
         ],
         "title": "StaffSectionSummary"
       },
+      "SuggestedScoringItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "SuggestedScoringItem"
+      },
       "TestSummary": {
         "properties": {
           "label": {
@@ -5667,6 +5847,18 @@
               }
             ],
             "title": "Overall Comment"
+          },
+          "adjudicated_automated_score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjudicated Automated Score"
           }
         },
         "type": "object",

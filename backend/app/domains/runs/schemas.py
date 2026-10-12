@@ -81,4 +81,5 @@ class ManualGradeInput(BaseModel):
 class UpdateManualGradesRequest(BaseModel):
     grades: dict[str, ManualGradeInput]
     overall_comment: str | None = None
+    adjudicated_automated_score: int | None = Field(default=None, ge=0, strict=True)
 

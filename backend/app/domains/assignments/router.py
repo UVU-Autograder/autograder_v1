@@ -28,6 +28,11 @@ from app.domains.assignments.service import (
     save_artifact,
     update_staff_setup,
 )
+from app.integrations.ai.test_authoring import (
+    AITestAuthoringRequest,
+    AITestAuthoringResponse,
+    generate_instructor_tests,
+)
 
 router = APIRouter(
     prefix="/staff/courses/{course_id}/assignments",
@@ -276,4 +281,48 @@ def download_assignment_artifact(
         media_type="application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.post(
+    "/{assignment_id}/ai-generate-tests",
+    response_model=AITestAuthoringResponse,
+    dependencies=[Depends(require_role(["admin", "instructor"]))],
+)
+def ai_generate_assignment_tests(
+    course_id: str,
+    assignment_id: str,
+    payload: AITestAuthoringRequest,
+    db: DbSession,
+    current_user: User = Depends(require_staff),
+) -> AITestAuthoringResponse:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
+    setup = get_staff_setup(db, course_id, assignment_id)
+    if setup is None:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+
+    model_solution_code: str | None = None
+    for art in setup.artifacts:
+        if art.artifact_type == "model_solution":
+            fname = art.display_filename or art.artifact_key
+            if fname.endswith(".py"):
+                res = get_artifact_content(db, course_id, assignment_id, art.artifact_key)
+                if res is not None:
+                    raw_bytes, _ = res
+                    try:
+                        model_solution_code = raw_bytes.decode("utf-8")
+                        break
+                    except UnicodeDecodeError:
+                        continue
+
+    scoring_dicts = [item.model_dump() for item in setup.scoring_items]
+    return generate_instructor_tests(
+        assignment_title=setup.title,
+        description=setup.description,
+        entrypoint=setup.entrypoint_path,
+        scoring_items=scoring_dicts,
+        allowed_concepts=setup.effective_allowed_concepts,
+        model_solution_code=model_solution_code,
+        request=payload,
+    )
+
 

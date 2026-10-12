@@ -436,3 +436,55 @@ def test_prepare_student_bundle_zip_file(tmp_path: Path):
     prepare_student_bundle([zip_filename], student_dir)
 
     assert (student_dir / "main.py").read_text() == "print('nested')"
+
+
+@pytest.mark.parametrize(
+    "reserved_name",
+    ["runner.py", "conftest.py", "ag_test_helpers.py"],
+)
+def test_validate_submission_bundle_rejects_reserved_harness_filenames(
+    tmp_path: Path, base_config_dict, reserved_name: str
+):
+    extract_dir = tmp_path / "extracted"
+    extract_dir.mkdir(parents=True)
+    (extract_dir / "main.py").write_text("main")
+    (extract_dir / "utils.py").write_text("utils")
+    (extract_dir / reserved_name).write_text("print('hijack')")
+
+    config = AssignmentConfigV1.model_validate(base_config_dict)
+    with pytest.raises(
+        ValueError,
+        match=f"Reserved grading harness filename '{reserved_name}' is not allowed",
+    ):
+        validate_submission_bundle(extract_dir, config)
+
+
+def test_prepare_student_bundle_rejects_reserved_canvas_file(tmp_path: Path):
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    bad_file = src_dir / "jaxonlarsen_12345_67890_conftest.py"
+    bad_file.write_text("import pytest")
+
+    student_dir = tmp_path / "student_12345"
+    with pytest.raises(
+        ValueError,
+        match="Reserved grading harness filename 'conftest.py' is not allowed",
+    ):
+        prepare_student_bundle([bad_file], student_dir)
+
+
+@pytest.mark.parametrize(
+    "evil_name",
+    [
+        "..\\escaped.py",
+        "student_12345_67890_main.py\\..\\escaped.py",
+        "\\absolute.py",
+    ],
+)
+def test_count_canvas_submissions_rejects_backslash_traversal(evil_name: str):
+    from app.domains.ingestion.extractor import count_canvas_submissions
+
+    zip_data = create_zip_bytes({evil_name: b"print('evil')"})
+    with pytest.raises(ExtractionError, match="Directory traversal detected in ZIP file"):
+        count_canvas_submissions(zip_data)
+

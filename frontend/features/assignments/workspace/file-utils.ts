@@ -33,6 +33,12 @@ const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
 const ILLEGAL_FILENAME_CHARS = /[/\\:*?"<>|]/;
+export const RESERVED_HARNESS_FILENAMES = new Set([
+  'runner.py',
+  'conftest.py',
+  'ag_test_helpers.py',
+  'python_autograder_helpers.py',
+]);
 
 export function basename(filename: string) {
   return filename.split(/[/\\]/).pop() ?? filename;
@@ -64,9 +70,16 @@ export function validateFilename(
     trimmed === '.' ||
     trimmed === '..' ||
     trimmed.startsWith('../') ||
-    trimmed.startsWith('..\\')
+    trimmed.startsWith('..\\') ||
+    trimmed.includes('..')
   ) {
     return { valid: false, error: 'Relative path navigation is not permitted.' };
+  }
+  if (RESERVED_HARNESS_FILENAMES.has(trimmed.toLowerCase())) {
+    return {
+      valid: false,
+      error: `"${trimmed}" is reserved for the autograder test harness.`,
+    };
   }
   const isDuplicate = existingFiles.some(
     (existing) =>
@@ -77,6 +90,14 @@ export function validateFilename(
     return { valid: false, error: `A file named "${trimmed}" already exists.` };
   }
   return { valid: true };
+}
+
+function matchesGlobPattern(filename: string, pattern: string): boolean {
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
+  return new RegExp(`^${escaped}$`, 'i').test(filename);
 }
 
 export function checkBundleRequirements(
@@ -98,10 +119,22 @@ export function checkBundleRequirements(
   const requiredFileConfigs = assignment?.config?.bundle?.file_requirements ?? [];
   for (const req of requiredFileConfigs) {
     if (req.paths && req.paths.length > 0) {
-      for (const requiredPath of req.paths) {
-        if (!workspaceFiles.includes(requiredPath)) {
-          missingRequiredFiles.push(requiredPath);
+      const satisfied = req.paths.some((requiredPath) =>
+        workspaceFiles.includes(requiredPath)
+      );
+      if (!satisfied) {
+        if (req.paths.length === 1) {
+          missingRequiredFiles.push(req.paths[0]);
+        } else {
+          missingRequiredFiles.push(`${req.label} (${req.paths.join(' or ')})`);
         }
+      }
+    } else if (req.pattern) {
+      const satisfied = workspaceFiles.some((f) =>
+        matchesGlobPattern(f, req.pattern!)
+      );
+      if (!satisfied) {
+        missingRequiredFiles.push(`${req.label} (${req.pattern})`);
       }
     }
   }

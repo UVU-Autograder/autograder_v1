@@ -55,7 +55,7 @@ export function AssignmentFileProvider({
   children: ReactNode;
   assignment?: Assignment;
 }) {
-  const vfsRef = useRef<WorkspaceVFS>(new WorkspaceVFS());
+  const [vfs] = useState<WorkspaceVFS>(() => new WorkspaceVFS());
   const [files, setFiles] = useState<Record<string, OpenFile>>({});
   const [editorLayout, setEditorLayout] = useState<EditorLayoutState>({
     panes: {
@@ -71,14 +71,14 @@ export function AssignmentFileProvider({
     filename: string,
     options?: { content?: string; language?: string; category?: OpenFile['category'] }
   ) => {
-    let file = vfsRef.current.readFile(filename);
+    let file = vfs.readFile(filename);
 
     if (!file) {
-      file = vfsRef.current.writeFile(filename, options?.content ?? '', {
+      file = vfs.writeFile(filename, options?.content ?? '', {
         language: options?.language,
         category: options?.category ?? 'workspace',
       });
-      setFiles(vfsRef.current.getAllFilesRecord());
+      setFiles(vfs.getAllFilesRecord());
     }
 
     setEditorLayout((prev) => {
@@ -171,14 +171,14 @@ export function AssignmentFileProvider({
     const lastFilename = filenames[filenames.length - 1];
 
     for (const file of openFiles) {
-      vfsRef.current.writeFile(file.filename, file.content, {
+      vfs.writeFile(file.filename, file.content, {
         category: file.category,
         language: file.language,
         kind: file.kind,
       });
     }
 
-    setFiles(vfsRef.current.getAllFilesRecord());
+    setFiles(vfs.getAllFilesRecord());
 
     setEditorLayout((prev) => {
       const pane = prev.panes[prev.activePaneId];
@@ -204,18 +204,18 @@ export function AssignmentFileProvider({
   };
 
   const updateFileContent = (filename: string, content: string) => {
-    const existing = vfsRef.current.readFile(filename);
+    const existing = vfs.readFile(filename);
     if (!existing || existing.content === content) return;
 
-    vfsRef.current.writeFile(filename, content);
-    setFiles(vfsRef.current.getAllFilesRecord());
+    vfs.writeFile(filename, content);
+    setFiles(vfs.getAllFilesRecord());
   };
 
   const deleteFile = (filename: string) => {
-    const deleted = vfsRef.current.deleteFile(filename);
+    const deleted = vfs.deleteFile(filename);
     if (!deleted) return;
 
-    setFiles(vfsRef.current.getAllFilesRecord());
+    setFiles(vfs.getAllFilesRecord());
 
     setEditorLayout((prev) => {
       let nextLayout = { ...prev };
@@ -235,10 +235,10 @@ export function AssignmentFileProvider({
     const trimmedOld = oldFilename.trim();
     const trimmedNew = newFilename.trim();
 
-    const success = vfsRef.current.renameFile(trimmedOld, trimmedNew);
+    const success = vfs.renameFile(trimmedOld, trimmedNew);
     if (!success) return false;
 
-    setFiles(vfsRef.current.getAllFilesRecord());
+    setFiles(vfs.getAllFilesRecord());
 
     setEditorLayout((prev) => {
       const nextPanes = { ...prev.panes };
@@ -279,7 +279,7 @@ export function AssignmentFileProvider({
         layout,
         activePaneId,
         dragTab,
-        vfs: vfsRef.current,
+        vfs,
         openFileByName,
         setActiveTab,
         setActivePane,

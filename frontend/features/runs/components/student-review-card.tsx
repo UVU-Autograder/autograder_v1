@@ -15,7 +15,8 @@ export function StudentReviewCard({ student, onInspect }: StudentReviewCardProps
     (m) => m.score === null,
   ).length;
   const totalManualCount = Object.keys(manualResults).length;
-  const hasUngraded = ungradedCount > 0;
+  const needsAdjudication = Boolean(student.requires_adjudication) || student.score === null;
+  const hasUngraded = ungradedCount > 0 || needsAdjudication;
 
   return (
     <div className="rounded-lg border border-border p-4 hover:shadow-xs transition-shadow bg-card text-card-foreground">
@@ -28,9 +29,11 @@ export function StudentReviewCard({ student, onInspect }: StudentReviewCardProps
         </div>
         <div className="flex items-center gap-3">
           <div className="text-sm font-semibold text-foreground mr-1">
-            {student.score} / {student.max_score} pts
+            {needsAdjudication
+              ? `Pending Adjudication / ${student.max_score} pts`
+              : `${student.score} / ${student.max_score} pts`}
           </div>
-          {totalManualCount > 0 && (
+          {(totalManualCount > 0 || needsAdjudication) && (
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${
                 hasUngraded
@@ -38,7 +41,11 @@ export function StudentReviewCard({ student, onInspect }: StudentReviewCardProps
                   : "bg-muted text-muted-foreground border border-border"
               }`}
             >
-              {hasUngraded ? `Ungraded (${ungradedCount})` : "Graded"}
+              {needsAdjudication
+                ? "Needs Adjudication"
+                : hasUngraded
+                  ? `Ungraded (${ungradedCount})`
+                  : "Graded"}
             </span>
           )}
           <Button

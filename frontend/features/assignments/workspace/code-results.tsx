@@ -119,6 +119,151 @@ function runStateLabel(state: string): string {
   }
 }
 
+function diagnoseExecutionFailure(
+  message: string,
+  structuredCategory?: string | null,
+): {
+  category: string;
+  title: string;
+  guidance: string;
+  isInfrastructure: boolean;
+} {
+  if (structuredCategory) {
+    switch (structuredCategory) {
+      case "syntax_error":
+        return {
+          category: "syntax_error",
+          title: "Syntax Error",
+          guidance:
+            "Check your Python syntax, matching parentheses/quotes, colons, and indentation levels.",
+          isInfrastructure: false,
+        };
+      case "import_error":
+        return {
+          category: "import_error",
+          title: "Import / Module Error",
+          guidance:
+            "Ensure all imported modules match the required filenames and allowed standard-library or preinstalled packages.",
+          isInfrastructure: false,
+        };
+      case "resource_limit_exceeded":
+        return {
+          category: "resource_limit_exceeded",
+          title: "Resource Limit Exceeded",
+          guidance:
+            "Your program exceeded the time or memory limit. Check for infinite loops, blocking input() calls waiting for extra lines, or excessive memory allocation.",
+          isInfrastructure: false,
+        };
+      case "reserved_filename":
+        return {
+          category: "reserved_filename",
+          title: "Reserved Harness Filename",
+          guidance:
+            "Rename or remove files that collide with the autograder test harness (runner.py, conftest.py, ag_test_helpers.py).",
+          isInfrastructure: false,
+        };
+      case "test_harness_defect":
+      case "infrastructure_failure":
+      case "internal_error":
+        return {
+          category: structuredCategory,
+          title: "Grader Infrastructure / Harness Issue",
+          guidance:
+            "This failure was caused by the grading environment or test harness rather than your code, and will not be recorded as an earned zero score. Please retry or notify course staff.",
+          isInfrastructure: true,
+        };
+      case "runtime_exception":
+      case "submission_error":
+        return {
+          category: structuredCategory,
+          title: "Execution Failure",
+          guidance:
+            "Review the error details below and verify your required files and entrypoint behavior.",
+          isInfrastructure: false,
+        };
+    }
+  }
+
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("syntaxerror") ||
+    lower.includes("indentationerror") ||
+    lower.includes("taberror") ||
+    lower.includes("syntax_error")
+  ) {
+    return {
+      category: "syntax_error",
+      title: "Syntax Error",
+      guidance:
+        "Check your Python syntax, matching parentheses/quotes, colons, and indentation levels.",
+      isInfrastructure: false,
+    };
+  }
+  if (
+    lower.includes("modulenotfounderror") ||
+    lower.includes("importerror") ||
+    lower.includes("import_error") ||
+    lower.includes("preinstalled dependency")
+  ) {
+    return {
+      category: "import_error",
+      title: "Import / Module Error",
+      guidance:
+        "Ensure all imported modules match the required filenames and allowed standard-library or preinstalled packages.",
+      isInfrastructure: false,
+    };
+  }
+  if (
+    lower.includes("timed out") ||
+    lower.includes("time limit") ||
+    lower.includes("memoryerror") ||
+    lower.includes("resource_limit_exceeded") ||
+    lower.includes("timeout")
+  ) {
+    return {
+      category: "resource_limit_exceeded",
+      title: "Resource Limit Exceeded",
+      guidance:
+        "Your program exceeded the time or memory limit. Check for infinite loops, blocking input() calls waiting for extra lines, or excessive memory allocation.",
+      isInfrastructure: false,
+    };
+  }
+  if (
+    lower.includes("reserved grading harness") ||
+    lower.includes("reserved_filename")
+  ) {
+    return {
+      category: "reserved_filename",
+      title: "Reserved Harness Filename",
+      guidance:
+        "Rename or remove files that collide with the autograder test harness (runner.py, conftest.py, ag_test_helpers.py, python_autograder_helpers.py).",
+      isInfrastructure: false,
+    };
+  }
+  if (
+    lower.includes("judge0") ||
+    lower.includes("cleanup") ||
+    lower.includes("infrastructure") ||
+    lower.includes("internalerror") ||
+    lower.includes("test_harness_defect")
+  ) {
+    return {
+      category: "infrastructure_failure",
+      title: "Grader Infrastructure / Harness Issue",
+      guidance:
+        "This failure was caused by the grading environment or test harness rather than your code, and will not be recorded as an earned zero score. Please retry or notify course staff.",
+      isInfrastructure: true,
+    };
+  }
+  return {
+    category: "runtime_exception",
+    title: "Execution Failure",
+    guidance:
+      "Review the error details below and verify your required files and entrypoint behavior.",
+    isInfrastructure: false,
+  };
+}
+
 export default function CodeResults({
   courseId,
   assignmentId,
@@ -244,11 +389,26 @@ export default function CodeResults({
       if (finalStatus.state === "failure") {
         setPhase("error");
         setErrorMessage(finalStatus.message || "Run failed during execution.");
+        try {
+          const failedResult = await getRunResult(run.result_url, sessionId);
+          setResult(failedResult);
+        } catch {
+          // Ignore if no stored result payload exists for the failed run
+        }
         return;
       }
 
       const runResult = await getRunResult(run.result_url, sessionId);
       setResult(runResult);
+      if (runResult.state === "failure") {
+        setPhase("error");
+        setErrorMessage(
+          runResult.warnings?.[0]?.message ||
+            runResult.sanitized_feedback ||
+            "Run failed during execution.",
+        );
+        return;
+      }
       setPhase("complete");
     } catch (err) {
       setPhase("error");
@@ -403,6 +563,15 @@ export default function CodeResults({
           </span>
         </div>
       )}
+      {bundleStatus.missingRequiredFiles.length > 0 && (
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-warning font-medium text-xs">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span>
+            Missing required file(s):{" "}
+            <strong>{bundleStatus.missingRequiredFiles.join(", ")}</strong>
+          </span>
+        </div>
+      )}
       <Button
         onClick={handleRunCode}
         disabled={isLoading || isQuotaExceeded}
@@ -435,11 +604,33 @@ export default function CodeResults({
         </div>
       )}
 
-      {errorMessage && (
-        <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive font-medium">
-          {errorMessage}
-        </p>
-      )}
+      {errorMessage && (() => {
+        const structuredCategory =
+          result?.failure_category ?? result?.warnings?.[0]?.code;
+        const diag = diagnoseExecutionFailure(errorMessage, structuredCategory);
+        return (
+          <div
+            role="alert"
+            data-failure-category={diag.category}
+            className={`mt-3 rounded-lg border p-3 text-sm space-y-1 ${
+              diag.isInfrastructure
+                ? "border-warning/40 bg-warning/10 text-foreground"
+                : "border-destructive/30 bg-destructive/10 text-destructive"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-xs uppercase tracking-wider">
+                {diag.title}
+              </span>
+              <span className="font-mono text-[10px] opacity-80">
+                {diag.category}
+              </span>
+            </div>
+            <p className="font-medium">{errorMessage}</p>
+            <p className="text-xs opacity-90">{diag.guidance}</p>
+          </div>
+        );
+      })()}
 
       <div className={`flex flex-1 flex-col ${showCheckCode ? "" : "hidden"}`}>
         {result ? (

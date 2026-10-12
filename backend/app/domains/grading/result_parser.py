@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass, field
 
 from app.domains.assignments.schemas import ScoringItemConfig, pytest_marker_for_key
+from app.domains.grading.schemas import classify_execution_failure
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ class PytestTestResult:
     actual: str | None = None
     expected: str | None = None
     expected_input: str | None = None
+    failure_category: str | None = None
 
 
 @dataclass
@@ -69,6 +71,9 @@ class PytestRunResult:
 
     error_message: str | None = None
     """Set when pytest itself failed to run (bad import, syntax error, etc.)."""
+
+    failure_category: str | None = None
+    """Diagnostic failure category derived from exit codes and stderr/message patterns."""
 
 
 # ---------------------------------------------------------------------------
@@ -111,19 +116,31 @@ def _extract_json_string(raw_stdout: str) -> str | None:
 
 def _parse_test_entry(entry: dict) -> PytestTestResult:
     """Convert a single test dict from the JSON payload."""
+    outcome = entry.get("outcome", "error")
+    message = _truncate(entry.get("message"))
+    category = entry.get("failure_category")
+    if not category and outcome != "passed":
+        classified = classify_execution_failure(message=message, outcome=outcome)
+        category = classified.value if classified is not None else None
     return PytestTestResult(
         nodeid=entry.get("nodeid", "<unknown>"),
-        outcome=entry.get("outcome", "error"),
+        outcome=outcome,
         markers=entry.get("markers", []),
         duration=float(entry.get("duration", 0.0)),
-        message=_truncate(entry.get("message")),
+        message=message,
         actual=entry.get("actual"),
         expected=entry.get("expected"),
         expected_input=entry.get("expected_input"),
+        failure_category=category,
     )
 
 
-def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
+def parse_pytest_json(
+    raw_stdout: str,
+    *,
+    stderr: str = "",
+    exit_code: int = -1,
+) -> PytestRunResult:
     """Parse the JSON output produced by the runner script.
 
     The runner outputs a JSON object with the following top-level keys:
@@ -140,6 +157,8 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
 
     Args:
         raw_stdout: The full stdout captured from the Judge0 execution.
+        stderr: Optional stderr captured from execution.
+        exit_code: Optional process exit code.
 
     Returns:
         A populated :class:`PytestRunResult`.
@@ -147,25 +166,55 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
     json_str = _extract_json_string(raw_stdout)
 
     if json_str is None:
+        msg = "No JSON payload found in runner output."
+        if stderr.strip():
+            msg = f"{msg} { _truncate(stderr.strip(), 500) }"
+        classified = classify_execution_failure(
+            message=raw_stdout,
+            stderr=stderr,
+            exit_code=exit_code,
+        )
         return PytestRunResult(
-            error_message="No JSON payload found in runner output.",
+            exit_code=exit_code,
+            error_message=msg,
+            failure_category=classified.value if classified is not None else "infrastructure_failure",
         )
 
     try:
         data = json.loads(json_str)
     except json.JSONDecodeError as exc:
+        msg = f"Invalid JSON in runner output: {exc}"
+        classified = classify_execution_failure(
+            message=msg,
+            stderr=stderr,
+            exit_code=exit_code,
+        )
         return PytestRunResult(
-            error_message=f"Invalid JSON in runner output: {exc}",
+            exit_code=exit_code,
+            error_message=msg,
+            failure_category=classified.value if classified is not None else "infrastructure_failure",
         )
 
     if not isinstance(data, dict):
         return PytestRunResult(
+            exit_code=exit_code,
             error_message=f"Expected a JSON object, got {type(data).__name__}.",
+            failure_category="infrastructure_failure",
         )
 
     infrastructure_error = data.get("infrastructure_error")
     if infrastructure_error:
-        return PytestRunResult(error_message=str(infrastructure_error))
+        err_str = str(infrastructure_error)
+        classified = classify_execution_failure(
+            message=err_str,
+            stderr=stderr,
+            exit_code=exit_code,
+        )
+        return PytestRunResult(
+            exit_code=exit_code,
+            error_message=err_str,
+            failure_category=classified.value if classified is not None else "infrastructure_failure",
+        )
 
     # Parse individual test entries.
     tests: list[PytestTestResult] = []
@@ -174,6 +223,21 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
 
     # Parse the summary block.
     summary = data.get("summary", {})
+    parsed_exit_code = int(summary.get("exit_code", exit_code))
+
+    run_failure_category: str | None = None
+    if parsed_exit_code not in (0, -1) or any(t.outcome != "passed" for t in tests):
+        first_failed = next((t for t in tests if t.outcome != "passed"), None)
+        if first_failed and first_failed.failure_category:
+            run_failure_category = first_failed.failure_category
+        else:
+            classified = classify_execution_failure(
+                message=first_failed.message if first_failed else None,
+                stderr=stderr,
+                exit_code=parsed_exit_code,
+                outcome=first_failed.outcome if first_failed else None,
+            )
+            run_failure_category = classified.value if classified is not None else None
 
     return PytestRunResult(
         tests=tests,
@@ -182,8 +246,9 @@ def parse_pytest_json(raw_stdout: str) -> PytestRunResult:
         failed=int(summary.get("failed", 0)),
         errors=int(summary.get("errors", 0)),
         duration=float(summary.get("duration", 0.0)),
-        exit_code=int(summary.get("exit_code", -1)),
+        exit_code=parsed_exit_code,
         error_message=None,
+        failure_category=run_failure_category,
     )
 
 
@@ -279,6 +344,10 @@ def calculate_scores(
         test_result_details = []
         for t in matching_tests:
             your_val, exp_val = _extract_assertion_values(t.message, t.actual, t.expected)
+            cat = t.failure_category
+            if not cat and t.outcome != "passed":
+                classified = classify_execution_failure(message=t.message, outcome=t.outcome)
+                cat = classified.value if classified is not None else None
             test_result_details.append(
                 {
                     "nodeid": t.nodeid,
@@ -290,13 +359,17 @@ def calculate_scores(
                     "your_value": your_val,
                     "expected_value": exp_val,
                     "expected_input": t.expected_input,
+                    "failure_category": cat,
                 }
             )
 
         item_your_val = None
         item_exp_val = None
+        item_failure_cat = None
         if not passed:
             for tr in test_result_details:
+                if item_failure_cat is None and tr.get("failure_category"):
+                    item_failure_cat = tr.get("failure_category")
                 if tr.get("your_value") is not None or tr.get("expected_value") is not None:
                     item_your_val = tr.get("your_value")
                     item_exp_val = tr.get("expected_value")
@@ -314,6 +387,7 @@ def calculate_scores(
                 "marker": marker,
                 "your_value": item_your_val,
                 "expected_value": item_exp_val,
+                "failure_category": item_failure_cat,
                 "test_results": test_result_details,
             }
         )
@@ -329,9 +403,11 @@ class PytestOutcomeParser:
         stdout: str,
         stderr: str = "",
         test_configs: list[ScoringItemConfig] | None = None,
+        exit_code: int = -1,
     ) -> tuple[PytestRunResult, tuple[int, list[dict]]]:
-        run_result = parse_pytest_json(stdout)
+        run_result = parse_pytest_json(stdout, stderr=stderr, exit_code=exit_code)
         if test_configs is None:
             return run_result, (0, [])
         score, details = calculate_scores(run_result, test_configs)
         return run_result, (score, details)
+
