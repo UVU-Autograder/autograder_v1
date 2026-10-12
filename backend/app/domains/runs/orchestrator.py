@@ -163,7 +163,7 @@ def _cancelled_response(run_id: str, message: str = "Sandbox run was cancelled b
 def execute_sandbox_run(
     run_id: str,
     zip_data_b64: str,
-    config_json: dict,
+    config: dict,
     artifact_refs: dict[str, str],
     allowed_concepts: list[str],
     stdin: str | None = None,
@@ -180,10 +180,10 @@ def execute_sandbox_run(
         from app.domains.grading.engine import GradingEngine
 
         zip_data = base64.b64decode(zip_data_b64)
-        config = AssignmentConfigV1.model_validate(config_json)
+        config_obj = AssignmentConfigV1.model_validate(config)
 
         engine = GradingEngine(
-            config=config,
+            config=config_obj,
             artifact_refs=artifact_refs,
             allowed_concepts=allowed_concepts,
         )

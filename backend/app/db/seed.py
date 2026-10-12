@@ -15,8 +15,8 @@ from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Module, Section
 
 SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
-EXAMPLE_DIR = SEEDS_DIR / "simple_python_functions"
-EXAMPLE_CONFIG = EXAMPLE_DIR / "config_json.example.json"
+EXAMPLE_DIR = SEEDS_DIR / "simple-python-functions"
+EXAMPLE_CONFIG = EXAMPLE_DIR / "config.json"
 CS1410_CATALOG = SEEDS_DIR / "cs1410_catalog.json"
 
 
@@ -48,7 +48,7 @@ def _seed_cs1400(
     course = Course(
         code="cs1400",
         title="Fundamentals of Programming",
-        term="Spring 2026",
+        term="Fall 2026",
         default_concepts=["variables", "conditionals"],
         instructor=staff_user,
     )
@@ -97,7 +97,7 @@ def _seed_cs1410(
     course = Course(
         code="cs1410",
         title="Object-Oriented Programming",
-        term="Spring 2026",
+        term="Fall 2026",
         default_concepts=["variables", "conditionals", "loops", "functions"],
         instructor=staff_user,
     )

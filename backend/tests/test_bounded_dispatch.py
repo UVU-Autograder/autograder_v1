@@ -277,7 +277,7 @@ def test_scheduling_metadata_and_errors_do_not_copy_student_content(caplog):
 
 
 def test_cross_process_capacity_is_shared(tmp_path):
-    url = f"sqlite+pysqlite:///{(tmp_path / 'capacity.db').as_posix()}"
+    url = f"sqlite+pysqlite:///{(tmp_path / 'capacity.db').as_posix()}?timeout=30"
     engine = create_engine(url)
     Base.metadata.create_all(engine)
     engine.dispose()

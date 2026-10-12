@@ -9,7 +9,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-heading: var(--font-sans);
+  --font-stratum: "Stratum", "Stratum 1", "Stratum 2", var(--font-sans);
+  --font-proxima: "Proxima Nova", "proxima-nova", var(--font-sans);
+  --font-factoria: "Factoria", "Rockwell", serif;
+  --font-sutro: "Sutro", "Georgia", serif;
+  --font-heading: var(--font-stratum);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,6 +50,9 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-header: var(--header);
+  --color-header-foreground: var(--header-foreground);
+  --color-header-border: var(--header-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -55,87 +62,143 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ==========================================================================
+   UVU Brand Identity Palette (Single Source of Truth)
+   Official guidelines: Pantone 7483, PMS 348C, UVU Warm, UVU Grey, Accents
+   ========================================================================== */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.51 0.23 264);
+  /* --- 1. Base UVU Brand Palette --- */
+  --uvu-green: oklch(0.422 0.095 152.7);        /* #185c33 - Pantone 7483 UVU Green */
+  --wolverine-green: oklch(0.554 0.151 150.6);  /* #008a40 - PMS 348C Wolverine Green */
+  --wolverine-light: oklch(0.68 0.14 150.6);    /* Calibrated Green for Dark Mode */
+  --uvu-warm: oklch(0.955 0.007 88.6);          /* #f2f0eb - Campus Warm Neutral */
+  --uvu-grey: oklch(0.738 0.001 286.4);         /* #aaaaab - Secondary Neutral Grey */
+  --uvu-black: oklch(0.145 0 0);                /* #000000 / Deep Charcoal */
+  --uvu-white: oklch(1 0 0);                    /* #ffffff - Pure White */
+
+  /* Accents (<=20% design) */
+  --uvu-gold: oklch(0.763 0.106 83.6);          /* #d2ac5f - Legacy Gold */
+  --uvu-brick: oklch(0.559 0.134 37.3);         /* #b45336 - Heritage Brick */
+  --lake-calm: oklch(0.783 0.068 180.3);        /* #87c7ba - Lake Calm */
+  --valley-rise: oklch(0.729 0.174 133.8);      /* #78be3f - Valley Rise */
+
+  /* --- 2. Light Mode Semantic Tokens --- */
+  --background: var(--uvu-white);
+  --foreground: var(--uvu-black);
+  --card: var(--background);
+  --card-foreground: var(--foreground);
+  --popover: var(--background);
+  --popover-foreground: var(--foreground);
+
+  /* Primary Action & Focus */
+  --primary: var(--uvu-green);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  --ring: var(--primary);
+
+  /* Secondary & Muted Surfaces */
+  --secondary: var(--uvu-warm);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--uvu-warm);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: var(--uvu-warm);
+  --accent-foreground: var(--foreground);
+
+  /* Status Indicators */
+  --destructive: var(--uvu-brick);
   --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.627 0.194 149.214);
+  --success: var(--wolverine-green);
   --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.769 0.188 70.08);
-  --warning-foreground: oklch(0.145 0 0);
-  --info: oklch(0.55 0.2 245);
-  --info-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.51 0.23 264);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --warning: var(--uvu-gold);
+  --warning-foreground: var(--foreground);
+  --info: oklch(0.72 0.08 180.3);
+  --info-foreground: var(--foreground);
+
+  /* Boundaries & Controls */
+  --border: oklch(0.91 0.002 88.6);
+  --input: var(--border);
+
+  /* Sidebar Navigation */
   --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.51 0.23 264);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.51 0.23 264);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  /* Data Visualization */
+  --chart-1: var(--uvu-green);
+  --chart-2: var(--wolverine-green);
+  --chart-3: var(--uvu-gold);
+  --chart-4: var(--lake-calm);
+  --chart-5: var(--uvu-brick);
+
+  /* Header Navigation (Approved UVU Warm Treatment) */
+  --header: var(--uvu-warm);
+  --header-foreground: var(--foreground);
+  --header-border: oklch(0.89 0.005 88.6);
+
+  --radius: 0.625rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  /* Surfaces & Canvas */
+  --background: var(--uvu-black);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.145 0 0);
-  --success: oklch(0.75 0.18 149.214);
-  --success-foreground: oklch(0.145 0 0);
-  --warning: oklch(0.82 0.17 75);
-  --warning-foreground: oklch(0.145 0 0);
-  --info: oklch(0.7 0.18 245);
-  --info-foreground: oklch(0.145 0 0);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+
+  /* Primary Action & Focus */
+  --primary: var(--wolverine-light);
+  --primary-foreground: var(--background);
+  --ring: var(--primary);
+
+  /* Secondary & Muted Surfaces */
+  --secondary: oklch(0.25 0.005 88.6);
+  --secondary-foreground: var(--uvu-warm);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: var(--uvu-grey);
+  --accent: oklch(0.25 0 0);
+  --accent-foreground: var(--foreground);
+
+  /* Status Indicators */
+  --destructive: oklch(0.68 0.15 37.3);
+  --destructive-foreground: var(--background);
+  --success: oklch(0.75 0.16 148);
+  --success-foreground: var(--background);
+  --warning: oklch(0.82 0.12 83.6);
+  --warning-foreground: var(--background);
+  --info: var(--lake-calm);
+  --info-foreground: var(--background);
+
+  /* Boundaries & Controls */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+
+  /* Sidebar Navigation */
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  /* Data Visualization */
+  --chart-1: var(--primary);
+  --chart-2: var(--warning);
+  --chart-3: var(--lake-calm);
+  --chart-4: var(--destructive);
+  --chart-5: var(--valley-rise);
+
+  /* Header Navigation (Approved UVU Grey Treatment) */
+  --header: var(--uvu-green);
+  --header-foreground: var(--uvu-white);
+  --header-border: var(--wolverine-green);
 }
 
 @layer base {

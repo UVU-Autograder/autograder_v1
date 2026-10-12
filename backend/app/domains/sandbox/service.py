@@ -94,7 +94,7 @@ class SandboxService:
         assignment_exists: bool | None = None,
         max_score: int = 100,
         zip_data: bytes | None = None,
-        config_json: dict | None = None,
+        config: dict | None = None,
         artifact_refs: dict[str, str] | None = None,
         allowed_concepts: list[str] | None = None,
         stdin: str | None = None,
@@ -133,12 +133,12 @@ class SandboxService:
 
 
         # Store execution payload on record
-        if zip_data is not None and config_json is not None:
+        if zip_data is not None and config is not None:
             import base64
 
             zip_b64 = base64.b64encode(zip_data).decode("ascii")
             record.zip_data_b64 = zip_b64
-            record.config_json = config_json
+            record.config = config
             record.artifact_refs = artifact_refs or {}
             record.allowed_concepts = allowed_concepts or []
             record.stdin = stdin
@@ -162,7 +162,7 @@ class SandboxService:
                     grade_result = grade_sandbox_run.delay(
                         run_id=run_id,
                         zip_data_b64=zip_b64,
-                        config_json=config_json,
+                        config=config,
                         artifact_refs=artifact_refs or {},
                         allowed_concepts=allowed_concepts or [],
                         stdin=stdin,
@@ -321,8 +321,10 @@ class SandboxService:
             failure_message = record.result.get("failure_message")
 
         assignment_title = record.assignment_id
-        if record.config_json and isinstance(record.config_json, dict):
-            assignment_title = record.config_json.get("title") or record.assignment_id
+        desc = None
+        if record.config and isinstance(record.config, dict):
+            assignment_title = record.config.get("title") or record.assignment_id
+            desc = record.config.get("description")
 
         from app.integrations.ai.prompts import requirements_from_config
 
@@ -333,7 +335,7 @@ class SandboxService:
             "allowed_concepts": record.allowed_concepts,
             "warnings": warnings,
             "failure_message": failure_message,
-            "requirements": requirements_from_config(record.config_json),
+            "requirements": requirements_from_config(record.config, description=desc),
         }
 
     def generate_ai_feedback(
@@ -507,14 +509,14 @@ class SandboxService:
             )
 
         # In offline/mock mode, evaluate synchronously when complete if result is not yet computed
-        if record.result is None and record.zip_data_b64 and record.config_json:
+        if record.result is None and record.zip_data_b64 and record.config:
             from app.domains.runs.orchestrator import execute_sandbox_run
 
             try:
                 record.result = execute_sandbox_run(
                     run_id=run_id,
                     zip_data_b64=record.zip_data_b64,
-                    config_json=record.config_json,
+                    config=record.config,
                     artifact_refs=record.artifact_refs or {},
                     allowed_concepts=record.allowed_concepts or [],
                     stdin=record.stdin,

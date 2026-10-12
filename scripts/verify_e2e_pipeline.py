@@ -221,7 +221,7 @@ def count_vowels(text):
     print("=" * 70)
     run_meta, session_id = submit_sandbox_run(
         course_id="cs1410",
-        assignment_id="lab-1-image-processing",
+        assignment_id="lab1",
         zip_bytes=make_zip({"wrong_file.py": "pass"}),
     )
     status = poll_run(run_meta["status_url"])
@@ -266,7 +266,7 @@ def composite(base, overlay):
     run_test_scenario(
         title="CS 1410 Lab 1: All Required Files with Pillow Runtime",
         course_id="cs1410",
-        assignment_id="lab-1-image-processing",
+        assignment_id="lab1",
         files={
             "bears2.py": bears2_code,
             "bears3.py": bears3_code,

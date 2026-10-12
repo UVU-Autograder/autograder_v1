@@ -40,7 +40,8 @@ from app.integrations.ai.sanitize import sanitize_code_and_text
 # so multi-class files like dessert.py (DS8-DS10, 7k-9k chars) are not truncated.
 # v6: capped assertion failure message length in _render_failure (max 800 chars,
 # preserving 400 head and 400 tail) to prevent prompt overflow on large pytest outputs.
-PROMPT_VERSION = "v6"
+# v7: include sanitized, truncated assignment summary/description in requirements.
+PROMPT_VERSION = "v7"
 
 # Serving parameters, shared so eval measures what production runs.
 GENERATION_TEMPERATURE = 0.2
@@ -50,6 +51,7 @@ MAX_OUTPUT_TOKENS = 700
 MAX_FILE_CHARS = 10000
 MAX_TOTAL_CODE_CHARS = 16000
 MAX_FAILURE_MESSAGE_CHARS = 800
+MAX_SUMMARY_CHARS = 1000
 
 # Key used when the submission never produced test results (syntax error,
 # timeout, import failure) so the model still has a real item to cite.
@@ -160,21 +162,38 @@ def failures_from_test_results(
     return failures, passing
 
 
-def requirements_from_config(config_json: dict[str, Any] | None) -> str:
-    """REQUIREMENTS text derivable at runtime: the automated scoring items.
+def requirements_from_config(
+    config: dict[str, Any] | None,
+    description: str | None = None,
+) -> str:
+    """REQUIREMENTS text derivable at runtime: sanitized assignment summary and automated scoring items.
 
-    Assignments have no stored description yet, so this is the only
-    requirements text the live sandbox can supply. Training and eval data
-    should use this same function (not desc.md) so the model is trained on the
-    context it will actually receive.
+    Assignments store markdown descriptions; we sanitize and truncate to
+    ``MAX_SUMMARY_CHARS`` before appending the automated scoring items.
+    Training and eval data should use this same function so the model is
+    trained on the context it will actually receive.
     """
-    items = (config_json or {}).get("scoring_items") or []
+    desc = description if description is not None else (config or {}).get("description")
+    summary_block = ""
+    if desc and isinstance(desc, str) and desc.strip():
+        clean_desc = sanitize_code_and_text(desc.strip())
+        if len(clean_desc) > MAX_SUMMARY_CHARS:
+            clean_desc = clean_desc[:MAX_SUMMARY_CHARS].rstrip() + "..."
+        summary_block = clean_desc
+
+    items = (config or {}).get("scoring_items") or []
     lines = [
         f"- {item.get('label') or item.get('key')}"
         for item in items
         if item.get("item_type", "pytest") != "manual"
     ]
-    return "Automatically checked items:\n" + "\n".join(lines) if lines else ""
+    checked_block = ("Automatically checked items:\n" + "\n".join(lines)) if lines else ""
+
+    if summary_block and checked_block:
+        return f"{summary_block}\n\n{checked_block}"
+    if summary_block:
+        return summary_block
+    return checked_block
 
 
 # --------------------------------------------------------------------------

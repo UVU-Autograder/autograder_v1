@@ -125,6 +125,7 @@ class AssignmentConfigV1(BaseModel):
     completion_requirements: list[CompletionRequirementConfig] = Field(default_factory=list)
     dependencies: list[str] = Field(default_factory=list)
     rubric_groups: list[RubricGroupConfig] = Field(default_factory=list)
+    description: str | None = None
 
 
     @model_validator(mode="after")
@@ -237,9 +238,10 @@ class StaffAssignmentSetup(BaseModel):
     completion_requirements: list[CompletionRequirement]
     canvas_ref: str | None = None
     artifacts: list[ArtifactMetadata]
-    config_json: AssignmentConfigV1
+    config: AssignmentConfigV1
     module_id: int | None = None
     effective_allowed_concepts: list[str] = Field(default_factory=list)
+    description: str | None = None
 
 
 
@@ -251,8 +253,9 @@ class StaffAssignmentSetupUpdate(BaseModel):
     sandbox_enabled: bool | None = None
     canvas_ref: str | None = None
     language: str | None = None
-    config_json: AssignmentConfigV1
+    config: AssignmentConfigV1
     module_id: int | None = None
+    description: str | None = None
 
 
 class AssignmentCreate(BaseModel):
@@ -262,6 +265,7 @@ class AssignmentCreate(BaseModel):
     canvas_ref: str | None = Field(default=None)
     sandbox_enabled: bool = Field(default=True)
     module_id: int | None = Field(default=None)
+    description: str | None = Field(default=None)
 
 
 class ArtifactListResponse(BaseModel):

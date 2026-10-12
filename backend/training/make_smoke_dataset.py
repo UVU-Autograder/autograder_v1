@@ -40,7 +40,8 @@ SEEDS_DIR = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
 
 def seed_requirements(slug: str) -> str:
     """REQUIREMENTS exactly as the live sandbox derives them (prompts.requirements_from_config)."""
-    return requirements_from_config(json.loads((SEEDS_DIR / slug / "config_json.example.json").read_text()))
+    cfg_file = SEEDS_DIR / slug / "config.json"
+    return requirements_from_config(json.loads(cfg_file.read_text()))
 
 
 DS1 = dict(

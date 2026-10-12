@@ -11,7 +11,7 @@ def extract_ag_markers(source_code: str) -> set[str]:
 
 
 def run_preflight_validation(db: Session, course_code: str, assignment_slug: str) -> list[str]:
-    """Execute preflight checks on config_json and uploaded artifacts.
+    """Execute preflight checks on configuration and uploaded artifacts.
 
     Returns a list of validation error strings. If empty, validation passed.
     """

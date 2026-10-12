@@ -195,6 +195,28 @@ def test_requirements_from_config_lists_automated_items_only():
     assert requirements_from_config(None) == ""
 
 
+def test_requirements_from_config_includes_sanitized_and_truncated_description():
+    config = {
+        "description": "Implement student submission. Contact jane.doe@uvu.edu (10123456) for help.",
+        "scoring_items": [
+            {"key": "a", "label": "Account init", "item_type": "pytest"},
+        ],
+    }
+    text = requirements_from_config(config)
+    assert "jane.doe@uvu.edu" not in text
+    assert "10123456" not in text
+    assert "Implement student submission." in text
+    assert "Automatically checked items:" in text
+    assert "- Account init" in text
+
+    # Long description truncated to 1000 chars
+    long_desc = "A" * 1500
+    text_long = requirements_from_config({"scoring_items": []}, description=long_desc)
+    assert text_long.startswith("A" * 1000)
+    assert text_long.endswith("...")
+    assert len(text_long) == 1003
+
+
 def test_local_llm_global_code_ceiling():
     client = LocalLLMClient()
     # Provide 3 files of 9000 chars each (total 27,000 chars > 16,000 ceiling)

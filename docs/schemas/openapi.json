@@ -2881,6 +2881,17 @@
             },
             "type": "array",
             "title": "Rubric Groups"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           }
         },
         "type": "object",
@@ -2934,6 +2945,17 @@
               }
             ],
             "title": "Module Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           }
         },
         "type": "object",
@@ -5239,7 +5261,7 @@
             "type": "array",
             "title": "Artifacts"
           },
-          "config_json": {
+          "config": {
             "$ref": "#/components/schemas/AssignmentConfigV1"
           },
           "module_id": {
@@ -5259,6 +5281,17 @@
             },
             "type": "array",
             "title": "Effective Allowed Concepts"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           }
         },
         "type": "object",
@@ -5275,7 +5308,7 @@
           "rubric_groups",
           "completion_requirements",
           "artifacts",
-          "config_json"
+          "config"
         ],
         "title": "StaffAssignmentSetup"
       },
@@ -5325,7 +5358,7 @@
             ],
             "title": "Language"
           },
-          "config_json": {
+          "config": {
             "$ref": "#/components/schemas/AssignmentConfigV1"
           },
           "module_id": {
@@ -5338,11 +5371,22 @@
               }
             ],
             "title": "Module Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           }
         },
         "type": "object",
         "required": [
-          "config_json"
+          "config"
         ],
         "title": "StaffAssignmentSetupUpdate"
       },

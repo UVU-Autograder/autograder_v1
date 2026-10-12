@@ -56,7 +56,13 @@ def _catalog() -> dict:
 
 
 def seed_dir_for(slug: str) -> Path:
-    return SEEDS / slug.replace("-", "_")
+    direct = SEEDS / slug
+    if direct.is_dir():
+        return direct
+    snake = SEEDS / slug.replace("-", "_")
+    if snake.is_dir():
+        return snake
+    return SEEDS / slug.replace("_", "-")
 
 
 def assignment_meta(slug: str) -> tuple[str, list[str]]:
@@ -74,7 +80,8 @@ def assignment_meta(slug: str) -> tuple[str, list[str]]:
 
 
 def load_config(slug: str) -> tuple[AssignmentConfigV1, dict]:
-    raw = json.loads((seed_dir_for(slug) / "config_json.example.json").read_text())
+    cfg_path = seed_dir_for(slug) / "config.json"
+    raw = json.loads(cfg_path.read_text())
     return AssignmentConfigV1.model_validate(raw), raw
 
 

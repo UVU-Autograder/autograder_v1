@@ -34,8 +34,10 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoginPage) return;
 
+    const returnParam = pathname ? `?return_to=${encodeURIComponent(pathname)}` : "";
+
     if (!hasStaffToken) {
-      router.push("/staff/login");
+      router.replace(`/staff/login${returnParam}`);
       return;
     }
 
@@ -44,7 +46,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem("token");
       localStorage.removeItem("lastActivity");
       window.dispatchEvent(new Event("storage"));
-      router.push("/staff/login");
+      router.replace(`/staff/login${returnParam}`);
     };
 
     // Inactivity timeout: 60 minutes (3,600,000ms) to match standard session lifetime
@@ -63,7 +65,10 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
         sessionStorage.removeItem("token");
         localStorage.removeItem("lastActivity");
         window.dispatchEvent(new Event("storage"));
-        router.push("/staff/login?reason=timeout");
+        const timeoutQuery = returnParam
+          ? `/staff/login${returnParam}&reason=timeout`
+          : "/staff/login?reason=timeout";
+        router.replace(timeoutQuery);
       }
     };
 
@@ -98,7 +103,7 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       });
       window.removeEventListener("unauthorized-api-call", handleAuthError);
     };
-  }, [hasStaffToken, isLoginPage, router]);
+  }, [hasStaffToken, isLoginPage, router, pathname]);
 
   if (isLoginPage) {
     return <>{children}</>;

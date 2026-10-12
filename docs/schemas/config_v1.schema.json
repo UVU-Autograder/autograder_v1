@@ -294,6 +294,18 @@
       },
       "title": "Rubric Groups",
       "type": "array"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
     }
   },
   "required": [

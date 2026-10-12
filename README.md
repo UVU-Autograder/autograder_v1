@@ -20,5 +20,6 @@ CS1410 has 17 seed assignments; CS1400 has a placeholder. The system is preparin
 | [Assignments](docs/guides/assignments.md) | Authoring and seed validation |
 | [AI](docs/guides/ai.md) | Serving, evaluation, training and rollback |
 | [Backlog](docs/planning/backlog.md) | Detailed next steps and unanswered questions |
+| [Autograding platform research](docs/research/autograding-platforms.md) | Six source reviews and a detailed improvement proposal grounded in our architecture |
 
 After the planned GitHub Issues/Projects transfer, replace the backlog link with actual tracker links and remove the local backlog.

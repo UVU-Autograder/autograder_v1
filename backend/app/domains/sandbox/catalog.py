@@ -5,7 +5,7 @@ from app.core.settings import get_settings
 from app.domains.assignments.models import Assignment
 from app.domains.assignments.service import (
     _coerce_scoring_item_type,
-    validate_config_json,
+    validate_config,
 )
 from app.domains.courses.models import Course
 from app.domains.sandbox.schemas import (
@@ -96,7 +96,7 @@ def get_sandbox_assignment(
     if assignment is None or assignment.config is None:
         return None
 
-    config = validate_config_json(assignment.config.config_json)
+    config = validate_config(assignment.config.config)
     settings = get_settings()
     from app.domains.assignments.service import effective_allowed_concepts
 
@@ -105,7 +105,7 @@ def get_sandbox_assignment(
     req_files = config.bundle.derived_required_files()
     return SandboxAssignmentDetail(
         **_summary_for(assignment, quota).model_dump(),
-        description=assignment.title,
+        description=assignment.description or config.description or assignment.title,
         accepted_bundle_types=["application/zip", ".zip"],
         max_upload_bytes=settings.max_upload_bytes,
         constraints=[
@@ -142,7 +142,7 @@ def get_sandbox_assignment(
 def _summary_for(assignment: Assignment, quota: UploadQuota) -> SandboxAssignmentSummary:
     if assignment.config is None:
         raise ValueError(f"Assignment {assignment.slug} is missing configuration")
-    config = validate_config_json(assignment.config.config_json)
+    config = validate_config(assignment.config.config)
     return SandboxAssignmentSummary(
         id=assignment.slug,
         course_id=assignment.course.code,

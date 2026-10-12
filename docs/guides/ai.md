@@ -4,7 +4,7 @@ Sandbox feedback uses Gemma 4 12B QAT plus `cs1410-p2c`; `gemma4-12b-qat` is the
 
 ## Feedback contract
 
-[Shared prompts](../../backend/app/integrations/ai/prompts.py) and [guardrails](../../backend/app/integrations/ai/guardrails.py) own live/eval/training parity. Input caps are 10,000 characters/file, 16,000 total code and 800/failure message. Responses explain grounded failures without scores/solutions; full validation precedes streaming. Invalid/unavailable AI yields fallback. Reviewed targets are synthetic seed mutations; preserve [provenance](../../backend/training/p2/review/) and held-out separation.
+[Shared prompts](../../backend/app/integrations/ai/prompts.py) and [guardrails](../../backend/app/integrations/ai/guardrails.py) own live/eval/training parity. Input caps are 10,000 characters/file, 16,000 total code, 800/failure message, and 1,000 for sanitized assignment summaries (`PROMPT_VERSION = "v7"`). Responses explain grounded failures without scores/solutions; full validation precedes streaming. Invalid/unavailable AI yields fallback. Reviewed targets are synthetic seed mutations; preserve [provenance](../../backend/training/p2/review/) and held-out separation.
 
 ## Operate the model service
 

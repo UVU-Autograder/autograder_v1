@@ -33,8 +33,8 @@ from app.domains.assignments.schemas import (
 from app.domains.courses.models import Course
 
 
-def validate_config_json(config_json: dict) -> AssignmentConfigV1:
-    return AssignmentConfigV1.model_validate(config_json)
+def validate_config(config: dict) -> AssignmentConfigV1:
+    return AssignmentConfigV1.model_validate(config)
 
 
 
@@ -63,28 +63,26 @@ def regenerate_scoring_items(db: Session, assignment: Assignment, config: Assign
 def upsert_assignment_config(
     db: Session,
     assignment: Assignment,
-    config_json: dict,
+    config: dict,
 ) -> AssignmentConfigV1:
-    config = validate_config_json(config_json)
+    config_obj = validate_config(config)
     if assignment.config is None:
         assignment.config = AssignmentConfig(
-            config_json=config.model_dump(mode="json"),
+            config=config_obj.model_dump(mode="json"),
             version=1,
         )
     else:
         history_entry = AssignmentConfigHistory(
             assignment_id=assignment.id,
-            config_json=assignment.config.config_json,
+            config=assignment.config.config,
             version=assignment.config.version,
         )
         db.add(history_entry)
-        assignment.config.config_json = config.model_dump(mode="json")
+        assignment.config.config = config_obj.model_dump(mode="json")
         assignment.config.version += 1
 
-
-
-    regenerate_scoring_items(db, assignment, config)
-    return config
+    regenerate_scoring_items(db, assignment, config_obj)
+    return config_obj
 
 
 def get_assignment_for_course(
@@ -127,8 +125,8 @@ def effective_allowed_concepts(assignment: Assignment) -> list[str]:
                     out.append(concept)
             if m.id == assignment.module_id:
                 break
-    if assignment.config and assignment.config.config_json and isinstance(assignment.config.config_json, dict):
-        concepts_cfg = assignment.config.config_json.get("concepts") or {}
+    if assignment.config and assignment.config.config and isinstance(assignment.config.config, dict):
+        concepts_cfg = assignment.config.config.get("concepts") or {}
         denylist = set(concepts_cfg.get("denylist") or concepts_cfg.get("blacklist") or [])
         if denylist:
             out = [c for c in out if c not in denylist]
@@ -170,8 +168,19 @@ def update_staff_setup(
         assignment.language = payload.language
     if "module_id" in payload.model_fields_set:
         assignment.module_id = payload.module_id
+    if "description" in payload.model_fields_set:
+        assignment.description = payload.description or None
+    elif payload.config.description is not None:
+        assignment.description = payload.config.description or None
 
-    upsert_assignment_config(db, assignment, payload.config_json.model_dump(mode="json"))
+    config_dict = payload.config.model_dump(mode="json")
+    if "description" in payload.model_fields_set:
+        config_dict["description"] = assignment.description
+    elif assignment.description is not None:
+        config_dict["description"] = assignment.description
+    elif config_dict.get("description") is not None:
+        assignment.description = config_dict.get("description")
+    upsert_assignment_config(db, assignment, config_dict)
     db.commit()
     db.refresh(assignment)
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
@@ -204,7 +213,7 @@ def build_scoring_items(scoring_items: list[ScoringItemProjection]) -> list[Scor
 def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
     if assignment.config is None:
         raise ValueError(f"Assignment {assignment.slug} is missing configuration")
-    config = validate_config_json(assignment.config.config_json)
+    config = validate_config(assignment.config.config)
     return StaffAssignmentSetup(
         course_id=assignment.course.code,
         assignment_id=assignment.slug,
@@ -244,8 +253,9 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
             )
             for artifact in sorted(assignment.artifacts, key=lambda item: item.artifact_key)
         ],
-        config_json=config,
+        config=config,
         effective_allowed_concepts=effective_allowed_concepts(assignment),
+        description=assignment.description,
     )
 
 
@@ -426,19 +436,27 @@ SEEDS_DIR = Path(__file__).resolve().parents[2] / "db" / "seeds"
 
 def resolve_seed_folder(slug: str | None = None) -> Path:
     if slug:
-        for folder_name in (slug.replace("-", "_"), slug):
+        for folder_name in (slug, slug.replace("-", "_")):
             candidate = SEEDS_DIR / folder_name
-            if candidate.exists() and (candidate / "config_json.example.json").exists():
+            if candidate.exists() and (candidate / "config.json").exists():
                 return candidate
-    fallback = SEEDS_DIR / "simple_python_functions"
-    if fallback.exists() and (fallback / "config_json.example.json").exists():
+    fallback = SEEDS_DIR / "simple-python-functions"
+    if fallback.exists() and (fallback / "config.json").exists():
         return fallback
     return SEEDS_DIR
 
 
-def get_default_config_json(slug: str | None = None) -> dict:
+def resolve_seed_description(seed_dir: Path) -> str | None:
+    for filename in ("description.html", "description.md", "desc.html", "desc.md"):
+        p = seed_dir / filename
+        if p.is_file():
+            return p.read_text(encoding="utf-8").strip()
+    return None
+
+
+def get_default_config(slug: str | None = None) -> dict:
     seed_folder = resolve_seed_folder(slug)
-    config_path = seed_folder / "config_json.example.json"
+    config_path = seed_folder / "config.json"
     if config_path.exists():
         return json.loads(config_path.read_text(encoding="utf-8"))
 
@@ -501,16 +519,25 @@ def seed_assignment_artifacts(
     slug: str,
 ) -> None:
     seed_dir = resolve_seed_folder(slug)
-    config_path = seed_dir / "config_json.example.json"
+    config_path = seed_dir / "config.json"
     if not config_path.exists():
         return
 
-    config_json = json.loads(config_path.read_text(encoding="utf-8"))
-    upsert_assignment_config(db, assignment, config_json)
+    config_data = json.loads(config_path.read_text(encoding="utf-8"))
+    desc = resolve_seed_description(seed_dir)
+    if desc:
+        assignment.description = desc
+    elif not assignment.description and config_data.get("description"):
+        assignment.description = config_data.get("description")
+
+    if assignment.description:
+        config_data["description"] = assignment.description
+
+    upsert_assignment_config(db, assignment, config_data)
 
     db.execute(delete(AssignmentArtifact).where(AssignmentArtifact.assignment_id == assignment.id))
 
-    for artifact_key, artifact in (config_json.get("artifacts") or {}).items():
+    for artifact_key, artifact in (config_data.get("artifacts") or {}).items():
         display_filename = artifact.get("display_filename")
         if not display_filename:
             continue
@@ -565,6 +592,8 @@ def create_assignment(
         existing.canvas_ref = payload.canvas_ref
         existing.sandbox_enabled = payload.sandbox_enabled
         existing.module_id = payload.module_id
+        if payload.description is not None:
+            existing.description = payload.description
         existing.is_active = True
         if existing.config is None:
             seed_assignment_artifacts(db, existing, payload.slug)
@@ -581,6 +610,7 @@ def create_assignment(
         canvas_ref=payload.canvas_ref,
         sandbox_enabled=payload.sandbox_enabled,
         module_id=payload.module_id,
+        description=payload.description,
         is_active=True,
     )
     db.add(assignment)

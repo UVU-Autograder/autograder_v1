@@ -38,7 +38,11 @@ def test_p2_cases_are_generated_and_well_formed():
     assert len(cases) >= 130, "run: python -m eval.build_cases --split train"
     assert {c.case_id for c in cases} == {m["case_id"] for m in TRAIN_MUTATIONS}, "cases are stale: rebuild them"
     for case in cases:
-        config = json.loads((SEEDS / case.assignment_slug.replace("-", "_") / "config_json.example.json").read_text())
+        seed_folder = SEEDS / case.assignment_slug
+        if not seed_folder.exists():
+            seed_folder = SEEDS / case.assignment_slug.replace("-", "_")
+        cfg_file = seed_folder / "config.json"
+        config = json.loads(cfg_file.read_text())
         keys = {item["key"] for item in config["scoring_items"]} | {EXECUTION_ERROR_KEY}
         assert {f["key"] for f in case.failures} <= keys, case.case_id
         edits = next(m["edits"] for m in TRAIN_MUTATIONS if m["case_id"] == case.case_id)

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,6 +26,8 @@ export function MetadataSection() {
   const {
     title,
     setTitle,
+    description,
+    setDescription,
     moduleId,
     setModuleId,
     sandboxEnabled,
@@ -99,6 +102,28 @@ export function MetadataSection() {
                 className="font-mono capitalize"
               />
             </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="assignment-description">
+                Assignment Description / Instructions (Markdown)
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Rendered in Student Workspace and used for AI Feedback
+              </span>
+            </div>
+            <Textarea
+              id="assignment-description"
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                markDirty();
+              }}
+              rows={8}
+              placeholder="Enter markdown instructions for the assignment (e.g. ## Overview, specifications, functions to implement)..."
+              className="font-mono text-xs"
+            />
           </div>
 
           <div className="flex items-center space-x-2 pt-4 border-t border-border">

@@ -132,14 +132,13 @@ def test_metadata_backup_script_matches_persistent_schema_contract():
         for path in SEEDS_DIR.iterdir()
         if path.is_dir()
         and path.name != "shared"
-        and (path / "config_json.example.json").exists()
+        and (path / "config.json").exists()
     ],
     ids=lambda path: path.name,
 )
 def test_seed_creates_artifacts_and_scoring_items_from_config(seed_dir: Path):
-    raw = json.loads(
-        (seed_dir / "config_json.example.json").read_text(encoding="utf-8")
-    )
+    config_file = seed_dir / "config.json"
+    raw = json.loads(config_file.read_text(encoding="utf-8"))
     config = AssignmentConfigV1.model_validate(raw)
     slug = seed_dir.name.replace("_", "-")
 
@@ -206,7 +205,7 @@ def test_manual_rubric_items_derive_non_pytest_scoring_projections():
             "cs1400",
             "simple-python-functions",
             StaffAssignmentSetupUpdate(
-                config_json=AssignmentConfigV1.model_validate(raw),
+                config=AssignmentConfigV1.model_validate(raw),
                 title="Simple Python Functions",
                 sandbox_enabled=True,
             ),
@@ -228,3 +227,57 @@ def test_manual_rubric_items_derive_non_pytest_scoring_projections():
         assert manual_item.item_type == "manual"
         assert manual_item.pytest_marker is None
         assert manual_item.points == 10
+
+
+def test_assignment_description_persistence_and_update():
+    with SessionLocal() as db:
+        assignment = db.scalar(
+            select(assignment_models.Assignment).where(
+                assignment_models.Assignment.slug == "simple-python-functions"
+            )
+        )
+        assert assignment is not None
+        assert assignment.description is not None
+        assert "Implement core Python functions" in assignment.description
+
+        raw = load_example_config()
+        raw["description"] = "# Updated Description\n\nNew instructions."
+        setup = update_staff_setup(
+            db,
+            "cs1400",
+            "simple-python-functions",
+            StaffAssignmentSetupUpdate(
+                config=AssignmentConfigV1.model_validate(raw),
+                title="Simple Python Functions",
+                description="# Explicitly Updated Description",
+                sandbox_enabled=True,
+            ),
+        )
+        assert setup is not None
+        assert setup.description == "# Explicitly Updated Description"
+        assert setup.config.description == "# Explicitly Updated Description"
+
+        db.refresh(assignment)
+        assert assignment.description == "# Explicitly Updated Description"
+
+        # Now clear the description explicitly by passing description=None
+        raw["description"] = None
+        cleared_setup = update_staff_setup(
+            db,
+            "cs1400",
+            "simple-python-functions",
+            StaffAssignmentSetupUpdate(
+                config=AssignmentConfigV1.model_validate(raw),
+                title="Simple Python Functions",
+                description=None,
+                sandbox_enabled=True,
+            ),
+        )
+        assert cleared_setup is not None
+        assert cleared_setup.description is None
+        assert cleared_setup.config.description is None
+
+        db.refresh(assignment)
+        assert assignment.description is None
+        assert assignment.config.config.get("description") is None
+

@@ -1,3 +1,5 @@
+import { handleMockDownload, handleMockRequest } from "./mock-handlers";
+
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
 
 export class ApiError extends Error {
@@ -8,6 +10,22 @@ export class ApiError extends Error {
         this.name = "ApiError";
         this.status = status;
     }
+}
+
+export function isMockApiEnabled(): boolean {
+    if (process.env.NODE_ENV === "production") {
+        return false;
+    }
+    if (typeof window !== "undefined") {
+        try {
+            const stored = window.sessionStorage?.getItem("mock_api") || window.localStorage?.getItem("mock_api");
+            if (stored === "false") return false;
+            if (stored === "true") return true;
+        } catch {
+            // Ignore storage access errors in restricted browser contexts
+        }
+    }
+    return process.env.NEXT_PUBLIC_MOCK_API !== "false";
 }
 
 function getBaseUrl(): string {
@@ -98,6 +116,14 @@ async function apiFetch<T>(
         headers.set("authorization", `Bearer ${token}`);
     }
 
+    if (isMockApiEnabled()) {
+        const mockResult = await handleMockRequest<T>(path, init);
+        if (mockResult) {
+            updateStoredToken(mockResult.response);
+            return mockResult;
+        }
+    }
+
     const response = await fetch(resolveUrl(path), {
         ...init,
         headers,
@@ -169,6 +195,21 @@ export const apiClient = {
         apiFetch<T>(path, { method: "DELETE", headers: options?.headers }).then((result) => result.data),
 
     download: async (path: string, filename: string, options?: ApiFetchOptions): Promise<void> => {
+        if (isMockApiEnabled()) {
+            const blob = await handleMockDownload(path);
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                return;
+            }
+        }
+
         const headers = new Headers(options?.headers);
         const token = getAuthToken();
         if (token && !headers.has("authorization")) {

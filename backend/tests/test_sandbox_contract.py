@@ -64,7 +64,7 @@ def test_lists_visible_courses_and_assignments(client):
     body_1410 = assignments_1410.json()
     assert body_1410["course_id"] == "cs1410"
     assert {a["id"] for a in body_1410["assignments"]} == {
-        "lab-1-image-processing",
+        "lab1",
         "lab2",
         "lab3",
         "lab4",
@@ -96,13 +96,13 @@ def test_assignment_detail_returns_contract_metadata(client):
     assert body["rubric"]
     assert body["rubric"][0]["key"] == "add_numbers"
     assert body["rubric"][0]["pytest_marker"] == "ag_add_numbers"
-    assert "config_json" not in body
+    assert "config" not in body
     assert "storage_ref" not in str(body)
 
-    response_1410 = client.get("/sandbox/courses/cs1410/assignments/lab-1-image-processing")
+    response_1410 = client.get("/sandbox/courses/cs1410/assignments/lab1")
     assert response_1410.status_code == 200
     body_1410 = response_1410.json()
-    assert body_1410["id"] == "lab-1-image-processing"
+    assert body_1410["id"] == "lab1"
     assert body_1410["rubric_groups"]
     assert len(body_1410["rubric_groups"]) == 2
     assert body_1410["rubric_groups"][0]["key"] == "part1"
@@ -110,7 +110,7 @@ def test_assignment_detail_returns_contract_metadata(client):
     assert body_1410["rubric"][0]["key"] == "part1_files"
     assert body_1410["rubric"][0]["pytest_marker"] == "ag_part1_files"
     assert body_1410["rubric"][0]["item_type"] == "pytest"
-    assert "config_json" not in body_1410
+    assert "config" not in body_1410
     assert "model_solution" not in str(body_1410)
     assert "storage_ref" not in str(body_1410)
 
@@ -140,7 +140,8 @@ def test_create_run_passes_zip_to_celery_when_enabled(client, monkeypatch):
         mock_delay.assert_called_once()
         call_kwargs = mock_delay.call_args.kwargs
         assert call_kwargs["run_id"] == response.json()["run_id"]
-        assert call_kwargs["config_json"] is not None
+        assert call_kwargs["config"] is not None
+        assert call_kwargs["config"].get("description") is not None
         assert call_kwargs["artifact_refs"]
     finally:
         sandbox_service._use_celery = False

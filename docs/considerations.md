@@ -20,9 +20,9 @@ Use synthetic or completely anonymized validation data; mapped pseudonyms are no
 
 The independent [cleanup worker](../backend/app/domains/runs/cleanup_worker.py) reconciles at startup/every 60 seconds, tombstones access, retries deletion and reports overdue files. Database outages fail closed. Downtime preventing physical deletion remains a violation to resolve. Institutional handling applies to staff-downloaded exports.
 
-Logs/AI payloads exclude identifiers, code, raw filenames, traceback bodies and detailed feedback. [Python JSON audit logging](../backend/app/core/audit_log.py) allowlists fields and enforces process-wide redaction and traceback scrubbing via `RedactingFormatter` and framework logger wrappers; host destinations/rotation need verification. Any approved sensitive debugging trace must be purged within 24h.
+Logs/AI payloads exclude identifiers, code, raw filenames, traceback bodies and detailed feedback. [Python JSON audit logging](../backend/app/core/audit_log.py) allowlists fields, intercepts 401/403 access denials, and enforces process-wide redaction and traceback scrubbing via `RedactingFormatter` and framework logger wrappers. Host destinations (`0640` permissions) and container log rotation caps (`50m`/5 files) are verified on the workstation. Any approved sensitive debugging trace must be purged within 24h.
 
-Back up only approved persistent metadata/instructor assets, excluding student detail and broker/results. [Recovery](guides/workstation.md#back-up-and-restore) describes current script limitations.
+Back up only approved persistent metadata and instructor assets, excluding student detail, workspaces, and broker/results (FERPA contract). [Recovery](guides/workstation.md#back-up-and-restore) describes verified metadata dump and container artifact extraction procedures; institutional offsite schedule and retention cadence remain open.
 
 ## AI data and future changes
 
