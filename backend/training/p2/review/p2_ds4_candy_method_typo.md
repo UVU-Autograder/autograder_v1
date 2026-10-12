@@ -56,28 +56,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > Pre-edit note (Claude): 4 items cut to 3; one root cause (the method name in Candy) explained once, the rest follow from it.
 
+> v8 revision (Claude): hint no longer spells out the method name; shorter follow-on items; trimmed under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your abstract base class is set up correctly. Every failure here comes from one small problem in the Candy class.",
+  "summary": "Your abstract base class works; all failures trace to one Candy problem.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "Python refuses to create a Candy because it still sees the abstract calculate_cost method as unimplemented.",
-      "hint": "Put the method name in Candy next to the abstract method name in DessertItem. Are they exactly the same, letter for letter?"
+      "what_went_wrong": "Python cannot create a Candy because it sees the abstract cost method as unimplemented.",
+      "hint": "Does Candy's cost method match DessertItem's abstract method exactly?"
     },
     {
       "test_key": "tax_percent",
-      "what_went_wrong": "This test also creates a Candy, so it fails for the same reason.",
-      "hint": "This follows from the calculate_cost problem. Fix that first."
+      "what_went_wrong": "This test creates a Candy, so it fails too.",
+      "hint": "This follows from the Candy problem; fix that first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order includes a Candy, so the totals fail for the same reason.",
-      "hint": "This clears once a Candy can be created."
+      "what_went_wrong": "The order holds a Candy, so it fails too.",
+      "hint": "Same cause; fix the Candy problem first."
     }
   ],
-  "next_step": "Compare the method names in Candy with the ones DessertItem marks as abstract, then rerun the tests."
+  "next_step": "Check Candy's method names against DessertItem."
 }
 ```

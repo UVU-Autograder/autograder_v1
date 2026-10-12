@@ -44,16 +44,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `cookie_combinable`). 
 
 > Pre-edit note (Claude): Small edit: what_went_wrong now uses the numbers from the assertion. The hint was already good.
 
+> v8 revision (Claude): removed the cookie counts and the attribute name from the hint; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol, Candy merging and Order logic work. Cookies combine, but the quantity does not change.",
+  "summary": "Your Combinable protocol, Candy merging and Order.add work, but combining two cookies leaves the quantity unchanged.",
   "items": [
     {
       "test_key": "cookie_combinable",
-      "what_went_wrong": "After combining, the first cookie still has 12 cookies; the test expects 18.",
-      "hint": "In your Cookie.combine method, which attribute are you currently updating instead of cookie_quantity?"
+      "what_went_wrong": "After combining two matching cookies, the first cookie's quantity does not include the second cookie's.",
+      "hint": "In Cookie.combine, which of the cookie's values actually changes, and is that the one the test checks?"
     }
   ],
   "next_step": "Review the Cookie.combine method in dessert.py."

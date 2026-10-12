@@ -43,18 +43,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `sundae`). Then set th
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision (Claude): removed the default value and the parameter name from the hint
+
 status: accepted
 
 ```json
 {
-  "summary": "Your implementation of the base classes and initial inheritance levels is correct. However, there is an issue with the default value for a specific attribute in the Sundae class.",
+  "summary": "Your DessertItem, Candy, Cookie, and IceCream classes work; one Sundae default needs attention.",
   "items": [
     {
       "test_key": "sundae",
-      "what_went_wrong": "The topping_price attribute is returning None instead of the required default value of 0.0.",
-      "hint": "What default value should be assigned to topping_price in the Sundae constructor's parameters?"
+      "what_went_wrong": "A Sundae created without arguments has a topping price that is not a number, unlike what the test expects.",
+      "hint": "When you create a Sundae with no arguments, where does its starting topping price come from, and does that match the assignment?"
     }
   ],
-  "next_step": "Review the Sundae class constructor signature."
+  "next_step": "Review the Sundae constructor signature."
 }
 ```

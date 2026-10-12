@@ -47,21 +47,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The student's own test_order.py now fails too, on the same bug. Added as a follow-on item.
 
+> v8 revision (Claude): removed the pay type values; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your payment protocol and Order structure are in place, but changing the payment type does not stick. Your own tests note this.",
+  "summary": "Your payment protocol and Order structure work, but changing the payment type does not stick.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "After set_pay_type('CARD'), get_pay_type() still returns 'CASH'.",
-      "hint": "Can you trace set_pay_type with 'CARD'? After the check passes, what happens to the value that was passed in?"
+      "what_went_wrong": "After setting a new payment type, the Order still reports the old one.",
+      "hint": "Trace set_pay_type with a valid type: after the check passes, what happens to the value passed in?"
     },
     {
       "test_key": "student_order_tests",
-      "what_went_wrong": "Your tests for setting CARD and PHONE fail for the same reason.",
-      "hint": "This follows from set_pay_type. Fix the method, not the tests."
+      "what_went_wrong": "Your own tests for changing it fail the same way.",
+      "hint": "This follows from the set_pay_type problem; fix the method, not the tests."
     }
   ],
   "next_step": "Review the set_pay_type method in the Order class."

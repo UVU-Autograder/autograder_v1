@@ -44,18 +44,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): Tightened: the hint said 'required by the prompt' (the student has no prompt) and was long. Now points to the order.add calls.
 
+> v8 revision (Claude): removed the line counts; hint asks which dessert main never adds
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy and Order class work, but main's output is one line short.",
+  "summary": "Your class hierarchy and Order class work, but main's receipt is missing an item.",
   "items": [
     {
       "test_key": "main_output",
-      "what_went_wrong": "main printed 6 lines; the test expects at least 7.",
-      "hint": "Can you count the order.add calls in main and compare them with the desserts the assignment lists?"
+      "what_went_wrong": "The printed receipt has fewer lines than the test expects.",
+      "hint": "Which dessert from the assignment's list does main never add to the order?"
     }
   ],
-  "next_step": "Review the order.add calls in main in dessertshop.py."
+  "next_step": "Review the desserts main adds to the order in dessertshop.py."
 }
 ```

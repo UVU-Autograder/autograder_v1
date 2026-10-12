@@ -51,28 +51,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): what_went_wrong gave the fix ('rather than multiplying'). Now states the numbers from the assertion and asks the student to work it by hand.
 
+> v8 revision (Claude): removed all cost and tax values; summary no longer claims Sundae passes (its check never ran); trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Candy, Cookie and Sundae are calculating correctly. One cost calculation is off, and the tax and order totals inherit that mistake.",
+  "summary": "Your Candy and Cookie costs are right; IceCream's cost is off, and the tax and order total follow.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "IceCream's cost came out as 2.79, but the test expects 1.58.",
-      "hint": "Can you work out the cost of this IceCream by hand, then compare each step with the line in IceCream.calculate_cost?"
+      "what_went_wrong": "IceCream's cost is higher than the test expects.",
+      "hint": "Work out this IceCream's cost by hand, then trace IceCream.calculate_cost. Where do they differ?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The IceCream tax is 0.2 instead of 0.11 because it is based on the wrong cost.",
-      "hint": "This follows from the calculate_cost problem. Fix that first."
+      "what_went_wrong": "The tax is too high because the cost is.",
+      "hint": "This follows from the IceCream.calculate_cost problem; fix that first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 10.81 instead of 7.98 because it includes the IceCream cost.",
+      "what_went_wrong": "The order cost is too high too.",
       "hint": "This clears once IceCream's cost is right."
     }
   ],
-  "next_step": "Review the calculate_cost method in the IceCream class."
+  "next_step": "Review IceCream.calculate_cost in dessert.py."
 }
 ```

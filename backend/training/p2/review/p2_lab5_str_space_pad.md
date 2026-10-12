@@ -45,18 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`). Then set the s
 
 > Pre-edit note (Claude): The hint compared :2d with :02d (an either/or with the answer). Now asks the student to see what the spec does to a one-digit number.
 
+> v8 revision (Claude): removed the quoted output; hint no longer points at the format spec
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, addition and multiplication all work. Amounts with fewer than 10 cents print with a gap.",
+  "summary": "Normalizing, addition, and multiplication work, but amounts with a single-digit cents value print with a gap.",
   "items": [
     {
       "test_key": "str",
-      "what_went_wrong": "str(m2) gave '$5. 5'; the test expects '$5.05'.",
-      "hint": "Look at the format spec you use for the cents. What does it put in front of a one-digit number like 5? Try printing just the cents part to see."
+      "what_went_wrong": "When the cents are a single digit, the formatted amount shows a space where the test expects a zero.",
+      "hint": "In __str__, try printing just the cents part for a one-digit amount: what fills the empty spot?"
     }
   ],
-  "next_step": "Review the cents part of the f-string in __str__."
+  "next_step": "Review how __str__ formats the cents."
 }
 ```

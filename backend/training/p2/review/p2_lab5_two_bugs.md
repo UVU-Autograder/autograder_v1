@@ -56,23 +56,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`, `mul`). Then se
 
 > Pre-edit note (Claude): Both hints gave the fix. Two separate problems, each pointing to where to look, and a next step to take them one at a time.
 
+> v8 revision (Claude): removed the strings, amounts and dollar counts; trimmed to under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, addition and equality work. There are two separate things to fix: the string format and multiplication.",
+  "summary": "Normalizing, addition and equality work; formatting and multiplication are separate problems.",
   "items": [
     {
       "test_key": "str",
-      "what_went_wrong": "str(m1) gave '3.50'; the test expects '$3.50'.",
-      "hint": "Can you compare your output with the expected text character by character, starting from the left?"
+      "what_went_wrong": "The formatted amount is missing a character at the start.",
+      "hint": "Can you compare your __str__ output with the format in the test's title, character by character?"
     },
     {
       "test_key": "mul",
-      "what_went_wrong": "Multiplying $3.50 by 2 gave 4 dollars instead of 7.",
-      "hint": "Work out $3.50 times 2 by hand. Which part of the amount does your __mul__ multiply, and which part is left as it was?"
+      "what_went_wrong": "Multiplying gives too few dollars, so part of the amount is not multiplied.",
+      "hint": "If you work out a multiplication by hand, which part of the amount does your __mul__ multiply?"
     }
   ],
-  "next_step": "Fix one at a time: start with __str__, rerun the tests, then look at __mul__."
+  "next_step": "Fix __str__ first, rerun the tests, then look at __mul__."
 }
 ```

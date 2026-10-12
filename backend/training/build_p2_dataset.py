@@ -38,7 +38,7 @@ HERE = Path(__file__).parent
 EVAL_CASES = HERE.parent / "eval" / "cases.jsonl"
 OUT_DIR = HERE / "data" / "p3"
 MAX_WORDS = 80
-SERVE_MAX_MODEL_LEN = 8192  # vllm serve --max-model-len on the Dell (training/README.md)
+SERVE_MAX_MODEL_LEN = 12288  # --max-model-len in vllm-cs1410.service and serve.sh
 VALID_EVERY = 10  # ~10% held out for eval_loss, chosen by a stable hash of the case id
 
 
@@ -179,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"by category: {dict(sorted(by_category.items()))}")
     estimate = longest // 3  # rough and on the high side; the real tokenizer runs in train_lora
     needed = estimate + MAX_OUTPUT_TOKENS  # prompt + room for the response
-    max_length = next((n for n in (4096, 6144, 8192) if needed <= n), 8192)
+    max_length = next((n for n in (4096, 6144, 8192, 12288) if needed <= n), 12288)
     print(f"longest prompt: {longest} chars (~{estimate} tokens, rough estimate). train_lora drops rows over "
           f"--max-length and reports how many; use --max-length {max_length}.")
     if needed > SERVE_MAX_MODEL_LEN:

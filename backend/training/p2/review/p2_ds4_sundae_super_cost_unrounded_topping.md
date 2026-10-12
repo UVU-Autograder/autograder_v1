@@ -47,21 +47,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): Kept the good hint; order_totals now says it follows from the Sundae cost.
 
+> v8 revision (Claude): removed the costs and the scoop count example; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Candy, Cookie and IceCream costs are right. The Sundae cost is too high, and the order total follows from it.",
+  "summary": "Candy, Cookie, and IceCream costs are right, but the Sundae cost comes out too high.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "A Sundae costs 5.94; the test expects 3.36.",
-      "hint": "How is the topping price being factored into the total cost in the Sundae class? Can you work out a 3-scoop sundae by hand?"
+      "what_went_wrong": "A Sundae costs more than the test expects.",
+      "hint": "How does the Sundae cost method add in the topping? Work out a multi-scoop sundae by hand."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 10.56 instead of 7.98 because it includes the Sundae.",
-      "hint": "This follows from the Sundae problem. Fix that first."
+      "what_went_wrong": "The order total is too high because it includes that Sundae.",
+      "hint": "This follows from the Sundae problem; fix that first."
     }
   ],
   "next_step": "Review the calculate_cost method in the Sundae class."

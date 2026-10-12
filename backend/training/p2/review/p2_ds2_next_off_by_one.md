@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): Small edit: main_output now says it follows from __next__. The hint was already good.
 
+> v8 revision (Claude): dropped the quoted error; hint traces the last call instead of comparing to an index; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but there is an issue with how the Order class handles iteration.",
+  "summary": "Your class hierarchy works, but looping over an Order runs past the end.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "Looping over an Order fails with \"IndexError: list index out of range\" at the end of the list.",
-      "hint": "How does the condition in your __next__ method compare to the last valid index of a list?"
+      "what_went_wrong": "Iterating over an Order raises an index error after the last item instead of stopping cleanly.",
+      "hint": "In __next__, trace the call right after the last item is returned: does the stopping check fire in time?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main crashes with the same IndexError in its for loop.",
-      "hint": "This follows from the __next__ problem. Fix that first."
+      "what_went_wrong": "main crashes with the same error while looping over the order.",
+      "hint": "This follows from the __next__ problem; fix that first."
     }
   ],
-  "next_step": "Review the stopping condition in the __next__ method of the Order class."
+  "next_step": "Review the stopping check in Order.__next__."
 }
 ```

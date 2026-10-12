@@ -48,23 +48,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Updated after 4159d52 (Claude): The student's own sort test now fails too. Added a follow-on item.
 
+> v8 revision (Claude): trimmed to one sentence per field and under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your relational operators work, but after sort() the items are not in the order the test expects, and your own sort test also catches this.",
+  "summary": "Your relational operators work, but after sorting the items are in the wrong order, and your own sort test catches it.",
   "items": [
     {
       "test_key": "order_sort",
-      "what_went_wrong": "After order.sort(), the first item is not the cheapest one.",
-      "hint": "Can you print the cost of each item after calling sort() and compare it with the ascending order the test expects? Which direction are they going?"
+      "what_went_wrong": "After sorting, the first item is not the cheapest one.",
+      "hint": "Can you print each item's cost after calling Order.sort and check which direction they run?"
     },
     {
       "test_key": "student_sort_tests",
-      "what_went_wrong": "Your test_order_sort fails for the same reason.",
-      "hint": "This follows from Order.sort. Fix the method, not the test."
+      "what_went_wrong": "Your own sort test fails for the same reason.",
+      "hint": "This follows from Order.sort; fix the method, not your test."
     }
   ],
-  "next_step": "Review the Order.sort() method in dessert.py."
+  "next_step": "Review the Order.sort method in dessert.py."
 }
 ```

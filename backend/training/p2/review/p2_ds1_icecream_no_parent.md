@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `icecream`, `sundae`).
 
 > Pre-edit note (Claude): next_step stated the fix ('ensure it inherits from DessertItem'), and fixed the typo 'inhertiance'. The Sundae item now says it follows from IceCream.
 
+> v8 revision (Claude): trimmed to one sentence per field and under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your base class and the Candy and Cookie subclasses are correctly implemented. However, there are issues with the inheritance structure for IceCream and Sundae.",
+  "summary": "Your DessertItem, Candy and Cookie classes work, but IceCream is not linked to DessertItem.",
   "items": [
     {
       "test_key": "icecream",
-      "what_went_wrong": "The IceCream class is not recognized as a subclass of DessertItem.",
-      "hint": "Can you reevaluate the inheritance structure for the IceCream class? Compare its class line with Candy's."
+      "what_went_wrong": "The test finds that IceCream is not a subclass of DessertItem.",
+      "hint": "What links Candy to DessertItem, and does IceCream have the same link?"
     },
     {
       "test_key": "sundae",
-      "what_went_wrong": "Creating a Sundae fails with a TypeError about object.__init__, because of where IceCream's super() call ends up.",
-      "hint": "This follows from the IceCream problem. If IceCream does not inherit from DessertItem, where does its super().__init__() call go?"
+      "what_went_wrong": "Creating a Sundae raises a TypeError because the super() call in IceCream goes straight to Python's object class.",
+      "hint": "This follows from the IceCream problem; fix that first."
     }
   ],
-  "next_step": "Compare the class line for IceCream with the class lines for Candy and Cookie."
+  "next_step": "Compare how IceCream and Candy are defined in dessert.py."
 }
 ```

@@ -52,28 +52,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): No change to the substance: accurate, one root cause, the others follow.
 
+> v8 revision (Claude): removed the test values and the quoted error; shorter follow-on items; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Account class fails as soon as it is created with an owner and balance.",
+  "summary": "Your Account class fails as soon as it is created.",
   "items": [
     {
       "test_key": "account_init",
-      "what_went_wrong": "Account('Alice', 100.0) fails with \"could not convert string to float: 'Alice'\".",
-      "hint": "What order are the values passed in, compared with the order the parameters are defined in __init__?"
+      "what_went_wrong": "Creating an Account with a name and balance fails because the name is treated as a number.",
+      "hint": "Do the values the tests pass to Account line up with the parameters in Account.__init__?"
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "This follows from the error when the account is created.",
-      "hint": "If the object cannot be created, its string cannot be checked. Fix __init__ first."
+      "what_went_wrong": "This test fails the same way.",
+      "hint": "This follows from the Account.__init__ problem; fix that first."
     },
     {
       "test_key": "demo_output",
       "what_went_wrong": "demo.py fails the same way.",
-      "hint": "This clears once __init__ is fixed."
+      "hint": "This also follows from the Account.__init__ problem."
     }
   ],
-  "next_step": "Review the parameter order in the Account.__init__ signature."
+  "next_step": "Review the Account.__init__ signature."
 }
 ```

@@ -45,16 +45,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`). Then set t
 
 > Pre-edit note (Claude): The hint named append versus extend (an either/or with the answer). Now asks the student to print the list and look.
 
+> v8 revision (Claude): removed the course counts and the attribute reference from the hint
+
 status: accepted
 
 ```json
 {
-  "summary": "Your dataclass, sorting and main entrypoint work. Enrolling in a course adds more than one entry.",
+  "summary": "Your dataclass, sorting and main entrypoint work, but enrolling in a course adds several entries.",
   "items": [
     {
       "test_key": "methods",
-      "what_went_wrong": "After two enrollments, total_courses() is 14, not 2.",
-      "hint": "Can you print s.courses after a single enroll call? What does the list contain, and which list method put it there?"
+      "what_went_wrong": "The course count is far higher than the number of enrollments, because each course is split into separate characters.",
+      "hint": "If you print the student's courses after one enroll call, what was added, and why?"
     }
   ],
   "next_step": "Review the enroll method in student.py."

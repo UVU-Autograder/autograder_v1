@@ -43,16 +43,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_totals`). Then 
 
 > Pre-edit note (Claude): what_went_wrong stated the fix; now it gives the numbers (7.98 is the order cost) and asks the student to compare order_tax with order_cost.
 
+> v8 revision (Claude): removed both totals; describes the tax matching the cost in words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your DessertItem hierarchy and order_cost work. The order's total tax is far too high.",
+  "summary": "Your DessertItem hierarchy and the cost and tax calculations work, but the order's total tax is far too high.",
   "items": [
     {
       "test_key": "order_totals",
-      "what_went_wrong": "order_tax() returned 7.98, the same as the order's cost; the test expects 0.57.",
-      "hint": "Can you compare order_tax with order_cost line by line? What is the one thing that should be different between them?"
+      "what_went_wrong": "The order's total tax comes out equal to the order's total cost.",
+      "hint": "Can you compare order_tax with order_cost line by line; what should differ between them?"
     }
   ],
   "next_step": "Review the order_tax method in the Order class."

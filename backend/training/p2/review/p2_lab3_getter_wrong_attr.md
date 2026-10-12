@@ -45,18 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `getters_setters`). Th
 
 > Pre-edit note (Claude): The hint asked which attribute to return (the fix). Now compares with get_name.
 
+> v8 revision (Claude): removed the returned name and the expected count; hint no longer points at the return line
+
 status: accepted
 
 ```json
 {
-  "summary": "You have implemented encapsulation and type hints, but get_video_count gives back the wrong value.",
+  "summary": "Your encapsulation and type hints work, but get_video_count gives back the wrong piece of data.",
   "items": [
     {
       "test_key": "getters_setters",
-      "what_went_wrong": "get_video_count() returned 'Updated', the channel name, where the test expects 5.",
-      "hint": "Compare the return line of get_video_count with the return line of get_name. Which attribute does each one read?"
+      "what_went_wrong": "get_video_count returns the channel's name instead of its video count.",
+      "hint": "Call get_video_count on a channel and look at what comes back. Where should that method be reading from?"
     }
   ],
-  "next_step": "Review the return line of get_video_count."
+  "next_step": "Review get_video_count in youtube_channel.py."
 }
 ```

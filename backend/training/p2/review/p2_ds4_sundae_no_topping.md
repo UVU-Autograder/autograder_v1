@@ -47,23 +47,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): The hint named the topping (the fix). Now asks which part of the price 2.07 covers.
 
+> v8 revision (Claude): removed the cost values; hint asks what makes up a sundae's price without naming the missing part
+
 status: accepted
 
 ```json
 {
-  "summary": "Candy, Cookie and IceCream costs are right. The Sundae cost is low, and the order total follows from it.",
+  "summary": "Your Candy, Cookie and IceCream costs are right, but the Sundae cost is too low, and the order total follows from it.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "A Sundae costs 2.07; the test expects 3.36.",
-      "hint": "Which part of a sundae's price does 2.07 account for, and which part is missing from Sundae.calculate_cost?"
+      "what_went_wrong": "A Sundae costs less than the test expects.",
+      "hint": "What makes up the full price of a sundae, and does Sundae.calculate_cost include every part?"
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 6.69 instead of 7.98 because it includes the Sundae.",
-      "hint": "This follows from the Sundae problem. Fix that first."
+      "what_went_wrong": "The order cost is too low because it includes the Sundae.",
+      "hint": "This follows from the Sundae.calculate_cost problem; fix that first."
     }
   ],
-  "next_step": "Review the calculate_cost method in the Sundae class."
+  "next_step": "Review Sundae.calculate_cost in dessert.py."
 }
 ```

@@ -51,28 +51,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Small edit: the hint now points at the error message instead of the test file, which the student cannot see.
 
+> v8 revision (Claude): dropped the quoted error; trimmed to one sentence per field and under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Account logic is written, but nothing can find the class by the name the assignment uses.",
+  "summary": "Your Account logic is written, but the tests cannot find the class.",
   "items": [
     {
       "test_key": "account_init",
       "what_went_wrong": "The test cannot find a class named Account in account.py.",
-      "hint": "The error ends with \"Did you mean: 'account'?\". How does the capitalization of your class name compare with the name the assignment uses?"
+      "hint": "How does your class name compare with the name the error says is missing?"
     },
     {
       "test_key": "account_str",
       "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the class name. Fix that first."
+      "hint": "This follows from the class name; fix that first."
     },
     {
       "test_key": "demo_output",
       "what_went_wrong": "demo.py cannot import Account for the same reason.",
-      "hint": "This clears once the class name matches."
+      "hint": "This follows from the class name too."
     }
   ],
-  "next_step": "Review the class line in account.py."
+  "next_step": "Review the class definition in account.py."
 }
 ```

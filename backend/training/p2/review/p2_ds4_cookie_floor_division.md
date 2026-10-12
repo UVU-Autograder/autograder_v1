@@ -51,28 +51,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): Kept the good hint; items 2 and 3 now say they follow from the Cookie cost.
 
+> v8 revision (Claude): removed the costs and totals; hint traces a partial dozen by hand; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your abstract class and most cost calculations work. The Cookie cost is off, and the tax and order totals inherit that mistake.",
+  "summary": "Your abstract class and tax rate work; the Cookie cost is off.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "A Cookie's cost is 0.0; the test expects 2.00.",
-      "hint": "How does your current math handle a quantity of 6 when the price is per dozen? Can you work it out step by step?"
+      "what_went_wrong": "A Cookie costs too little when the quantity is not a whole number of dozens.",
+      "hint": "Can you trace Cookie.calculate_cost by hand for half a dozen?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is 0.0 because it is based on the cost.",
-      "hint": "This follows from the Cookie cost problem. Fix that first."
+      "what_went_wrong": "The Cookie tax is too low because of that cost.",
+      "hint": "This follows from the Cookie cost; fix that first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 5.41 instead of 7.98 because it includes the Cookie cost.",
-      "hint": "This clears once the Cookie cost is right."
+      "what_went_wrong": "The order cost is low for the same reason.",
+      "hint": "This follows from the Cookie cost too."
     }
   ],
-  "next_step": "Review the calculate_cost method in the Cookie class."
+  "next_step": "Review calculate_cost in the Cookie class."
 }
 ```

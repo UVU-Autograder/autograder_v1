@@ -50,23 +50,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `ordering
 
 > Pre-edit note (Claude): The first hint sent the student to main's arguments, which are right; the field order in the class is the bug. Ordering follows from it.
 
+> v8 revision (Claude): removed the test values; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your enroll logic and main entrypoint work, but the Student fields are in an order that mixes up id and name.",
+  "summary": "Your enroll logic and main work, but a Student's id and name end up swapped.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Student(101, 'Alice', 'CS') stored 101 as the name and 'Alice' as the id.",
-      "hint": "A dataclass takes positional arguments in the order its fields are declared. Compare your field order with the order main passes them in."
+      "what_went_wrong": "Creating a Student with positional values stores the id and name in each other's places.",
+      "hint": "A dataclass fills fields in declaration order; does Student's order match how main passes its values?"
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "Sorting orders the students by name instead of by id, because of the same field order.",
-      "hint": "This follows from the field order: a dataclass compares fields from the top down."
+      "what_went_wrong": "Students sort by name instead of id for the same reason.",
+      "hint": "This follows from the field order problem; fix that first."
     }
   ],
-  "next_step": "Review the order of the fields in the Student class."
+  "next_step": "Review the field order in the Student class."
 }
 ```

@@ -57,28 +57,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 3; one root cause (field order), the rest follow.
 
+> v8 revision (Claude): removed the quoted field names from the error; shorter follow-on items; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Student class cannot be created because of the order its fields are declared in.",
+  "summary": "Your Student class cannot be created because of its field order.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Python rejects the class with \"non-default argument 'major' follows default argument 'courses'\".",
-      "hint": "The error names two fields. Compare where each one is declared in Student, and which one has a default value."
+      "what_went_wrong": "Python rejects the class because a field without a default follows one with a default.",
+      "hint": "The error names two fields: where is each declared in Student, and which has a default?"
     },
     {
       "test_key": "methods",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the field order. Fix that first."
+      "what_went_wrong": "This test fails the same way.",
+      "hint": "This follows from the field order; fix that first."
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This clears once Student can be created."
+      "what_went_wrong": "This test fails the same way.",
+      "hint": "This also follows from the field order."
     }
   ],
-  "next_step": "Review the order of the fields in Student. main_output fails for the same reason."
+  "next_step": "Review the field order in Student."
 }
 ```

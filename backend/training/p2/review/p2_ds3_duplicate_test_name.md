@@ -52,16 +52,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 
 > Pre-edit note (Claude): next_step told the student to add tests; the tests exist, but two names are reused so pytest only keeps one of each. Hint points to the names.
 
+> v8 revision (Claude): removed the test counts
+
 status: accepted
 
 ```json
 {
-  "summary": "Your classes pass and your tests are written, but pytest is counting fewer tests than you wrote.",
+  "summary": "Your classes pass and your tests are written, but pytest runs fewer tests than you wrote.",
   "items": [
     {
       "test_key": "student_tests_pass",
-      "what_went_wrong": "Only 13 tests ran and passed; the assignment needs at least 15.",
-      "hint": "How many test functions did you write in test_dessert.py, and how many different names do they have?"
+      "what_went_wrong": "Fewer tests ran than the assignment requires, so some of your test functions are not being counted.",
+      "hint": "In test_dessert.py, how many test functions did you write, and how many different names do they have?"
     }
   ],
   "next_step": "Review the test function names in test_dessert.py."

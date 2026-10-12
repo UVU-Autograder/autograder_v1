@@ -43,18 +43,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `ds4_regression`). The
 
 > Pre-edit note (Claude): Small edit: says this is a Dessert Shop 4 behavior that broke.
 
+> v8 revision (Claude): removed the cost values and the test's cookie count; hint no longer names the price-per-dozen relationship
+
 status: accepted
 
 ```json
 {
-  "summary": "Your new DessertShop input methods work. One cost calculation from Dessert Shop 4 has broken.",
+  "summary": "Your new DessertShop input methods work, but one cost calculation from Dessert Shop 4 has broken.",
   "items": [
     {
       "test_key": "ds4_regression",
-      "what_went_wrong": "A Cookie costs 23.94; the Dessert Shop 4 test expects 2.00.",
-      "hint": "How does the price per dozen relate to the number of cookies in the order? Can you work out 6 cookies by hand?"
+      "what_went_wrong": "A Cookie's cost is far higher than the Dessert Shop 4 test expects.",
+      "hint": "Work out a Cookie's cost by hand from its quantity and price, then compare each step with Cookie.calculate_cost."
     }
   ],
-  "next_step": "Review the Cookie.calculate_cost method in dessert.py."
+  "next_step": "Review Cookie.calculate_cost in dessert.py."
 }
 ```

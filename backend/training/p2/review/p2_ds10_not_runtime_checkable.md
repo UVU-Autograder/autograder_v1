@@ -47,23 +47,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Updated after 4159d52 (Claude): The stricter tests also fail ds9_regression with the same TypeError. Added as a follow-on item.
 
+> v8 revision (Claude): trimmed to one sentence per field and under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and your combine methods are written. The problem is how the protocol is declared, not how you use it.",
+  "summary": "Your combine methods are written; the problem is how Combinable is declared.",
   "items": [
     {
       "test_key": "order_combine",
-      "what_went_wrong": "Order.add uses isinstance() with Combinable, and Python refuses because the protocol is not set up for runtime checks.",
-      "hint": "Read the last line of the error closely, then look at how Combinable is declared in combine.py. What does the error say the protocol needs?"
+      "what_went_wrong": "Python refuses the isinstance check in Order.add because Combinable is not set up for runtime checks.",
+      "hint": "What does the error's last line say a protocol needs, and does Combinable have it?"
     },
     {
       "test_key": "ds9_regression",
-      "what_went_wrong": "The Dessert Shop 9 sorting test adds items to an Order, so it hits the same TypeError.",
-      "hint": "This follows from the Combinable declaration. Fix that first."
+      "what_went_wrong": "The sorting test adds items to an Order, so it hits the same error.",
+      "hint": "This follows from the Combinable declaration; fix that first."
     }
   ],
-  "next_step": "Review the Combinable definition in combine.py."
+  "next_step": "Review how Combinable is declared in combine.py."
 }
 ```

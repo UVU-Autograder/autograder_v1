@@ -45,16 +45,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`). Then set the s
 
 > Pre-edit note (Claude): The hint said how to add the '$' (the fix). Now asks for a character-by-character comparison.
 
+> v8 revision (Claude): removed both formatted strings; described the difference in words
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, addition and multiplication all work. The string for a Money object is almost right.",
+  "summary": "Normalizing, addition, multiplication and equality all work; only the Money string format is slightly off.",
   "items": [
     {
       "test_key": "str",
-      "what_went_wrong": "str(m1) gave '3.50'; the test expects '$3.50'.",
-      "hint": "Can you compare your output with the expected text character by character, starting from the left?"
+      "what_went_wrong": "Your Money string is missing a character at the start that the test expects.",
+      "hint": "Compare your output with the expected text character by character, starting from the left. What does yours leave out?"
     }
   ],
   "next_step": "Review the __str__ method in your Money class."

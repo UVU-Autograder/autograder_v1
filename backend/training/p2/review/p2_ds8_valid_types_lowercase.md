@@ -46,23 +46,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The student's own test_order.py now fails too, on the same bug. Added as a follow-on item.
 
+> v8 revision (Claude): removed the pay type value and the constant's name; hint traces the set_pay_type check
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Order class is correctly structured, but it rejects payment types it should accept, and your own tests catch it.",
+  "summary": "Your PayType enum and packaging work, but set_pay_type rejects valid payment types, and your tests catch it.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "set_pay_type('CARD') raised a ValueError even though CARD is a valid payment type.",
-      "hint": "Compare the values in your VALID_PAY_TYPES tuple with the PayType values defined in payment.py, character by character."
+      "what_went_wrong": "Setting a valid payment type raises a ValueError saying it is invalid.",
+      "hint": "What values does set_pay_type check against, and do they match PayType character by character?"
     },
     {
       "test_key": "student_order_tests",
       "what_went_wrong": "Your tests for valid pay types fail for the same reason.",
-      "hint": "This follows from VALID_PAY_TYPES. Fix that, not the tests."
+      "hint": "This follows from the set_pay_type check; fix that, not your tests."
     }
   ],
-  "next_step": "Review VALID_PAY_TYPES in dessert.py next to PayType in payment.py."
+  "next_step": "Review the check in set_pay_type alongside PayType in payment.py."
 }
 ```

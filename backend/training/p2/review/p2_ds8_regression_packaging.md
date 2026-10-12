@@ -45,18 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `ds7_regression`). The
 
 > Pre-edit note (Claude): next_step sent the student to Cookie too; only Candy changed. Now names the Dessert Shop 7 behavior that broke.
 
+> v8 revision (Claude): removed both packaging names (one was the answer); hint no longer points at the superclass call
+
 status: accepted
 
 ```json
 {
-  "summary": "Your payment protocol and Order methods work. One Dessert Shop 7 behavior has broken.",
+  "summary": "Your payment protocol and Order pay type methods work, but one Dessert Shop 7 behavior has broken.",
   "items": [
     {
       "test_key": "ds7_regression",
-      "what_went_wrong": "A new Candy's packaging is 'Box'; the Dessert Shop 7 test expects 'Bag'.",
-      "hint": "Check what Candy's __init__ passes to the superclass for packaging. Does it match the packaging the assignment lists for candy?"
+      "what_went_wrong": "A new Candy's packaging is not what the Dessert Shop 7 test expects.",
+      "hint": "Which packaging does the assignment list for candy, and what does your Candy constructor set?"
     }
   ],
-  "next_step": "Review the Candy class __init__ in dessert.py."
+  "next_step": "Review the Candy constructor in dessert.py."
 }
 ```

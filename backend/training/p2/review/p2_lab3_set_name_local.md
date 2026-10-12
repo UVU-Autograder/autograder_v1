@@ -45,16 +45,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `getters_setters`). Th
 
 > Pre-edit note (Claude): The hint was an either/or with the answer in it. Now compares the setter line with the same line in __init__.
 
+> v8 revision (Claude): removed the old and new names; hint asks where the new name ends up
+
 status: accepted
 
 ```json
 {
-  "summary": "Your encapsulation and type hints work, but set_name does not change the name.",
+  "summary": "Your encapsulation and type hints work, but set_name does not change the channel's name.",
   "items": [
     {
       "test_key": "getters_setters",
-      "what_went_wrong": "The name is still 'Initial' after calling set_name('Updated').",
-      "hint": "Compare the line inside set_name with the matching line in __init__. What is different?"
+      "what_went_wrong": "After calling set_name, the getter still returns the original name instead of the new one.",
+      "hint": "In set_name, where does the new name end up, and is that where get_name reads it from?"
     }
   ],
   "next_step": "Review the set_name method in the YouTubeChannel class."

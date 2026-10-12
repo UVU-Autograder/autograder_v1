@@ -58,28 +58,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > Pre-edit note (Claude): The Candy item blamed the super() call, and its hint would lead a student to break working code. The only bug is DessertItem.__init__ missing self. Cut to 3 items; the others follow from the base class.
 
+> v8 revision (Claude): hint no longer points at the first line of __init__; dropped the quoted error; trimmed under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your subclasses all pass their values up to DessertItem, which is the right design. One problem in the base class is breaking every class at once.",
+  "summary": "Your subclasses pass their values up correctly, but one problem in DessertItem breaks every class.",
   "items": [
     {
       "test_key": "dessert_item",
-      "what_went_wrong": "Creating a DessertItem fails with \"name 'self' is not defined\".",
-      "hint": "Compare the first line of DessertItem.__init__ with the __init__ of any other class in your file. What is different?"
+      "what_went_wrong": "Creating a DessertItem fails with a NameError in its constructor.",
+      "hint": "Compare how DessertItem.__init__ is defined with your other constructors. What is different?"
     },
     {
       "test_key": "candy",
-      "what_went_wrong": "Candy's super().__init__(name) call is fine; it fails because it reaches the broken DessertItem constructor.",
-      "hint": "This follows from the DessertItem problem. Fix that first."
+      "what_went_wrong": "Candy's code is fine; it fails inside the DessertItem constructor.",
+      "hint": "This follows from the DessertItem.__init__ problem; fix that first."
     },
     {
       "test_key": "cookie",
-      "what_went_wrong": "Same cause as Candy: the shared DessertItem constructor.",
-      "hint": "This clears once DessertItem.__init__ is fixed."
+      "what_went_wrong": "This test fails for the same reason.",
+      "hint": "This clears once DessertItem.__init__ works."
     }
   ],
-  "next_step": "Look closely at DessertItem.__init__, then rerun the tests. IceCream and Sundae fail for the same reason."
+  "next_step": "Fix DessertItem.__init__; IceCream and Sundae clear too."
 }
 ```

@@ -43,18 +43,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `sundae`). Then set th
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision (Claude): removed the scoop count value and the super() call line from the hint; now a trace question
+
 status: accepted
 
 ```json
 {
-  "summary": "Your base classes and initial inheritance structures are working correctly. However, there is an issue with how the Sundae class handles its inherited attributes.",
+  "summary": "Your DessertItem, Candy, Cookie and IceCream classes work, but a Sundae loses some of the values it is given.",
   "items": [
     {
       "test_key": "sundae",
-      "what_went_wrong": "The scoop_count attribute is being set to 0 instead of the expected value.",
-      "hint": "When you call super().__init__ in the Sundae class, which arguments are you passing to the IceCream constructor?"
+      "what_went_wrong": "A Sundae created with scoops does not keep the scoop count it was given.",
+      "hint": "In the Sundae constructor, which of the values it receives actually reach the IceCream constructor?"
     }
   ],
-  "next_step": "Review the __init__ method of the Sundae class."
+  "next_step": "Trace the Sundae constructor with the values the test passes in."
 }
 ```

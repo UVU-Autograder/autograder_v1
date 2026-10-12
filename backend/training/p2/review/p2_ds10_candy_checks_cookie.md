@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy_combinable`, `o
 
 > Pre-edit note (Claude): what_went_wrong gave the fix (Cookie instead of Candy). Now states the behavior and points at the type check; order_combine follows from it.
 
+> v8 revision (Claude): removed the item counts; hint no longer points at the type check line; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and the Cookie logic work. One check in Candy keeps matching candies from combining, and the order test follows from it.",
+  "summary": "Your Combinable protocol and Cookie combining work, but two matching candies are never treated as combinable.",
   "items": [
     {
       "test_key": "candy_combinable",
-      "what_went_wrong": "Candy.can_combine returns False for two candies with the same name and price.",
-      "hint": "Double check your code: read the type check at the top of Candy.can_combine. Which kind of object is it looking for?"
+      "what_went_wrong": "Candy.can_combine says two candies with the same name and price cannot combine.",
+      "hint": "Trace Candy.can_combine by hand with two matching candies: which check stops them?"
     },
     {
       "test_key": "order_combine",
-      "what_went_wrong": "The order keeps 3 items instead of 2 because the candies never combine.",
-      "hint": "This follows from the can_combine problem. Fix that first."
+      "what_went_wrong": "The order keeps more items than expected because the matching candies never merge.",
+      "hint": "This follows from the Candy.can_combine problem; fix that first."
     }
   ],
-  "next_step": "Review the can_combine method in the Candy class."
+  "next_step": "Review Candy.can_combine in dessert.py."
 }
 ```

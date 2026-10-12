@@ -55,28 +55,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 3; the first hint gave the fix. Now points to the requirements for Student.
 
+> v8 revision (Claude): dropped the quoted call and the line pointer; trimmed to under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your fields and methods are written, but Student cannot be created with arguments, so every test stops there.",
+  "summary": "Your fields and methods are written, but Student will not accept arguments.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Student(101, ...) fails with \"Student() takes no arguments\".",
-      "hint": "Your fields are declared, but something has to turn them into constructor arguments. Which part of the requirements for Student does that, and is it in your file?"
+      "what_went_wrong": "Creating a Student raises a TypeError saying it takes no arguments.",
+      "hint": "What in the test's title turns fields into constructor arguments, and does your class have it?"
     },
     {
       "test_key": "methods",
       "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the class setup. Fix that first."
+      "hint": "This follows from the Student setup; fix that first."
     },
     {
       "test_key": "ordering",
       "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This clears once Student accepts its fields."
+      "hint": "This follows from the Student setup too."
     }
   ],
-  "next_step": "Compare the lines just above class Student with the assignment's requirements. main_output fails for the same reason."
+  "next_step": "Compare Student with the assignment's requirements."
 }
 ```

@@ -47,23 +47,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The student's own test_order.py now fails too (it expects the same exception). Added as a follow-on item.
 
+> v8 revision (Claude): removed the test input and the exception name; next step no longer points at the raise line; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your protocols and Order class work, and set_pay_type does reject invalid values. It uses a different kind of error than both the grader's test and your own test expect.",
+  "summary": "Your protocols work and set_pay_type rejects bad values, but with a different exception than the tests expect.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "set_pay_type('INVALID') raised a TypeError, and the test did not accept that exception.",
-      "hint": "The value is a string, the right type, but not one of the allowed options. Which built-in exception is meant for that situation?"
+      "what_went_wrong": "The invalid pay type check raises the wrong kind of exception.",
+      "hint": "Which exception does the test expect for an invalid pay type, and which one does set_pay_type raise?"
     },
     {
       "test_key": "student_order_tests",
-      "what_went_wrong": "Your invalid-pay-type test in test_order.py fails for the same reason.",
-      "hint": "Check which exception your own test expects. It is a good clue."
+      "what_went_wrong": "Your own invalid pay type test fails for the same reason.",
+      "hint": "This follows from set_pay_type; fix the method, not your test."
     }
   ],
-  "next_step": "Review the raise line in set_pay_type in dessert.py."
+  "next_step": "Review Order.set_pay_type in dessert.py."
 }
 ```

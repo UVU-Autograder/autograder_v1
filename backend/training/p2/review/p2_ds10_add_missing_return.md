@@ -43,18 +43,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): The draft said the item was added instead of merged; it was merged and then also added (3 items, not 2). Hint now asks what runs after the merge.
 
+> v8 revision (Claude): removed the item counts; hint now asks what runs after the merge; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and the Candy and Cookie classes are working. Order.add is doing the merge, but not only the merge.",
+  "summary": "Your Combinable protocol and the Candy and Cookie merging work, but Order.add does more than merge.",
   "items": [
     {
       "test_key": "order_combine",
-      "what_went_wrong": "The order ended up with 3 items where the test expected 2, so an item that was merged into an existing one was also added to the list.",
-      "hint": "Trace Order.add for an item that matches one already in the order. After the merge happens, which lines still run?"
+      "what_went_wrong": "The order has more items than the test expects, because a matching item is merged and then also added to the list.",
+      "hint": "In Order.add, after the merge happens, which lines still run for that item?"
     }
   ],
-  "next_step": "Review the Order.add method in dessert.py."
+  "next_step": "Trace Order.add for an item that matches one already in the order."
 }
 ```

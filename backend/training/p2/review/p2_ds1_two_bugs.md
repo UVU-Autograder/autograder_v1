@@ -54,23 +54,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy`, `sundae`). Th
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision (Claude): hints no longer ask for the attribute name; two separate problems, one at a time; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your implementation of the base classes and Cookie class is working correctly, but there are issues with attribute naming and inheritance in the Candy and Sundae classes.",
+  "summary": "Your DessertItem, Cookie and IceCream classes work; Candy and Sundae have separate problems.",
   "items": [
     {
       "test_key": "candy",
-      "what_went_wrong": "The Candy class is missing the specific attribute name required by the test.",
-      "hint": "What is the exact name of the weight attribute expected by the requirements?"
+      "what_went_wrong": "A Candy stores its weight under a different name than the test looks for.",
+      "hint": "Does the name the Candy constructor stores the weight under match the test's title?"
     },
     {
       "test_key": "sundae",
-      "what_went_wrong": "The scoop_count attribute is not being updated correctly when a Sundae object is created.",
-      "hint": "How does the Sundae constructor pass its arguments to the IceCream constructor?"
+      "what_went_wrong": "A new Sundae does not keep the scoop count it was given.",
+      "hint": "In the Sundae constructor, which arguments reach the IceCream constructor?"
     }
   ],
-  "next_step": "Review the requirements for the Candy class attributes and the super() call in the Sundae class."
+  "next_step": "Fix Candy first, rerun the tests, then check the Sundae constructor."
 }
 ```

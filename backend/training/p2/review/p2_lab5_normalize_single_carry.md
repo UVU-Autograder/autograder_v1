@@ -51,21 +51,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `mul`). T
 
 > Pre-edit note (Claude): The hint and what_went_wrong gave the fix. Now asks the student to trace a large amount by hand.
 
+> v8 revision (Claude): removed the dollar amounts and the example cent value; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Formatting, addition and equality work. normalize handles small overflows but not large ones, and multiplication inherits that.",
+  "summary": "Formatting, addition, and equality work, but normalize only handles small overflows.",
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "After normalizing, the test expected 3 dollars and got 1.",
-      "hint": "Can you trace normalize by hand with 350 cents? How many dollars should come out, and how many does your code carry?"
+      "what_went_wrong": "After normalizing a large number of cents, the dollar amount is lower than the test expects.",
+      "hint": "Trace normalize by hand with several dollars' worth of cents: how many dollars does your code carry over?"
     },
     {
       "test_key": "mul",
-      "what_went_wrong": "The product has 1 dollar instead of 7, because its cents are not fully carried.",
-      "hint": "This follows from the normalize problem. Fix that first."
+      "what_went_wrong": "The product has too few dollars because its cents are not fully carried.",
+      "hint": "This follows from the normalize problem; fix that first."
     }
   ],
   "next_step": "Review the normalize method in money.py."

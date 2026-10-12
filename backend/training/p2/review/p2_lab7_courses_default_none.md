@@ -53,28 +53,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): The hint and next step named field(default_factory=list) (the fix). Now points to the requirement text.
 
+> v8 revision (Claude): removed the student's value and the quoted errors; hints no longer name the field; trimmed under 80 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Student dataclass sorts by id correctly, but courses starts out as None instead of a list, and both methods trip over it.",
+  "summary": "Your sorting by id works, but a new Student has no usable course list.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "A new Student's courses is None instead of an empty list.",
-      "hint": "Compare how courses is declared in Student with what the requirement for the courses field says."
+      "what_went_wrong": "A new Student's courses field does not start out as a list.",
+      "hint": "Compare Student's fields with the dataclass requirement in this test's title. Which one differs?"
     },
     {
       "test_key": "methods",
-      "what_went_wrong": "total_courses() fails with \"object of type 'NoneType' has no len()\".",
-      "hint": "This follows from how courses is declared. Fix that first."
+      "what_went_wrong": "total_courses fails because there is no list to count.",
+      "hint": "This follows from that field; fix it first."
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "enroll fails with \"'NoneType' object has no attribute 'append'\".",
-      "hint": "This clears once courses starts as a list."
+      "what_went_wrong": "enroll fails for the same reason.",
+      "hint": "This clears once that is fixed."
     }
   ],
-  "next_step": "Review the courses field in the Student class."
+  "next_step": "Review the fields in your Student class."
 }
 ```
