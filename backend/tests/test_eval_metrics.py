@@ -268,6 +268,7 @@ def test_generated_cases_cite_real_scoring_keys():
     import json as _json
 
     from app.integrations.ai.prompts import EXECUTION_ERROR_KEY
+    from training.make_smoke_dataset import seed_requirements
 
     seeds = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
     generated = [c for c in load_cases(CASES_DIR) if c.case_id.startswith("gen_")]
@@ -277,10 +278,11 @@ def test_generated_cases_cite_real_scoring_keys():
         if not seed_folder.exists():
             seed_folder = seeds / case.assignment_slug.replace("-", "_")
         cfg_file = seed_folder / "config.json"
-        config = _json.loads(cfg_file.read_text())
+        config = _json.loads(cfg_file.read_text(encoding="utf-8"))
         keys = {item["key"] for item in config["scoring_items"]} | {EXECUTION_ERROR_KEY}
         cited = {f["key"] for f in case.failures}
         assert cited <= keys, f"{case.case_id}: unknown keys {cited - keys}"
+        assert case.requirements == seed_requirements(case.assignment_slug), case.case_id
         assert case.code_files, f"{case.case_id}: generated cases carry the bundle's files"
 
 

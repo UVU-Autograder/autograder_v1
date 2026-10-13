@@ -45,18 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): The draft pointed to __str__, which is the wrong direction for DS2. The print in main's loop is the bug; the hint now sends the student to run main and compare.
 
+> v8 revision: removed the literal item name and exact line pointer; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy and Order class work. The receipt main prints does not show the dessert names.",
+  "summary": "Your class hierarchy and Order class work, but the receipt in main does not show the item names.",
   "items": [
     {
       "test_key": "main_output",
-      "what_went_wrong": "The output does not contain 'candy corn', so the item names are not being printed.",
-      "hint": "Can you run dessertshop.py yourself and look at what the print inside the for loop shows for each item? How does it compare with the names you expect?"
+      "what_went_wrong": "The printed output is missing the names of the items in the order.",
+      "hint": "If you run dessertshop.py yourself, what does the loop in main print for each item?"
     }
   ],
-  "next_step": "Review the print statement inside the for loop in main."
+  "next_step": "Review the loop in main in dessertshop.py."
 }
 ```

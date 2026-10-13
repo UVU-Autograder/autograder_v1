@@ -40,12 +40,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
 status: approved
 
 ```json
 {
-  "summary": "Great job! Every class in your dessert hierarchy is set up correctly and all the tests pass.",
+  "summary": "Every class in your dessert hierarchy is set up and all the tests pass.",
   "items": [],
-  "next_step": "Your Candy class calls DessertItem.__init__ directly while the others use super(). Both work here. Look up what super() does differently and when that difference would matter."
+  "next_step": "Compare calling DessertItem.__init__ directly in Candy with using super() in your other classes."
 }
 ```

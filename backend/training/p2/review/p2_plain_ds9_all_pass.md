@@ -34,12 +34,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Plain all-pass case, added because the first adapter invented problems on clean solutions. The next step is an extension that fits the assignment and claims nothing about the student's code.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Your comparison operators and sorting pass every test.",
+  "summary": "Your comparison operators and Order.sort pass every test.",
   "items": [],
-  "next_step": "Try building a larger order yourself, sort it, and print each cost to confirm they go from cheapest to most expensive."
+  "next_step": "Try sorting a larger order in main and check that item costs increase."
 }
 ```

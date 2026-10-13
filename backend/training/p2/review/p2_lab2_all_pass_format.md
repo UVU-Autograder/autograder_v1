@@ -40,12 +40,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic extension replaced with one about the student's own choice (str.format).
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Your Account class passes all the automated tests.",
+  "summary": "Your Account class passes all the automated tests.",
   "items": [],
-  "next_step": "You used str.format instead of an f-string, and both work. Can you write the same line as an f-string and decide which one reads more clearly?"
+  "next_step": "Compare your str.format call in __str__ with writing the same line as an f-string."
 }
 ```

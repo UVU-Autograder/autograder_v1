@@ -114,10 +114,14 @@ def score_case(case: EvalCase, raw_response: str, latency_s: float = 0.0) -> Cas
     literals = leak_checks.answer_literals(prose, case.bug_diff, leak_checks.shown_labels(case.failures))
     if literals:
         answer_reasons.append(f"contains the model solution's literal: {literals}")
-    pointers = "\n".join([parsed.next_step] + [i.hint for i in parsed.items]) if parsed is not None else prose
+    pointers = (
+        "\n".join([parsed.next_step] + [f"{i.what_went_wrong}\n{i.hint}" for i in parsed.items])
+        if parsed is not None
+        else prose
+    )
     named = leak_checks.pinpointed_identifiers(pointers, case.bug_diff)
     if named:
-        answer_reasons.append(f"hint names the changed attribute/parameter: {named}")
+        answer_reasons.append(f"item/next step names the changed attribute/parameter: {named}")
 
     return CaseScore(
         case_id=case.case_id,

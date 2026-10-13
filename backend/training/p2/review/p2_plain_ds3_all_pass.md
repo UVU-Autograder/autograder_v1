@@ -34,12 +34,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Plain all-pass case, added because the first adapter invented problems on clean solutions. The next step is an extension that fits the assignment and claims nothing about the student's code.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Your classes pass, and every one of your own tests passes too.",
+  "summary": "Your dessert classes and every one of your own unit tests pass.",
   "items": [],
-  "next_step": "Try writing one test you expect to fail, run pytest to see what it reports, then fix or remove it."
+  "next_step": "Try writing one failing test in test_dessert.py to see how pytest reports the failure."
 }
 ```

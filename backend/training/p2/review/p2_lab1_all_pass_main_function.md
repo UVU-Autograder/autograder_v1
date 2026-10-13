@@ -47,12 +47,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): No change: accurate and the extension fits the lab.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Both parts of the lab pass their automated checks.",
+  "summary": "Both parts of the lab pass their automated checks.",
   "items": [],
-  "next_step": "Try different coefficients in your grayscale formula and see how they change the contrast of the image."
+  "next_step": "Try different coefficients in your grayscale formula to see how image contrast changes."
 }
 ```

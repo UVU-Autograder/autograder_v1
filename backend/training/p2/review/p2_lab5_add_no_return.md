@@ -45,16 +45,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `add`). Then set the s
 
 > Pre-edit note (Claude): The hint gave the fix ('does it return the result'). Now compares with __mul__, which returns its Money.
 
+> v8 revision: removed None and last-line pointer; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, formatting and multiplication all work. Addition gives back nothing.",
+  "summary": "Normalizing, formatting, and multiplication work, but adding two Money objects produces no result.",
   "items": [
     {
       "test_key": "add",
-      "what_went_wrong": "m1 + m2 gave back None instead of a Money object.",
-      "hint": "Compare the last line of __add__ with the last line of __mul__. What does __mul__ do with the Money it builds?"
+      "what_went_wrong": "Adding two Money objects does not produce a new Money instance.",
+      "hint": "How does __add__ finish compared with what __mul__ does after building a new Money object?"
     }
   ],
   "next_step": "Review the __add__ method in money.py."

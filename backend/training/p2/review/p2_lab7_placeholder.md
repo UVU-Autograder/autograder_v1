@@ -100,6 +100,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 2 for a placeholder: says so plainly and starts from the instructions. The ordering hint gave the fix and was removed.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
@@ -114,9 +116,9 @@ status: accepted
     {
       "test_key": "main_output",
       "what_went_wrong": "student.py has no main function yet.",
-      "hint": "This comes after the class: main creates students and prints them."
+      "hint": "Does main need the Student class before it can create and print students?"
     }
   ],
-  "next_step": "Start from the assignment instructions: write the Student class first, then main, and rerun the tests as you go."
+  "next_step": "Define the Student dataclass in student.py first, then add main and rerun the tests."
 }
 ```

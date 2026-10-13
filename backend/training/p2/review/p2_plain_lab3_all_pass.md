@@ -34,12 +34,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Plain all-pass case, added because the first adapter invented problems on clean solutions. The next step is an extension that fits the assignment and claims nothing about the student's code.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Your encapsulation, getters and setters, and type hints all pass.",
+  "summary": "Your encapsulation, getters and setters, and type hints all pass.",
   "items": [],
-  "next_step": "Try adding a method that adds one video at a time, and check that it follows the same rule as your setter."
+  "next_step": "Try adding an increment method to YouTubeChannel that reuses your setter's validation rule."
 }
 ```

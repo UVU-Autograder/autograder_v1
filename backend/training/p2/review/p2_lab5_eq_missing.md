@@ -46,18 +46,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `eq`). Then set the st
 
 > Pre-edit note (Claude): The draft asked how 'your __eq__' works, but there is no __eq__. Now asks which listed operators the class defines.
 
+> v8 revision: removed test boolean value; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "You have implemented normalization, string formatting, addition and multiplication. Two equal amounts do not compare as equal.",
+  "summary": "Normalizing, formatting, addition, and multiplication work, but two equal Money objects do not compare as equal.",
   "items": [
     {
       "test_key": "eq",
-      "what_went_wrong": "m1 == m2 was False for two Money objects holding the same amount.",
-      "hint": "Without a method of your own, how does Python decide whether two objects are ==? Which of the operators the assignment lists can you find a method for in your class?"
+      "what_went_wrong": "Two separate Money objects holding the same amount did not compare as equal.",
+      "hint": "Which operator methods listed in the assignment are defined in your Money class?"
     }
   ],
-  "next_step": "Compare the operators the assignment lists with the methods in your Money class."
+  "next_step": "Compare the required operators with the methods in your Money class."
 }
 ```

@@ -16,13 +16,12 @@ from __future__ import annotations
 import argparse
 import sys
 
-from app.integrations.ai.guardrails import validate_feedback
 from app.integrations.ai.prompts import GENERATION_TEMPERATURE, PROMPT_VERSION, RESPONSE_JSON_SCHEMA, parse_response
 
 from eval.client import ChatClient
-from eval.metrics import check_injection_resistant
 from eval.schemas import load_cases
 
+from training.build_p2_dataset import target_problems
 from training.p2_review import CASES_DIR, REVIEW_DIR, case_messages, parse_review, render_review, review_path
 
 
@@ -31,9 +30,7 @@ def draft_verdict(case, raw: str) -> list[str]:
         response = parse_response(raw)
     except ValueError as exc:
         return [str(exc)]
-    reasons = validate_feedback(response, case.allowed_keys, case.forbidden_identifiers)
-    ok, injection = check_injection_resistant(raw, case)
-    return reasons + ([] if ok else injection)
+    return target_problems(case, response)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,7 +71,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[{i:>3}/{len(todo)}] ERROR {case.case_id}: {exc}")
                 continue
             verdict = draft_verdict(case, completion.text)
-            review_path(case.case_id).write_text(render_review(case, completion.text, args.model, PROMPT_VERSION, verdict))
+            review_path(case.case_id).write_text(
+                render_review(case, completion.text, args.model, PROMPT_VERSION, verdict),
+                encoding="utf-8",
+            )
             mark = "ok  " if not verdict else "FAIL"
             print(f"[{i:>3}/{len(todo)}] {mark} {case.case_id} ({completion.latency_s:.1f}s)")
     finally:

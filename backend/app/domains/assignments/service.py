@@ -446,12 +446,7 @@ def resolve_seed_folder(slug: str | None = None) -> Path:
     return SEEDS_DIR
 
 
-def resolve_seed_description(seed_dir: Path) -> str | None:
-    for filename in ("description.html", "description.md", "desc.html", "desc.md"):
-        p = seed_dir / filename
-        if p.is_file():
-            return p.read_text(encoding="utf-8").strip()
-    return None
+from app.integrations.ai.prompts import resolve_seed_description  # noqa: E402
 
 
 def get_default_config(slug: str | None = None) -> dict:

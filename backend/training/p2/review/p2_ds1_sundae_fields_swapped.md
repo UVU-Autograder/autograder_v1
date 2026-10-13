@@ -43,18 +43,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `sundae`). Then set th
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision: removed the attribute name; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your base classes and initial inheritance structures are working correctly. However, there is an issue with how attributes are assigned in the Sundae class.",
+  "summary": "Your base classes work, but Sundae stores its topping attributes in the wrong places.",
   "items": [
     {
       "test_key": "sundae",
-      "what_went_wrong": "The topping_name attribute is being assigned a numeric value instead of a string.",
-      "hint": "Take a look at the assignments inside the Sundae __init__ method. Are the variables being assigned to the correct attributes?"
+      "what_went_wrong": "A new Sundae's topping attributes do not match the values passed in.",
+      "hint": "In Sundae.__init__, does each attribute receive the matching parameter?"
     }
   ],
-  "next_step": "Review the __init__ method of the Sundae class."
+  "next_step": "Review the Sundae.__init__ method in dessert.py."
 }
 ```

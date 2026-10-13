@@ -43,12 +43,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The draft ignored the concept warning. Now it does not call the work done and points back to the allowed concepts.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Both parts of the lab pass their automated checks.",
+  "summary": "Both parts of the lab pass their automated checks, though bears2.py uses type hints from Module 2.",
   "items": [],
-  "next_step": "Your bears2.py uses type hints (width: int), which come in Module 2. Review this module's allowed concepts and write those lines without them for now."
+  "next_step": "Remove the type annotations in bears2.py to match this module's allowed concepts."
 }
 ```

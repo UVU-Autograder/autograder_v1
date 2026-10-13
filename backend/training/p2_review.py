@@ -46,7 +46,7 @@ CHECKLIST = """\
 - No values from the test results: not the student's value, not the expected one (the student already sees both). Describe the difference in words.
 - Every sentence matches the assertion and the diff above. Nothing about bugs the grader did not report.
 - One root cause is explained once; the other items say they follow from it.
-- Encouraging, plain language, starts with what works, one sentence per field, under 80 words.
+- Encouraging, plain language, starts with what works, one sentence per field, under 80 words (at most 15 in `next_step`).
 - all-pass cases keep `"items": []`."""
 
 
@@ -173,7 +173,7 @@ class Review:
 
 def parse_review(path: Path) -> Review:
     """Read a review file back. Raises ValueError with a readable reason."""
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     header = HEADER_RE.match(text)
     if not header:
         raise ValueError("first line is not the p2-review header (do not edit it)")

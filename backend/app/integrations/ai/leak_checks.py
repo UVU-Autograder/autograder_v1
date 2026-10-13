@@ -32,8 +32,9 @@ _QUOTED_RE = re.compile(r"""'([^'\n]{2,80})'|"([^"\n]{2,80})\"""")
 # pytest lines that carry the compared values.
 _VALUE_LINE_RE = re.compile(r"^E\s+(?:.*\bassert\b|.*AssertionError|\+\s+where\b|Obtained:|Expected:)")
 _APPROX_TAIL_RE = re.compile(r"\s*±.*$")
-_SELF_ATTR_RE = re.compile(r"\bself\.(\w+)")
+_ATTR_RE = re.compile(r"\b[A-Za-z_]\w*\.([A-Za-z_]\w*)(?!\s*\()")
 _DEF_RE = re.compile(r"\bdef\s+\w+\s*\((.*?)\)")
+_SUPER_INIT_RE = re.compile(r"\bsuper\(\)\.__init__\((.*?)\)")
 _PARAM_RE = re.compile(r"(?:^|,)\s*\*{0,2}([A-Za-z_]\w*)")
 _IGNORED_NAMES = {"self", "cls", "args", "kwargs"}
 # Quoted strings in these positions are names (methods, attributes, imports), not values.
@@ -136,25 +137,28 @@ def changed_identifiers(bug_diff: str) -> set[str]:
     """Attributes and parameters on the changed lines of the diff."""
     names: set[str] = set()
     for line in sum(_diff_sides(bug_diff), []):
-        names.update(_SELF_ATTR_RE.findall(line))
-        for params in _DEF_RE.findall(line):
+        unquoted = _QUOTED_RE.sub(" ", line)
+        names.update(_ATTR_RE.findall(unquoted))
+        for params in _DEF_RE.findall(unquoted):
             names.update(_PARAM_RE.findall(params))
+        for args in _SUPER_INIT_RE.findall(unquoted):
+            names.update(_PARAM_RE.findall(args))
     return {name for name in names if name not in _IGNORED_NAMES and len(name) > 1}
 
 
 def pinpointed_identifiers(text: str, bug_diff: str) -> list[str]:
-    """Changed-line attributes/parameters named in ``text`` (pass the hints and next step).
+    """Changed-line attributes/parameters named in ``text`` (pass item prose and next step).
 
     A plain word like ``order`` or ``weight`` only counts when written as code
-    (``self.order``, ``.order``, or in backticks); names with an underscore or a
-    capital always count.
+    (``self.order``, ``.order``, in backticks, or in quotes); names with an
+    underscore or a capital always count.
     """
     found = []
     for name in changed_identifiers(bug_diff):
-        if "_" in name.strip("_") or not name.islower():
+        if "_" in name or not name.islower():
             pattern = rf"(?<!\w){re.escape(name)}(?!\w)"
         else:
-            pattern = rf"(?:\.{re.escape(name)}(?!\w)|`{re.escape(name)}`)"
+            pattern = rf"""(?:\.{re.escape(name)}(?!\w)|[`'"]{re.escape(name)}[`'"])"""
         if re.search(pattern, text):
             found.append(name)
     return sorted(found)

@@ -43,12 +43,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The extension referred to views, which this class does not have. Now about the student's own choice (guard clause).
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Every test passes, including the setter guard.",
+  "summary": "Every test passes, including your encapsulation and setter guard.",
   "items": [],
-  "next_step": "Your setter uses an early return for negative counts. Can you compare it with writing the same rule as one if block, and decide which reads better as more rules are added?"
+  "next_step": "Compare your early-return guard in set_video_count with using a single if block."
 }
 ```

@@ -43,16 +43,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `eq`). Then set the st
 
 > Pre-edit note (Claude): The hint gave the fix ('comparing only dollars'). Now asks the student to trace two amounts that differ only in cents.
 
+> v8 revision: removed test values and attribute names; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, formatting, addition and multiplication all work. Equality treats two different amounts as the same.",
+  "summary": "Normalizing, formatting, addition, and multiplication work, but equality treats different amounts as equal.",
   "items": [
     {
       "test_key": "eq",
-      "what_went_wrong": "m1 != m3 was False: two amounts with the same dollars but different cents compared as equal.",
-      "hint": "Can you trace __eq__ for $3.50 and $3.49? Which part of each amount does it look at?"
+      "what_went_wrong": "Two Money objects with different total amounts compared as equal.",
+      "hint": "Does your __eq__ method check the full value of both Money objects?"
     }
   ],
   "next_step": "Review the __eq__ method in your Money class."

@@ -44,18 +44,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `relational_ops`). The
 
 > Pre-edit note (Claude): what_went_wrong gave the fix; kept the draft's good hint.
 
+> v8 revision: removed the test's boolean values; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your sorting logic and most relational operators work, but one comparison gives the opposite answer.",
+  "summary": "Your sorting logic and most relational operators work, but > gives the opposite result.",
   "items": [
     {
       "test_key": "relational_ops",
-      "what_went_wrong": "c2 > c1 returned False; the test expects True because c2 costs more.",
-      "hint": "Look closely at the comparison inside your __gt__ method. Does the operator match the method name?"
+      "what_went_wrong": "Comparing a more expensive item to a cheaper one with > gave the wrong result.",
+      "hint": "In your __gt__ method, how does the comparison direction relate to the method name?"
     }
   ],
-  "next_step": "Review the __gt__ method in the DessertItem class in dessert.py."
+  "next_step": "Review the __gt__ method in the DessertItem class."
 }
 ```

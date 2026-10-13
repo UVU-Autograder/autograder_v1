@@ -45,12 +45,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Small edit: the next step names the concept and module.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "All of your operator tests pass.",
+  "summary": "All of your operator tests pass, though Money uses a generator from Module 4.",
   "items": [],
-  "next_step": "Your Money class adds a generator __iter__, and generators come in Module 4. Review this module's allowed concepts and rework or remove it for now."
+  "next_step": "Remove the generator __iter__ from Money to match this module's allowed concepts."
 }
 ```

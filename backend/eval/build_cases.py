@@ -38,7 +38,11 @@ from app.domains.grading.executor import ExecutionOutcome
 from app.domains.grading.result_parser import parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
 from app.integrations.ai.guardrails import DEF_RE
-from app.integrations.ai.prompts import failures_from_test_results, requirements_from_config
+from app.integrations.ai.prompts import (
+    failures_from_test_results,
+    requirements_from_config,
+    resolve_seed_description,
+)
 
 from eval.mutations import MUTATIONS, TRAIN_MUTATIONS
 from eval.schemas import load_cases, save_cases
@@ -52,7 +56,7 @@ COURSE_DEFAULT_CONCEPTS = ["variables", "conditionals", "loops", "functions"]  #
 
 
 def _catalog() -> dict:
-    return json.loads((SEEDS / "cs1410_catalog.json").read_text())
+    return json.loads((SEEDS / "cs1410_catalog.json").read_text(encoding="utf-8"))
 
 
 def seed_dir_for(slug: str) -> Path:
@@ -80,8 +84,12 @@ def assignment_meta(slug: str) -> tuple[str, list[str]]:
 
 
 def load_config(slug: str) -> tuple[AssignmentConfigV1, dict]:
-    cfg_path = seed_dir_for(slug) / "config.json"
-    raw = json.loads(cfg_path.read_text())
+    seed_dir = seed_dir_for(slug)
+    cfg_path = seed_dir / "config.json"
+    raw = json.loads(cfg_path.read_text(encoding="utf-8"))
+    desc = resolve_seed_description(seed_dir)
+    if desc and not raw.get("description"):
+        raw["description"] = desc
     return AssignmentConfigV1.model_validate(raw), raw
 
 
@@ -102,7 +110,8 @@ async def _local_execute(
 ) -> ExecutionOutcome:
     outcome = ExecutionOutcome()
     (exec_dir / "runner.py").write_text(
-        generate_runner_script(test_filenames, test_cases, entrypoint_module, dependencies)
+        generate_runner_script(test_filenames, test_cases, entrypoint_module, dependencies),
+        encoding="utf-8",
     )
     env = {
         "PATH": os.environ.get("PATH", ""),
@@ -166,7 +175,7 @@ def model_files(slug: str) -> dict[str, str]:
         if art.type == "model_solution" and art.display_filename:
             path = seed_dir_for(slug) / art.display_filename
             if path.suffix in {".py", ".md", ".txt"}:
-                out[art.display_filename] = path.read_text()
+                out[art.display_filename] = path.read_text(encoding="utf-8")
     return out
 
 
@@ -214,7 +223,7 @@ def build_case(mutation: dict) -> tuple[dict | None, str]:
     with tempfile.TemporaryDirectory(prefix="agcase_") as tmp:
         bundle = Path(tmp)
         for name, text in files.items():
-            (bundle / name).write_text(text)
+            (bundle / name).write_text(text, encoding="utf-8")
         for path in binary_model_files(slug):
             shutil.copy(path, bundle / path.name)
         result = grade_bundle(slug, bundle)
@@ -265,7 +274,7 @@ def check_seeds(slugs: list[str]) -> int:
         with tempfile.TemporaryDirectory(prefix="agseed_") as tmp:
             bundle = Path(tmp)
             for name, text in model_files(slug).items():
-                (bundle / name).write_text(text)
+                (bundle / name).write_text(text, encoding="utf-8")
             for path in binary_model_files(slug):
                 shutil.copy(path, bundle / path.name)
             result = grade_bundle(slug, bundle)

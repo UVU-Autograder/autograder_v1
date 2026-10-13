@@ -70,7 +70,8 @@ else
   run cp -a "$SRC" "$DEST"
   commit="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo unknown)"
   weights_sha="$(sha256sum "$SRC/adapter_model.safetensors" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$SRC/adapter_model.safetensors" | cut -d' ' -f1)"
-  meta="$HERE/data/p2/meta.json"
+  meta="$HERE/data/$NAME/meta.json"
+  [[ -f "$meta" ]] || meta="$HERE/data/p2/meta.json"
   provenance=$(python3 - "$NAME" "$SRC" "$commit" "$weights_sha" "$meta" <<'PY'
 import json, sys, datetime, pathlib
 name, src, commit, sha, meta = sys.argv[1:]

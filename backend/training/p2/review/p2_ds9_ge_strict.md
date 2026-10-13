@@ -44,16 +44,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `relational_ops`). The
 
 > Pre-edit note (Claude): what_went_wrong and the hint gave the fix. Now describes the equal-cost case and asks what >= should return there.
 
+> v8 revision: removed the test's boolean values; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Most of your relational operators work, and sorting does too. One comparison is wrong when two items cost the same.",
+  "summary": "Most of your relational operators and sorting work, but >= disagrees when two items cost the same.",
   "items": [
     {
       "test_key": "relational_ops",
-      "what_went_wrong": "c1 >= c3 returned False, but these two items cost the same, so the test expects True.",
-      "hint": "What should >= return when two items cost exactly the same? Can you check what your __ge__ returns in that case?"
+      "what_went_wrong": "Comparing two equal-cost items with >= did not give the expected result.",
+      "hint": "What does your __ge__ method return when two items have the exact same cost?"
     }
   ],
   "next_step": "Review the __ge__ method in the DessertItem class."

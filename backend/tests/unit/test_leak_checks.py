@@ -96,11 +96,21 @@ def test_plain_words_only_count_as_identifiers_when_written_as_code():
     assert pinpointed_identifiers("What happens to the items already in your order?", diff) == []
     assert pinpointed_identifiers("What happens to self.order when you add?", diff) == ["order"]
     assert pinpointed_identifiers("What does `order` hold?", diff) == ["order"]
+    assert pinpointed_identifiers("What does 'order' hold?", diff) == ["order"]
 
 
 def test_parameters_and_private_attributes_are_identifiers():
     assert changed_identifiers(ICECREAM_DIFF) == {"name", "scoop_count", "price_per_scoop"}
     assert pinpointed_identifiers("Check the initial value of _pay_type.", CASH_DIFF) == ["_pay_type"]
+    single_underscore_diff = "-        self._name = name\n+        self.name = name\n"
+    assert pinpointed_identifiers("Store it on _name instead.", single_underscore_diff) == ["_name"]
+    non_self_attr_diff = "-    assert candy.candy_weight == 1.5\n+    assert candy.candy_weight == 2.0\n"
+    assert pinpointed_identifiers("Check candy_weight in your test.", non_self_attr_diff) == ["candy_weight"]
+    super_diff = "-        super().__init__(name)\n+        super().__init__()\n"
+    assert pinpointed_identifiers("Pass 'name' to super().__init__.", super_diff) == ["name"]
+    decimal_diff = "-        self.tax_percent = 7.25\n+        self.tax_percent = 0.0\n"
+    assert "25" not in changed_identifiers(decimal_diff)
+    assert pinpointed_identifiers("Line 25 initializes the item.", decimal_diff) == []
 
 
 def test_shown_labels_and_word_count():

@@ -63,7 +63,7 @@ status: accepted
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "A new Student's courses field does not start out as a list.",
+      "what_went_wrong": "A new Student's course collection does not start out as a list.",
       "hint": "Compare Student's fields with the dataclass requirement in this test's title. Which one differs?"
     },
     {

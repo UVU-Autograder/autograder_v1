@@ -44,16 +44,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `description_readonly`
 
 > Pre-edit note (Claude): The hint was confusing and the next step named @property (the fix). Now compares description with author, which is set up correctly.
 
+> v8 revision: removed exact line pointer; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your title and author properties validate correctly. The description is not behaving like the other two.",
+  "summary": "Your title and author properties validate inputs, but description is not behaving like a property.",
   "items": [
     {
       "test_key": "description_readonly",
-      "what_went_wrong": "my_book.description gave back a method instead of a string.",
-      "hint": "Compare how description is defined with how author is defined. What does author have directly above its def line?"
+      "what_went_wrong": "Accessing description on a Book returns a method instead of a string.",
+      "hint": "How does your description definition differ from how title and author are defined in Book?"
     }
   ],
   "next_step": "Review the description definition in book.py."

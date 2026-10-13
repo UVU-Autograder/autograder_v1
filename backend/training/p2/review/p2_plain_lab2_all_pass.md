@@ -34,12 +34,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Plain all-pass case, added because the first adapter invented problems on clean solutions. The next step is an extension that fits the assignment and claims nothing about the student's code.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Your Account class passes all the automated tests.",
+  "summary": "Your Account class passes all the automated tests.",
   "items": [],
-  "next_step": "Try adding a deposit method that updates the balance, then print an account before and after a deposit in demo.py."
+  "next_step": "Try adding a deposit method to Account and printing the updated balance in demo.py."
 }
 ```

@@ -45,6 +45,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 
 > Pre-edit note (Claude): No change to the substance: accurate and points to the comparison the student should make.
 
+> v8 revision: removed the attribute name from the hint
+
 status: accepted
 
 ```json
@@ -54,7 +56,7 @@ status: accepted
     {
       "test_key": "student_tests_pass",
       "what_went_wrong": "The suite failed because one assertion in test_sundae_parameterized did not match.",
-      "hint": "Compare the value you passed for topping_price when creating the Sundae with the value you check in the assertion."
+      "hint": "In test_sundae_parameterized, do the values passed when creating the Sundae match the values checked in the assertions?"
     }
   ],
   "next_step": "Review the test_sundae_parameterized function in test_dessert.py."

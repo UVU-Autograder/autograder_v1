@@ -38,6 +38,7 @@ HERE = Path(__file__).parent
 EVAL_CASES = HERE.parent / "eval" / "cases.jsonl"
 OUT_DIR = HERE / "data" / "p3"
 MAX_WORDS = 80
+MAX_NEXT_STEP_WORDS = 15
 SERVE_MAX_MODEL_LEN = 12288  # --max-model-len in vllm-cs1410.service and serve.sh
 VALID_EVERY = 10  # ~10% held out for eval_loss, chosen by a stable hash of the case id
 
@@ -57,16 +58,19 @@ def target_problems(case, target) -> list[str]:
     words = leak_checks.word_count(prose)
     if words > MAX_WORDS:
         problems.append(f"{words} words; the prompt asks for under {MAX_WORDS}")
+    next_step_words = leak_checks.word_count(target.next_step)
+    if next_step_words > MAX_NEXT_STEP_WORDS:
+        problems.append(f"next_step has {next_step_words} words; the prompt allows at most {MAX_NEXT_STEP_WORDS}")
     echoed = leak_checks.echoed_values(prose, case.failures)
     if echoed:
         problems.append(f"repeats values from the test results ({', '.join(echoed)}); describe the difference in words")
     answers = leak_checks.answer_literals(prose, case.bug_diff, leak_checks.shown_labels(case.failures))
     if answers:
         problems.append(f"contains what to type ({', '.join(answers)}), found only in the model solution")
-    pointers = "\n".join([target.next_step] + [item.hint for item in target.items])
+    pointers = "\n".join([target.next_step] + [f"{item.what_went_wrong}\n{item.hint}" for item in target.items])
     named = leak_checks.pinpointed_identifiers(pointers, case.bug_diff)
     if named:
-        problems.append(f"hint/next step names the exact attribute or parameter to change ({', '.join(named)})")
+        problems.append(f"item/next step names the exact attribute or parameter to change ({', '.join(named)})")
     if not target.summary.strip() or not target.next_step.strip():
         problems.append("summary and next_step must not be empty")
     for item in target.items:
@@ -162,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args.out.mkdir(parents=True, exist_ok=True)
     for name, data in rows.items():
-        with (args.out / f"{name}.jsonl").open("w") as handle:
+        with (args.out / f"{name}.jsonl").open("w", encoding="utf-8") as handle:
             for row in data:
                 handle.write(json.dumps(row, ensure_ascii=False) + "\n")
     meta = {
@@ -174,14 +178,15 @@ def main(argv: list[str] | None = None) -> int:
         "review_counts": dict(counts),
         "longest_prompt_chars": longest,
     }
-    (args.out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
+    (args.out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {len(rows['train'])} train / {len(rows['valid'])} valid rows to {args.out}")
     print(f"by category: {dict(sorted(by_category.items()))}")
     estimate = longest // 3  # rough and on the high side; the real tokenizer runs in train_lora
     needed = estimate + MAX_OUTPUT_TOKENS  # prompt + room for the response
     max_length = next((n for n in (4096, 6144, 8192, 12288) if needed <= n), 12288)
+    steps = max(1, (2 * len(rows["train"])) // 4)  # ~2 passes at grad_accum=4
     print(f"longest prompt: {longest} chars (~{estimate} tokens, rough estimate). train_lora drops rows over "
-          f"--max-length and reports how many; use --max-length {max_length}.")
+          f"--max-length and reports how many; use --max-length {max_length} --max-steps {steps}.")
     if needed > SERVE_MAX_MODEL_LEN:
         print(f"warning: prompt + {MAX_OUTPUT_TOKENS} output tokens may exceed vLLM --max-model-len {SERVE_MAX_MODEL_LEN}; "
               "check the real token count on the Dell before serving this prompt version.")

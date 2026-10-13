@@ -88,6 +88,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > Pre-edit note (Claude): 5 identical items cut to 1, and the 'class attribute' hint was wrong (name is an instance attribute). Placeholder: say so plainly and point to the instructions.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
@@ -100,6 +102,6 @@ status: accepted
       "hint": "Which class does the assignment ask for first, and which classes inherit from it?"
     }
   ],
-  "next_step": "Start from the assignment instructions: write DessertItem first, then add one subclass at a time and rerun the tests as you go."
+  "next_step": "Start with DessertItem in dessert.py, then add one subclass at a time."
 }
 ```

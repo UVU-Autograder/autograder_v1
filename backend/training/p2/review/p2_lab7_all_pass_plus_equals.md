@@ -42,12 +42,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic extension replaced with one about the student's own choice (+= [course]).
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Every test passes, including ordering and the main output.",
+  "summary": "Every test passes, including student ordering and the main output.",
   "items": [],
-  "next_step": "Your enroll uses += [course] instead of append, and both work here. Can you find out whether += changes the existing list or builds a new one?"
+  "next_step": "Compare using += in Student.enroll with calling list.append on the course list."
 }
 ```

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import ast
 import json
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -164,6 +165,15 @@ def failures_from_test_results(
             }
         )
     return failures, passing
+
+
+def resolve_seed_description(seed_dir: Path) -> str | None:
+    """Read the markdown/HTML assignment description from a seed folder."""
+    for filename in ("description.html", "description.md", "desc.html", "desc.md"):
+        path = seed_dir / filename
+        if path.is_file():
+            return path.read_text(encoding="utf-8").strip()
+    return None
 
 
 def requirements_from_config(

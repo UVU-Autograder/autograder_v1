@@ -43,12 +43,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic next step replaced with one about the student's own choice (iter(self.order) means __next__ never runs).
 
+> v8 revision: trimmed summary and next_step to one sentence each
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Every test passes and your Order class works in a for loop.",
+  "summary": "Every test passes and your Order class works in a for loop.",
   "items": [],
-  "next_step": "Your __iter__ returns the list's own iterator, so your __next__ never runs. Can you work out why the for loop still works, and when writing your own __next__ would be the better choice?"
+  "next_step": "Trace why Order.__iter__ works in a loop even though your __next__ never runs."
 }
 ```
