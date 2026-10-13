@@ -3,13 +3,11 @@
     "entrypoint": "student.py",
     "file_requirements": [
       {
-        "label": "Student dataclass definition file",
         "paths": [
           "student.py"
         ]
       },
       {
-        "label": "Student reflection responses",
         "paths": [
           "student_reflection.md"
         ]

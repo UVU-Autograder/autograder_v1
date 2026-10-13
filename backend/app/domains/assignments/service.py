@@ -465,7 +465,6 @@ def get_default_config(slug: str | None = None) -> dict:
             "entrypoint": "main.py",
             "file_requirements": [
                 {
-                    "label": "Main Entrypoint Script",
                     "paths": ["main.py"],
                 }
             ],

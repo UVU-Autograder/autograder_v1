@@ -42,6 +42,11 @@ AGENTS.md
 
 # Student submission datasets (local-only; FERPA)
 cs1410/
+cs1400/
+submissions/
+**/submissions/
+data/artifacts/
+/data/artifacts/
 # Preflight output (host details, no secrets)
 preflight-report-*.txt
 preflight-stack-*.json

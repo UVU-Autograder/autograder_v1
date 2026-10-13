@@ -31,12 +31,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /tmp/Python-3.11.9* \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install required packages (pytest + allowlisted course dependencies) into Python 3.11.9
-RUN /usr/local/python-3.11.9/bin/python3.11 -m pip install --no-cache-dir --upgrade pip setuptools \
+# Install pinned packages (pytest + allowlisted course dependencies) into Python 3.11.9
+RUN /usr/local/python-3.11.9/bin/python3.11 -m pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.8.0 \
     && /usr/local/python-3.11.9/bin/python3.11 -m pip install --no-cache-dir \
-    pytest \
-    pillow \
-    pygame \
-    tabulate
+    pytest==8.4.2 \
+    pillow==11.3.0 \
+    pygame==2.6.1 \
+    tabulate==0.9.0
 
 USER judge0

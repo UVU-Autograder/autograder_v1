@@ -200,7 +200,6 @@ export const MOCK_ASSIGNMENT_DETAILS_LAB1: Assignment = {
       entrypoint: "image_processor.py",
       file_requirements: [
         {
-          label: "Primary Processor Module",
           paths: ["image_processor.py"],
         },
       ],
@@ -467,7 +466,6 @@ export const MOCK_STAFF_ASSIGNMENT_SETUP_LAB1: StaffAssignmentSetup = {
       entrypoint: "image_processor.py",
       file_requirements: [
         {
-          label: "Primary Processor Module",
           paths: ["image_processor.py"],
         },
       ],

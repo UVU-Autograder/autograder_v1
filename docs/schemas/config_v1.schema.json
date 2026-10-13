@@ -43,6 +43,12 @@
           },
           "title": "File Requirements",
           "type": "array"
+        },
+        "language": {
+          "default": "python",
+          "description": "Target programming language for execution (e.g. 'python', 'cpp', 'c', 'web')",
+          "title": "Language",
+          "type": "string"
         }
       },
       "required": [
@@ -108,11 +114,6 @@
     },
     "FileRequirementConfig": {
       "properties": {
-        "label": {
-          "minLength": 1,
-          "title": "Label",
-          "type": "string"
-        },
         "paths": {
           "anyOf": [
             {
@@ -141,9 +142,6 @@
           "title": "Pattern"
         }
       },
-      "required": [
-        "label"
-      ],
       "title": "FileRequirementConfig",
       "type": "object"
     },

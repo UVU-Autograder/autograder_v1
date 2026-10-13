@@ -402,6 +402,7 @@ class SandboxService:
                         state="failure",
                         projected_score=0,
                         max_score=record.max_score,
+                        failure_category=redis_result.get("failure_category", "internal_error"),
                         warnings=[
                             SandboxWarning(
                                 code=redis_result.get("failure_category", "internal_error"),
@@ -482,6 +483,7 @@ class SandboxService:
                     state="complete",
                     projected_score=redis_result.get("score", 0),
                     max_score=redis_result.get("max_score", record.max_score),
+                    failure_category=redis_result.get("failure_category"),
                     warnings=warnings,
                     test_summaries=test_summaries,
                     rubric_groups=rubric_groups,
@@ -500,6 +502,7 @@ class SandboxService:
                 state="failure",
                 projected_score=0,
                 max_score=self._assignment_max_score(record),
+                failure_category="cancelled",
                 warnings=[
                     SandboxWarning(code="cancelled", message="Run did not execute.")
                 ],
@@ -590,6 +593,7 @@ class SandboxService:
                 state="complete" if res_data.get("success", True) else "failure",
                 projected_score=res_data.get("score", 0),
                 max_score=res_data.get("max_score", record.max_score),
+                failure_category=res_data.get("failure_category"),
                 warnings=warnings,
                 test_summaries=test_summaries,
                 sanitized_feedback=str(res_data.get("failure_message") or "Execution failed.") if not res_data.get("success") else "Review your results above.",

@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 from sqlalchemy import select, text
@@ -14,6 +15,8 @@ from app.domains.assignments.service import (
 from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Module, Section
 
+logger = logging.getLogger(__name__)
+
 SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
 EXAMPLE_DIR = SEEDS_DIR / "simple-python-functions"
 EXAMPLE_CONFIG = EXAMPLE_DIR / "config.json"
@@ -28,6 +31,37 @@ def load_cs1410_catalog() -> dict:
     return json.loads(CS1410_CATALOG.read_text(encoding="utf-8"))
 
 
+def seed_judge0_language(db_url: str | None = None) -> bool:
+    """Idempotently seed custom language 711 into Judge0 PostgreSQL database."""
+    from app.core.settings import get_settings
+
+    url = db_url or get_settings().database_url
+    if not url or ("postgresql" not in url and "postgres" not in url):
+        return False
+    try:
+        from sqlalchemy import create_engine
+
+        judge0_url = url.rsplit("/", 1)[0] + "/judge0"
+        judge0_engine = create_engine(judge0_url, pool_pre_ping=True)
+        seed_sql = (
+            "INSERT INTO languages (id, name, compile_cmd, run_cmd, source_file, is_archived) "
+            "VALUES (711, 'Python (3.11.9)', NULL, '/usr/local/python-3.11.9/bin/python3.11 script.py', 'script.py', false) "
+            "ON CONFLICT (id) DO UPDATE SET "
+            "name = EXCLUDED.name, "
+            "compile_cmd = EXCLUDED.compile_cmd, "
+            "run_cmd = EXCLUDED.run_cmd, "
+            "source_file = EXCLUDED.source_file, "
+            "is_archived = EXCLUDED.is_archived;"
+        )
+        with judge0_engine.connect() as conn:
+            conn.execute(text(seed_sql))
+            conn.commit()
+        return True
+    except Exception as exc:
+        logger.debug("Judge0 language seed attempt skipped or failed: %s", exc)
+        return False
+
+
 def initialize_database(seed: bool = True) -> None:
     import_domain_models()
     Base.metadata.create_all(bind=engine)
@@ -37,6 +71,7 @@ def initialize_database(seed: bool = True) -> None:
                 # Serialize check-then-insert seed logic across reload/workers.
                 db.execute(text("BEGIN IMMEDIATE"))
             seed_development_data(db)
+        seed_judge0_language()
 
 
 def _seed_cs1400(

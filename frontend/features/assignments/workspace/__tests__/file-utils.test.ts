@@ -124,7 +124,7 @@ describe("checkBundleRequirements helper", () => {
       bundle: {
         entrypoint: "main.py",
         file_requirements: [
-          { label: "Helper Module", paths: ["helper.py"] },
+          { paths: ["helper.py"] },
         ],
       },
       scoring_items: [],

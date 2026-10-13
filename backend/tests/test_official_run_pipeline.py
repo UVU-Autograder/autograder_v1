@@ -318,8 +318,8 @@ async def test_run_grading_pipeline_multi_file_ast_block(db_session: Any, temp_w
         "bundle": {
             "entrypoint": "main.py",
             "file_requirements": [
-                {"label": "Main file", "paths": ["main.py"]},
-                {"label": "Helper file", "paths": ["helper.py"]}
+                {"paths": ["main.py"]},
+                {"paths": ["helper.py"]}
             ]
         },
         "artifacts": {
@@ -439,6 +439,95 @@ async def test_run_grading_pipeline_ds1_success(db_session: Session, temp_worksp
     assert result.pytest_result.total == 5
     assert result.pytest_result.passed == 5
     assert result.pytest_result.failed == 0
+
+
+def test_official_run_infra_failure_gates_exports_until_adjudicated(
+    db_session: Session, temp_workspaces: Path
+) -> None:
+    from app.domains.runs.service import (
+        manual_grading_progress,
+        student_detail_from_result,
+        update_student_manual_result,
+    )
+
+    settings = get_settings()
+    run = RunSummary(
+        workflow_type="official",
+        assignment_id=1,
+        status="queue",
+        total_submission_count=1,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
+    workspaces_dir.mkdir(parents=True, exist_ok=True)
+    zip_dest = workspaces_dir / f"official_{run.id}.zip"
+    zip_dest.write_bytes(
+        create_zip_bytes(
+            {"studenta_11111_67890_student_functions.py": b"print('hello')"}
+        )
+    )
+
+    infra_failure_result = GradingResult(
+        success=False,
+        score=0,
+        max_score=100,
+        failure_category="infrastructure_failure",
+        failure_message="Judge0 worker timeout while provisioning sandbox.",
+        test_results=[],
+        warnings=[],
+    )
+
+    with patch(
+        "app.domains.grading.engine.GradingEngine.grade_submission",
+        new_callable=AsyncMock,
+        return_value=infra_failure_result,
+    ):
+        drain(run.id)
+
+    run_dir = workspaces_dir / f"official_{run.id}"
+    details = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    student_res = details["student_results"]["11111"]
+
+    assert student_res["score"] is None
+    assert student_res["requires_adjudication"] is True
+    assert student_res["failure_category"] == "infrastructure_failure"
+    assert "Pending Adjudication / 100" in student_res["feedback_html"]
+
+    progress_before = manual_grading_progress(details["student_results"])
+    assert progress_before["requires_manual_grading"] is True
+    assert progress_before["completed_students"] == 0
+    assert progress_before["exports_ready"] is False
+
+    detail_before = student_detail_from_result("11111", student_res)
+    assert detail_before["score"] is None
+    assert detail_before["automated_score"] is None
+    assert detail_before["requires_adjudication"] is True
+
+    manual_grades = {
+        key: {"score": item["points"], "comments": "ok"}
+        for key, item in (student_res.get("manual_results") or {}).items()
+    }
+    update_student_manual_result(
+        student_res,
+        manual_grades,
+        overall_comment="Re-ran manually after Judge0 recovery.",
+        update_overall_comment=True,
+        adjudicated_automated_score=20,
+        update_adjudicated_score=True,
+    )
+    assert student_res["score"] == 20
+    assert student_res["requires_adjudication"] is False
+
+    progress_after = manual_grading_progress(details["student_results"])
+    assert progress_after["exports_ready"] is True
+
+    detail_after = student_detail_from_result("11111", student_res)
+    assert detail_after["automated_score"] == 20
+    assert detail_after.get("requires_adjudication", False) is False
+
 
 
 

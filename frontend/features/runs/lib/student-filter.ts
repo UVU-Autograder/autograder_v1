@@ -1,8 +1,11 @@
 import { StudentRunDetail, StatusFilter, ScoreBucket } from "../types";
 
 export function hasUngradedManualItems(student: StudentRunDetail): boolean {
-  return Object.values(student.manual_results ?? {}).some(
-    (item) => item.score === null,
+  return (
+    Boolean(student.requires_adjudication) ||
+    Object.values(student.manual_results ?? {}).some(
+      (item) => item.score === null,
+    )
   );
 }
 
@@ -34,12 +37,14 @@ export function filterStudents(
       if (!nameMatch && !idMatch) return false;
     }
 
-    const manualCount = Object.keys(student.manual_results ?? {}).length;
+    const requiresReview =
+      Boolean(student.requires_adjudication) ||
+      Object.keys(student.manual_results ?? {}).length > 0;
     if (filter === "ungraded") {
-      return manualCount > 0 && hasUngradedManualItems(student);
+      return requiresReview && hasUngradedManualItems(student);
     }
     if (filter === "graded") {
-      return manualCount === 0 || !hasUngradedManualItems(student);
+      return !requiresReview || !hasUngradedManualItems(student);
     }
     if (filter === "failed") {
       return student.status === "failure";
@@ -57,6 +62,9 @@ export function buildScoreHistogram(students: StudentRunDetail[]): ScoreBucket[]
   }));
 
   for (const student of students) {
+    if (student.requires_adjudication || student.score === null) {
+      continue;
+    }
     const max = typeof student.max_score === "number" && !Number.isNaN(student.max_score) ? student.max_score : 0;
     const score = typeof student.score === "number" && !Number.isNaN(student.score) ? student.score : 0;
     const pct = max > 0 ? (score / max) * 100 : 0;

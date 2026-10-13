@@ -32,7 +32,7 @@ def base_config() -> AssignmentConfigV1:
         "bundle": {
             "entrypoint": "main.py",
             "file_requirements": [
-                {"label": "Main file", "paths": ["main.py"]},
+                {"paths": ["main.py"]},
             ],
         },
         "artifacts": {

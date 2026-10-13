@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AssignmentSidebar } from "../sidebar";
 import { AssignmentFileProvider, useAssignmentFile } from "../assignment-file-context";
@@ -59,18 +59,16 @@ function TestInner({
   assignment?: Assignment;
 }) {
   const { openFileByName } = useAssignmentFile();
-  const [initialized, setInitialized] = React.useState(false);
+  const initializedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!initialized) {
+    if (!initializedRef.current) {
+      initializedRef.current = true;
       initialFiles.forEach((file) => {
         void openFileByName(file, { content: "pass", category: "workspace" });
       });
-      setInitialized(true);
     }
-  }, [initialized, initialFiles, openFileByName]);
-
-  if (!initialized) return <div>Loading...</div>;
+  }, [initialFiles, openFileByName]);
 
   return <AssignmentSidebar courseId="1" assignment={assignment} />;
 }

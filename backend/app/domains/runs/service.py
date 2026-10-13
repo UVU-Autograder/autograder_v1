@@ -68,7 +68,7 @@ def automated_review_status(res: dict) -> tuple[str, str]:
         preview = "; ".join(message for message in (w.get("message") for w in warnings) if message)
         return "warning", preview or "Grading completed with warnings."
 
-    automated_score = res.get("score", 0)
+    automated_score = res.get("score") or 0
     automated_max = res.get("automated_max_score", res.get("max_score", 0))
     if automated_max > 0 and automated_score < automated_max:
         failed_labels = [
@@ -108,12 +108,14 @@ def manual_grading_progress(
 ) -> dict[str, int | bool]:
     total = len(student_results)
     requires_manual = any(
-        bool(result.get("manual_results")) for result in student_results.values()
+        bool(result.get("manual_results")) or bool(result.get("requires_adjudication"))
+        for result in student_results.values()
     )
     completed = sum(
         1
         for result in student_results.values()
-        if all(
+        if not result.get("requires_adjudication")
+        and all(
             item.get("score") is not None
             for item in (result.get("manual_results") or {}).values()
         )
@@ -134,6 +136,8 @@ def update_student_manual_result(
     *,
     overall_comment: str | None = None,
     update_overall_comment: bool = False,
+    adjudicated_automated_score: int | None = None,
+    update_adjudicated_score: bool = False,
 ) -> None:
     manual_results = result.get("manual_results") or {}
     for key, update in grade_updates.items():
@@ -170,6 +174,19 @@ def update_student_manual_result(
     result["manual_results"] = manual_results
     if update_overall_comment:
         result["overall_comment"] = overall_comment or ""
+    if update_adjudicated_score and adjudicated_automated_score is not None:
+        automated_max = result.get(
+            "automated_max_score",
+            result.get("max_score", 0)
+            - sum(item.get("points", 0) for item in manual_results.values()),
+        )
+        if adjudicated_automated_score < 0 or adjudicated_automated_score > automated_max:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Adjudicated automated score must be between 0 and {automated_max}.",
+            )
+        result["score"] = adjudicated_automated_score
+        result["requires_adjudication"] = False
 
 
 def mutate_run_details(
@@ -218,12 +235,24 @@ def student_detail_from_result(
         for item in res.get("test_results", [])
     ]
     bundle_files = res.get("bundle_files") or []
-    return {
+    raw_automated_score = res.get("score")
+    requires_adjudication = bool(res.get("requires_adjudication"))
+    automated_score = (
+        None
+        if (requires_adjudication or raw_automated_score is None)
+        else raw_automated_score
+    )
+    total_score = (
+        None
+        if automated_score is None
+        else automated_score + manual_score_sum(manual_results)
+    )
+    detail = {
         "student_name": res.get("student_identifier", "Unknown"),
         "canvas_id": canvas_id,
         "bundle_files": bundle_files,
         "bundle_file_count": res.get("bundle_file_count", len(bundle_files)),
-        "score": res.get("score", 0) + manual_score_sum(manual_results),
+        "score": total_score,
         "max_score": res.get("max_score", 100),
         "status": status_val,
         "feedback_preview": feedback_preview,
@@ -231,13 +260,18 @@ def student_detail_from_result(
         "manual_results": manual_results,
         "overall_comment": res.get("overall_comment", ""),
         "automated_results": automated_results,
-        "automated_score": res.get("score", 0),
+        "automated_score": automated_score,
         "automated_max_score": res.get(
             "automated_max_score",
             res.get("max_score", 0)
             - sum(item.get("points", 0) for item in manual_results.values()),
         ),
     }
+    if res.get("failure_category") is not None:
+        detail["failure_category"] = res.get("failure_category")
+    if requires_adjudication:
+        detail["requires_adjudication"] = True
+    return detail
 
 
 def load_run_details_json(details_file: Path) -> dict:
@@ -262,11 +296,16 @@ def write_run_grades_csv(run_dir: Path, student_results: dict) -> None:
         writer = csv.writer(f)
         writer.writerow(["Student Identifier", "Canvas User ID", "Submission ID", "Score", "Max Score"])
         for canvas_id, res in student_results.items():
+            raw_score = res.get("score")
+            if raw_score is None and res.get("requires_adjudication"):
+                score_cell: int | str = ""
+            else:
+                score_cell = (raw_score or 0) + manual_score_sum(res.get("manual_results"))
             writer.writerow([
                 res["student_identifier"],
                 canvas_id,
                 res["submission_id"],
-                res.get("score", 0) + manual_score_sum(res.get("manual_results")),
+                score_cell,
                 res["max_score"],
             ])
     os.replace(temp, output)

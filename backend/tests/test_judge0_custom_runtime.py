@@ -38,17 +38,19 @@ def test_seed_sql_file_validity():
 
 
 def test_judge0_dockerfile_runtime():
-    """Verify judge0.Dockerfile installs Python 3.11.9 and allowlisted packages."""
+    """Verify judge0.Dockerfile installs Python 3.11.9 and allowlisted packages with pinned versions."""
     repo_root = Path(__file__).resolve().parents[2]
     dockerfile = repo_root / "judge0.Dockerfile"
     assert dockerfile.is_file()
 
     content = dockerfile.read_text(encoding="utf-8")
     assert "Python-3.11.9" in content
-    assert "pytest" in content
-    assert "pillow" in content
-    assert "pygame" in content
-    assert "tabulate" in content
+    assert "pytest==8.4.2" in content
+    assert "pillow==11.3.0" in content
+    assert "pygame==2.6.1" in content
+    assert "tabulate==0.9.0" in content
+    assert "pip==24.3.1" in content
+    assert "setuptools==75.8.0" in content
 
 
 def test_docker_compose_seed_mount_and_timeouts():
@@ -78,3 +80,12 @@ def test_judge0_dockerfile_skips_pgo():
     assert "USER judge0" in content
     assert "archive.debian.org" in content
     assert "chmod 777" not in content
+
+
+def test_seed_judge0_language_skips_non_postgres():
+    """Verify seed_judge0_language gracefully returns False for sqlite or invalid URLs."""
+    from app.db.seed import seed_judge0_language
+
+    assert seed_judge0_language("sqlite:///:memory:") is False
+    assert seed_judge0_language("") is False
+

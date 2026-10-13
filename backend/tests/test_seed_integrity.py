@@ -84,7 +84,7 @@ def test_seed_directory_integrity(seed_dir: Path) -> None:
     for req in config.bundle.file_requirements:
         if req.paths:
             assert any(p in model_filenames for p in req.paths), (
-                f"{seed_dir.name} is missing model solution artifact for file requirement '{req.label}' (none of {req.paths} found)"
+                f"{seed_dir.name} is missing model solution artifact for file requirement (none of {req.paths} found)"
             )
 
 

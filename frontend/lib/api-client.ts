@@ -80,7 +80,7 @@ function handleResponseError(response: Response, path: string): void {
     if (typeof window === "undefined") return;
     if (response.status === 410) {
         window.dispatchEvent(new CustomEvent("official-review-expired", { detail: path }));
-    } else if (response.status === 401) {
+    } else if (response.status === 401 && !isMockApiEnabled()) {
         localStorage.removeItem("token");
         sessionStorage.removeItem("token");
         localStorage.removeItem("lastActivity");
@@ -126,6 +126,7 @@ async function apiFetch<T>(
             updateStoredToken(mockResult.response);
             return mockResult;
         }
+        throw new ApiError(404, `Mock endpoint not implemented: ${(init?.method || "GET").toUpperCase()} ${path}`);
     }
 
     const response = await fetch(resolveUrl(path), {

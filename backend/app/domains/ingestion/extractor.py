@@ -9,6 +9,16 @@ from app.domains.assignments.schemas import AssignmentConfigV1
 class ExtractionError(Exception):
     """Raised when ZIP validation or extraction fails."""
 
+
+RESERVED_HARNESS_FILENAMES: frozenset[str] = frozenset(
+    {
+        "runner.py",
+        "conftest.py",
+        "ag_test_helpers.py",
+    }
+)
+
+
 def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | None = None) -> None:
     """Safely extracts a ZIP file to extract_dir.
     Rejects directory traversal (paths escaping extract_dir) and total size exceeding max_total_size.
@@ -25,7 +35,8 @@ def safe_extract_zip(zip_data: bytes, extract_dir: Path, max_total_size: int | N
         with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
             # First pass: check for traversal and calculate total uncompressed size
             for info in zf.infolist():
-                if Path(info.filename).is_absolute():
+                normalized_entry = info.filename.replace("\\", "/")
+                if Path(info.filename).is_absolute() or ".." in Path(normalized_entry).parts:
                     raise ExtractionError("Directory traversal detected in ZIP file")
 
                 target_path = (extract_dir / info.filename).resolve()
@@ -97,25 +108,31 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
     # 1. Normalize root automatically
     normalize_root_directory(extract_dir)
 
-    # 2. Enforce max_files count (global safety limit)
+    # 2. Enforce max_files count (global safety limit) and reserved harness filenames
     all_files = [f for f in extract_dir.rglob("*") if f.is_file()]
     if len(all_files) > settings.default_max_files:
         raise ValueError(f"Submission exceeds maximum allowed files limit: {settings.default_max_files}")
+
+    for file_path in all_files:
+        if file_path.name.lower() in RESERVED_HARNESS_FILENAMES:
+            raise ValueError(
+                f"Reserved grading harness filename '{file_path.name}' is not allowed in student submissions."
+            )
 
     # 3. Process file_requirements
     for req in config.bundle.file_requirements:
         if req.paths:
             found = False
             for path in req.paths:
-                target = extract_dir / path
-                if target.exists() and target.is_file():
+                target = (extract_dir / path).resolve()
+                if target.is_relative_to(extract_dir) and target.exists() and target.is_file():
                     found = True
                     break
             if not found:
                 if len(req.paths) == 1:
                     raise ValueError(f"Required file '{req.paths[0]}' is missing.")
                 else:
-                    raise ValueError(f"None of the options for '{req.label}' were found ({', '.join(req.paths)}).")
+                    raise ValueError(f"None of the required file options were found ({', '.join(req.paths)}).")
         elif req.pattern:
             matches = [m for m in extract_dir.glob(req.pattern) if m.is_file()]
             if not matches:
@@ -123,8 +140,12 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
 
 
     # 5. Check entrypoint
-    entrypoint_path = extract_dir / config.bundle.entrypoint
-    if not entrypoint_path.exists() or not entrypoint_path.is_file():
+    entrypoint_path = (extract_dir / config.bundle.entrypoint).resolve()
+    if (
+        not entrypoint_path.is_relative_to(extract_dir)
+        or not entrypoint_path.exists()
+        or not entrypoint_path.is_file()
+    ):
         raise ValueError(f"Entrypoint file '{config.bundle.entrypoint}' not found in submission.")
 
 
@@ -194,8 +215,9 @@ def count_canvas_submissions(
     try:
         with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
             for info in zf.infolist():
-                path = Path(info.filename)
-                if path.is_absolute() or ".." in path.parts:
+                normalized_name = info.filename.replace("\\", "/")
+                path = Path(normalized_name)
+                if normalized_name.startswith("/") or path.is_absolute() or ".." in path.parts:
                     raise ExtractionError("Directory traversal detected in ZIP file")
 
                 mode = info.external_attr >> 16
@@ -240,6 +262,13 @@ def group_canvas_files(extract_dir: Path) -> tuple[dict[str, list[Path]], list[P
 
 def _copy_canvas_file(source: Path, student_dir: Path, original_filename: str) -> None:
     normalized_filename = normalize_canvas_original_filename(original_filename)
+    normalized_parts = Path(normalized_filename.replace("\\", "/")).parts
+    if Path(normalized_filename).is_absolute() or ".." in normalized_parts:
+        raise ValueError(f"Unsafe Canvas filename '{original_filename}'")
+    if Path(normalized_filename).name.lower() in RESERVED_HARNESS_FILENAMES:
+        raise ValueError(
+            f"Reserved grading harness filename '{normalized_filename}' is not allowed in student submissions."
+        )
     dest = (student_dir / normalized_filename).resolve()
     try:
         dest.relative_to(student_dir)

@@ -153,6 +153,7 @@ class SandboxRunResultResponse(BaseModel):
     state: Literal["complete", "failure"]
     projected_score: int = Field(ge=0)
     max_score: int = Field(ge=0)
+    failure_category: str | None = None
     warnings: list[SandboxWarning]
     test_summaries: list[TestSummary]
     rubric_groups: list[RubricGroupResultResponse] = Field(default_factory=list)

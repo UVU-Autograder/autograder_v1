@@ -139,7 +139,7 @@ class SensitiveDataFilter(logging.Filter):
                 "audit.pii_redacted",
                 workflow_type="logging",
             )
-        if getattr(record, "exc_text", None):
+        if record.exc_text:
             record.exc_text = redact_sensitive_text(record.exc_text)
         return True
 
@@ -156,7 +156,7 @@ class RedactingFormatter(logging.Formatter):
             formatted = self.delegate.format(record)
         else:
             formatted = super().format(record)
-        if getattr(record, "exc_text", None):
+        if record.exc_text:
             record.exc_text = redact_sensitive_text(record.exc_text)
         return redact_sensitive_text(formatted)
 

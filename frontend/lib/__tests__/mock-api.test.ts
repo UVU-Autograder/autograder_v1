@@ -193,5 +193,52 @@ describe("Frontend Mock API & Interception Layer", () => {
       expect(result).toContain("PPM pixel invert");
       expect(chunks.join("")).toBe(result);
     });
+
+    it("handles Grade Now / official runs endpoints without falling through to network", async () => {
+      const sectionsRes = await apiClient.get<{ course_id: string; sections: Array<{ id: number; crn: string; is_active: boolean }> }>(
+        "/staff/courses/cs1410/sections"
+      );
+      expect(sectionsRes.course_id).toBe("cs1410");
+      expect(sectionsRes.sections.length).toBeGreaterThan(0);
+      expect(sectionsRes.sections[0].crn).toBeTruthy();
+
+      const preflightRes = await apiClient.post<{ passed: boolean; errors: string[] }>(
+        "/staff/courses/cs1410/assignments/lab1/validate",
+        {}
+      );
+      expect(preflightRes.passed).toBe(true);
+      expect(preflightRes.errors).toEqual([]);
+
+      const formData = new FormData();
+      const ingestRes = await apiClient.postForm<{ run_id: string; status: string }>(
+        "/staff/courses/cs1410/assignments/lab1/submissions/ingest",
+        formData
+      );
+      expect(ingestRes.data.run_id).toBe("101");
+
+      const summaryRes = await apiClient.get<{ id: number; status: string }>(
+        "/staff/courses/cs1410/assignments/lab1/runs/101"
+      );
+      expect(summaryRes.id).toBe(101);
+      expect(summaryRes.status).toBe("complete");
+
+      const fileContentRes = await apiClient.get<{ kind: string; content: string }>(
+        "/staff/courses/cs1410/assignments/lab1/runs/101/students/1001/files/content?filepath=image_processor.py"
+      );
+      expect(fileContentRes.kind).toBe("text");
+      expect(fileContentRes.content).toContain("def invert_pixels");
+    });
+
+    it("throws 404 ApiError for unimplemented mock routes without wiping stored auth token", async () => {
+      localStorage.setItem("token", "mock-jwt-token-lead-staff");
+      const fetchSpy = vi.spyOn(global, "fetch");
+
+      await expect(apiClient.get("/staff/nonexistent-endpoint")).rejects.toThrow(
+        "Mock endpoint not implemented: GET /staff/nonexistent-endpoint"
+      );
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(localStorage.getItem("token")).toBe("mock-jwt-token-lead-staff");
+    });
   });
 });

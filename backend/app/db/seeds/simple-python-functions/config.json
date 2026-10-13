@@ -1,6 +1,7 @@
 {
   "bundle": {
-    "entrypoint": "student_functions.py"
+    "entrypoint": "student_functions.py",
+    "file_requirements": []
   },
   "artifacts": {
     "assignment_tests": {
