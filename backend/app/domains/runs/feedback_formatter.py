@@ -20,6 +20,8 @@ def generate_pedagogical_feedback_html(
     result: GradingResult,
     manual_results: dict | None = None,
     overall_comment: str = "",
+    *,
+    requires_adjudication: bool = False,
 ) -> str:
     """Generate a clean HTML pedagogical feedback page for the student."""
     safe_student_identifier = escape(str(student_identifier))
@@ -81,7 +83,11 @@ def generate_pedagogical_feedback_html(
         </div>
         """
 
-    total_score = result.score + manual_score_sum(manual_results)
+    if requires_adjudication or result.score is None:
+        score_display = f"Pending Adjudication / {result.max_score}"
+    else:
+        total_score = result.score + manual_score_sum(manual_results)
+        score_display = f"{total_score} / {result.max_score}"
 
     manual_html = ""
     if manual_results:
@@ -145,7 +151,7 @@ def generate_pedagogical_feedback_html(
                     <h2>Overall Score</h2>
                     <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 0.9em;">Student: {safe_student_identifier}</p>
                 </div>
-                <div class="score">{total_score} / {result.max_score}</div>
+                <div class="score">{score_display}</div>
             </div>
             
             {overall_failure_html}

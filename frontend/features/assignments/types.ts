@@ -38,7 +38,6 @@ export type StaffArtifact = {
 };
 
 export type FileRequirementConfig = {
-    label: string;
     paths?: string[] | null;
     pattern?: string | null;
 };
@@ -170,6 +169,7 @@ export type SandboxRunResultResponse = {
     state: "complete" | "failure";
     projected_score: number;
     max_score: number;
+    failure_category?: string | null;
     warnings: SandboxWarning[];
     test_summaries: SandboxTestSummary[];
     rubric_groups?: RubricGroupResultResponse[];

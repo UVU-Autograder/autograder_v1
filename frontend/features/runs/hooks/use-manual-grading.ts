@@ -52,17 +52,22 @@ export function useManualGrading({
     canvasId: string,
     grades: Record<string, { score: number | null; comments: string }>,
     overallComment: string,
-    saveAndNext = false
+    saveAndNext = false,
+    adjudicatedAutomatedScore?: number | null
   ) => {
     if (!details) return;
     setIsSavingGrades(true);
     try {
+      const payload: Record<string, unknown> = {
+        grades,
+        overall_comment: overallComment,
+      };
+      if (adjudicatedAutomatedScore !== undefined && adjudicatedAutomatedScore !== null) {
+        payload.adjudicated_automated_score = adjudicatedAutomatedScore;
+      }
       const updatedStudent = await apiClient.post<ManualGradeSaveResponse>(
         staffRunManualGradesPath(courseId, assignmentId, runId, canvasId),
-        {
-          grades,
-          overall_comment: overallComment,
-        }
+        payload
       );
       const updatedStudents = details.students.map((student) =>
         student.canvas_id === canvasId ? updatedStudent : student
@@ -73,7 +78,7 @@ export function useManualGrading({
         students: updatedStudents,
       });
       setSuccess(
-        Object.keys(grades).length > 0
+        Object.keys(grades).length > 0 || adjudicatedAutomatedScore !== undefined
           ? 'Grades and feedback saved.'
           : 'Feedback saved.'
       );
@@ -87,10 +92,12 @@ export function useManualGrading({
           ...updatedStudents.slice(currentIndex + 1),
           ...updatedStudents.slice(0, currentIndex),
         ];
-        const nextUngraded = remainingQueue.find((student) =>
-          Object.values(student.manual_results).some(
-            (item) => item.score === null
-          )
+        const nextUngraded = remainingQueue.find(
+          (student) =>
+            Boolean(student.requires_adjudication) ||
+            Object.values(student.manual_results).some(
+              (item) => item.score === null
+            )
         );
         if (nextUngraded) {
           setSelectedCanvasId(nextUngraded.canvas_id);

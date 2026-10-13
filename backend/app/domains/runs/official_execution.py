@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from app.db.session import SessionLocal
 from app.domains.grading.engine import GradingEngine, GradingResult
+from app.domains.grading.schemas import is_infrastructure_failure
 from app.domains.ingestion.extractor import group_canvas_files, parse_canvas_filename, prepare_student_bundle, safe_extract_zip
 from app.domains.runs import retention
 from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
@@ -101,12 +102,14 @@ def step(run_id: int, token: str) -> dict:
         else:
             result = GradingResult(success=False, max_score=config.base_points,
                 failure_category="preparation_error", failure_message="Submission bundle could not be prepared.")
+        infra_failed = not result.success and is_infrastructure_failure(result.failure_category)
         student = {"student_identifier": name, "submission_id": submission_id,
             "bundle_files": files, "bundle_file_count": len(files), "success": result.success,
-            "score": result.score, "max_score": result.max_score, "automated_max_score": automated_max,
+            "score": None if infra_failed else result.score, "max_score": result.max_score, "automated_max_score": automated_max,
+            "requires_adjudication": infra_failed,
             "test_results": result.test_results, "warnings": [dict(w) for w in result.warnings],
             "failure_category": result.failure_category, "failure_message": result.failure_message,
-            "feedback_html": generate_pedagogical_feedback_html(name, result, manual),
+            "feedback_html": generate_pedagogical_feedback_html(name, result, manual, requires_adjudication=infra_failed),
             "manual_results": manual, "overall_comment": ""}
 
     with attempt_access(run_id, token):

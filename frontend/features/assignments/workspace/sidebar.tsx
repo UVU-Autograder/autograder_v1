@@ -51,6 +51,7 @@ export function AssignmentSidebar({
 
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [newFileName, setNewFileName] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
   const [renamingFilename, setRenamingFilename] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -73,6 +74,11 @@ export function AssignmentSidebar({
     e.preventDefault();
     const trimmed = newFileName.trim();
     if (!trimmed) return;
+    const validation = validateFilename(trimmed, workspaceFiles);
+    if (!validation.valid) {
+      setCreateError(validation.error ?? "Invalid filename.");
+      return;
+    }
     const sanitized = sanitizeFilename(trimmed);
     if (!sanitized) return;
 
@@ -83,6 +89,7 @@ export function AssignmentSidebar({
     });
 
     setNewFileName("");
+    setCreateError(null);
     setIsCreatingFile(false);
   };
 
@@ -225,35 +232,46 @@ export function AssignmentSidebar({
         {isCreatingFile && (
           <form
             onSubmit={handleCreateFile}
-            className="flex items-center gap-1 my-1"
+            className="flex flex-col gap-1 my-1"
           >
-            <input
-              type="text"
-              value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-              placeholder="filename.py"
-              autoFocus
-              className="flex-1 min-w-0 px-2 py-1 text-xs border border-primary/50 rounded font-mono bg-background text-foreground focus:outline-none focus:border-primary"
-            />
-            <Button
-              type="submit"
-              size="xs"
-              className="h-6 px-2"
-            >
-              Add
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => {
-                setNewFileName("");
-                setIsCreatingFile(false);
-              }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              ✕
-            </Button>
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={newFileName}
+                onChange={(e) => {
+                  setNewFileName(e.target.value);
+                  setCreateError(null);
+                }}
+                placeholder="filename.py"
+                autoFocus
+                className="flex-1 min-w-0 px-2 py-1 text-xs border border-primary/50 rounded font-mono bg-background text-foreground focus:outline-none focus:border-primary"
+              />
+              <Button
+                type="submit"
+                size="xs"
+                className="h-6 px-2"
+              >
+                Add
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => {
+                  setNewFileName("");
+                  setCreateError(null);
+                  setIsCreatingFile(false);
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </Button>
+            </div>
+            {createError && (
+              <span className="text-[10px] text-destructive px-1 leading-tight">
+                {createError}
+              </span>
+            )}
           </form>
         )}
 

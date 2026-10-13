@@ -3,13 +3,11 @@
     "entrypoint": "book.py",
     "file_requirements": [
       {
-        "label": "Book class definition file",
         "paths": [
           "book.py"
         ]
       },
       {
-        "label": "Lab 4 reflection responses",
         "paths": [
           "Lab4_reflection.md"
         ]

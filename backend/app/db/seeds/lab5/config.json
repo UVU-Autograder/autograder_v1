@@ -3,7 +3,6 @@
     "entrypoint": "money.py",
     "file_requirements": [
       {
-        "label": "Money class definition file",
         "paths": [
           "money.py"
         ]

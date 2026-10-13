@@ -3,13 +3,11 @@
     "entrypoint": "youtube_channel.py",
     "file_requirements": [
       {
-        "label": "YouTubeChannel class definition file",
         "paths": [
           "youtube_channel.py"
         ]
       },
       {
-        "label": "Lab 3 reflection responses",
         "paths": [
           "Lab3_reflection.md"
         ]

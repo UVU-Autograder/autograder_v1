@@ -14,7 +14,6 @@ def pytest_marker_for_key(key: str) -> str:
 
 
 class FileRequirementConfig(BaseModel):
-    label: str = Field(min_length=1)
     paths: list[str] | None = Field(default=None)
     pattern: str | None = Field(default=None)
 

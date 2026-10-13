@@ -100,7 +100,7 @@ def test_python_strategy_static_analysis(tmp_path: Path) -> None:
     config = AssignmentConfigV1.model_validate({
         "bundle": {
             "entrypoint": "solution.py",
-            "file_requirements": [{"label": "Solution", "paths": ["solution.py"]}],
+            "file_requirements": [{"paths": ["solution.py"]}],
             "language": "python",
         },
         "artifacts": {"tests": {"type": "pytest_file", "display_filename": "tests.py"}},
@@ -131,7 +131,7 @@ def test_python_strategy_parse_execution() -> None:
     config = AssignmentConfigV1.model_validate({
         "bundle": {
             "entrypoint": "main.py",
-            "file_requirements": [{"label": "Main", "paths": ["main.py"]}],
+            "file_requirements": [{"paths": ["main.py"]}],
         },
         "artifacts": {"tests": {"type": "pytest_file"}},
         "scoring_items": [
@@ -172,8 +172,8 @@ def test_cpp_strategy_static_analysis(tmp_path: Path) -> None:
         "bundle": {
             "entrypoint": "solution.cpp",
             "file_requirements": [
-                {"label": "Solution", "paths": ["solution.cpp"]},
-                {"label": "Header", "paths": ["solution.hpp"]},
+                {"paths": ["solution.cpp"]},
+                {"paths": ["solution.hpp"]},
             ],
             "language": "cpp",
         },
@@ -205,7 +205,7 @@ def test_cpp_strategy_parse_compiler_errors() -> None:
     config = AssignmentConfigV1.model_validate({
         "bundle": {
             "entrypoint": "main.cpp",
-            "file_requirements": [{"label": "Main", "paths": ["main.cpp"]}],
+            "file_requirements": [{"paths": ["main.cpp"]}],
             "language": "cpp",
         },
         "artifacts": {"tests": {"type": "support_file"}},
@@ -236,7 +236,7 @@ def test_cpp_strategy_parse_gtest_results() -> None:
     config = AssignmentConfigV1.model_validate({
         "bundle": {
             "entrypoint": "main.cpp",
-            "file_requirements": [{"label": "Main", "paths": ["main.cpp"]}],
+            "file_requirements": [{"paths": ["main.cpp"]}],
             "language": "cpp",
         },
         "artifacts": {"tests": {"type": "support_file"}},
@@ -299,7 +299,7 @@ async def test_pipeline_with_cpp_assignment(tmp_path: Path) -> None:
     config = AssignmentConfigV1.model_validate({
         "bundle": {
             "entrypoint": "math.cpp",
-            "file_requirements": [{"label": "Math", "paths": ["math.cpp"]}],
+            "file_requirements": [{"paths": ["math.cpp"]}],
             "language": "cpp",
         },
         "artifacts": {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -19,24 +19,28 @@ import {
   SaveIcon,
   RefreshCwIcon,
   CheckCircle2Icon,
+  SparklesIcon,
 } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
-import { apiClient } from "@/lib/api-client";
+import { AITestAssistantDialog } from "./ai-test-assistant-dialog";
 
 export function ScoringRulesSection() {
   const {
     courseId,
     assignmentId,
+    description,
     scoringItems,
     addScoringItem,
     removeScoringItem,
     updateScoringItemField,
     autoGenerateKeyFromLabel,
-    artifacts,
-    refreshArtifacts,
+    testSuiteCode,
+    updateTestSuiteCode,
+    loadingTestSuiteCode,
+    saving,
+    saveSuccess,
     syncMarkersFromTestSuite,
     handleSave,
-    setErrorMessage,
     setSuccessMessage,
   } = useAssignmentEditor();
 
@@ -50,51 +54,10 @@ export function ScoringRulesSection() {
     0,
   );
 
-  // Pytest test code state
-  const [codeText, setCodeText] = useState("");
-  const [loadingCode, setLoadingCode] = useState(true);
-  const [savingCode, setSavingCode] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
-  // Dynamic lookup for server pytest artifact
-  const pytestArtifact = artifacts.find(
-    (a) =>
-      a.artifact_type === "pytest_file" ||
-      a.artifact_key === "assignment_tests",
-  );
-  const artifactKey = pytestArtifact?.artifact_key || "assignment_tests";
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoadingCode(true);
-      try {
-        const text = await apiClient.getText(
-          `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${artifactKey}`,
-        );
-        if (!cancelled) {
-          setCodeText(text);
-        }
-      } catch {
-        if (!cancelled) {
-          setCodeText(
-            `import pytest\n\n@pytest.mark.ag_main\ndef test_main_function():\n    assert True\n`,
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingCode(false);
-        }
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [courseId, assignmentId, artifactKey]);
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
   const handleSyncFromCode = () => {
-    const addedCount = syncMarkersFromTestSuite(codeText);
+    const addedCount = syncMarkersFromTestSuite(testSuiteCode);
     if (addedCount > 0) {
       setSuccessMessage(
         `Synced ${addedCount} new pytest test marker(s) into rubric!`,
@@ -106,39 +69,25 @@ export function ScoringRulesSection() {
     }
   };
 
-  const handleSaveCodeAndRubric = async () => {
-    setSavingCode(true);
-    setSaveSuccess(false);
-    try {
-      // 1. Save tests.py code artifact to server
-      const file = new File([codeText], "tests.py", { type: "text/plain" });
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("artifact_key", artifactKey);
-      formData.append("artifact_type", "pytest_file");
-
-      await apiClient.postForm(
-        `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
-        formData,
-      );
-      await refreshArtifacts();
-
-      // 2. Save full assignment setup (rubric items + config)
-      await handleSave();
-      setSaveSuccess(true);
-    } catch (err: unknown) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : "Failed to save test suite & rubric.",
-      );
-    } finally {
-      setSavingCode(false);
-    }
+  const handleInsertAiTests = (
+    generatedCode: string,
+    insertMode: "append" | "replace",
+  ) => {
+    const nextCode =
+      insertMode === "replace"
+        ? generatedCode
+        : `${testSuiteCode.trimEnd()}\n\n${generatedCode.replace(/^import pytest\s*\n*/i, "").trim()}\n`;
+    updateTestSuiteCode(nextCode);
+    const added = syncMarkersFromTestSuite(nextCode);
+    setSuccessMessage(
+      added > 0
+        ? `Inserted AI test suite and synced ${added} new rubric criterion(s).`
+        : "Inserted AI test suite into tests.py editor.",
+    );
   };
 
   const handleDownload = () => {
-    const blob = new Blob([codeText], { type: "text/plain" });
+    const blob = new Blob([testSuiteCode], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -155,12 +104,7 @@ export function ScoringRulesSection() {
           <div>
             <CardTitle>Autograded Test Criteria</CardTitle>
             <CardDescription>
-              Each description/label acts as the test group header for asserts
-              under{" "}
-              <code className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">
-                tests.py
-              </code>
-              . Base Total:{" "}
+              Each description/label consolidates functions in the test file under a rubric section. Base Total:{" "}
               <strong className="text-foreground font-mono">
                 {totalBasePoints} pts
               </strong>
@@ -195,7 +139,9 @@ export function ScoringRulesSection() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => autoGenerateKeyFromLabel(item.id || item.key)}
+                      onClick={() =>
+                        autoGenerateKeyFromLabel(item.id || item.key)
+                      }
                       className="text-xs flex items-center gap-1 text-primary font-semibold hover:underline cursor-pointer"
                       title="Auto-generate key from description"
                     >
@@ -209,7 +155,11 @@ export function ScoringRulesSection() {
                     <Input
                       value={item.key}
                       onChange={(e) =>
-                        updateScoringItemField(item.id || item.key, "key", e.target.value)
+                        updateScoringItemField(
+                          item.id || item.key,
+                          "key",
+                          e.target.value,
+                        )
                       }
                       className="font-mono text-xs pl-8"
                     />
@@ -224,7 +174,11 @@ export function ScoringRulesSection() {
                   <Input
                     value={item.label}
                     onChange={(e) =>
-                      updateScoringItemField(item.id || item.key, "label", e.target.value)
+                      updateScoringItemField(
+                        item.id || item.key,
+                        "label",
+                        e.target.value,
+                      )
                     }
                     placeholder="e.g. Basic Calculator Operations"
                   />
@@ -344,7 +298,11 @@ export function ScoringRulesSection() {
                   <Input
                     value={item.label}
                     onChange={(e) =>
-                      updateScoringItemField(item.id || item.key, "label", e.target.value)
+                      updateScoringItemField(
+                        item.id || item.key,
+                        "label",
+                        e.target.value,
+                      )
                     }
                     placeholder="e.g. Code Formatting & Comments"
                   />
@@ -401,28 +359,32 @@ export function ScoringRulesSection() {
               <span>Assignment Test Suite</span>
             </CardTitle>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {saveSuccess && (
               <span className="text-xs text-success font-semibold flex items-center gap-1">
                 <CheckCircle2Icon className="w-4 h-4" /> Saved tests.py & rubric
               </span>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAiAssistantOpen(true)}
+            >
+              <SparklesIcon className="w-4 h-4 mr-1.5 text-primary" /> Generate
+              Tests with AI
+            </Button>
             <Button variant="outline" size="sm" onClick={handleDownload}>
               <DownloadIcon className="w-4 h-4 mr-1.5" /> Download tests.py
             </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveCodeAndRubric}
-              disabled={savingCode}
-            >
+            <Button size="sm" onClick={handleSave} disabled={saving}>
               <SaveIcon className="w-4 h-4 mr-1.5" />
-              {savingCode ? "Saving..." : "Save Test Suite & Rubric"}
+              {saving ? "Saving..." : "Save Test Suite & Rubric"}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="h-[520px] rounded-lg border border-border overflow-hidden bg-card">
-            {loadingCode ? (
+            {loadingTestSuiteCode ? (
               <div className="flex items-center justify-center h-full text-xs text-muted-foreground font-mono animate-pulse">
                 Fetching tests.py source code from server...
               </div>
@@ -431,13 +393,23 @@ export function ScoringRulesSection() {
                 height="100%"
                 width="100%"
                 defaultLanguage="python"
-                value={codeText}
-                onChange={(val) => setCodeText(val || "")}
+                value={testSuiteCode}
+                onChange={(val) => updateTestSuiteCode(val || "")}
               />
             )}
           </div>
         </CardContent>
       </Card>
+
+      <AITestAssistantDialog
+        isOpen={isAiAssistantOpen}
+        onOpenChange={setIsAiAssistantOpen}
+        courseId={courseId}
+        assignmentId={assignmentId}
+        assignmentDescription={description}
+        currentTestCode={testSuiteCode}
+        onInsertTests={handleInsertAiTests}
+      />
     </div>
   );
 }

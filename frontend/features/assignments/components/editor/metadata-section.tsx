@@ -53,9 +53,6 @@ export function MetadataSection() {
       <Card>
         <CardHeader>
           <CardTitle>General Metadata</CardTitle>
-          <CardDescription>
-            Configure basic assignment information and course module assignment.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -207,21 +204,7 @@ export function MetadataSection() {
                     </button>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase">
-                      Label / Rule Name *
-                    </Label>
-                    <Input
-                      value={req.label || ""}
-                      onChange={(e) =>
-                        updateFileRequirement(idx, "label", e.target.value)
-                      }
-                      placeholder="e.g. Main Entrypoint Script"
-                      className="text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-xs text-muted-foreground uppercase">
                         {req.pattern !== undefined && req.pattern !== null

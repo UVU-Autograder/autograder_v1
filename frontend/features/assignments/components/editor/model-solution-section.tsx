@@ -185,10 +185,6 @@ export function ModelSolutionSection() {
       <Card>
         <CardHeader>
           <CardTitle>Model Solution Files</CardTitle>
-          <CardDescription>
-            Attach single Python scripts or a multi-file `.zip` archive
-            containing your reference solution.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <form
@@ -283,8 +279,7 @@ export function ModelSolutionSection() {
 
             {solutionArtifacts.length === 0 && (
               <p className="text-xs text-muted-foreground italic p-6 text-center border border-dashed border-border rounded-lg">
-                No model solution files attached yet. Upload a Python solution
-                script or ZIP archive above.
+                No model solution files attached yet.
               </p>
             )}
           </div>
@@ -296,9 +291,6 @@ export function ModelSolutionSection() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Model Solution Validation</CardTitle>
-            <CardDescription>
-              Validate your model solution files against the test suite.
-            </CardDescription>
           </div>
           <Button
             onClick={triggerValidation}

@@ -152,7 +152,7 @@ class AssignmentSpecificationEngine:
             if req.paths:
                 if not any(p in model_filenames for p in req.paths):
                     errors.append(
-                        f"Missing model solution artifact for file requirement '{req.label}' (none of {req.paths} found)."
+                        f"Missing model solution artifact for file requirement (none of {req.paths} found)."
                     )
 
         for key in model_configs:

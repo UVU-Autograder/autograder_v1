@@ -2661,6 +2661,72 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/ai-generate-tests": {
+      "post": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Ai Generate Assignment Tests",
+        "operationId": "ai_generate_assignment_tests_staff_courses__course_id__assignments__assignment_id__ai_generate_tests_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AITestAuthoringRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AITestAuthoringResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses/{course_id}/assignments/{assignment_id}/submissions/ingest": {
       "post": {
         "tags": [
@@ -2730,6 +2796,56 @@
   },
   "components": {
     "schemas": {
+      "AITestAuthoringRequest": {
+        "properties": {
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction",
+            "description": "Assignment specification or test generation instructions."
+          },
+          "current_test_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 25000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Test Code",
+            "description": "Current tests.py source code in the editor."
+          }
+        },
+        "type": "object",
+        "title": "AITestAuthoringRequest"
+      },
+      "AITestAuthoringResponse": {
+        "properties": {
+          "generated_code": {
+            "type": "string",
+            "title": "Generated Code"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_code",
+          "explanation"
+        ],
+        "title": "AITestAuthoringResponse"
+      },
       "ArtifactConfig": {
         "properties": {
           "type": {
@@ -3560,11 +3676,6 @@
       },
       "FileRequirementConfig": {
         "properties": {
-          "label": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Label"
-          },
           "paths": {
             "anyOf": [
               {
@@ -3592,9 +3703,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "label"
-        ],
         "title": "FileRequirementConfig"
       },
       "HTTPValidationError": {
@@ -4723,6 +4831,17 @@
             "minimum": 0.0,
             "title": "Max Score"
           },
+          "failure_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Category"
+          },
           "warnings": {
             "items": {
               "$ref": "#/components/schemas/SandboxWarning"
@@ -5667,6 +5786,18 @@
               }
             ],
             "title": "Overall Comment"
+          },
+          "adjudicated_automated_score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjudicated Automated Score"
           }
         },
         "type": "object",

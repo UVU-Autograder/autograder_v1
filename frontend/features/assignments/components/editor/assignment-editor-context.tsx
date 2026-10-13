@@ -100,6 +100,9 @@ type AssignmentEditorContextType = {
   artifacts: StaffArtifact[];
   setArtifacts: React.Dispatch<React.SetStateAction<StaffArtifact[]>>;
   refreshArtifacts: () => Promise<void>;
+  testSuiteCode: string;
+  updateTestSuiteCode: (code: string) => void;
+  loadingTestSuiteCode: boolean;
   isCodeModalOpen: boolean;
   setIsCodeModalOpen: (open: boolean) => void;
   editArtifactKey: string | null;
@@ -148,7 +151,7 @@ export function AssignmentEditorProvider({
   // Bundle / File requirements
   const [entrypoint, setEntrypoint] = useState("main.py");
   const [fileRequirements, setFileRequirements] = useState<FileRequirementConfig[]>([
-    { label: "Main Entrypoint Script", paths: ["main.py"] },
+    { paths: ["main.py"] },
   ]);
 
   // Scoring & Rubrics
@@ -202,8 +205,11 @@ export function AssignmentEditorProvider({
     return inheritedConcepts.filter((c) => !denyset.has(c));
   }, [inheritedConcepts, conceptDenylist]);
 
-  // Artifacts
+  // Artifacts & Test Suite Code
   const [artifacts, setArtifacts] = useState<StaffArtifact[]>([]);
+  const [testSuiteCode, setTestSuiteCode] = useState("");
+  const [loadingTestSuiteCode, setLoadingTestSuiteCode] = useState(true);
+  const [testSuiteDirty, setTestSuiteDirty] = useState(false);
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [editArtifactKey, setEditArtifactKey] = useState<string | null>(null);
   const [editArtifactType, setEditArtifactType] = useState<string>("pytest_file");
@@ -221,6 +227,12 @@ export function AssignmentEditorProvider({
     setSuccessMessage(null);
   };
 
+  const updateTestSuiteCode = (nextCode: string) => {
+    setTestSuiteCode(nextCode);
+    setTestSuiteDirty(true);
+    markDirty();
+  };
+
   // Load configuration and data
   const loadSetup = useCallback(async () => {
     setLoading(true);
@@ -232,15 +244,35 @@ export function AssignmentEditorProvider({
         apiClient.get<CourseConceptsResponse>(`/staff/courses/${courseId}/concepts`),
       ]);
 
+      const loadedArtifacts = setupData.artifacts || [];
       setTitle(setupData.title || "");
       setDescription(setupData.description || setupData.config?.description || "");
       setModuleId(setupData.module_id ?? null);
       setSandboxEnabled(setupData.sandbox_enabled ?? true);
       setLanguage(setupData.language || "python");
-      setArtifacts(setupData.artifacts || []);
+      setArtifacts(loadedArtifacts);
       setConceptMeta(metaData || {});
       setCourseDefaultConcepts(courseConcepts.default_concepts || []);
       setCourseModules(courseConcepts.modules || []);
+
+      const pytestArtifact = loadedArtifacts.find(
+        (a) => a.artifact_type === "pytest_file" || a.artifact_key === "assignment_tests"
+      );
+      const testArtifactKey = pytestArtifact?.artifact_key || "assignment_tests";
+      setLoadingTestSuiteCode(true);
+      try {
+        const text = await apiClient.getText(
+          `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${testArtifactKey}`
+        );
+        setTestSuiteCode(text);
+      } catch {
+        setTestSuiteCode(
+          `import pytest\n\n@pytest.mark.ag_main\ndef test_main_function():\n    assert True\n`
+        );
+      } finally {
+        setLoadingTestSuiteCode(false);
+      }
+      setTestSuiteDirty(false);
 
       const cfg = setupData.config || ({} as AssignmentConfigV1);
       const bundle = cfg.bundle || { entrypoint: "main.py" };
@@ -249,7 +281,7 @@ export function AssignmentEditorProvider({
       if (bundle.file_requirements && bundle.file_requirements.length > 0) {
         setFileRequirements(bundle.file_requirements);
       } else {
-        setFileRequirements([{ label: "Main Entrypoint Script", paths: [bundle.entrypoint || "main.py"] }]);
+        setFileRequirements([{ paths: [bundle.entrypoint || "main.py"] }]);
       }
 
       const rawItems = cfg.scoring_items || setupData.scoring_items || [];
@@ -296,8 +328,7 @@ export function AssignmentEditorProvider({
 
   // File requirement helpers
   const addFileRequirement = () => {
-    const nextId = fileRequirements.length + 1;
-    setFileRequirements((prev) => [...prev, { label: `Required File Rule ${nextId}`, paths: [""] }]);
+    setFileRequirements((prev) => [...prev, { paths: [""] }]);
     markDirty();
   };
 
@@ -358,10 +389,10 @@ export function AssignmentEditorProvider({
       prev.map((req, i) => {
         if (i === reqIdx) {
           if (isGlob) {
-            return { label: req.label, pattern: "*.py" };
+            return { pattern: "*.py" };
           } else {
             const firstPath = req.paths?.[0] || "";
-            return { label: req.label, paths: [firstPath] };
+            return { paths: [firstPath] };
           }
         }
         return req;
@@ -609,6 +640,10 @@ export function AssignmentEditorProvider({
       formData.append("artifact_type", editArtifactType);
 
       await apiClient.postForm(`/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`, formData);
+      if (editArtifactType === "pytest_file" || editArtifactKey === "assignment_tests") {
+        setTestSuiteCode(editCodeText);
+        setTestSuiteDirty(false);
+      }
       setIsCodeModalOpen(false);
       setSuccessMessage(`Saved artifact '${editArtifactFilename}' successfully.`);
       await refreshArtifacts();
@@ -625,6 +660,23 @@ export function AssignmentEditorProvider({
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
+      if (testSuiteDirty) {
+        const pytestArtifact = artifacts.find(
+          (a) => a.artifact_type === "pytest_file" || a.artifact_key === "assignment_tests"
+        );
+        const artifactKey = pytestArtifact?.artifact_key || "assignment_tests";
+        const file = new File([testSuiteCode], "tests.py", { type: "text/plain" });
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("artifact_key", artifactKey);
+        formData.append("artifact_type", "pytest_file");
+        await apiClient.postForm(
+          `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
+          formData
+        );
+        setTestSuiteDirty(false);
+      }
+
       // Build artifacts dict for config reference check
       const artifactsDict: Record<string, { type: "pytest_file" | "model_solution" | "support_file"; display_filename?: string }> = {};
       artifacts.forEach((art) => {
@@ -773,6 +825,9 @@ export function AssignmentEditorProvider({
         artifacts,
         setArtifacts,
         refreshArtifacts,
+        testSuiteCode,
+        updateTestSuiteCode,
+        loadingTestSuiteCode,
         isCodeModalOpen,
         setIsCodeModalOpen,
         editArtifactKey,

@@ -26,9 +26,9 @@ export function ConceptWhitelistSection() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Inherited Module & Course Concepts</CardTitle>
+            <CardTitle>Allowed Concepts</CardTitle>
             <CardDescription>
-              Concepts inherited from course settings and assigned module. Click an inherited concept card to <strong>blacklist</strong> it specifically for this assignment.
+              Concepts inherited from course settings and the assigned module. Click a concept card to <strong>blacklist</strong> it specifically for this assignment.
             </CardDescription>
           </div>
           <Link

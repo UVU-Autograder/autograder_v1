@@ -3,13 +3,11 @@
     "entrypoint": "lab6_part1.py",
     "file_requirements": [
       {
-        "label": "Lab 6 Part 1 animation script",
         "paths": [
           "lab6_part1.py"
         ]
       },
       {
-        "label": "Lab 6 Part 2 animation script",
         "paths": [
           "lab6_part2.py"
         ]

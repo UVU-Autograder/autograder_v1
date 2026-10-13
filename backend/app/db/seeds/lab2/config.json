@@ -3,13 +3,11 @@
     "entrypoint": "account.py",
     "file_requirements": [
       {
-        "label": "Bank account class definition file",
         "paths": [
           "account.py"
         ]
       },
       {
-        "label": "Demo testing script",
         "paths": [
           "demo.py"
         ]

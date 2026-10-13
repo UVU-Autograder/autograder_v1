@@ -244,11 +244,26 @@ export default function CodeResults({
       if (finalStatus.state === "failure") {
         setPhase("error");
         setErrorMessage(finalStatus.message || "Run failed during execution.");
+        try {
+          const failedResult = await getRunResult(run.result_url, sessionId);
+          setResult(failedResult);
+        } catch {
+          // Ignore if no stored result payload exists for the failed run
+        }
         return;
       }
 
       const runResult = await getRunResult(run.result_url, sessionId);
       setResult(runResult);
+      if (runResult.state === "failure") {
+        setPhase("error");
+        setErrorMessage(
+          runResult.warnings?.[0]?.message ||
+            runResult.sanitized_feedback ||
+            "Run failed during execution.",
+        );
+        return;
+      }
       setPhase("complete");
     } catch (err) {
       setPhase("error");
@@ -403,6 +418,15 @@ export default function CodeResults({
           </span>
         </div>
       )}
+      {bundleStatus.missingRequiredFiles.length > 0 && (
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-warning font-medium text-xs">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span>
+            Missing required file(s):{" "}
+            <strong>{bundleStatus.missingRequiredFiles.join(", ")}</strong>
+          </span>
+        </div>
+      )}
       <Button
         onClick={handleRunCode}
         disabled={isLoading || isQuotaExceeded}
@@ -436,9 +460,18 @@ export default function CodeResults({
       )}
 
       {errorMessage && (
-        <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive font-medium">
-          {errorMessage}
-        </p>
+        <div
+          role="alert"
+          data-failure-category={result?.failure_category ?? undefined}
+          className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive space-y-1"
+        >
+          {result?.failure_category && (
+            <span className="block font-mono text-[10px] uppercase tracking-wider opacity-80">
+              {result.failure_category}
+            </span>
+          )}
+          <p className="font-medium">{errorMessage}</p>
+        </div>
       )}
 
       <div className={`flex flex-1 flex-col ${showCheckCode ? "" : "hidden"}`}>

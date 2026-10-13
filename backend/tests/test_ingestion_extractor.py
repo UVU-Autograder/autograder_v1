@@ -144,11 +144,9 @@ def base_config_dict():
             "entrypoint": "main.py",
             "file_requirements": [
                 {
-                    "label": "Main Script",
                     "paths": ["main.py"],
                 },
                 {
-                    "label": "Utils Module",
                     "paths": ["utils.py"],
                 },
             ],
@@ -222,7 +220,6 @@ def test_validate_submission_bundle_root_flattening(tmp_path: Path, base_config_
 
 def test_validate_submission_bundle_file_requirements_single_path(tmp_path: Path, base_config_dict):
     base_config_dict["bundle"]["file_requirements"].append({
-        "label": "Extra File",
         "paths": ["extra.py"]
     })
 
@@ -243,7 +240,6 @@ def test_validate_submission_bundle_file_requirements_single_path(tmp_path: Path
 
 def test_validate_submission_bundle_file_requirements_multi_paths(tmp_path: Path, base_config_dict):
     base_config_dict["bundle"]["file_requirements"].append({
-        "label": "Option File",
         "paths": ["opt1.py", "opt2.py"]
     })
 
@@ -255,7 +251,7 @@ def test_validate_submission_bundle_file_requirements_multi_paths(tmp_path: Path
     config = AssignmentConfigV1.model_validate(base_config_dict)
 
     # Missing both opt1.py and opt2.py
-    with pytest.raises(ValueError, match="None of the options for 'Option File' were found"):
+    with pytest.raises(ValueError, match="None of the required file options were found"):
         validate_submission_bundle(extract_dir, config)
 
     # Adding one option should satisfy it
@@ -265,7 +261,6 @@ def test_validate_submission_bundle_file_requirements_multi_paths(tmp_path: Path
 
 def test_validate_submission_bundle_file_requirements_pattern(tmp_path: Path, base_config_dict):
     base_config_dict["bundle"]["file_requirements"].append({
-        "label": "Text Files",
         "pattern": "*.txt"
     })
 
@@ -287,15 +282,15 @@ def test_validate_submission_bundle_file_requirements_pattern(tmp_path: Path, ba
 def test_file_requirement_schema_validation():
     # Both paths and pattern provided -> error
     with pytest.raises(ValueError, match="must specify exactly one of 'paths' or 'pattern'"):
-        FileRequirementConfig.model_validate({"label": "Bad", "paths": ["a.py"], "pattern": "*.py"})
+        FileRequirementConfig.model_validate({"paths": ["a.py"], "pattern": "*.py"})
 
     # Neither paths nor pattern provided -> error
     with pytest.raises(ValueError, match="must specify exactly one of 'paths' or 'pattern'"):
-        FileRequirementConfig.model_validate({"label": "Bad"})
+        FileRequirementConfig.model_validate({})
 
     # Empty paths list -> error
     with pytest.raises(ValueError, match="must contain at least one path"):
-        FileRequirementConfig.model_validate({"label": "Bad", "paths": []})
+        FileRequirementConfig.model_validate({"paths": []})
 
 
 
@@ -436,3 +431,55 @@ def test_prepare_student_bundle_zip_file(tmp_path: Path):
     prepare_student_bundle([zip_filename], student_dir)
 
     assert (student_dir / "main.py").read_text() == "print('nested')"
+
+
+@pytest.mark.parametrize(
+    "reserved_name",
+    ["runner.py", "conftest.py", "ag_test_helpers.py"],
+)
+def test_validate_submission_bundle_rejects_reserved_harness_filenames(
+    tmp_path: Path, base_config_dict, reserved_name: str
+):
+    extract_dir = tmp_path / "extracted"
+    extract_dir.mkdir(parents=True)
+    (extract_dir / "main.py").write_text("main")
+    (extract_dir / "utils.py").write_text("utils")
+    (extract_dir / reserved_name).write_text("print('hijack')")
+
+    config = AssignmentConfigV1.model_validate(base_config_dict)
+    with pytest.raises(
+        ValueError,
+        match=f"Reserved grading harness filename '{reserved_name}' is not allowed",
+    ):
+        validate_submission_bundle(extract_dir, config)
+
+
+def test_prepare_student_bundle_rejects_reserved_canvas_file(tmp_path: Path):
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    bad_file = src_dir / "jaxonlarsen_12345_67890_conftest.py"
+    bad_file.write_text("import pytest")
+
+    student_dir = tmp_path / "student_12345"
+    with pytest.raises(
+        ValueError,
+        match="Reserved grading harness filename 'conftest.py' is not allowed",
+    ):
+        prepare_student_bundle([bad_file], student_dir)
+
+
+@pytest.mark.parametrize(
+    "evil_name",
+    [
+        "..\\escaped.py",
+        "student_12345_67890_main.py\\..\\escaped.py",
+        "\\absolute.py",
+    ],
+)
+def test_count_canvas_submissions_rejects_backslash_traversal(evil_name: str):
+    from app.domains.ingestion.extractor import count_canvas_submissions
+
+    zip_data = create_zip_bytes({evil_name: b"print('evil')"})
+    with pytest.raises(ExtractionError, match="Directory traversal detected in ZIP file"):
+        count_canvas_submissions(zip_data)
+

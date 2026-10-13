@@ -256,8 +256,13 @@ class GradingPipeline:
         if payload.files is not None:
             exec_dir.mkdir(parents=True, exist_ok=True)
             for rel_path, content in payload.files.items():
+                normalized = rel_path.replace("\\", "/")
                 target = (exec_dir / rel_path).resolve()
-                if not target.is_relative_to(exec_dir.resolve()):
+                if (
+                    Path(rel_path).is_absolute()
+                    or ".." in Path(normalized).parts
+                    or not target.is_relative_to(exec_dir.resolve())
+                ):
                     report.failure_category = "unsafe_path"
                     report.failure_message = f"Path traversal attempt: {rel_path}"
                     return False

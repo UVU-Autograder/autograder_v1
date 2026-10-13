@@ -3,19 +3,16 @@
     "entrypoint": "dessertshop.py",
     "file_requirements": [
       {
-        "label": "Dessert Shop classes definition file",
         "paths": [
           "dessert.py"
         ]
       },
       {
-        "label": "Payment Protocol definition file",
         "paths": [
           "payment.py"
         ]
       },
       {
-        "label": "Dessert Shop main entrypoint file",
         "paths": [
           "dessertshop.py"
         ]

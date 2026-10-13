@@ -67,7 +67,7 @@ class CppStrategy(LanguageStrategy):
                         return StaticAnalysisOutcome(
                             passed=False,
                             failure_category="missing_required_file",
-                            failure_message=f"Required file '{path_str}' ({req.label}) is missing.",
+                            failure_message=f"Required file '{path_str}' is missing.",
                         )
 
         return StaticAnalysisOutcome(passed=True)

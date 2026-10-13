@@ -88,9 +88,6 @@ export default function RunDetailPage({ params }: PageProps) {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Run #{runId} Details
             </h1>
-            <p className="text-muted-foreground">
-              Grading results overview and student lists
-            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button

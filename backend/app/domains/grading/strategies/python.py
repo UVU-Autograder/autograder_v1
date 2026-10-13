@@ -58,7 +58,9 @@ class PythonPytestStrategy(LanguageStrategy):
         except ValueError as exc:
             category = "missing_required_file"
             msg = str(exc)
-            if "entrypoint" in msg.lower():
+            if "reserved grading harness filename" in msg.lower():
+                category = "reserved_filename"
+            elif "entrypoint" in msg.lower():
                 category = "ambiguous_entrypoint"
             return StaticAnalysisOutcome(
                 passed=False,
