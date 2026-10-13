@@ -53,6 +53,7 @@ type AssignmentEditorContextType = {
   sandboxEnabled: boolean;
   setSandboxEnabled: (s: boolean) => void;
   language: string;
+  setLanguage: (l: string) => void;
 
   // Bundle / File requirements
   entrypoint: string;
@@ -72,11 +73,6 @@ type AssignmentEditorContextType = {
   removeScoringItem: (key: string) => void;
   updateScoringItemField: (key: string, field: keyof RubricItem, val: unknown) => void;
   rubricGroups: RubricGroup[];
-  addRubricGroup: () => void;
-  removeRubricGroup: (key: string) => void;
-  updateRubricGroup: (key: string, field: "key" | "label", val: string) => void;
-  customKeyMap: Record<string, boolean>;
-  toggleCustomKey: (key: string) => void;
   autoGenerateKeyFromLabel: (key: string) => void;
   syncMarkersFromTestSuite: (sourceCode: string) => number;
 
@@ -93,8 +89,6 @@ type AssignmentEditorContextType = {
   conceptMeta: Record<string, ConceptMetadata>;
   courseModules: CourseModule[];
   dependencies: string[];
-  addDependency: (dep: string) => void;
-  removeDependency: (dep: string) => void;
 
   // Artifacts & Code Modal
   artifacts: StaffArtifact[];
@@ -157,7 +151,6 @@ export function AssignmentEditorProvider({
   // Scoring & Rubrics
   const [scoringItems, setScoringItems] = useState<RubricItem[]>([]);
   const [rubricGroups, setRubricGroups] = useState<RubricGroup[]>([]);
-  const [customKeyMap, setCustomKeyMap] = useState<Record<string, boolean>>({});
 
   // Concepts & Dependencies
   const [conceptDenylist, setConceptDenylist] = useState<string[]>([]);
@@ -402,10 +395,6 @@ export function AssignmentEditorProvider({
   };
 
   // Scoring items mutators
-  const toggleCustomKey = (key: string) => {
-    setCustomKeyMap((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const addScoringItem = (itemType: "pytest" | "manual") => {
     const nextId = scoringItems.length + 1;
     const basePrefix = itemType === "pytest" ? `pytest_criterion_${nextId}` : `manual_criterion_${nextId}`;
@@ -455,11 +444,11 @@ export function AssignmentEditorProvider({
     markDirty();
   };
 
-  const autoGenerateKeyFromLabel = (key: string) => {
+  const autoGenerateKeyFromLabel = (keyOrId: string) => {
     setScoringItems((prev) => {
       const existingKeys = prev.map((i) => i.key);
       return prev.map((item) => {
-        if (item.key === key) {
+        if (item.id === keyOrId || item.key === keyOrId) {
           const derived = slugifyKey(item.label);
           if (derived) {
             const uniqueKey = makeUniqueKey(derived, existingKeys, item.key);
@@ -476,34 +465,6 @@ export function AssignmentEditorProvider({
     markDirty();
   };
 
-  // Rubric groups mutators
-  const addRubricGroup = () => {
-    const nextId = rubricGroups.length + 1;
-    const key = `group_${nextId}`;
-    setRubricGroups((prev) => [...prev, { key, label: `Group ${nextId}` }]);
-    markDirty();
-  };
-
-  const removeRubricGroup = (key: string) => {
-    setRubricGroups((prev) => prev.filter((g) => g.key !== key));
-    setScoringItems((prev) =>
-      prev.map((item) => (item.rubric_group_key === key ? { ...item, rubric_group_key: null } : item))
-    );
-    markDirty();
-  };
-
-  const updateRubricGroup = (key: string, field: "key" | "label", val: string) => {
-    const updatedVal = field === "key" ? slugifyKey(val) : val;
-    setRubricGroups((prev) =>
-      prev.map((g) => (g.key === key ? { ...g, [field]: updatedVal } : g))
-    );
-    if (field === "key") {
-      setScoringItems((prev) =>
-        prev.map((item) => (item.rubric_group_key === key ? { ...item, rubric_group_key: updatedVal } : item))
-      );
-    }
-    markDirty();
-  };
 
   const toggleConceptDenylist = (conceptKey: string) => {
     setConceptDenylist((prev) =>
@@ -590,21 +551,6 @@ export function AssignmentEditorProvider({
     });
 
     return addedCount;
-  };
-
-  const addDependency = (dep: string) => {
-
-
-    const trimmed = dep.trim();
-    if (trimmed && !dependencies.includes(trimmed)) {
-      setDependencies((prev) => [...prev, trimmed]);
-      markDirty();
-    }
-  };
-
-  const removeDependency = (dep: string) => {
-    setDependencies((prev) => prev.filter((d) => d !== dep));
-    markDirty();
   };
 
   // Code editor modal mutators
@@ -712,7 +658,6 @@ export function AssignmentEditorProvider({
         rubric_groups: derivedRubricGroups,
         dependencies,
         concepts: {
-          allowlist: [],
           denylist: conceptDenylist,
         },
       };
@@ -723,6 +668,7 @@ export function AssignmentEditorProvider({
         description: finalDescription,
         sandbox_enabled: sandboxEnabled,
         module_id: moduleId,
+        language,
         config,
       });
 
@@ -782,6 +728,7 @@ export function AssignmentEditorProvider({
         sandboxEnabled,
         setSandboxEnabled,
         language,
+        setLanguage,
 
         entrypoint,
         setEntrypoint,
@@ -799,11 +746,6 @@ export function AssignmentEditorProvider({
         removeScoringItem,
         updateScoringItemField,
         rubricGroups,
-        addRubricGroup,
-        removeRubricGroup,
-        updateRubricGroup,
-        customKeyMap,
-        toggleCustomKey,
         autoGenerateKeyFromLabel,
         syncMarkersFromTestSuite,
 
@@ -819,8 +761,6 @@ export function AssignmentEditorProvider({
         conceptMeta,
         courseModules,
         dependencies,
-        addDependency,
-        removeDependency,
 
         artifacts,
         setArtifacts,

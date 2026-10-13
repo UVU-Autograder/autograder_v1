@@ -58,21 +58,6 @@ def test_assignment_config_rejects_missing_extra_credit():
         AssignmentConfigV1.model_validate(raw)
 
 
-def test_assignment_config_rejects_invalid_completion_reference():
-    raw = load_example_config()
-    raw["completion_requirements"] = [
-        {
-            "key": "complete_two",
-            "label": "Complete two",
-            "test_keys": ["add_numbers", "missing_key"],
-            "minimum_passed": 2,
-        }
-    ]
-
-    with pytest.raises(ValidationError, match="unknown tests"):
-        AssignmentConfigV1.model_validate(raw)
-
-
 def test_initial_metadata_tables_exist():
     table_names = set(inspect(engine).get_table_names())
 
@@ -85,7 +70,6 @@ def test_initial_metadata_tables_exist():
         "assignments",
         "assignment_configs",
         "assignment_artifacts",
-        "scoring_items",
         "run_summaries",
     }.issubset(table_names)
 
@@ -154,20 +138,14 @@ def test_seed_creates_artifacts_and_scoring_items_from_config(seed_dir: Path):
             artifact.type for artifact in config.artifacts.values()
         }
 
-        scoring_items = db.scalars(
-            select(assignment_models.ScoringItem)
-            .where(assignment_models.ScoringItem.assignment_id == assignment.id)
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
-
+        persisted_config = AssignmentConfigV1.model_validate(assignment.config.config)
         expected_keys = [item.key for item in config.scoring_items]
-        assert [item.config_item_key for item in scoring_items] == expected_keys
-        assert [item.item_type for item in scoring_items] == [
+        assert [item.key for item in persisted_config.scoring_items] == expected_keys
+        assert [item.item_type for item in persisted_config.scoring_items] == [
             item.item_type for item in config.scoring_items
         ]
-        assert [item.pytest_marker for item in scoring_items] == [
-            pytest_marker_for_key(item.key) if item.item_type == "pytest" else None
-            for item in config.scoring_items
+        assert [item.points for item in persisted_config.scoring_items] == [
+            item.points for item in config.scoring_items
         ]
 
 
@@ -212,18 +190,23 @@ def test_manual_rubric_items_derive_non_pytest_scoring_projections():
         )
         assert setup is not None
 
-        items = db.scalars(
-            select(assignment_models.ScoringItem)
-            .join(assignment_models.ScoringItem.assignment)
+        config_row = db.scalar(
+            select(assignment_models.AssignmentConfig)
+            .join(assignment_models.AssignmentConfig.assignment)
             .where(
                 assignment_models.Assignment.slug == "simple-python-functions"
             )
-            .order_by(assignment_models.ScoringItem.display_order)
-        ).all()
+        )
+        assert config_row is not None
+        persisted_items = config_row.config["scoring_items"]
+        assert len(persisted_items) == 4
+        assert persisted_items[-1]["key"] == "reflection_quality"
+        assert persisted_items[-1]["item_type"] == "manual"
+        assert persisted_items[-1]["points"] == 10
 
-        assert len(items) == 4
-        manual_item = items[-1]
-        assert manual_item.config_item_key == "reflection_quality"
+        assert len(setup.scoring_items) == 4
+        manual_item = setup.scoring_items[-1]
+        assert manual_item.key == "reflection_quality"
         assert manual_item.item_type == "manual"
         assert manual_item.pytest_marker is None
         assert manual_item.points == 10

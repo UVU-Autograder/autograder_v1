@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { MetadataSection } from "./metadata-section";
 import { ScoringRulesSection } from "./scoring-rules-section";
-import { ConceptWhitelistSection } from "./concept-whitelist-section";
+import { ConceptDenylistSection } from "./concept-denylist-section";
 import { ModelSolutionSection } from "./model-solution-section";
 
 export function AssignmentEditor() {
@@ -158,7 +158,7 @@ export function AssignmentEditor() {
         <TabsList className="grid w-full grid-cols-4 max-w-2xl bg-muted p-1 rounded-lg">
           <TabsTrigger value="metadata">General & Files</TabsTrigger>
           <TabsTrigger value="rubrics">Test Suite & Rubric</TabsTrigger>
-          <TabsTrigger value="whitelist">Concepts</TabsTrigger>
+          <TabsTrigger value="concepts">Concepts</TabsTrigger>
           <TabsTrigger value="model_solution">Model Solution</TabsTrigger>
         </TabsList>
 
@@ -170,8 +170,8 @@ export function AssignmentEditor() {
           <ScoringRulesSection />
         </TabsContent>
 
-        <TabsContent value="whitelist">
-          <ConceptWhitelistSection />
+        <TabsContent value="concepts">
+          <ConceptDenylistSection />
         </TabsContent>
 
         <TabsContent value="model_solution">

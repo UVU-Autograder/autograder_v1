@@ -33,7 +33,7 @@ usage() {
 }
 
 # Explicitly allowed persistent metadata tables (FERPA boundary)
-# Includes config history and derived scoring projections; strictly excludes runs and submissions.
+# Strictly excludes runs, student submissions, and ephemeral execution state.
 METADATA_TABLES=(
   "alembic_version"
   "roles"
@@ -44,9 +44,7 @@ METADATA_TABLES=(
   "modules"
   "assignments"
   "assignment_configs"
-  "assignment_config_history"
   "assignment_artifacts"
-  "scoring_items"
 )
 
 # Resolve database credentials from environment or defaults

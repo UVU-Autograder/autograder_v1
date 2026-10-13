@@ -22,13 +22,6 @@ export type RubricGroup = {
     item_keys?: string[];
 };
 
-export type CompletionRequirement = {
-    key: string;
-    label: string;
-    test_keys: string[];
-    minimum_passed: number;
-};
-
 export type StaffArtifact = {
     artifact_key: string;
     artifact_type: string;
@@ -57,13 +50,11 @@ export type AssignmentConfigV1 = {
     bundle: BundleConfig;
     artifacts?: Record<string, ArtifactConfig>;
     concepts?: {
-        allowlist?: string[];
         denylist?: string[];
     };
 
     scoring_items: RubricItem[];
     rubric_groups?: RubricGroup[];
-    completion_requirements?: CompletionRequirement[];
     dependencies?: string[];
 };
 
@@ -94,7 +85,6 @@ export type Assignment = AssignmentsDetails & {
     allowed_concepts?: string[];
     rubric: RubricItem[];
     rubric_groups: RubricGroup[];
-    completion_requirements: CompletionRequirement[];
     config?: AssignmentConfigV1;
 };
 
@@ -210,7 +200,6 @@ export type StaffAssignmentSetup = {
     entrypoint_path: string;
     scoring_items: RubricItem[];
     rubric_groups?: RubricGroup[];
-    completion_requirements?: CompletionRequirement[];
     artifacts: StaffArtifact[];
     config: AssignmentConfigV1;
     module_id?: number | null;

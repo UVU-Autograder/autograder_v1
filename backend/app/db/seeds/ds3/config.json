@@ -64,7 +64,6 @@
       "item_type": "pytest"
     }
   ],
-  "completion_requirements": [],
   "dependencies": [],
   "rubric_groups": []
 }

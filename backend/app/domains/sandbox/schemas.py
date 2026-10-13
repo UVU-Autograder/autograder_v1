@@ -99,7 +99,6 @@ class SandboxAssignmentDetail(SandboxAssignmentSummary):
     allowed_concepts: list[str] = Field(default_factory=list)
     rubric: list[SandboxRubricItem]
     rubric_groups: list[SandboxRubricGroup] = Field(default_factory=list)
-    completion_requirements: list[dict] = Field(default_factory=list)
 
 
 class FilePreviewMetadata(BaseModel):

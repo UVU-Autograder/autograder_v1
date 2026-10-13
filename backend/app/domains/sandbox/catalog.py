@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.settings import get_settings
 from app.domains.assignments.models import Assignment
+from app.domains.assignments.schemas import pytest_marker_for_key
 from app.domains.assignments.service import (
     _coerce_scoring_item_type,
+    effective_allowed_concepts,
     validate_config,
 )
 from app.domains.courses.models import Course
@@ -87,9 +89,8 @@ def get_sandbox_assignment(
             Assignment.sandbox_enabled.is_(True),
         )
         .options(
-            selectinload(Assignment.course),
+            selectinload(Assignment.course).selectinload(Course.modules),
             selectinload(Assignment.config),
-            selectinload(Assignment.scoring_items),
             selectinload(Assignment.module),
         )
     )
@@ -98,10 +99,8 @@ def get_sandbox_assignment(
 
     config = validate_config(assignment.config.config)
     settings = get_settings()
-    from app.domains.assignments.service import effective_allowed_concepts
 
     allowed_concepts = effective_allowed_concepts(assignment)
-    tests_map = {test.key: test for test in config.scoring_items}
     req_files = config.bundle.derived_required_files()
     return SandboxAssignmentDetail(
         **_summary_for(assignment, quota).model_dump(),
@@ -115,17 +114,17 @@ def get_sandbox_assignment(
         allowed_concepts=allowed_concepts,
         rubric=[
             SandboxRubricItem(
-                key=item.config_item_key,
+                key=item.key,
                 label=item.label,
                 points=item.points,
                 extra_credit=item.extra_credit,
                 item_type=_coerce_scoring_item_type(item.item_type, item.label),
-                pytest_marker=item.pytest_marker,
+                pytest_marker=pytest_marker_for_key(item.key) if item.item_type == "pytest" else None,
                 rubric_group_key=item.rubric_group_key,
-                inputs=tests_map[item.config_item_key].inputs if item.config_item_key in tests_map else None,
-                outputs=tests_map[item.config_item_key].outputs if item.config_item_key in tests_map else None,
+                inputs=item.inputs,
+                outputs=item.outputs,
             )
-            for item in sorted(assignment.scoring_items, key=lambda row: row.display_order)
+            for item in config.scoring_items
         ],
         rubric_groups=[
             SandboxRubricGroup(
@@ -135,7 +134,6 @@ def get_sandbox_assignment(
             )
             for group in config.rubric_groups
         ],
-        completion_requirements=[item.model_dump() for item in config.completion_requirements],
     )
 
 

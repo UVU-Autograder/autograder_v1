@@ -54,6 +54,11 @@ export function ScoringRulesSection() {
     0,
   );
 
+  const totalExtraCreditPoints = scoringItems.reduce(
+    (sum, item) => (item.extra_credit ? sum + (item.points || 0) : sum),
+    0,
+  );
+
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
   const handleSyncFromCode = () => {
@@ -108,6 +113,11 @@ export function ScoringRulesSection() {
               <strong className="text-foreground font-mono">
                 {totalBasePoints} pts
               </strong>
+              {totalExtraCreditPoints > 0 && (
+                <span className="text-amber-600 dark:text-amber-400 font-mono font-medium ml-1">
+                  (+{totalExtraCreditPoints} EC)
+                </span>
+              )}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -132,7 +142,7 @@ export function ScoringRulesSection() {
                 className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm"
               >
                 {/* Key / Slug */}
-                <div className="md:col-span-4 space-y-1">
+                <div className="md:col-span-3 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-muted-foreground uppercase">
                       Key / Pytest Marker
@@ -167,7 +177,7 @@ export function ScoringRulesSection() {
                 </div>
 
                 {/* Label / Description Header */}
-                <div className="md:col-span-5 space-y-1">
+                <div className="md:col-span-4 space-y-1">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">
                     Description
                   </span>
@@ -203,6 +213,34 @@ export function ScoringRulesSection() {
                   />
                 </div>
 
+                {/* Extra Credit Toggle */}
+                <div className="md:col-span-2 space-y-1">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    Extra Credit
+                  </span>
+                  <div>
+                    <Button
+                      type="button"
+                      variant={item.extra_credit ? "secondary" : "outline"}
+                      size="sm"
+                      className={`w-full text-xs h-9 ${
+                        item.extra_credit
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
+                          : "text-muted-foreground"
+                      }`}
+                      onClick={() =>
+                        updateScoringItemField(
+                          item.id || item.key,
+                          "extra_credit",
+                          !item.extra_credit,
+                        )
+                      }
+                    >
+                      {item.extra_credit ? "Extra Credit" : "Standard"}
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Delete */}
                 <div className="md:col-span-1 flex justify-end">
                   <Button
@@ -216,13 +254,13 @@ export function ScoringRulesSection() {
                 </div>
 
                 {/* Expected I/O Preview */}
-                <div className="md:col-span-12 mt-1 pt-2 border-t border-border flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground flex items-center gap-1">
-                    <FileTextIcon className="w-3.5 h-3.5 text-primary" />
-                    Parsed Expected I/O:
-                  </span>
-                  {(item.inputs && item.inputs.length > 0) ||
-                  (item.outputs && item.outputs.length > 0) ? (
+                {((item.inputs && item.inputs.length > 0) ||
+                  (item.outputs && item.outputs.length > 0)) && (
+                  <div className="md:col-span-12 mt-1 pt-2 border-t border-border flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground flex items-center gap-1">
+                      <FileTextIcon className="w-3.5 h-3.5 text-primary" />
+                      Parsed Expected I/O:
+                    </span>
                     <div className="flex flex-wrap items-center gap-2">
                       {item.inputs && item.inputs.length > 0 && (
                         <span
@@ -247,12 +285,8 @@ export function ScoringRulesSection() {
                         </span>
                       )}
                     </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">
-                      No EXPECTED_INPUT or EXPECTED_OUTPUT in ag_{item.key}.
-                    </span>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             ))}
 
@@ -291,7 +325,7 @@ export function ScoringRulesSection() {
                 className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm text-card-foreground"
               >
                 {/* Label / Description Header */}
-                <div className="md:col-span-9 space-y-1">
+                <div className="md:col-span-7 space-y-1">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">
                     Criterion Label
                   </span>
@@ -325,6 +359,34 @@ export function ScoringRulesSection() {
                     }
                     className="font-mono"
                   />
+                </div>
+
+                {/* Extra Credit Toggle */}
+                <div className="md:col-span-2 space-y-1">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    Extra Credit
+                  </span>
+                  <div>
+                    <Button
+                      type="button"
+                      variant={item.extra_credit ? "secondary" : "outline"}
+                      size="sm"
+                      className={`w-full text-xs h-9 ${
+                        item.extra_credit
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
+                          : "text-muted-foreground"
+                      }`}
+                      onClick={() =>
+                        updateScoringItemField(
+                          item.id || item.key,
+                          "extra_credit",
+                          !item.extra_credit,
+                        )
+                      }
+                    >
+                      {item.extra_credit ? "Extra Credit" : "Standard"}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Delete */}

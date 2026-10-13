@@ -26,7 +26,6 @@ const baseAssignment: Assignment = {
   allowed_concepts: ["functions", "loops"],
   rubric: [],
   rubric_groups: [],
-  completion_requirements: [],
 };
 
 describe("ProblemOverview", () => {

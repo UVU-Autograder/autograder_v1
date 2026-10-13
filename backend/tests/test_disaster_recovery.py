@@ -24,7 +24,6 @@ from app.db.base import Base, import_domain_models
 from app.domains.assignments.models import (
     Assignment,
     AssignmentConfig,
-    ScoringItem,
 )
 from app.domains.auth.models import Role, User
 from app.domains.courses.models import Course, Module, Section
@@ -111,15 +110,19 @@ def test_isolated_metadata_backup_restore_zero_schema_drift(tmp_path: Path) -> N
         config = AssignmentConfig(
             assignment_id=assignment.id,
             version=1,
-            config={"version": "1.0", "required_files": ["main.py"]},
-        )
-        scoring_item = ScoringItem(
-            assignment_id=assignment.id,
-            config_item_key="test_main",
-            label="Main Test",
-            points=100,
-            extra_credit=False,
-            item_type="pytest",
+            config={
+                "version": "1.0",
+                "required_files": ["main.py"],
+                "scoring_items": [
+                    {
+                        "key": "test_main",
+                        "label": "Main Test",
+                        "points": 100,
+                        "extra_credit": False,
+                        "item_type": "pytest",
+                    }
+                ],
+            },
         )
         ephemeral_run = RunSummary(
             assignment_id=assignment.id,
@@ -128,7 +131,7 @@ def test_isolated_metadata_backup_restore_zero_schema_drift(tmp_path: Path) -> N
             status="complete",
             total_submission_count=25,
         )
-        session.add_all([config, scoring_item, ephemeral_run])
+        session.add_all([config, ephemeral_run])
         session.commit()
 
     # 2. Dump allowlisted metadata tables from source DB and restore into isolated target DB
@@ -175,11 +178,11 @@ def test_isolated_metadata_backup_restore_zero_schema_drift(tmp_path: Path) -> N
         restored_assignment = restored_session.scalar(
             select(Assignment).where(Assignment.slug == "lab1-intro")
         )
-        assert restored_assignment is not None
-        restored_item = restored_session.scalar(
-            select(ScoringItem).where(ScoringItem.config_item_key == "test_main")
+        restored_config = restored_session.scalar(
+            select(AssignmentConfig).where(AssignmentConfig.assignment_id == restored_assignment.id)
         )
-        assert restored_item is not None and restored_item.points == 100
+        assert restored_config is not None
+        assert restored_config.config["scoring_items"][0]["points"] == 100
         # FERPA boundary: ephemeral RunSummary rows must be 0 in restored DB
         assert restored_session.scalars(select(RunSummary)).all() == []
 

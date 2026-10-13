@@ -2977,13 +2977,6 @@
           "concepts": {
             "$ref": "#/components/schemas/ConceptsConfig"
           },
-          "completion_requirements": {
-            "items": {
-              "$ref": "#/components/schemas/CompletionRequirementConfig"
-            },
-            "type": "array",
-            "title": "Completion Requirements"
-          },
           "dependencies": {
             "items": {
               "type": "string"
@@ -3176,72 +3169,6 @@
         ],
         "title": "BundleConfig"
       },
-      "CompletionRequirement": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "title": "Key"
-          },
-          "label": {
-            "type": "string",
-            "title": "Label"
-          },
-          "test_keys": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Test Keys"
-          },
-          "minimum_passed": {
-            "type": "integer",
-            "title": "Minimum Passed"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "label",
-          "test_keys",
-          "minimum_passed"
-        ],
-        "title": "CompletionRequirement"
-      },
-      "CompletionRequirementConfig": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$",
-            "title": "Key"
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Label"
-          },
-          "test_keys": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Test Keys"
-          },
-          "minimum_passed": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Minimum Passed"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "label",
-          "test_keys",
-          "minimum_passed"
-        ],
-        "title": "CompletionRequirementConfig"
-      },
       "ConceptMetadata": {
         "properties": {
           "key": {
@@ -3278,13 +3205,6 @@
       },
       "ConceptsConfig": {
         "properties": {
-          "allowlist": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Allowlist"
-          },
           "denylist": {
             "items": {
               "type": "string"
@@ -4450,14 +4370,6 @@
             },
             "type": "array",
             "title": "Rubric Groups"
-          },
-          "completion_requirements": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Completion Requirements"
           }
         },
         "type": "object",
@@ -5361,13 +5273,6 @@
             "type": "array",
             "title": "Rubric Groups"
           },
-          "completion_requirements": {
-            "items": {
-              "$ref": "#/components/schemas/CompletionRequirement"
-            },
-            "type": "array",
-            "title": "Completion Requirements"
-          },
           "canvas_ref": {
             "anyOf": [
               {
@@ -5431,7 +5336,6 @@
           "entrypoint_path",
           "scoring_items",
           "rubric_groups",
-          "completion_requirements",
           "artifacts",
           "config"
         ],

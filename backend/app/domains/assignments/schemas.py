@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, model_validator
 
 TEST_KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 DEPENDENCY_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
-ARTIFACT_TYPES = {"pytest_file", "model_solution", "support_file"}
 
 
 def pytest_marker_for_key(key: str) -> str:
@@ -108,15 +107,7 @@ class RubricGroupConfig(BaseModel):
     label: str = Field(min_length=1)
 
 
-class CompletionRequirementConfig(BaseModel):
-    key: str = Field(pattern=TEST_KEY_RE.pattern)
-    label: str = Field(min_length=1)
-    test_keys: list[str] = Field(min_length=1)
-    minimum_passed: int = Field(ge=1)
-
-
 class ConceptsConfig(BaseModel):
-    allowlist: list[str] = Field(default_factory=list)
     denylist: list[str] = Field(default_factory=list)
 
 
@@ -125,7 +116,6 @@ class AssignmentConfigV1(BaseModel):
     artifacts: dict[str, ArtifactConfig] = Field(min_length=1)
     scoring_items: list[ScoringItemConfig] = Field(min_length=1)
     concepts: ConceptsConfig = Field(default_factory=ConceptsConfig)
-    completion_requirements: list[CompletionRequirementConfig] = Field(default_factory=list)
     dependencies: list[str] = Field(default_factory=list)
     rubric_groups: list[RubricGroupConfig] = Field(default_factory=list)
     description: str | None = None
@@ -170,23 +160,6 @@ class AssignmentConfigV1(BaseModel):
                     f"scoring item {item.key} references unknown rubric group: {item.rubric_group_key}"
                 )
 
-        requirement_keys = [req.key for req in self.completion_requirements]
-        duplicate_requirements = sorted({key for key in requirement_keys if requirement_keys.count(key) > 1})
-        if duplicate_requirements:
-            raise ValueError(f"duplicate completion requirement keys: {', '.join(duplicate_requirements)}")
-
-        known_pytest_tests = {item.key for item in self.scoring_items if item.item_type == "pytest"}
-        for req in self.completion_requirements:
-            unknown = sorted(set(req.test_keys) - known_pytest_tests)
-            if unknown:
-                raise ValueError(
-                    f"completion requirement {req.key} references unknown tests: {', '.join(unknown)}"
-                )
-            if req.minimum_passed > len(set(req.test_keys)):
-                raise ValueError(
-                    f"completion requirement {req.key} minimum_passed exceeds referenced tests"
-                )
-
         return self
 
     @property
@@ -214,13 +187,6 @@ class RubricGroup(BaseModel):
     item_keys: list[str]
 
 
-class CompletionRequirement(BaseModel):
-    key: str
-    label: str
-    test_keys: list[str]
-    minimum_passed: int
-
-
 class ArtifactMetadata(BaseModel):
     artifact_key: str
     artifact_type: str
@@ -240,7 +206,6 @@ class StaffAssignmentSetup(BaseModel):
     entrypoint_path: str
     scoring_items: list[ScoringItem]
     rubric_groups: list[RubricGroup]
-    completion_requirements: list[CompletionRequirement]
     canvas_ref: str | None = None
     artifacts: list[ArtifactMetadata]
     config: AssignmentConfigV1

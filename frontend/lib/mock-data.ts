@@ -193,7 +193,6 @@ export const MOCK_ASSIGNMENT_DETAILS_LAB1: Assignment = {
     { key: "functional", label: "Functional Requirements" },
     { key: "style", label: "Code Structure & Policy" },
   ],
-  completion_requirements: [],
   config: {
     description: "## Lab 1: Image Processing\n\nImplement image filtering operations.",
     bundle: {
@@ -288,7 +287,6 @@ export const MOCK_ASSIGNMENT_DETAILS_DS1: Assignment = {
     },
   ],
   rubric_groups: [{ key: "core", label: "Core Requirements" }],
-  completion_requirements: [],
 };
 
 export const MOCK_CONCEPTS_METADATA: Record<string, ConceptMetadata> = {

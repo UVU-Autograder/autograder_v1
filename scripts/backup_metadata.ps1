@@ -45,9 +45,7 @@ $MetadataTables = @(
     "modules",
     "assignments",
     "assignment_configs",
-    "assignment_config_history",
-    "assignment_artifacts",
-    "scoring_items"
+    "assignment_artifacts"
 )
 
 # Resolve database credentials from environment or defaults

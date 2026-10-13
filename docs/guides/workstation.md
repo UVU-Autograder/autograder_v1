@@ -241,7 +241,7 @@ The autograder operates on a single on-premise workstation (`10.115.20.200`, `CE
   ```
 
 ### 2. Database Failure and FERPA-Compliant Metadata Restore
-[backup_metadata.sh](../../scripts/backup_metadata.sh) and [backup_metadata.ps1](../../scripts/backup_metadata.ps1) allowlist only persistent system and course metadata (`alembic_version`, `roles`, `users`, `courses`, `staff_access`, `sections`, `modules`, `assignments`, `assignment_configs`, `assignment_config_history`, `assignment_artifacts`, `scoring_items`) and instructor-owned test fixtures (`/data/artifacts`), strictly excluding ephemeral runs, student submissions, execution logs, workspaces, and broker payloads.
+[backup_metadata.sh](../../scripts/backup_metadata.sh) and [backup_metadata.ps1](../../scripts/backup_metadata.ps1) allowlist only persistent system and course metadata (`alembic_version`, `roles`, `users`, `courses`, `staff_access`, `sections`, `modules`, `assignments`, `assignment_configs`, `assignment_artifacts`) and instructor-owned test fixtures (`/data/artifacts`), strictly excluding ephemeral runs, student submissions, execution logs, workspaces, and broker payloads.
 
 - **Scheduled Backup Cadence:** Run daily at `02:00` local time via host cron and before every deployment rollout, retaining 30 days of snapshots in `/data/backups/metadata`:
   ```bash

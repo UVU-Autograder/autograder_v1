@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -136,10 +135,6 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
         <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>Assignment details</CardTitle>
-          <CardDescription>
-            Create a new assignment shell. You can configure rubric, files, and artifacts
-            on the setup page after creation.
-          </CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -186,9 +181,6 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
               {errors.slug && (
                 <p className="text-sm text-destructive">{errors.slug.message}</p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Used in URLs and must be unique within the course.
-              </p>
             </div>
 
             <div className="space-y-1">
@@ -218,7 +210,7 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
                 control={control}
                 rules={{ required: "Language is required." }}
                 render={({ field }) => (
-                  <Select value={field.value} disabled onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger
                       id="language"
                       className="w-full"

@@ -57,50 +57,8 @@
       "title": "BundleConfig",
       "type": "object"
     },
-    "CompletionRequirementConfig": {
-      "properties": {
-        "key": {
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "title": "Key",
-          "type": "string"
-        },
-        "label": {
-          "minLength": 1,
-          "title": "Label",
-          "type": "string"
-        },
-        "test_keys": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Test Keys",
-          "type": "array"
-        },
-        "minimum_passed": {
-          "minimum": 1,
-          "title": "Minimum Passed",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "key",
-        "label",
-        "test_keys",
-        "minimum_passed"
-      ],
-      "title": "CompletionRequirementConfig",
-      "type": "object"
-    },
     "ConceptsConfig": {
       "properties": {
-        "allowlist": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Allowlist",
-          "type": "array"
-        },
         "denylist": {
           "items": {
             "type": "string"
@@ -271,13 +229,6 @@
     },
     "concepts": {
       "$ref": "#/$defs/ConceptsConfig"
-    },
-    "completion_requirements": {
-      "items": {
-        "$ref": "#/$defs/CompletionRequirementConfig"
-      },
-      "title": "Completion Requirements",
-      "type": "array"
     },
     "dependencies": {
       "items": {
