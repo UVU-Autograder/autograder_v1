@@ -51,23 +51,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `icecream`, `sundae`).
 
 > v8 revision (Claude): trimmed to one sentence per field and under 80 words
 
+> p3b (Claude): trimmed to 65 words; shorter summary and Sundae item
+
 status: accepted
 
 ```json
 {
-  "summary": "Your DessertItem, Candy and Cookie classes work, but IceCream is not linked to DessertItem.",
+  "summary": "Your DessertItem, Candy and Cookie classes work; IceCream has an inheritance problem.",
   "items": [
     {
       "test_key": "icecream",
-      "what_went_wrong": "The test finds that IceCream is not a subclass of DessertItem.",
+      "what_went_wrong": "IceCream is not a subclass of DessertItem.",
       "hint": "What links Candy to DessertItem, and does IceCream have the same link?"
     },
     {
       "test_key": "sundae",
-      "what_went_wrong": "Creating a Sundae raises a TypeError because the super() call in IceCream goes straight to Python's object class.",
+      "what_went_wrong": "Creating a Sundae raises a TypeError because IceCream's super() call reaches Python's object class.",
       "hint": "This follows from the IceCream problem; fix that first."
     }
   ],
-  "next_step": "Compare how IceCream and Candy are defined in dessert.py."
+  "next_step": "Compare how IceCream and Candy are defined."
 }
 ```

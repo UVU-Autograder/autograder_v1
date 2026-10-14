@@ -49,16 +49,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > v8 revision (Claude): removed the test input and the exception name; next step no longer points at the raise line; trimmed
 
+> p3b (Claude): shorter summary and first item
+
 status: accepted
 
 ```json
 {
-  "summary": "Your protocols work and set_pay_type rejects bad values, but with a different exception than the tests expect.",
+  "summary": "Your protocols work, but set_pay_type rejects bad values with the wrong exception.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "The invalid pay type check raises the wrong kind of exception.",
-      "hint": "Which exception does the test expect for an invalid pay type, and which one does set_pay_type raise?"
+      "what_went_wrong": "An invalid pay type raises the wrong kind of exception.",
+      "hint": "Which exception does the test expect for an invalid pay type, and which does set_pay_type raise?"
     },
     {
       "test_key": "student_order_tests",

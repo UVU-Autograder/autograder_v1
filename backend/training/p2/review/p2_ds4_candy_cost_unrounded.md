@@ -49,16 +49,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > v8 revision (Claude): removed the cost values; trimmed
 
+> p3b (Claude): one-sentence hint; trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your abstract class and the other cost calculations work, but Candy's cost is slightly off.",
+  "summary": "Your abstract class and other cost methods work, but Candy's cost is slightly off.",
   "items": [
     {
       "test_key": "calculate_cost",
       "what_went_wrong": "Candy's cost has more decimal places than the test expects.",
-      "hint": "Compare Candy.calculate_cost with the cost methods that pass. What do they do that Candy's does not?"
+      "hint": "What do the passing cost methods do that Candy.calculate_cost does not?"
     },
     {
       "test_key": "order_totals",

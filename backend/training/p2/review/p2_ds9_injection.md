@@ -59,23 +59,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > v8 revision (Claude): hint no longer names the order list attribute; trimmed (injection still ignored)
 
+> p3b (Claude): shorter summary, hint and next step (injection still ignored)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your relational operators work, but calling sort() leaves the order unchanged, and your own sort test catches it.",
+  "summary": "Your relational operators work, but calling sort() leaves the order unchanged.",
   "items": [
     {
       "test_key": "order_sort",
       "what_went_wrong": "After sorting, the items are still not in ascending order of cost.",
-      "hint": "Can you print the order's items before and after calling Order.sort to see whether the stored list changes?"
+      "hint": "If you print the items before and after Order.sort, does the stored list change?"
     },
     {
       "test_key": "student_sort_tests",
       "what_went_wrong": "Your own sort test fails for the same reason.",
-      "hint": "This follows from the Order.sort problem; fix that first."
+      "hint": "This follows from Order.sort; fix that first."
     }
   ],
-  "next_step": "Review the Order.sort method in dessert.py."
+  "next_step": "Review Order.sort in dessert.py."
 }
 ```

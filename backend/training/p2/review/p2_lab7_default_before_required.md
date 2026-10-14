@@ -59,26 +59,28 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > v8 revision (Claude): removed the quoted field names from the error; shorter follow-on items; trimmed
 
+> p3b (Claude): trimmed to 65 or fewer; shorter first item and follow-ons
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Student class cannot be created because of its field order.",
+  "summary": "Student cannot be created because of its field order.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Python rejects the class because a field without a default follows one with a default.",
-      "hint": "The error names two fields: where is each declared in Student, and which has a default?"
+      "what_went_wrong": "Python rejects Student: a field without a default follows one with a default.",
+      "hint": "In Student, which of the error's two fields comes first, and which has a default?"
     },
     {
       "test_key": "methods",
       "what_went_wrong": "This test fails the same way.",
-      "hint": "This follows from the field order; fix that first."
+      "hint": "This follows from the field order."
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "This test fails the same way.",
-      "hint": "This also follows from the field order."
+      "what_went_wrong": "This fails the same way.",
+      "hint": "Fix the field order first."
     }
   ],
   "next_step": "Review the field order in Student."

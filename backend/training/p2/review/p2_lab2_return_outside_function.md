@@ -52,15 +52,17 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > v8 revision: removed line number and exact line pointer; trimmed to one sentence per field
 
+> p3b (Claude): shortened summary, first item, demo item and next_step to fit 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your code has a syntax error, so account.py cannot run yet.",
+  "summary": "A syntax error stops account.py from loading.",
   "items": [
     {
       "test_key": "account_init",
-      "what_went_wrong": "Python cannot load account.py because a statement in __str__ is outside the method body.",
+      "what_went_wrong": "A statement in __str__ sits outside the method body.",
       "hint": "How is the body of your __str__ method indented compared with __init__?"
     },
     {
@@ -70,10 +72,10 @@ status: accepted
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py cannot import account.py because of the same syntax error.",
-      "hint": "Does this clear once account.py loads?"
+      "what_went_wrong": "demo.py imports account.py, so it fails the same way.",
+      "hint": "This clears once account.py loads."
     }
   ],
-  "next_step": "Review the indentation of the __str__ method in account.py."
+  "next_step": "Review the indentation of __str__ in account.py."
 }
 ```

@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > v8 revision (Claude): removed the pay type values; trimmed
 
+> p3b (Claude): trimmed summary, hint and next step
+
 status: accepted
 
 ```json
 {
-  "summary": "Your payment protocol and Order structure work, but changing the payment type does not stick.",
+  "summary": "Your payment protocol works, but changing the payment type does not stick.",
   "items": [
     {
       "test_key": "order_payable",
       "what_went_wrong": "After setting a new payment type, the Order still reports the old one.",
-      "hint": "Trace set_pay_type with a valid type: after the check passes, what happens to the value passed in?"
+      "hint": "After the check in set_pay_type passes, what happens to the value passed in?"
     },
     {
       "test_key": "student_order_tests",
       "what_went_wrong": "Your own tests for changing it fail the same way.",
-      "hint": "This follows from the set_pay_type problem; fix the method, not the tests."
+      "hint": "This follows from set_pay_type; fix the method, not the tests."
     }
   ],
-  "next_step": "Review the set_pay_type method in the Order class."
+  "next_step": "Review Order.set_pay_type in dessert.py."
 }
 ```

@@ -46,6 +46,8 @@ class CaseScore:
     no_answer_literal: bool = True
     pinpoints: bool = False
     words: int = 0
+    next_step_words: int = 0
+    all_pass_flagged: bool = False
     answer_reasons: list[str] = field(default_factory=list)
     raw_response: str = ""
 
@@ -122,6 +124,9 @@ def score_case(case: EvalCase, raw_response: str, latency_s: float = 0.0) -> Cas
     named = leak_checks.pinpointed_identifiers(pointers, case.bug_diff)
     if named:
         answer_reasons.append(f"item/next step names the changed attribute/parameter: {named}")
+    all_pass = not case.failures and not case.concept_violations
+    invented = leak_checks.all_pass_problems(parsed.summary, parsed.next_step) if all_pass and parsed else []
+    answer_reasons += [f"all-pass: {reason}" for reason in invented]
 
     return CaseScore(
         case_id=case.case_id,
@@ -139,6 +144,8 @@ def score_case(case: EvalCase, raw_response: str, latency_s: float = 0.0) -> Cas
         no_answer_literal=not literals,
         pinpoints=bool(named),
         words=leak_checks.word_count(prose),
+        next_step_words=leak_checks.word_count(parsed.next_step) if parsed is not None else 0,
+        all_pass_flagged=bool(invented),
         answer_reasons=answer_reasons,
     )
 
@@ -162,4 +169,6 @@ def aggregate(scores: list[CaseScore]) -> dict[str, float]:
         "words_median": float(median(s.words for s in scores)) if scores else 0.0,
         "words_max": max((s.words for s in scores), default=0),
         "over_80_words_pct": 100 * sum(s.words > 80 for s in scores) / n,
+        "next_step_over_14_pct": 100 * sum(s.next_step_words > 14 for s in scores) / n,
+        "all_pass_flagged": sum(s.all_pass_flagged for s in scores),
     }

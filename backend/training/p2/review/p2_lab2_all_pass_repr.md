@@ -44,12 +44,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p3b (Claude): praise-first summary; next_step reframed as an optional extension.
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Account class passes all the automated tests.",
+  "summary": "Great job! Every test passes, and printing an Account shows its full summary.",
   "items": [],
-  "next_step": "Look up the difference between __str__ and __repr__ for formatting Account output."
+  "next_step": "Optional: look up how print() falls back to __repr__, which your Account uses."
 }
 ```

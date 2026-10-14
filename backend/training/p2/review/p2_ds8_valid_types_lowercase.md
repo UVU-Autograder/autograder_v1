@@ -48,16 +48,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > v8 revision (Claude): removed the pay type value and the constant's name; hint traces the set_pay_type check
 
+> p3b (Claude): shorter summary and first hint; next step points to the check in dessert.py
+
 status: accepted
 
 ```json
 {
-  "summary": "Your PayType enum and packaging work, but set_pay_type rejects valid payment types, and your tests catch it.",
+  "summary": "Your packaging works, but set_pay_type rejects valid payment types.",
   "items": [
     {
       "test_key": "order_payable",
       "what_went_wrong": "Setting a valid payment type raises a ValueError saying it is invalid.",
-      "hint": "What values does set_pay_type check against, and do they match PayType character by character?"
+      "hint": "Do the values set_pay_type checks against match PayType character by character?"
     },
     {
       "test_key": "student_order_tests",
@@ -65,6 +67,6 @@ status: accepted
       "hint": "This follows from the set_pay_type check; fix that, not your tests."
     }
   ],
-  "next_step": "Review the check in set_pay_type alongside PayType in payment.py."
+  "next_step": "Review the check in Order.set_pay_type in dessert.py."
 }
 ```

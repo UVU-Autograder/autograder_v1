@@ -1,4 +1,5 @@
 from app.integrations.ai.leak_checks import (
+    all_pass_problems,
     answer_literals,
     changed_identifiers,
     echoed_values,
@@ -116,3 +117,31 @@ def test_parameters_and_private_attributes_are_identifiers():
 def test_shown_labels_and_word_count():
     assert "scoop_count" in shown_labels([ICECREAM_FAILURE])
     assert word_count("one two  three\nfour") == 4
+
+
+def test_all_pass_feedback_that_reads_like_a_bug_report_is_caught():
+    # p3's answers on two all-pass eval cases.
+    assert all_pass_problems(
+        "Your packaging protocol and the base dessert classes work, but Sundae's packaging is overwritten.",
+        "Review the Sundae constructor in dessert.py.",
+    )
+    assert all_pass_problems(
+        "Your class hierarchy and Order class pass all the automated tests.",
+        "Review the Order.__iter__ method to see how it handles multiple passes.",
+    )
+
+
+def test_all_pass_extension_ideas_are_fine():
+    assert all_pass_problems(
+        "Congratulations! Every test passes and your Order class works.",
+        "Try writing one failing test in test_dessert.py to see how pytest reports the failure.",
+    ) == []
+    assert all_pass_problems(
+        "Great job, every test passes.",
+        "Optional: try changing a payment method and check that the receipt updates.",
+    ) == []
+
+
+def test_file_names_in_the_diff_are_not_identifiers():
+    diff = '-"""Dessert Shop classes, see dessert.py."""\n+"""Dessert Shop classes."""\n'
+    assert pinpointed_identifiers("Review Order.add in dessert.py.", diff) == []

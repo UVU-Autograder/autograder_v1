@@ -53,21 +53,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > v8 revision (Claude): hint no longer names the owner and balance lines; dropped the quoted error; trimmed under 80 words
 
+> p3b (Claude): first hint now one sentence; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your balance handling works, but the owner is never stored on the account, so printing it fails.",
+  "summary": "Your balance handling works, but the owner is never stored on the account.",
   "items": [
     {
       "test_key": "account_init",
       "what_went_wrong": "A new Account has no owner attribute.",
-      "hint": "Compare how Account.__init__ handles each value it receives. Which ones end up on the object?"
+      "hint": "Of the values Account.__init__ receives, which ones end up on the object?"
     },
     {
       "test_key": "account_str",
       "what_went_wrong": "__str__ fails because there is no owner to print.",
-      "hint": "This follows from the Account.__init__ problem; fix that first."
+      "hint": "This follows from Account.__init__; fix that first."
     },
     {
       "test_key": "demo_output",

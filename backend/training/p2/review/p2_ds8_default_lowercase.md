@@ -50,21 +50,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > v8 revision (Claude): removed the pay type values and the attribute name from the hint; trimmed
 
+> p3b (Claude): shorter first item and follow-on hint; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your payment protocol and class structure work, but a new Order's default payment type is off.",
+  "summary": "Your payment protocol and class structure work, but a new Order's payment type is off.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "A new Order reports a default payment type whose capitalization differs from what the test expects.",
-      "hint": "Where does a new Order get its starting payment type, and does that match PayType?"
+      "what_went_wrong": "A new Order's payment type has different capitalization than the test expects.",
+      "hint": "Where does a new Order get its starting payment type, and does it match PayType?"
     },
     {
       "test_key": "student_order_tests",
       "what_went_wrong": "Your own default test fails for the same reason.",
-      "hint": "This follows from the Order constructor problem; fix that, not the test."
+      "hint": "Fix the Order constructor, not the test."
     }
   ],
   "next_step": "Review the Order constructor in dessert.py."

@@ -48,23 +48,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_str`). Then s
 
 > v8 revision (Claude): removed the expected and actual strings; describes a different label in words
 
+> p3b (Claude): shortened summary, hint, demo item and next_step to fit 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Account initialization works, but __str__ does not match the required format.",
+  "summary": "Account initialization works; the problem is in __str__.",
   "items": [
     {
       "test_key": "account_str",
       "what_went_wrong": "Your __str__ output starts with a different label than the test expects.",
-      "hint": "Can you compare your __str__ output with the format in the test's title, word by word?"
+      "hint": "Can you compare your __str__ output with the test title's format, word by word?"
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py prints accounts the same way, so the expected label is missing there too.",
+      "what_went_wrong": "demo.py prints accounts the same way, so the label is wrong there too.",
       "hint": "This follows from the __str__ problem; fix that first."
     }
   ],
-  "next_step": "Review the __str__ method in the Account class."
+  "next_step": "Review __str__ in the Account class."
 }
 ```

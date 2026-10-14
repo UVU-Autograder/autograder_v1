@@ -45,16 +45,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `author_property`). Th
 
 > Pre-edit note (Claude): The draft was vague ('handle it in a specific way'). Now compares with the title setter, which raises the expected error. The lab4 exceptions warning is a catalog bug and is deliberately not mentioned.
 
+> p3b (Claude): one sentence per field, dropped the raised exception's name, fits 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your title and description properties work, and the author setter rejects empty strings. It uses a different kind of error than the test expects.",
+  "summary": "Your title and description properties work, and the author setter rejects empty strings.",
   "items": [
     {
       "test_key": "author_property",
-      "what_went_wrong": "Setting author to an empty string raised TypeError, and the test did not accept that exception.",
-      "hint": "Compare how your title setter handles an empty string with how your author setter does. Do they raise the same kind of error?"
+      "what_went_wrong": "Setting author to an empty string raises an exception type the test does not accept.",
+      "hint": "Does your author setter raise the same kind of error for an empty string as your title setter?"
     }
   ],
   "next_step": "Review the author setter in book.py."

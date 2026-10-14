@@ -44,12 +44,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p3b (Claude): praise-first summary; next_step reframed as an optional extension.
+
 status: accepted
 
 ```json
 {
-  "summary": "Every test passes, including student ordering and the main output.",
+  "summary": "Great job! Every test passes, from course enrollment to sorting students by ID.",
   "items": [],
-  "next_step": "Compare using += in Student.enroll with calling list.append on the course list."
+  "next_step": "Optional: read why += on a list updates it in place, like append."
 }
 ```

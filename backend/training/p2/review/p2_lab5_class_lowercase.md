@@ -69,25 +69,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > v8 revision (Claude): dropped the quoted error and the other test keys; trimmed to under 80 words
 
+> p3b (Claude): shortened summary, first item and follow-on items to fit 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Money logic is written, but no test can find the class.",
+  "summary": "Your methods are written, but no test can find the class.",
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "The test cannot find a class named Money in money.py.",
-      "hint": "How does your class name compare with the name the error says is missing?"
+      "what_went_wrong": "The tests cannot find a class named Money.",
+      "hint": "Does your class name exactly match the name the error says is missing?"
     },
     {
       "test_key": "str",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the class name; fix that first."
+      "what_went_wrong": "This fails for the same reason.",
+      "hint": "This clears once the class is found."
     },
     {
       "test_key": "add",
-      "what_went_wrong": "This test fails for the same reason.",
+      "what_went_wrong": "This fails for the same reason.",
       "hint": "This follows from the class name too."
     }
   ],

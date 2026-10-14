@@ -53,25 +53,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > v8 revision (Claude): dropped the quoted error; trimmed to one sentence per field and under 80 words
 
+> p3b (Claude): shorter follow-on items and first hint
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Account logic is written, but the tests cannot find the class.",
+  "summary": "Your logic is written, but the tests cannot find your class.",
   "items": [
     {
       "test_key": "account_init",
-      "what_went_wrong": "The test cannot find a class named Account in account.py.",
-      "hint": "How does your class name compare with the name the error says is missing?"
+      "what_went_wrong": "No class named Account is found in account.py.",
+      "hint": "How does your class name compare with the missing name in the error?"
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the class name; fix that first."
+      "what_went_wrong": "This fails for the same reason.",
+      "hint": "This follows from the class name."
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py cannot import Account for the same reason.",
+      "what_went_wrong": "demo.py cannot import it either.",
       "hint": "This follows from the class name too."
     }
   ],

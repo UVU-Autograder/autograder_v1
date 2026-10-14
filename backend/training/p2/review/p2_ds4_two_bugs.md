@@ -56,11 +56,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > v8 revision (Claude): removed the cost values; hint asks what makes up a sundae's price without naming the missing part
 
+> p3b (Claude): shorter summary and order item, kept "rerun the tests"; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Candy, Cookie and IceCream costs are right, but the Sundae cost is too low, and the order cost follows from it.",
+  "summary": "Your Candy, Cookie and IceCream costs are right, but the Sundae cost is too low.",
   "items": [
     {
       "test_key": "calculate_cost",
@@ -69,8 +71,8 @@ status: accepted
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is too low because it includes the Sundae.",
-      "hint": "This follows from the Sundae.calculate_cost problem; fix that first, then rerun the tests."
+      "what_went_wrong": "The order cost is low because of the Sundae.",
+      "hint": "Fix the Sundae cost first, then rerun the tests."
     }
   ],
   "next_step": "Review Sundae.calculate_cost in dessert.py."

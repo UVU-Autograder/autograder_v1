@@ -63,18 +63,18 @@ Draft while serving; review/approve targets before the strict builder. Choose a 
 
 [Eval tooling](../../backend/eval/README.md) owns cases/metrics; [training tools](../../backend/training/README.md) own CLI details. Compare models under matching cases/prompt/decoding; unguided checks native schema ability, guided matches production. Hard checks do not replace staff review of diagnosis/helpfulness.
 
-### Adapter p3 (prompt v8)
+### Adapter p3b (prompt v8)
 
-p2c was trained on v5 targets that repeated expected values and named the attribute to change. p3 retrains on the same reviewed cases, rewritten to v8 (`> v8 revision` lines in [reviews](../../backend/training/p2/review/)); the builder rejects any target that breaks the v8 rules and writes `training/data/p3`. Reuse p2c's recipe: read `training/output/p2c/training_summary.json` for its learning rate, alpha and max length, keep rank 16, and train two passes (steps = 2 × train rows ÷ grad-accum 4, as the build prints).
+p2c was trained on v5 targets that repeated expected values and named the attribute to change. p3 retrained on the same cases rewritten to v8 and stopped giving answers away, but invented problems on two all-pass cases and ran over 80 words on 3-item cascades. p3b fixes the data: all-pass next steps are optional extensions, and targets stay at 65 words or fewer (the model writes about 10 words more than its targets) with next steps under 15. The builder enforces all of it and writes `training/data/p3`. Recipe (p2c's): rank 16, alpha 32, learning rate 1e-4, 66 steps.
 
 ```bash
 python -m training.build_p2_dataset
-python -m training.train_lora --data training/data/p3 --out training/output/p3 --rank 16 --alpha ALPHA --lr LR --max-length LEN --max-steps STEPS
-sudo systemctl stop vllm-cs1410 && bash backend/training/serve.sh p2c p3   # from the repo root
-for m in gemma4-12b-qat cs1410-p2c cs1410-p3; do for i in 1 2; do python -m eval.run_eval --endpoint vllm --model $m --label ${m##*-}-v8-$i --guided; done; done
+python -m training.train_lora --base /data/models/gemma4-12b-qat-bf16 --data training/data/p3 --out training/output/p3b --max-steps 66 --rank 16 --alpha 32 --max-length 12288
+sudo systemctl stop vllm-cs1410 && bash backend/training/serve.sh p2c p3b   # from the repo root
+python -m eval.run_eval --endpoint vllm --model cs1410-p3b --label p3b-v8-1 --guided   # then p3b-v8-2
 ```
 
-Ship p3 only if, in both runs: hard metrics 100%, `no_answer_literal_pct` 100, `no_value_echo_pct` ≥ 95, `over_80_words_pct` 0, and a staff read finds no new misdiagnoses (hard cases and all-pass cases first). Then `install_vllm_service.sh p3` and `LOCAL_LLM_MODEL=cs1410-p3`. Rows land in `eval/results/scoreboard_v8.csv`.
+Ship only if, in both runs: hard metrics 100%, `no_answer_literal_pct` 100, `no_value_echo_pct` ≥ 95, `over_80_words_pct` 0, `next_step_over_14_pct` 0, `all_pass_flagged` 0, and a staff read finds no new misdiagnoses. Then `install_vllm_service.sh p3b` and `LOCAL_LLM_MODEL=cs1410-p3b`. Rows land in `eval/results/scoreboard_v8.csv`.
 
 For failures, inspect `journalctl -u vllm-cs1410 -n 50 --no-pager` and the earlier EngineCore error. Re-run GPU kernel preflight for torch/NF4 failures; verify absolute adapter paths and model-license access. AI downtime must leave grading usable.
 
@@ -102,9 +102,9 @@ nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.memory,memory.used,
 nvidia-smi dmon -s pucvmt -o T    # live view instead
 ```
 
-1. **Model capacity** (vLLM only, real v8 prompts, guided JSON, 60 s per level; stops once p95 passes 60 s): `cd backend && ~/venvs/train/bin/python -m eval.stress_vllm --model cs1410-p3 --json-out ~/stress-$(date +%H%M).json`
+1. **Model capacity** (vLLM only, real v8 prompts, guided JSON, 60 s per level; stops once p95 passes 60 s): `cd backend && ~/venvs/train/bin/python -m eval.stress_vllm --model cs1410-p3b --json-out ~/stress-$(date +%H%M).json`
 2. **End to end** (backend 30 s limit, 40-thread pool, guardrails): `python3 scripts/mock_sandbox_load.py --stream --levels 1,4,8,16,32,64,96,128`
-3. **Soak** at the highest level with zero `>30s`: `python -m eval.stress_vllm --model cs1410-p3 --levels N --duration 600`; watch temperature, minimum SM clock and throttle reasons.
+3. **Soak** at the highest level with zero `>30s`: `python -m eval.stress_vllm --model cs1410-p3b --levels N --duration 600`; watch temperature, minimum SM clock and throttle reasons.
 4. **Tune one vLLM flag at a time** in the service unit (`--max-num-seqs`, `--max-model-len 8192` vs 12288, `--gpu-memory-utilization 0.92`), reinstall, repeat step 1.
 
 Capacity is the highest level with no `>30s` requests, no errors and no fallbacks. Past it, req/s flattens while p95 climbs; `wait` > 0 means vLLM is queueing, `preempt` > 0 means the KV cache ran out, and any throttle reason means the GPU slowed itself.

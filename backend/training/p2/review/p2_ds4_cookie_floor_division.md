@@ -53,6 +53,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > v8 revision (Claude): removed the costs and totals; hint traces a partial dozen by hand; trimmed
 
+> p3b (Claude): shorter first item and follow-on items; trimmed to 65 words
+
 status: accepted
 
 ```json
@@ -61,20 +63,20 @@ status: accepted
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "A Cookie costs too little when the quantity is not a whole number of dozens.",
+      "what_went_wrong": "A Cookie costs too little for a partial dozen.",
       "hint": "Can you trace Cookie.calculate_cost by hand for half a dozen?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is too low because of that cost.",
-      "hint": "This follows from the Cookie cost; fix that first."
+      "what_went_wrong": "The Cookie tax is too low as a result.",
+      "hint": "Fix the Cookie cost first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is low for the same reason.",
+      "what_went_wrong": "The order cost is low too.",
       "hint": "This follows from the Cookie cost too."
     }
   ],
-  "next_step": "Review calculate_cost in the Cookie class."
+  "next_step": "Review Cookie.calculate_cost in dessert.py."
 }
 ```

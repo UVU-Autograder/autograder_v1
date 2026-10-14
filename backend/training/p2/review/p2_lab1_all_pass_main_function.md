@@ -49,12 +49,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p3b (Claude): praise-first summary; next_step framed as optional
+
 status: accepted
 
 ```json
 {
-  "summary": "Both parts of the lab pass their automated checks.",
+  "summary": "Great job! Every test passes and both of your scripts produce valid images.",
   "items": [],
-  "next_step": "Try different coefficients in your grayscale formula to see how image contrast changes."
+  "next_step": "Optional: try different grayscale coefficients and see how the image contrast changes."
 }
 ```

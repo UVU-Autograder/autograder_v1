@@ -14,6 +14,10 @@ catch the quieter kind found in prompt-v7 era feedback, e.g.
   works in eval and dataset building, not at serving time.
 - ``pinpointed_identifiers``: an attribute or parameter from the changed lines
   named in a hint or next step ("the default value for scoop_count").
+- ``all_pass_problems``: feedback on a submission that passes everything but
+  still reads like a bug report ("but Sundae's packaging is overwritten",
+  "Review the Order.__iter__ method"). p3 learned this from all-pass targets
+  whose extension ideas were phrased as instructions to re-check working code.
 
 Literals are numbers and quoted strings taken from pytest's assertion lines and
 from numeric student/expected values; numbers compare by value (0.5 == 0.50).
@@ -36,7 +40,22 @@ _ATTR_RE = re.compile(r"\b[A-Za-z_]\w*\.([A-Za-z_]\w*)(?!\s*\()")
 _DEF_RE = re.compile(r"\bdef\s+\w+\s*\((.*?)\)")
 _SUPER_INIT_RE = re.compile(r"\bsuper\(\)\.__init__\((.*?)\)")
 _PARAM_RE = re.compile(r"(?:^|,)\s*\*{0,2}([A-Za-z_]\w*)")
-_IGNORED_NAMES = {"self", "cls", "args", "kwargs"}
+# File extensions look like attributes to _ATTR_RE ("dessert.py") but name nothing to change.
+_IGNORED_NAMES = {"self", "cls", "args", "kwargs", "py", "md", "txt", "json", "jpg", "png"}
+# All-pass feedback: the summary must not hedge or report a defect, and the next
+# step must be an optional extension, not an instruction to re-check the code.
+_DEFECT_WORDS = r"problem|issue|bug|wrong|incorrect|broken|overwrit\w*|fix\w*|mistake"
+_ALL_PASS_SUMMARY_RE = re.compile(rf"\b(?:but|however|although|though|missing|error|fails?|failing|{_DEFECT_WORDS})\b", re.I)
+_ALL_PASS_NEXT_RE = re.compile(rf"\b(?:{_DEFECT_WORDS})\b", re.I)
+_RECHECK_START_RE = re.compile(r"^\s*(?:review|check|trace|fix|look at|make sure|verify|debug|correct|re-?read)\b", re.I)
+# "Every test passes", "Congratulations": the student can tell the code works.
+_AFFIRM_RE = re.compile(r"\b(?:pass(?:es|ed)?|congratulations|great job|well done|nice work|all (?:the )?(?:tests|requirements))\b", re.I)
+# Wording that suspects working code: "to see how it handles multiple passes", "to see if they match".
+_SUSPECT_RE = re.compile(
+    r"\b(?:to see (?:if|whether)|to see how (?:it|they) handles?|whether (?:it|they) (?:handles?|works?|match(?:es)?)"
+    r"|make sure|double-check|is (?:it|this) (?:correct|right))\b",
+    re.I,
+)
 # Quoted strings in these positions are names (methods, attributes, imports), not values.
 _NAME_POSITION_RE = re.compile(
     r"""(?:hasattr|getattr|setattr)\([^,()]*,\s*['"]\w+['"]"""
@@ -162,6 +181,22 @@ def pinpointed_identifiers(text: str, bug_diff: str) -> list[str]:
         if re.search(pattern, text):
             found.append(name)
     return sorted(found)
+
+
+def all_pass_problems(summary: str, next_step: str) -> list[str]:
+    """Why feedback on an all-pass submission reads like a bug report (empty when it does not)."""
+    problems = []
+    hedge = _ALL_PASS_SUMMARY_RE.search(summary)
+    if hedge:
+        problems.append(f"summary hedges or reports a defect ({hedge.group(0)!r}) though every test passes")
+    defect = _ALL_PASS_NEXT_RE.search(next_step)
+    if defect:
+        problems.append(f"next_step talks about a defect ({defect.group(0)!r}) though every test passes")
+    if _SUSPECT_RE.search(next_step):
+        problems.append("next_step suspects working code; suggest an optional extension instead")
+    elif _RECHECK_START_RE.match(next_step) and not _AFFIRM_RE.search(summary):
+        problems.append("summary never says the tests pass and next_step sends the student back into the code")
+    return problems
 
 
 def word_count(prose: str) -> int:

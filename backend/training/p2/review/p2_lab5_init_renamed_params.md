@@ -62,6 +62,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > v8 revision (Claude): dropped the quoted error; hint no longer points at the def line; trimmed under 80 words
 
+> p3b (Claude): shortened first item and follow-on items to fit 65 words
+
 status: accepted
 
 ```json
@@ -70,17 +72,17 @@ status: accepted
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "Creating a Money raises a NameError inside its constructor.",
-      "hint": "Trace Money.__init__: where is each name its body uses supposed to come from?"
+      "what_went_wrong": "The Money constructor raises a NameError.",
+      "hint": "Trace Money.__init__: where does each name its body uses come from?"
     },
     {
       "test_key": "str",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the Money.__init__ problem; fix that first."
+      "what_went_wrong": "This fails for the same reason.",
+      "hint": "This follows from the constructor problem."
     },
     {
       "test_key": "add",
-      "what_went_wrong": "This test fails for the same reason.",
+      "what_went_wrong": "This fails for the same reason.",
       "hint": "This clears once a Money can be created."
     }
   ],

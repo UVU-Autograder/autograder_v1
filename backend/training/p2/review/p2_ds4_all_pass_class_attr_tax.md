@@ -47,12 +47,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision (Claude): next step no longer names the attribute; one short extension question
 
+> p3b (Claude): praise-first summary; next_step is optional curiosity about class attributes
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations, all the tests pass!",
+  "summary": "Great job! Every test passes and your abstract DessertItem class and tax totals work.",
   "items": [],
-  "next_step": "Your tax rate is a class attribute; what happens if DessertItem's rate changes?"
+  "next_step": "Optional: your shared tax rate works; read how class and instance attributes differ."
 }
 ```

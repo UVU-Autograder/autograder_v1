@@ -56,26 +56,28 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > v8 revision (Claude): removed the method name; shorter hint and follow-on items; trimmed under 80 words
 
+> p3b (Claude): shorter summary and follow-on items; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your DessertItem base class works, but Python cannot create an IceCream.",
+  "summary": "Your DessertItem base class works; IceCream is the problem.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "Python cannot create an IceCream because a DessertItem abstract method is not implemented there.",
+      "what_went_wrong": "Python cannot create an IceCream because it leaves a DessertItem abstract method unimplemented.",
       "hint": "Which methods do Candy and Cookie define that IceCream does not?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "This test creates an IceCream, so it fails too.",
-      "hint": "This follows from the IceCream problem; fix that first."
+      "what_went_wrong": "This test creates an IceCream, so it fails.",
+      "hint": "Fix the IceCream problem first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order includes an IceCream, so it fails too.",
-      "hint": "This also follows from the IceCream problem."
+      "what_went_wrong": "The order holds an IceCream, so it fails.",
+      "hint": "This follows from the IceCream problem."
     }
   ],
   "next_step": "Review the IceCream class."

@@ -57,25 +57,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > v8 revision (Claude): dropped the quoted call and the line pointer; trimmed to under 80 words
 
+> p3b (Claude): trimmed to 65 or fewer; shorter hint and follow-ons
+
 status: accepted
 
 ```json
 {
-  "summary": "Your fields and methods are written, but Student will not accept arguments.",
+  "summary": "Your fields and methods are written, but Student rejects arguments.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Creating a Student raises a TypeError saying it takes no arguments.",
-      "hint": "What in the test's title turns fields into constructor arguments, and does your class have it?"
+      "what_went_wrong": "Creating a Student with values raises a TypeError.",
+      "hint": "Which part of the test's title turns fields into constructor arguments?"
     },
     {
       "test_key": "methods",
-      "what_went_wrong": "This test fails for the same reason.",
+      "what_went_wrong": "This fails for the same reason.",
       "hint": "This follows from the Student setup; fix that first."
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "This test fails for the same reason.",
+      "what_went_wrong": "This fails for the same reason.",
       "hint": "This follows from the Student setup too."
     }
   ],

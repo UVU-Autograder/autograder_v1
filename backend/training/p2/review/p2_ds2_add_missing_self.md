@@ -48,16 +48,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > v8 revision (Claude): hint no longer describes the missing first parameter; now compares with the other Order methods; trimmed
 
+> p3b (Claude): trimmed under 65 words; hint is one question
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy works, but calling Order.add fails, and main fails because it uses it.",
+  "summary": "Your class hierarchy works, but calling Order.add fails.",
   "items": [
     {
       "test_key": "order_class",
       "what_went_wrong": "Calling add on an Order raises a TypeError about the number of arguments.",
-      "hint": "Compare how Order.add is defined with the other methods in your Order class. What is different?"
+      "hint": "How does the definition of Order.add differ from your other Order methods?"
     },
     {
       "test_key": "main_output",

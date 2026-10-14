@@ -56,6 +56,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy`, `sundae`). Th
 
 > v8 revision (Claude): hints no longer ask for the attribute name; two separate problems, one at a time; trimmed
 
+> p3b (Claude): trimmed to 65 words; shorter Candy item and next step
+
 status: accepted
 
 ```json
@@ -64,15 +66,15 @@ status: accepted
   "items": [
     {
       "test_key": "candy",
-      "what_went_wrong": "A Candy stores its weight under a different name than the test looks for.",
-      "hint": "Does the name the Candy constructor stores the weight under match the test's title?"
+      "what_went_wrong": "Candy stores its weight under a different name than the test expects.",
+      "hint": "In the Candy constructor, does the weight's name match the test's title?"
     },
     {
       "test_key": "sundae",
-      "what_went_wrong": "A new Sundae does not keep the scoop count it was given.",
+      "what_went_wrong": "A new Sundae loses the scoop count it was given.",
       "hint": "In the Sundae constructor, which arguments reach the IceCream constructor?"
     }
   ],
-  "next_step": "Fix Candy first, rerun the tests, then check the Sundae constructor."
+  "next_step": "Check Candy first, then the Sundae constructor."
 }
 ```

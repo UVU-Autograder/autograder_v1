@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): The hint gave the answer ('the object itself'). Now points to which object has a __next__.
 
+> p3b (Claude): dropped the quoted error; one-sentence hint; trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but there is an issue with how the Order class handles iteration.",
+  "summary": "Your class hierarchy works, but looping over an Order fails.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "Looping over an Order fails with \"iter() returned non-iterator of type 'list'\".",
-      "hint": "Python calls __iter__, then calls __next__ on whatever it returned. Which object in your class has the __next__ method?"
+      "what_went_wrong": "Python rejects what __iter__ returns because it is not an iterator.",
+      "hint": "Python calls __next__ on whatever __iter__ returns; which object in your class has __next__?"
     },
     {
       "test_key": "main_output",
       "what_went_wrong": "main fails at its for loop for the same reason.",
-      "hint": "This follows from the __iter__ problem. Fix that first."
+      "hint": "This follows from the __iter__ problem; fix that first."
     }
   ],
-  "next_step": "Review the __iter__ method in the Order class."
+  "next_step": "Review Order.__iter__ in dessert.py."
 }
 ```

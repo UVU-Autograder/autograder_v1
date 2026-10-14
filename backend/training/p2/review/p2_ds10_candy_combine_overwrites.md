@@ -50,15 +50,17 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy_combinable`, `o
 
 > v8 revision (Claude): removed the weights and the attribute name from the hint; trimmed
 
+> p3b (Claude): trimmed to 65 words; shorter summary and first item
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and Cookie merging work, but combining two candies gives the wrong weight.",
+  "summary": "Your Combinable protocol and Cookie merging work, but combined candies get the wrong weight.",
   "items": [
     {
       "test_key": "candy_combinable",
-      "what_went_wrong": "After combining, the first candy's weight is too low; it only reflects the second candy.",
+      "what_went_wrong": "After combining, the first candy's weight reflects only the second candy.",
       "hint": "In Candy.combine, what happens to the weight the first candy already had?"
     },
     {
@@ -67,6 +69,6 @@ status: accepted
       "hint": "This follows from the Candy.combine problem; fix that first."
     }
   ],
-  "next_step": "Review the Candy.combine method in dessert.py."
+  "next_step": "Review Candy.combine in dessert.py."
 }
 ```

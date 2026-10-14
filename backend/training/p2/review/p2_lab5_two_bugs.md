@@ -58,6 +58,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`, `mul`). Then se
 
 > v8 revision (Claude): removed the strings, amounts and dollar counts; trimmed to under 80 words
 
+> p3b (Claude): trimmed to 65 or fewer; shorter hints and next step
+
 status: accepted
 
 ```json
@@ -67,14 +69,14 @@ status: accepted
     {
       "test_key": "str",
       "what_went_wrong": "The formatted amount is missing a character at the start.",
-      "hint": "Can you compare your __str__ output with the format in the test's title, character by character?"
+      "hint": "Does your __str__ output match the test title's format, character by character?"
     },
     {
       "test_key": "mul",
-      "what_went_wrong": "Multiplying gives too few dollars, so part of the amount is not multiplied.",
-      "hint": "If you work out a multiplication by hand, which part of the amount does your __mul__ multiply?"
+      "what_went_wrong": "Multiplying gives too few dollars; part of the amount is not multiplied.",
+      "hint": "Working one out by hand, which part of the amount does __mul__ multiply?"
     }
   ],
-  "next_step": "Fix __str__ first, rerun the tests, then look at __mul__."
+  "next_step": "Fix __str__ first, then review __mul__."
 }
 ```

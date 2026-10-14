@@ -52,23 +52,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `ordering
 
 > v8 revision (Claude): removed the test values; trimmed
 
+> p3b (Claude): trimmed; ordering item fixed (order is right, but each id holds a name)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your enroll logic and main work, but a Student's id and name end up swapped.",
+  "summary": "Enrolling and main work, but a Student's id and name end up swapped.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Creating a Student with positional values stores the id and name in each other's places.",
-      "hint": "A dataclass fills fields in declaration order; does Student's order match how main passes its values?"
+      "what_went_wrong": "Positional values put a Student's id and name in each other's places.",
+      "hint": "Does Student declare its fields in the order main passes its values?"
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "Students sort by name instead of id for the same reason.",
-      "hint": "This follows from the field order problem; fix that first."
+      "what_went_wrong": "Each sorted student's id holds a name for the same reason.",
+      "hint": "This follows from the field order; fix that first."
     }
   ],
-  "next_step": "Review the field order in the Student class."
+  "next_step": "Review the field order in Student."
 }
 ```

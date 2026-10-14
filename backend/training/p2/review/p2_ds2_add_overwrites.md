@@ -49,20 +49,22 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > v8 revision (Claude): tightened wording; follow-on item now points back to Order.add; trimmed
 
+> p3b (Claude): trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy works, but the order keeps only the most recently added item.",
+  "summary": "Your class hierarchy works, but the order keeps only the latest item.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "After adding several items, the order's length counts only the last one.",
-      "hint": "In Order.add, what happens to the items already in the order when a new one arrives?"
+      "what_went_wrong": "After several adds, the order's length counts only the last item.",
+      "hint": "In Order.add, what happens to the items already in the order?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "The receipt prints fewer lines than expected because earlier items are lost.",
+      "what_went_wrong": "The receipt prints fewer lines than expected for the same reason.",
       "hint": "This follows from the Order.add problem; fix that first."
     }
   ],

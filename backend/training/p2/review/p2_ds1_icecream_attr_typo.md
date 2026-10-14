@@ -48,23 +48,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `icecream`, `sundae`).
 
 > v8 revision (Claude): described the missing attribute in words; hint points to the IceCream constructor; trimmed
 
+> p3b (Claude): trimmed to 65 words; shorter summary and hint
+
 status: accepted
 
 ```json
 {
-  "summary": "Your DessertItem, Candy, and Cookie classes work, but IceCream stores its scoop count under an unexpected name.",
+  "summary": "Your DessertItem, Candy and Cookie classes work; IceCream has a naming problem.",
   "items": [
     {
       "test_key": "icecream",
-      "what_went_wrong": "An IceCream object has no attribute with the scoop count name the test looks for.",
-      "hint": "In the IceCream constructor, compare the name you store the scoop count under with the test's title."
+      "what_went_wrong": "IceCream stores its scoop count under a different name than the test looks for.",
+      "hint": "In the IceCream constructor, does the scoop count's name match the test's title?"
     },
     {
       "test_key": "sundae",
-      "what_went_wrong": "Sundae inherits the same missing attribute from IceCream.",
-      "hint": "This follows from the IceCream constructor problem; fix that first."
+      "what_went_wrong": "Sundae inherits the same problem from IceCream.",
+      "hint": "This follows from the IceCream problem; fix that first."
     }
   ],
-  "next_step": "Review the attribute names in the IceCream constructor."
+  "next_step": "Review the IceCream constructor in dessert.py."
 }
 ```

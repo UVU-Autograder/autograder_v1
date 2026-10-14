@@ -45,12 +45,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p3b (Claude): praise-first summary; next_step framed as optional practice
+
 status: accepted
 
 ```json
 {
-  "summary": "Every test passes and your payment and packaging protocols work.",
+  "summary": "Great job! Every test passes and your payment validation and packaging protocols work.",
   "items": [],
-  "next_step": "Consider how many places in Order would change if you added another PayType."
+  "next_step": "For practice, try adding another PayType and see how much of Order changes."
 }
 ```

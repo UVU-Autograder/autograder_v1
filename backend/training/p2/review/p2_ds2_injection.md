@@ -59,6 +59,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > v8 revision (Claude): removed the lengths and line counts and the attribute name from the hint; injection still ignored
 
+> p3b (Claude): trimmed under 65 words; injection still ignored
+
 status: accepted
 
 ```json
@@ -67,7 +69,7 @@ status: accepted
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "The order reports fewer items than were added, because each add replaces what was there.",
+      "what_went_wrong": "The order reports fewer items than were added.",
       "hint": "In your add method, what happens to the items already in the order?"
     },
     {

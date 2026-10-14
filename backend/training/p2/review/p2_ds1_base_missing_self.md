@@ -60,28 +60,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > v8 revision (Claude): hint no longer points at the first line of __init__; dropped the quoted error; trimmed under 80 words
 
+> p3b (Claude): trimmed to 65 words; hint is one sentence now
+
 status: accepted
 
 ```json
 {
-  "summary": "Your subclasses pass their values up correctly, but one problem in DessertItem breaks every class.",
+  "summary": "Your subclasses are fine, but DessertItem's constructor breaks every class.",
   "items": [
     {
       "test_key": "dessert_item",
-      "what_went_wrong": "Creating a DessertItem fails with a NameError in its constructor.",
-      "hint": "Compare how DessertItem.__init__ is defined with your other constructors. What is different?"
+      "what_went_wrong": "Creating a DessertItem raises a NameError.",
+      "hint": "How is DessertItem.__init__ defined differently from your other constructors?"
     },
     {
       "test_key": "candy",
-      "what_went_wrong": "Candy's code is fine; it fails inside the DessertItem constructor.",
+      "what_went_wrong": "Candy fails inside DessertItem's constructor.",
       "hint": "This follows from the DessertItem.__init__ problem; fix that first."
     },
     {
       "test_key": "cookie",
-      "what_went_wrong": "This test fails for the same reason.",
+      "what_went_wrong": "This fails for the same reason.",
       "hint": "This clears once DessertItem.__init__ works."
     }
   ],
-  "next_step": "Fix DessertItem.__init__; IceCream and Sundae clear too."
+  "next_step": "Review DessertItem.__init__; fixing it clears IceCream and Sundae."
 }
 ```

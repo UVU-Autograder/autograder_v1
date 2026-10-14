@@ -53,25 +53,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > v8 revision (Claude): removed all cost and tax values; summary no longer claims Sundae passes (its check never ran); trimmed
 
+> p3b (Claude): hint is one sentence now; shorter summary and follow-ons; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Candy and Cookie costs are right; IceCream's cost is off, and the tax and order total follow.",
+  "summary": "Your Candy and Cookie costs are right, but IceCream's cost is off.",
   "items": [
     {
       "test_key": "calculate_cost",
       "what_went_wrong": "IceCream's cost is higher than the test expects.",
-      "hint": "Work out this IceCream's cost by hand, then trace IceCream.calculate_cost. Where do they differ?"
+      "hint": "Where does IceCream.calculate_cost differ from working the cost out by hand?"
     },
     {
       "test_key": "calculate_tax",
       "what_went_wrong": "The tax is too high because the cost is.",
-      "hint": "This follows from the IceCream.calculate_cost problem; fix that first."
+      "hint": "Fix the IceCream cost first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is too high too.",
+      "what_went_wrong": "The order cost is high as well.",
       "hint": "This clears once IceCream's cost is right."
     }
   ],

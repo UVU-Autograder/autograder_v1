@@ -58,28 +58,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > v8 revision (Claude): hint no longer spells out the method name; shorter follow-on items; trimmed under 80 words
 
+> p3b (Claude): shorter summary and follow-on items; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your abstract base class works; all failures trace to one Candy problem.",
+  "summary": "Your abstract base class works; one Candy problem breaks the rest.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "Python cannot create a Candy because it sees the abstract cost method as unimplemented.",
+      "what_went_wrong": "Python cannot create a Candy because its abstract cost method looks unimplemented.",
       "hint": "Does Candy's cost method match DessertItem's abstract method exactly?"
     },
     {
       "test_key": "tax_percent",
-      "what_went_wrong": "This test creates a Candy, so it fails too.",
-      "hint": "This follows from the Candy problem; fix that first."
+      "what_went_wrong": "It fails because it creates a Candy.",
+      "hint": "This follows from the Candy problem."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order holds a Candy, so it fails too.",
-      "hint": "Same cause; fix the Candy problem first."
+      "what_went_wrong": "The order holds a Candy, so it fails.",
+      "hint": "Same cause; fix Candy first."
     }
   ],
-  "next_step": "Check Candy's method names against DessertItem."
+  "next_step": "Compare Candy's method names with DessertItem's."
 }
 ```

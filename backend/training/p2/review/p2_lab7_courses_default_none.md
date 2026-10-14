@@ -55,20 +55,22 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > v8 revision (Claude): removed the student's value and the quoted errors; hints no longer name the field; trimmed under 80 words
 
+> p3b (Claude): trimmed to 65 or fewer; first hint is now one sentence
+
 status: accepted
 
 ```json
 {
-  "summary": "Your sorting by id works, but a new Student has no usable course list.",
+  "summary": "Sorting works, but a new Student has no usable course list.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "A new Student's course collection does not start out as a list.",
-      "hint": "Compare Student's fields with the dataclass requirement in this test's title. Which one differs?"
+      "what_went_wrong": "A new Student's course collection does not start as a list.",
+      "hint": "Which of Student's fields differs from the requirement in this test's title?"
     },
     {
       "test_key": "methods",
-      "what_went_wrong": "total_courses fails because there is no list to count.",
+      "what_went_wrong": "total_courses has no list to count.",
       "hint": "This follows from that field; fix it first."
     },
     {
@@ -77,6 +79,6 @@ status: accepted
       "hint": "This clears once that is fixed."
     }
   ],
-  "next_step": "Review the fields in your Student class."
+  "next_step": "Review the fields in Student."
 }
 ```

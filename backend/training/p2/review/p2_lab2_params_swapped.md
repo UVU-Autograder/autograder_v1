@@ -54,6 +54,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > v8 revision (Claude): removed the test values and the quoted error; shorter follow-on items; trimmed
 
+> p3b (Claude): shorter first item and follow-on hints
+
 status: accepted
 
 ```json
@@ -62,18 +64,18 @@ status: accepted
   "items": [
     {
       "test_key": "account_init",
-      "what_went_wrong": "Creating an Account with a name and balance fails because the name is treated as a number.",
-      "hint": "Do the values the tests pass to Account line up with the parameters in Account.__init__?"
+      "what_went_wrong": "Creating an Account fails because the name is treated as a number.",
+      "hint": "Do the values passed to Account line up with the parameters in Account.__init__?"
     },
     {
       "test_key": "account_str",
       "what_went_wrong": "This test fails the same way.",
-      "hint": "This follows from the Account.__init__ problem; fix that first."
+      "hint": "This follows from Account.__init__; fix that first."
     },
     {
       "test_key": "demo_output",
       "what_went_wrong": "demo.py fails the same way.",
-      "hint": "This also follows from the Account.__init__ problem."
+      "hint": "This also follows from Account.__init__."
     }
   ],
   "next_step": "Review the Account.__init__ signature."

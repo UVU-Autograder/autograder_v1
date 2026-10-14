@@ -49,20 +49,22 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > v8 revision (Claude): trimmed to one sentence per field and under 80 words
 
+> p3b (Claude): trimmed to 65 words; shorter first item and follow-on
+
 status: accepted
 
 ```json
 {
-  "summary": "Your combine methods are written; the problem is how Combinable is declared.",
+  "summary": "Your combine methods work; the problem is how Combinable is declared.",
   "items": [
     {
       "test_key": "order_combine",
-      "what_went_wrong": "Python refuses the isinstance check in Order.add because Combinable is not set up for runtime checks.",
-      "hint": "What does the error's last line say a protocol needs, and does Combinable have it?"
+      "what_went_wrong": "The isinstance check in Order.add fails because Combinable does not allow runtime checks.",
+      "hint": "What does the error say a protocol needs, and does Combinable have it?"
     },
     {
       "test_key": "ds9_regression",
-      "what_went_wrong": "The sorting test adds items to an Order, so it hits the same error.",
+      "what_went_wrong": "The sorting test hits the same error when adding items.",
       "hint": "This follows from the Combinable declaration; fix that first."
     }
   ],

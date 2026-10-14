@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > v8 revision (Claude): removed the costs and the scoop count example; trimmed
 
+> p3b (Claude): hint is one trace question now; shorter order item and next step; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Candy, Cookie, and IceCream costs are right, but the Sundae cost comes out too high.",
+  "summary": "Your Candy, Cookie and IceCream costs are right, but the Sundae cost is too high.",
   "items": [
     {
       "test_key": "calculate_cost",
       "what_went_wrong": "A Sundae costs more than the test expects.",
-      "hint": "How does the Sundae cost method add in the topping? Work out a multi-scoop sundae by hand."
+      "hint": "How does Sundae.calculate_cost add in the topping when you work a multi-scoop sundae by hand?"
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order total is too high because it includes that Sundae.",
-      "hint": "This follows from the Sundae problem; fix that first."
+      "what_went_wrong": "The order total is high because of the Sundae.",
+      "hint": "Fix the Sundae cost first."
     }
   ],
-  "next_step": "Review the calculate_cost method in the Sundae class."
+  "next_step": "Review Sundae.calculate_cost in dessert.py."
 }
 ```

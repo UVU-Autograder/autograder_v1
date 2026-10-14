@@ -85,11 +85,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > v8 revision: trimmed next_step to one sentence under 15 words
 
+> p3b (Claude): trimmed summary and next_step to fit 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Both account.py and demo.py are still placeholders, so there is no Account class to test yet.",
+  "summary": "Both files are still placeholders, so there is no Account class to test yet.",
   "items": [
     {
       "test_key": "account_init",
@@ -102,6 +104,6 @@ status: accepted
       "hint": "Does demo.py need an Account class before it can print account summaries?"
     }
   ],
-  "next_step": "Define the Account class in account.py first, then print two accounts in demo.py."
+  "next_step": "Start with the Account class in account.py, then demo.py."
 }
 ```

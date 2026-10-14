@@ -37,8 +37,11 @@ from training.p2_review import CASES_DIR, REVIEW_DIR, case_messages, parse_revie
 HERE = Path(__file__).parent
 EVAL_CASES = HERE.parent / "eval" / "cases.jsonl"
 OUT_DIR = HERE / "data" / "p3"
-MAX_WORDS = 80
-MAX_NEXT_STEP_WORDS = 15
+MAX_WORDS = 80  # the prompt's limit
+# Targets leave headroom under the prompt's limit: p3 wrote ~10 words more than its
+# targets on 3-item cases (targets median 75 -> answers 82-89, 6% over 80).
+TARGET_MAX_WORDS = 65
+MAX_NEXT_STEP_WORDS = 14  # the prompt says "under 15 words"
 SERVE_MAX_MODEL_LEN = 12288  # --max-model-len in vllm-cs1410.service and serve.sh
 VALID_EVERY = 10  # ~10% held out for eval_loss, chosen by a stable hash of the case id
 
@@ -56,11 +59,14 @@ def target_problems(case, target) -> list[str]:
         problems.append("the grader reported failures but the response has no items")
     prose = response_prose(target)
     words = leak_checks.word_count(prose)
-    if words > MAX_WORDS:
-        problems.append(f"{words} words; the prompt asks for under {MAX_WORDS}")
+    if words > TARGET_MAX_WORDS:
+        problems.append(f"{words} words; targets stay at {TARGET_MAX_WORDS} or fewer (the prompt's limit is {MAX_WORDS}, "
+                        "and the model writes longer than its targets)")
     next_step_words = leak_checks.word_count(target.next_step)
     if next_step_words > MAX_NEXT_STEP_WORDS:
-        problems.append(f"next_step has {next_step_words} words; the prompt allows at most {MAX_NEXT_STEP_WORDS}")
+        problems.append(f"next_step has {next_step_words} words; the prompt asks for under {MAX_NEXT_STEP_WORDS + 1}")
+    if not case.failures and not case.concept_violations:
+        problems += leak_checks.all_pass_problems(target.summary, target.next_step)
     echoed = leak_checks.echoed_values(prose, case.failures)
     if echoed:
         problems.append(f"repeats values from the test results ({', '.join(echoed)}); describe the difference in words")

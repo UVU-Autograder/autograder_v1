@@ -58,21 +58,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `add`, `m
 
 > v8 revision (Claude): removed the dollar values and the test's constructor call; hint no longer asks where normalize is called; trimmed
 
+> p3b (Claude): shortened summary, first item and add hint to fit 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your formatting works, but new Money objects never carry their extra cents.",
+  "summary": "Your formatting works, but extra cents never carry into dollars.",
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "A new Money keeps overflow cents instead of carrying them into dollars.",
+      "what_went_wrong": "A new Money keeps its overflow cents.",
       "hint": "Trace what runs when a Money is created: does your carrying logic ever run?"
     },
     {
       "test_key": "add",
       "what_went_wrong": "The sum has too few dollars.",
-      "hint": "This follows from the same problem; fix that first."
+      "hint": "This follows from the same problem."
     },
     {
       "test_key": "mul",

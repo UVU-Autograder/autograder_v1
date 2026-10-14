@@ -50,23 +50,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > v8 revision (Claude): dropped the quoted error; trimmed to one sentence per field and under 80 words
 
+> p3b (Claude): trimmed summary, follow-on item and next step
+
 status: accepted
 
 ```json
 {
-  "summary": "Your PayType enum and protocols work, but get_pay_type reads an attribute that does not exist.",
+  "summary": "Your payment protocols work, but get_pay_type reads a missing attribute.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "Calling get_pay_type() raises an AttributeError because it reads an attribute the Order never created.",
+      "what_went_wrong": "Calling get_pay_type raises an AttributeError because it reads an attribute the Order never set.",
       "hint": "Does the attribute get_pay_type returns match the one the Order constructor sets, character for character?"
     },
     {
       "test_key": "student_order_tests",
-      "what_went_wrong": "Your own pay type tests in test_order.py fail for the same reason.",
-      "hint": "This follows from the get_pay_type problem; fix the method, not your tests."
+      "what_went_wrong": "Your pay type tests in test_order.py fail for the same reason.",
+      "hint": "This follows from get_pay_type; fix the method, not your tests."
     }
   ],
-  "next_step": "Review get_pay_type in the Order class in dessert.py."
+  "next_step": "Review get_pay_type in dessert.py."
 }
 ```

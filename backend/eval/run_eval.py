@@ -36,6 +36,21 @@ RESULTS_DIR = EVAL_DIR / "results"
 SCOREBOARD = RESULTS_DIR / "scoreboard_v8.csv"
 
 
+def append_row(path: Path, row: dict) -> None:
+    """Add a scoreboard row; when the columns changed, rewrite the file under the combined header."""
+    rows: list[dict] = []
+    fields = list(row)
+    if path.exists():
+        with path.open(newline="") as handle:
+            reader = csv.DictReader(handle)
+            rows = list(reader)
+            fields = list(reader.fieldnames or []) + [k for k in row if k not in (reader.fieldnames or [])]
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, restval="")
+        writer.writeheader()
+        writer.writerows(rows + [row])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Score a model against the CS1410 eval set.")
     parser.add_argument("--endpoint", default="lmstudio", help="lmstudio | ollama | vllm | full URL")
@@ -104,12 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     RESULTS_DIR.mkdir(exist_ok=True)
-    write_header = not SCOREBOARD.exists()
-    with SCOREBOARD.open("a", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(row))
-        if write_header:
-            writer.writeheader()
-        writer.writerow(row)
+    append_row(SCOREBOARD, row)
 
     (RESULTS_DIR / f"{args.label}.json").write_text(
         json.dumps(

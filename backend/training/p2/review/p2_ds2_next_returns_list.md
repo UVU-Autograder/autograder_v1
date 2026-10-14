@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > v8 revision (Claude): dropped the quoted error and the return-line pointer; trimmed
 
+> p3b (Claude): no longer echoes the type from the error; trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy works, but looping over an Order returns the wrong thing.",
+  "summary": "Your class hierarchy works, but iterating over an Order goes wrong.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "Each step of the loop gives back the whole list instead of a single item.",
+      "what_went_wrong": "Each loop step gives back every item at once instead of one dessert.",
       "hint": "In __next__, how does what you pick out compare with what you return?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main crashes because each item it loops over is a list rather than a dessert.",
+      "what_went_wrong": "main crashes for the same reason while printing the receipt.",
       "hint": "This follows from the __next__ problem; fix that first."
     }
   ],
-  "next_step": "Review what the __next__ method in the Order class returns."
+  "next_step": "Review what Order.__next__ returns."
 }
 ```

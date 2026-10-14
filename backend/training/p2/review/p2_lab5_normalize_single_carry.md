@@ -53,6 +53,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `mul`). T
 
 > v8 revision (Claude): removed the dollar amounts and the example cent value; trimmed
 
+> p3b (Claude): shortened both items to fit 65 words
+
 status: accepted
 
 ```json
@@ -61,12 +63,12 @@ status: accepted
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "After normalizing a large number of cents, the dollar amount is lower than the test expects.",
-      "hint": "Trace normalize by hand with several dollars' worth of cents: how many dollars does your code carry over?"
+      "what_went_wrong": "With a large cent amount, normalize carries fewer dollars than the test expects.",
+      "hint": "Trace normalize by hand with several dollars' worth of cents: how many dollars get carried?"
     },
     {
       "test_key": "mul",
-      "what_went_wrong": "The product has too few dollars because its cents are not fully carried.",
+      "what_went_wrong": "The product has too few dollars for the same reason.",
       "hint": "This follows from the normalize problem; fix that first."
     }
   ],

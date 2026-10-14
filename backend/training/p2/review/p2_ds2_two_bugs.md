@@ -59,11 +59,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > v8 revision (Claude): removed the price values and the quoted item name; hints no longer point at the assignment lines or the print line; trimmed
 
+> p3b (Claude): trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Order class works; there are two separate problems, in Candy and in main's receipt.",
+  "summary": "Your Order class works; Candy and main have separate problems.",
   "items": [
     {
       "test_key": "ds1_regression",
@@ -72,10 +74,10 @@ status: accepted
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main's receipt does not show the dessert names the test looks for.",
+      "what_went_wrong": "main's receipt lacks the dessert names the test looks for.",
       "hint": "Run dessertshop.py: what does main print for each dessert?"
     }
   ],
-  "next_step": "Fix Candy first, rerun the tests, then check main's loop."
+  "next_step": "Fix Candy, rerun the tests, then check main's loop."
 }
 ```

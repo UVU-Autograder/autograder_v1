@@ -50,11 +50,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > v8 revision (Claude): trimmed to one sentence per field and under 80 words
 
+> p3b (Claude): shorter summary and next step
+
 status: accepted
 
 ```json
 {
-  "summary": "Your relational operators work, but after sorting the items are in the wrong order, and your own sort test catches it.",
+  "summary": "Your relational operators work, but Order.sort leaves the items in the wrong order.",
   "items": [
     {
       "test_key": "order_sort",
@@ -67,6 +69,6 @@ status: accepted
       "hint": "This follows from Order.sort; fix the method, not your test."
     }
   ],
-  "next_step": "Review the Order.sort method in dessert.py."
+  "next_step": "Review Order.sort in dessert.py."
 }
 ```

@@ -45,12 +45,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p3b (Claude): praise-first summary; next_step reframed as an optional extension.
+
 status: accepted
 
 ```json
 {
-  "summary": "Every test passes, including your encapsulation and setter guard.",
+  "summary": "Great job! Every test passes, including your private attributes and setter guard.",
   "items": [],
-  "next_step": "Compare your early-return guard in set_video_count with using a single if block."
+  "next_step": "Optional: read about guard clauses, the early-return style your set_video_count already uses."
 }
 ```

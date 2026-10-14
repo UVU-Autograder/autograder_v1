@@ -51,6 +51,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > v8 revision (Claude): dropped the quoted error; hint traces the last call instead of comparing to an index; trimmed
 
+> p3b (Claude): trimmed under 65 words
+
 status: accepted
 
 ```json
@@ -59,12 +61,12 @@ status: accepted
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "Iterating over an Order raises an index error after the last item instead of stopping cleanly.",
-      "hint": "In __next__, trace the call right after the last item is returned: does the stopping check fire in time?"
+      "what_went_wrong": "After the last item, iterating raises an index error instead of stopping.",
+      "hint": "In __next__, trace the call after the last item: does the stop check fire?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main crashes with the same error while looping over the order.",
+      "what_went_wrong": "main crashes with the same error while looping.",
       "hint": "This follows from the __next__ problem; fix that first."
     }
   ],

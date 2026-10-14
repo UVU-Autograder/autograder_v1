@@ -51,11 +51,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy_combinable`, `o
 
 > v8 revision (Claude): removed the item counts; hint no longer points at the type check line; trimmed
 
+> p3b (Claude): trimmed to 65 words; shorter summary and follow-on
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and Cookie combining work, but two matching candies are never treated as combinable.",
+  "summary": "Your Combinable protocol and Cookie combining work, but matching candies never combine.",
   "items": [
     {
       "test_key": "candy_combinable",
@@ -64,7 +66,7 @@ status: accepted
     },
     {
       "test_key": "order_combine",
-      "what_went_wrong": "The order keeps more items than expected because the matching candies never merge.",
+      "what_went_wrong": "The matching candies never merge, so the order keeps extra items.",
       "hint": "This follows from the Candy.can_combine problem; fix that first."
     }
   ],

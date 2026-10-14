@@ -356,3 +356,15 @@ def test_answer_metrics_are_reported_but_not_part_of_passed():
     summary = aggregate([score, score_case(case, clean)])
     assert summary["no_value_echo_pct"] == 50 and summary["pinpoint_pct"] == 50
     assert summary["over_80_words_pct"] == 0 and summary["words_max"] > 0
+
+
+def test_all_pass_and_next_step_metrics():
+    case = make_case(failures=[], concept_violations=[])
+    invented = json.dumps({"summary": "Your classes work, but Sundae is overwritten.", "items": [],
+                           "next_step": "Review the Sundae constructor in dessert.py right now please today ok."})
+    clean = json.dumps({"summary": "Great job, every test passes!", "items": [],
+                        "next_step": "Try adding a new dessert to main."})
+    bad, good = score_case(case, invented), score_case(case, clean)
+    assert bad.all_pass_flagged and not good.all_pass_flagged
+    summary = aggregate([bad, good])
+    assert summary["all_pass_flagged"] == 1 and summary["next_step_over_14_pct"] == 0

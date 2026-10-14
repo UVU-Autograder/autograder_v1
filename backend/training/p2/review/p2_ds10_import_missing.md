@@ -51,28 +51,30 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > v8 revision (Claude): dropped the quoted error and the Packaging/Payable comparison; trimmed under 80 words
 
+> p3b (Claude): trimmed to 65 words; shorter summary, hint and follow-ons
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol is fine, but dessert.py cannot find it, so loading stops.",
+  "summary": "Your Combinable protocol is fine, but dessert.py cannot find it.",
   "items": [
     {
       "test_key": "candy_combinable",
       "what_went_wrong": "Loading dessert.py fails with a NameError on Combinable.",
-      "hint": "Where does dessert.py get names from your other files, and is this one there?"
+      "hint": "Where does dessert.py get names from your other files?"
     },
     {
       "test_key": "cookie_combinable",
-      "what_went_wrong": "This test fails for the same reason.",
+      "what_went_wrong": "This fails for the same reason.",
       "hint": "This follows from the loading error; fix that first."
     },
     {
       "test_key": "order_combine",
-      "what_went_wrong": "This test fails for the same reason.",
+      "what_went_wrong": "This fails for the same reason.",
       "hint": "This clears once dessert.py loads."
     }
   ],
-  "next_step": "Check the top of dessert.py; the Dessert Shop 9 test clears too."
+  "next_step": "Check the top of dessert.py; the sorting test clears too."
 }
 ```

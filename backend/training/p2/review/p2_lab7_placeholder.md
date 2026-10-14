@@ -102,23 +102,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > v8 revision: trimmed next_step to one sentence under 15 words
 
+> p3b (Claude): trimmed to 65 or fewer; shorter next step
+
 status: accepted
 
 ```json
 {
-  "summary": "student.py is still a placeholder, so there is no Student class or main function yet.",
+  "summary": "student.py is still a placeholder with no Student class or main yet.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "The tests could not find a Student class in student.py.",
+      "what_went_wrong": "The tests found no Student class.",
       "hint": "Which fields, and which decorator, does the assignment ask Student to have?"
     },
     {
       "test_key": "main_output",
       "what_went_wrong": "student.py has no main function yet.",
-      "hint": "Does main need the Student class before it can create and print students?"
+      "hint": "Does main need Student before it can create students?"
     }
   ],
-  "next_step": "Define the Student dataclass in student.py first, then add main and rerun the tests."
+  "next_step": "Build Student from the assignment first, then add main."
 }
 ```
