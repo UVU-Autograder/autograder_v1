@@ -43,12 +43,14 @@ JUDGE0_TOKEN_RE = re.compile(
     r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
     re.IGNORECASE,
 )
+UVU_ID_RE = re.compile(r"\b[uU]-?[0-9]{7,8}\b")
 
 _REDACTION_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
     (CANVAS_EXPORT_FILENAME_RE, "[REDACTED_CANVAS_FILENAME]"),
     (STUDENT_WORKSPACE_SEGMENT_RE, "student_[REDACTED]"),
     (EMAIL_RE, "[REDACTED_EMAIL]"),
     (JUDGE0_TOKEN_RE, "[REDACTED_TOKEN]"),
+    (UVU_ID_RE, "[REDACTED_UVU_ID]"),
 )
 
 

@@ -166,3 +166,63 @@ def test_audit_access_denied_helper(caplog):
     assert payload["client_ip"] == "127.0.0.1"
     assert "actor_user_id" not in payload
 
+
+def test_redact_institutional_student_id():
+    raw = "Request failed for student U10876543 and u12345678 and U-10123456"
+    redacted = redact_sensitive_text(raw)
+    assert "U10876543" not in redacted
+    assert "u12345678" not in redacted
+    assert "U-10123456" not in redacted
+    assert "[REDACTED_UVU_ID]" in redacted
+
+
+def test_ferpa_compliance_education_records_prohibited(caplog):
+    caplog.set_level(logging.INFO, logger="autograder.audit")
+    # Attempt to log various FERPA education record fields that must never be stored
+    audit_event(
+        "official.grading_attempt",
+        run_id=42,
+        student_name="Jane Doe",
+        student_id="U10987654",
+        canvas_user_id=2051945,
+        score=98.5,
+        grade="A",
+        submission_code="def solution(): return 42",
+        feedback="Great job on passing all assertions!",
+        rubric_comments="Clean implementation",
+        nested_attempt={
+            "student_identifier": "U10987654",
+        },
+    )
+    assert len(caplog.records) == 1
+    payload = json.loads(caplog.records[0].message)
+    assert payload["audit_event"] == "official.grading_attempt"
+    assert payload["run_id"] == 42
+    # Assert every single FERPA education record key was stripped
+    assert "student_name" not in payload
+    assert "student_id" not in payload
+    assert "canvas_user_id" not in payload
+    assert "score" not in payload
+    assert "grade" not in payload
+    assert "submission_code" not in payload
+    assert "feedback" not in payload
+    assert "rubric_comments" not in payload
+    assert "nested_attempt" not in payload
+
+
+def test_sanitize_audit_value_nested_structures():
+    nested_data = {
+        "detail": "Failed student_12345 in allenandrew_2051945_133817322_dessert.py",
+        "nested_list": ["Contact student at test@uvu.edu", "ID: U10123456"],
+    }
+    sanitized = redact_sensitive_text(str(nested_data))
+    assert "allenandrew" not in sanitized
+    assert "student_12345" not in sanitized
+    assert "test@uvu.edu" not in sanitized
+    assert "U10123456" not in sanitized
+    assert "[REDACTED_CANVAS_FILENAME]" in sanitized
+    assert "student_[REDACTED]" in sanitized
+    assert "[REDACTED_EMAIL]" in sanitized
+    assert "[REDACTED_UVU_ID]" in sanitized
+
+
