@@ -86,91 +86,123 @@ def _seed_cs1400(
     admin_role: Role,
 ) -> None:
     catalog = load_cs1400_catalog()
-    course = Course(
-        code="cs1400",
-        title="Fundamentals of Programming",
-        term="Fall 2026",
-        default_concepts=["variables", "conditionals"],
-        instructor=staff_user,
-    )
-    db.add(course)
-    db.flush()
+    course = db.scalar(select(Course).where(Course.code == "cs1400"))
+    if course is None:
+        course = Course(
+            code="cs1400",
+            title="Fundamentals of Programming",
+            term="Fall 2026",
+            default_concepts=["variables", "conditionals"],
+            instructor=staff_user,
+        )
+        db.add(course)
+        db.flush()
 
+    existing_modules = {m.name: m for m in course.modules}
     modules = {}
     accumulated_concepts: set[str] = set(course.default_concepts or [])
     for code, module_data in catalog["modules"].items():
         for c in module_data.get("concepts", []):
             accumulated_concepts.add(c)
-        module = Module(
-            course=course,
-            name=module_data["name"],
-            concepts=list(accumulated_concepts),
-        )
-        db.add(module)
+        if module_data["name"] in existing_modules:
+            module = existing_modules[module_data["name"]]
+            module.concepts = list(accumulated_concepts)
+        else:
+            module = Module(
+                course=course,
+                name=module_data["name"],
+                concepts=list(accumulated_concepts),
+            )
+            db.add(module)
         modules[code] = module
     db.flush()
 
-    section = Section(course=course, crn="12345")
-    db.add(section)
-    db.add(
-        StaffAccess(
-            user=staff_user,
-            role=admin_role,
-            course=course,
-            section=section,
+    section = db.scalar(select(Section).where(Section.course_id == course.id, Section.crn == "12345"))
+    if section is None:
+        section = Section(course=course, crn="12345")
+        db.add(section)
+        db.flush()
+
+    existing_staff_access = db.scalar(
+        select(StaffAccess).where(
+            StaffAccess.user_id == staff_user.id,
+            StaffAccess.course_id == course.id,
+            StaffAccess.section_id == section.id,
         )
     )
+    if existing_staff_access is None:
+        db.add(
+            StaffAccess(
+                user=staff_user,
+                role=admin_role,
+                course=course,
+                section=section,
+            )
+        )
 
-    fixture_assignment = Assignment(
-        course=course,
-        slug="simple-python-functions",
-        title="Simple Python Functions",
-        language="python",
-        canvas_ref="canvas:synthetic:simple-python-functions",
-        sandbox_enabled=True,
-        module=modules["m1"],
-        is_active=True,
+    fixture_assignment = db.scalar(
+        select(Assignment).where(Assignment.course_id == course.id, Assignment.slug == "simple-python-functions")
     )
-    db.add(fixture_assignment)
-    db.flush()
-    seed_assignment_artifacts(db, fixture_assignment, fixture_assignment.slug)
-    db.flush()
-    from app.domains.assignments.inventory import execution_fingerprint
-    from app.domains.grading.report_contract import ValidatedManifest
+    if fixture_assignment is None:
+        fixture_assignment = Assignment(
+            course=course,
+            slug="simple-python-functions",
+            title="Simple Python Functions",
+            language="python",
+            canvas_ref="canvas:synthetic:simple-python-functions",
+            sandbox_enabled=True,
+            module=modules["m1"],
+            is_active=True,
+        )
+        db.add(fixture_assignment)
+        db.flush()
+        seed_assignment_artifacts(db, fixture_assignment, fixture_assignment.slug)
+        db.flush()
+        from app.domains.assignments.inventory import execution_fingerprint
+        from app.domains.grading.report_contract import ValidatedManifest
 
-    cases = [
-        {"nodeid": "assignment_tests.py::test_add_numbers_positive_values", "markers": ["ag_add_numbers"], "xfail": False},
-        {"nodeid": "assignment_tests.py::test_add_numbers_negative_values", "markers": ["ag_add_numbers"], "xfail": False},
-        {"nodeid": "assignment_tests.py::test_reverse_words_basic_sentence", "markers": ["ag_reverse_words"], "xfail": False},
-        {"nodeid": "assignment_tests.py::test_reverse_words_preserves_spacing_between_words", "markers": ["ag_reverse_words"], "xfail": False},
-        {"nodeid": "assignment_tests.py::test_count_vowels_lowercase", "markers": ["ag_count_vowels"], "xfail": False},
-        {"nodeid": "assignment_tests.py::test_count_vowels_case_insensitive", "markers": ["ag_count_vowels"], "xfail": False},
-    ]
-    fixture_assignment.config.validated_test_manifest = ValidatedManifest(
-        fingerprint=execution_fingerprint(db, fixture_assignment),
-        cases=cases,
-    ).model_dump(mode="json")
+        cases = [
+            {"nodeid": "assignment_tests.py::test_add_numbers_positive_values", "markers": ["ag_add_numbers"], "xfail": False},
+            {"nodeid": "assignment_tests.py::test_add_numbers_negative_values", "markers": ["ag_add_numbers"], "xfail": False},
+            {"nodeid": "assignment_tests.py::test_reverse_words_basic_sentence", "markers": ["ag_reverse_words"], "xfail": False},
+            {"nodeid": "assignment_tests.py::test_reverse_words_preserves_spacing_between_words", "markers": ["ag_reverse_words"], "xfail": False},
+            {"nodeid": "assignment_tests.py::test_count_vowels_lowercase", "markers": ["ag_count_vowels"], "xfail": False},
+            {"nodeid": "assignment_tests.py::test_count_vowels_case_insensitive", "markers": ["ag_count_vowels"], "xfail": False},
+        ]
+        fixture_assignment.config.validated_test_manifest = ValidatedManifest(
+            fingerprint=execution_fingerprint(db, fixture_assignment),
+            cases=cases,
+        ).model_dump(mode="json")
 
+    existing_assignments = {a.slug: a for a in course.assignments}
     cs1400_root = Path(__file__).resolve().parents[3] / "cs1400"
     for item in catalog["assignments"]:
+        slug = item["slug"]
         desc = item.get("description")
         folder = item.get("folder")
         if not desc and folder:
             desc_path = cs1400_root / folder / "desc.md"
             if desc_path.exists():
                 desc = desc_path.read_text(encoding="utf-8")
-        assignment = Assignment(
-            course=course,
-            slug=item["slug"],
-            title=item["title"],
-            language="python",
-            canvas_ref=f"canvas:synthetic:{item['slug']}",
-            sandbox_enabled=False,
-            module=modules[item["module"]],
-            description=desc,
-            is_active=True,
-        )
-        db.add(assignment)
+        if slug in existing_assignments:
+            assignment = existing_assignments[slug]
+            assignment.title = item["title"]
+            assignment.module = modules[item["module"]]
+            if desc:
+                assignment.description = desc
+        else:
+            assignment = Assignment(
+                course=course,
+                slug=slug,
+                title=item["title"],
+                language="python",
+                canvas_ref=f"canvas:synthetic:{slug}",
+                sandbox_enabled=False,
+                module=modules[item["module"]],
+                description=desc,
+                is_active=True,
+            )
+            db.add(assignment)
 
     db.commit()
 
@@ -253,8 +285,7 @@ def seed_development_data(db: Session) -> None:
         db.add(staff_user)
         db.flush()
 
-    if db.scalar(select(Course).where(Course.code == "cs1400")) is None:
-        _seed_cs1400(db, staff_user=staff_user, admin_role=roles["admin"])
+    _seed_cs1400(db, staff_user=staff_user, admin_role=roles["admin"])
 
     if db.scalar(select(Course).where(Course.code == "cs1410")) is None:
         _seed_cs1410(db, staff_user=staff_user, admin_role=roles["admin"])
