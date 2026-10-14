@@ -45,6 +45,7 @@ METADATA_TABLES=(
   "assignments"
   "assignment_configs"
   "assignment_artifacts"
+  "audit_records"
 )
 
 # Resolve database credentials from environment or defaults

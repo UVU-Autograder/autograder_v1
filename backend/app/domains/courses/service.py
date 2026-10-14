@@ -52,9 +52,14 @@ def list_staff_assignments(db: Session, course_code: str) -> StaffAssignmentList
 
     assignments = []
     for assignment in sorted(course.assignments, key=lambda item: item.slug):
-        if not assignment.is_active or assignment.config is None:
+        if not assignment.is_active:
             continue
-        config = validate_config(assignment.config.config)
+        base_points = 0
+        extra_credit_points = 0
+        if assignment.config is not None:
+            config = validate_config(assignment.config.config)
+            base_points = config.base_points
+            extra_credit_points = config.extra_credit_points
         assignments.append(
             StaffAssignmentSummary(
                 id=assignment.slug,
@@ -62,8 +67,8 @@ def list_staff_assignments(db: Session, course_code: str) -> StaffAssignmentList
                 title=assignment.title,
                 language=assignment.language,
                 sandbox_enabled=assignment.sandbox_enabled,
-                base_points=config.base_points,
-                extra_credit_points=config.extra_credit_points,
+                base_points=base_points,
+                extra_credit_points=extra_credit_points,
                 module_name=assignment.module.name if assignment.module else None,
             )
         )

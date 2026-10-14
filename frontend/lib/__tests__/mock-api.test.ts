@@ -3,7 +3,10 @@ import { apiClient, isMockApiEnabled } from "../api-client";
 import { streamSandboxAiFeedback } from "../../features/assignments/api";
 import {
   MOCK_ASSIGNMENT_DETAILS_LAB1,
+  MOCK_ASSIGNMENTS_CS1400,
   MOCK_ASSIGNMENTS_CS1410,
+  MOCK_AUDIT_STATS,
+  MOCK_AUDIT_VERIFICATION,
   MOCK_SANDBOX_COURSES,
   MOCK_STAFF_COURSES,
 } from "../mock-data";
@@ -227,6 +230,103 @@ describe("Frontend Mock API & Interception Layer", () => {
       );
       expect(fileContentRes.kind).toBe("text");
       expect(fileContentRes.content).toContain("def invert_pixels");
+    });
+
+    it("fetches CS 1400 and CS 1410 real course assignments in sandbox and staff modes", async () => {
+      const cs1400Sandbox = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1400>("/sandbox/courses/cs1400/assignments");
+      expect(cs1400Sandbox.course_id).toBe("cs1400");
+      expect(cs1400Sandbox.assignments.length).toBe(44);
+      expect(cs1400Sandbox.assignments[0].id).toBe("m1-lab1");
+
+      const cs1400Staff = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1400>("/staff/courses/cs1400/assignments");
+      expect(cs1400Staff.course_id).toBe("cs1400");
+      expect(cs1400Staff.assignments.length).toBe(44);
+
+      const cs1410Staff = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1410>("/staff/courses/cs1410/assignments");
+      expect(cs1410Staff.course_id).toBe("cs1410");
+      expect(cs1410Staff.assignments.length).toBe(17);
+    });
+
+    it("fetches dynamic assignment details across both courses using real catalogs", async () => {
+      const cs1400Assignment = await apiClient.get<{ id: string; title: string; description: string }>(
+        "/sandbox/courses/cs1400/assignments/m1-lab1"
+      );
+      expect(cs1400Assignment.id).toBe("m1-lab1");
+      expect(cs1400Assignment.title).toBe("Lab 1: Sum of Two Numbers");
+      expect(cs1400Assignment.description).toContain("Sum of Two Numbers");
+
+      const cs1410Assignment = await apiClient.get<{ id: string; title: string; description: string }>(
+        "/sandbox/courses/cs1410/assignments/ds1"
+      );
+      expect(cs1410Assignment.id).toBe("ds1");
+      expect(cs1410Assignment.title).toBe("Dessert Shop 1: Inheritance Superclass");
+      expect(cs1410Assignment.description).toContain("Dessert Shop");
+    });
+
+    it("reads and updates staff assignment setup for dynamic assignments", async () => {
+      const setup = await apiClient.get<{ course_id: string; assignment_id: string; title: string; base_points: number }>(
+        "/staff/courses/cs1400/assignments/m1-lab1/setup"
+      );
+      expect(setup.course_id).toBe("cs1400");
+      expect(setup.assignment_id).toBe("m1-lab1");
+      expect(setup.base_points).toBe(100);
+
+      const updated = await apiClient.put<{ base_points: number }>(
+        "/staff/courses/cs1400/assignments/m1-lab1/setup",
+        { base_points: 150 }
+      );
+      expect(updated.base_points).toBe(150);
+
+      const refreshed = await apiClient.get<{ base_points: number }>(
+        "/staff/courses/cs1400/assignments/m1-lab1/setup"
+      );
+      expect(refreshed.base_points).toBe(150);
+    });
+
+    it("returns course-specific concepts and sections", async () => {
+      const cs1400Concepts = await apiClient.get<{ course_id: string; modules: Array<{ id: number; name: string }> }>(
+        "/staff/courses/cs1400/concepts"
+      );
+      expect(cs1400Concepts.course_id).toBe("cs1400");
+      expect(cs1400Concepts.modules.length).toBe(14);
+
+      const cs1410Concepts = await apiClient.get<{ course_id: string; modules: Array<{ id: number; name: string }> }>(
+        "/staff/courses/cs1410/concepts"
+      );
+      expect(cs1410Concepts.course_id).toBe("cs1410");
+      expect(cs1410Concepts.modules.length).toBe(12);
+
+      const cs1400Sections = await apiClient.get<{ course_id: string; sections: Array<{ crn: string }> }>(
+        "/staff/courses/cs1400/sections"
+      );
+      expect(cs1400Sections.sections).toHaveLength(1);
+      expect(cs1400Sections.sections[0].crn).toBe("12345");
+
+      const cs1410Sections = await apiClient.get<{ course_id: string; sections: Array<{ crn: string }> }>(
+        "/staff/courses/cs1410/sections"
+      );
+      expect(cs1410Sections.sections).toHaveLength(2);
+    });
+
+    it("handles audit log dashboard endpoints correctly", async () => {
+      const logs = await apiClient.get<{ items: unknown[]; total: number }>(
+        "/staff/admin/logs?page=1&page_size=10"
+      );
+      expect(logs.items.length).toBeGreaterThan(0);
+      expect(logs.total).toBeGreaterThan(0);
+
+      const stats = await apiClient.get<typeof MOCK_AUDIT_STATS>(
+        "/staff/admin/logs/stats"
+      );
+      expect(stats.total_events).toBe(MOCK_AUDIT_STATS.total_events);
+      expect(stats.events_24h).toBe(4);
+
+      const verification = await apiClient.post<typeof MOCK_AUDIT_VERIFICATION>(
+        "/staff/admin/logs/verify",
+        {}
+      );
+      expect(verification.compliant).toBe(true);
+      expect(verification.records_scanned).toBe(4);
     });
 
     it("throws 404 ApiError for unimplemented mock routes without wiping stored auth token", async () => {

@@ -26,6 +26,9 @@ import type {
   AuditStatsResponse,
   AuditVerificationResponse,
 } from "@/features/audit/types";
+import mockCatalog from "./mock-catalog.json";
+
+export { mockCatalog };
 
 export const MOCK_SANDBOX_COURSES: SandboxCoursesResponse = {
   courses: [
@@ -33,13 +36,13 @@ export const MOCK_SANDBOX_COURSES: SandboxCoursesResponse = {
       id: "cs1400",
       title: "Fundamentals of Programming",
       term: "Fall 2026",
-      sandbox_enabled_assignments: 1,
+      sandbox_enabled_assignments: mockCatalog.cs1400.assignments.length,
     },
     {
       id: "cs1410",
       title: "Object-Oriented Programming",
       term: "Fall 2026",
-      sandbox_enabled_assignments: 17,
+      sandbox_enabled_assignments: mockCatalog.cs1410.assignments.length,
     },
   ],
 };
@@ -50,13 +53,13 @@ export const MOCK_STAFF_COURSES: StaffCoursesResponse = {
       id: "cs1400",
       title: "Fundamentals of Programming",
       term: "Fall 2026",
-      assignment_count: 1,
+      assignment_count: mockCatalog.cs1400.assignments.length,
     },
     {
       id: "cs1410",
       title: "Object-Oriented Programming",
       term: "Fall 2026",
-      assignment_count: 17,
+      assignment_count: mockCatalog.cs1410.assignments.length,
     },
   ],
 };
@@ -80,7 +83,7 @@ export const MOCK_ADMIN_COURSES: CourseAdminDetail[] = [
       "inheritance",
     ],
     section_count: 3,
-    assignment_count: 17,
+    assignment_count: mockCatalog.cs1410.assignments.length,
   },
   {
     id: 2,
@@ -94,48 +97,48 @@ export const MOCK_ADMIN_COURSES: CourseAdminDetail[] = [
     ia_email: null,
     default_concepts: ["variables", "conditionals", "functions"],
     section_count: 1,
-    assignment_count: 1,
+    assignment_count: mockCatalog.cs1400.assignments.length,
   },
 ];
 
+export const MOCK_ASSIGNMENTS_CS1400: AssignmentsResponse = {
+  course_id: "cs1400",
+  assignments: mockCatalog.cs1400.assignments.map((a) => ({
+    id: a.id,
+    course_id: "cs1400",
+    title: a.title,
+    description: a.summary,
+    sandbox_enabled: true,
+    language: "python",
+    max_score: 100,
+    upload_quota: {
+      limit: 10,
+      window_seconds: 3600,
+      remaining: 10,
+      reset_at: new Date(Date.now() + 3600000).toISOString(),
+    },
+    module_name: a.module_name,
+  })),
+};
+
 export const MOCK_ASSIGNMENTS_CS1410: AssignmentsResponse = {
   course_id: "cs1410",
-  assignments: [
-    {
-      id: "lab1",
-      course_id: "cs1410",
-      title: "Lab 1 - Image Processing",
-      description:
-        "In this lab, you will implement image filtering operations using 2D pixel arrays, PPM image header parsing, grayscale transformation, and pixel brightness adjustments.",
-      sandbox_enabled: true,
-      language: "python",
-      max_score: 100,
-      upload_quota: {
-        limit: 10,
-        window_seconds: 3600,
-        remaining: 10,
-        reset_at: new Date(Date.now() + 3600000).toISOString(),
-      },
-      module_name: "Module 1",
+  assignments: mockCatalog.cs1410.assignments.map((a) => ({
+    id: a.id,
+    course_id: "cs1410",
+    title: a.title,
+    description: a.summary,
+    sandbox_enabled: true,
+    language: "python",
+    max_score: 100,
+    upload_quota: {
+      limit: 10,
+      window_seconds: 3600,
+      remaining: 10,
+      reset_at: new Date(Date.now() + 3600000).toISOString(),
     },
-    {
-      id: "ds1",
-      course_id: "1",
-      title: "Design Suite 1 - Packaging Tracker",
-      description:
-        "Design an object-oriented package tracking domain adhering to structural duck-typing protocols for combinable packages.",
-      sandbox_enabled: true,
-      language: "python",
-      max_score: 100,
-      upload_quota: {
-        limit: 10,
-        window_seconds: 3600,
-        remaining: 10,
-        reset_at: new Date(Date.now() + 3600000).toISOString(),
-      },
-      module_name: "Module 2",
-    },
-  ],
+    module_name: a.module_name,
+  })),
 };
 
 export const MOCK_ASSIGNMENT_DETAILS_LAB1: Assignment = {
@@ -249,10 +252,11 @@ export const MOCK_ASSIGNMENT_DETAILS_LAB1: Assignment = {
 
 export const MOCK_ASSIGNMENT_DETAILS_DS1: Assignment = {
   id: "ds1",
-  course_id: "1",
-  title: "Design Suite 1 - Packaging Tracker",
+  course_id: "cs1410",
+  title: "Dessert Shop 1: Inheritance Superclass",
   description:
-    "## DS 1: Packaging Tracker\n\nImplement a robust package tracking domain using classes, inheritance, and structural typing protocols.",
+    mockCatalog.cs1410.assignments.find((a) => a.id === "ds1")?.description ||
+    "## Dessert Shop 1: Inheritance Superclass\n\nBuild the DessertItem superclass and derived subclasses.",
   sandbox_enabled: true,
   language: "python",
   max_score: 100,
@@ -262,39 +266,246 @@ export const MOCK_ASSIGNMENT_DETAILS_DS1: Assignment = {
     remaining: 10,
     reset_at: new Date(Date.now() + 3600000).toISOString(),
   },
-  module_name: "Module 2",
+  module_name: "Module 3: Inheritance, Polymorphism, and Properties",
   accepted_bundle_types: ["zip", "py"],
   max_upload_bytes: 5242880,
   constraints: [
     { label: "Memory Limit", value: "256 MB" },
     { label: "Timeout", value: "30s" },
+    { label: "Execution Sandbox", value: "Kata microVM" },
   ],
-  allowed_concepts: ["variables", "conditionals", "functions", "classes"],
+  allowed_concepts: [
+    "image-processing",
+    "classes",
+    "type-hints",
+    "inheritance",
+    "properties",
+    "operator-overloading",
+    "exceptions",
+  ],
   rubric: [
     {
       id: "1",
-      key: "test_package_init",
-      label: "Package Initialization",
-      points: 50,
+      key: "test_dessert_item",
+      label: "DessertItem Superclass",
+      points: 40,
       extra_credit: false,
-      pytest_marker: "ag_key('test_package_init')",
+      pytest_marker: "ag_key('test_dessert_item')",
       item_type: "pytest",
       rubric_group_key: "core",
     },
     {
       id: "2",
-      key: "test_packaging_protocol",
-      label: "Packaging Protocol Matching",
-      points: 50,
+      key: "test_subclasses",
+      label: "Subclasses (Candy, Cookie, IceCream, Sundae)",
+      points: 40,
       extra_credit: false,
-      pytest_marker: "ag_key('test_packaging_protocol')",
+      pytest_marker: "ag_key('test_subclasses')",
       item_type: "pytest",
       rubric_group_key: "core",
     },
+    {
+      id: "3",
+      key: "test_ast",
+      label: "AST Safety Check",
+      points: 20,
+      extra_credit: false,
+      pytest_marker: "ag_key('test_ast')",
+      item_type: "pytest",
+      rubric_group_key: "style",
+    },
   ],
-  rubric_groups: [{ key: "core", label: "Core Requirements" }],
+  rubric_groups: [
+    { key: "core", label: "Core Requirements" },
+    { key: "style", label: "Code Structure & Policy" },
+  ],
   completion_requirements: [],
+  config: {
+    description: "Build the DessertItem superclass and derived subclasses.",
+    bundle: {
+      entrypoint: "dessert.py",
+      file_requirements: [{ paths: ["dessert.py"] }],
+    },
+    artifacts: {
+      test_solution: {
+        type: "pytest_file",
+        display_filename: "test_dessert.py",
+      },
+    },
+    scoring_items: [
+      {
+        key: "test_dessert_item",
+        label: "DessertItem Superclass",
+        points: 40,
+        extra_credit: false,
+        pytest_marker: "ag_key('test_dessert_item')",
+        item_type: "pytest",
+        rubric_group_key: "core",
+      },
+      {
+        key: "test_subclasses",
+        label: "Subclasses (Candy, Cookie, IceCream, Sundae)",
+        points: 40,
+        extra_credit: false,
+        pytest_marker: "ag_key('test_subclasses')",
+        item_type: "pytest",
+        rubric_group_key: "core",
+      },
+      {
+        key: "test_ast",
+        label: "AST Safety Check",
+        points: 20,
+        extra_credit: false,
+        pytest_marker: "ag_key('test_ast')",
+        item_type: "pytest",
+        rubric_group_key: "style",
+      },
+    ],
+  },
 };
+
+export function getMockAssignment(courseId: string, slug: string): Assignment {
+  if (slug === "lab1" && courseId !== "cs1400" && courseId !== "2") {
+    return MOCK_ASSIGNMENT_DETAILS_LAB1;
+  }
+  if (slug === "ds1" && courseId !== "cs1400" && courseId !== "2") {
+    return MOCK_ASSIGNMENT_DETAILS_DS1;
+  }
+
+  const is1400 = courseId === "cs1400" || courseId === "2" || slug.startsWith("m");
+  const courseKey = is1400 ? "cs1400" : "cs1410";
+  const catalogList = mockCatalog[courseKey].assignments;
+  const found =
+    catalogList.find((a) => a.slug === slug || a.id === slug) ||
+    catalogList[0];
+
+  return {
+    id: found.id,
+    course_id: courseKey,
+    title: found.title,
+    description: found.description || found.summary,
+    sandbox_enabled: true,
+    language: "python",
+    max_score: 100,
+    upload_quota: {
+      limit: 10,
+      window_seconds: 3600,
+      remaining: 10,
+      reset_at: new Date(Date.now() + 3600000).toISOString(),
+    },
+    module_name: found.module_name,
+    accepted_bundle_types: ["zip", "py"],
+    max_upload_bytes: 5242880,
+    constraints: [
+      { label: "Memory Limit", value: "256 MB" },
+      { label: "Timeout", value: "30s" },
+      { label: "Execution Sandbox", value: "Kata microVM" },
+    ],
+    allowed_concepts:
+      found.concepts && found.concepts.length > 0
+        ? found.concepts
+        : ["variables", "conditionals", "functions"],
+    rubric: [
+      {
+        id: "1",
+        key: "test_main",
+        label: "Functional Implementation",
+        points: 80,
+        extra_credit: false,
+        pytest_marker: "ag_key('test_main')",
+        item_type: "pytest",
+        rubric_group_key: "functional",
+      },
+      {
+        id: "2",
+        key: "test_ast",
+        label: "AST Safety Check",
+        points: 20,
+        extra_credit: false,
+        pytest_marker: "ag_key('test_ast')",
+        item_type: "pytest",
+        rubric_group_key: "style",
+      },
+    ],
+    rubric_groups: [
+      { key: "functional", label: "Functional Requirements" },
+      { key: "style", label: "Code Structure & Policy" },
+    ],
+    completion_requirements: [],
+    config: {
+      description: found.description || found.summary,
+      bundle: {
+        entrypoint: "main.py",
+        file_requirements: [{ paths: ["main.py"] }],
+      },
+      artifacts: {
+        test_solution: {
+          type: "pytest_file",
+          display_filename: "test_solution.py",
+        },
+      },
+      scoring_items: [
+        {
+          key: "test_main",
+          label: "Functional Implementation",
+          points: 80,
+          extra_credit: false,
+          pytest_marker: "ag_key('test_main')",
+          item_type: "pytest",
+          rubric_group_key: "functional",
+        },
+        {
+          key: "test_ast",
+          label: "AST Safety Check",
+          points: 20,
+          extra_credit: false,
+          pytest_marker: "ag_key('test_ast')",
+          item_type: "pytest",
+          rubric_group_key: "style",
+        },
+      ],
+    },
+  };
+}
+
+export function getMockStaffAssignmentSetup(courseId: string, slug: string): StaffAssignmentSetup {
+  if (slug === "lab1" && courseId !== "cs1400" && courseId !== "2") {
+    return MOCK_STAFF_ASSIGNMENT_SETUP_LAB1;
+  }
+  const assignment = getMockAssignment(courseId, slug);
+  return {
+    course_id: assignment.course_id,
+    assignment_id: assignment.id,
+    title: assignment.title,
+    description: assignment.description,
+    language: "python",
+    sandbox_enabled: true,
+    canvas_ref: `canvas-${assignment.id}`,
+    base_points: 100,
+    extra_credit_points: 0,
+    entrypoint_path: assignment.config?.bundle.entrypoint || "main.py",
+    scoring_items: assignment.rubric,
+    rubric_groups: assignment.rubric_groups,
+    completion_requirements: assignment.completion_requirements,
+    artifacts: [
+      {
+        artifact_key: "test_solution",
+        artifact_type: "pytest_file",
+        display_filename: "test_solution.py",
+        size_bytes: 1024,
+      },
+    ],
+    config: assignment.config || {
+      description: assignment.description,
+      bundle: {
+        entrypoint: "main.py",
+        file_requirements: [{ paths: ["main.py"] }],
+      },
+      scoring_items: assignment.rubric,
+    },
+    effective_allowed_concepts: assignment.allowed_concepts,
+  };
+}
 
 export const MOCK_CONCEPTS_METADATA: Record<string, ConceptMetadata> = {
   variables: {

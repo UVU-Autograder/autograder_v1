@@ -20,11 +20,16 @@ logger = logging.getLogger(__name__)
 SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
 EXAMPLE_DIR = SEEDS_DIR / "simple-python-functions"
 EXAMPLE_CONFIG = EXAMPLE_DIR / "config.json"
+CS1400_CATALOG = SEEDS_DIR / "cs1400_catalog.json"
 CS1410_CATALOG = SEEDS_DIR / "cs1410_catalog.json"
 
 
 def load_example_config() -> dict:
     return json.loads(EXAMPLE_CONFIG.read_text(encoding="utf-8"))
+
+
+def load_cs1400_catalog() -> dict:
+    return json.loads(CS1400_CATALOG.read_text(encoding="utf-8"))
 
 
 def load_cs1410_catalog() -> dict:
@@ -80,6 +85,7 @@ def _seed_cs1400(
     staff_user: User,
     admin_role: Role,
 ) -> None:
+    catalog = load_cs1400_catalog()
     course = Course(
         code="cs1400",
         title="Fundamentals of Programming",
@@ -90,15 +96,22 @@ def _seed_cs1400(
     db.add(course)
     db.flush()
 
-    module = Module(
-        course=course,
-        name="Module 1: Expressions & Conditionals",
-        concepts=["variables"],
-    )
-    section = Section(course=course, crn="12345")
-    db.add_all([module, section])
+    modules = {}
+    accumulated_concepts: set[str] = set(course.default_concepts or [])
+    for code, module_data in catalog["modules"].items():
+        for c in module_data.get("concepts", []):
+            accumulated_concepts.add(c)
+        module = Module(
+            course=course,
+            name=module_data["name"],
+            concepts=list(accumulated_concepts),
+        )
+        db.add(module)
+        modules[code] = module
     db.flush()
 
+    section = Section(course=course, crn="12345")
+    db.add(section)
     db.add(
         StaffAccess(
             user=staff_user,
@@ -107,19 +120,20 @@ def _seed_cs1400(
             section=section,
         )
     )
-    assignment = Assignment(
+
+    fixture_assignment = Assignment(
         course=course,
         slug="simple-python-functions",
         title="Simple Python Functions",
         language="python",
         canvas_ref="canvas:synthetic:simple-python-functions",
         sandbox_enabled=True,
-        module=module,
+        module=modules["m1"],
         is_active=True,
     )
-    db.add(assignment)
+    db.add(fixture_assignment)
     db.flush()
-    seed_assignment_artifacts(db, assignment, assignment.slug)
+    seed_assignment_artifacts(db, fixture_assignment, fixture_assignment.slug)
     db.flush()
     from app.domains.assignments.inventory import execution_fingerprint
     from app.domains.grading.report_contract import ValidatedManifest
@@ -132,10 +146,32 @@ def _seed_cs1400(
         {"nodeid": "assignment_tests.py::test_count_vowels_lowercase", "markers": ["ag_count_vowels"], "xfail": False},
         {"nodeid": "assignment_tests.py::test_count_vowels_case_insensitive", "markers": ["ag_count_vowels"], "xfail": False},
     ]
-    assignment.config.validated_test_manifest = ValidatedManifest(
-        fingerprint=execution_fingerprint(db, assignment),
+    fixture_assignment.config.validated_test_manifest = ValidatedManifest(
+        fingerprint=execution_fingerprint(db, fixture_assignment),
         cases=cases,
     ).model_dump(mode="json")
+
+    cs1400_root = Path(__file__).resolve().parents[3] / "cs1400"
+    for item in catalog["assignments"]:
+        desc = item.get("description")
+        folder = item.get("folder")
+        if not desc and folder:
+            desc_path = cs1400_root / folder / "desc.md"
+            if desc_path.exists():
+                desc = desc_path.read_text(encoding="utf-8")
+        assignment = Assignment(
+            course=course,
+            slug=item["slug"],
+            title=item["title"],
+            language="python",
+            canvas_ref=f"canvas:synthetic:{item['slug']}",
+            sandbox_enabled=False,
+            module=modules[item["module"]],
+            description=desc,
+            is_active=True,
+        )
+        db.add(assignment)
+
     db.commit()
 
 

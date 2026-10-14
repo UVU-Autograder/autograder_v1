@@ -221,6 +221,8 @@ def main():
         if not m_match:
             continue
         m_num = int(m_match.group(1))
+        if m_num >= 15:
+            continue
         mod_dirname = f"m{m_num}"
         mod_dir = os.path.join(TARGET_CS1400_DIR, mod_dirname)
         os.makedirs(mod_dir, exist_ok=True)
