@@ -49,6 +49,8 @@ class GradingEngine:
         execution_parameters: ExecutionParameters | None = None,
         runner_source: str | None = None,
         fallback_helper: bytes | None = None,
+        expected_manifest: dict | None = None,
+        reference_validation: bool = False,
         strategy: LanguageStrategy | None = None,
     ) -> None:
         self.config = config
@@ -59,6 +61,8 @@ class GradingEngine:
         self.execution_parameters = execution_parameters
         self.runner_source = runner_source
         self.fallback_helper = fallback_helper
+        self.expected_manifest = expected_manifest
+        self.reference_validation = reference_validation
         self.strategy = strategy
         if execution_parameters is not None and (runner_source is None or fallback_helper is None):
             raise ValueError("Frozen execution requires captured runner and helper inputs")
@@ -73,6 +77,8 @@ class GradingEngine:
             execution_parameters=self.execution_parameters,
             runner_source=self.runner_source,
             fallback_helper=self.fallback_helper,
+            expected_manifest=self.expected_manifest,
+            reference_validation=self.reference_validation,
             strategy=self.strategy,
             executor_fn=execute_pytest_in_judge0,
             load_artifact_fn=load_artifact_content,

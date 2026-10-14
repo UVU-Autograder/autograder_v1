@@ -114,6 +114,9 @@ async def create_run(
             status_code=400,
             detail="Assignment is not ready for grading. Contact your instructor.",
         )
+    from app.domains.assignments.inventory import inventory_status
+    if inventory_status(db, db_assignment) != "ready":
+        raise HTTPException(status_code=400, detail="Assignment requires instructor reference validation before grading.")
 
     artifact_refs: dict[str, str] = {}
     for art in db_assignment.artifacts:
@@ -137,6 +140,7 @@ async def create_run(
         artifact_refs=artifact_refs,
         allowed_concepts=allowed_concepts,
         stdin=stdin,
+        expected_manifest=db_assignment.config.validated_test_manifest,
     )
     response.headers["X-Sandbox-Session"] = session
     if error_status == 429:

@@ -36,7 +36,13 @@ def _mock_judge0_client(
         return_value=submission_result
         or {
             "status": {"id": 3},
-            "stdout": '---AUTOGRADER_RESULTS---\n{"tests": [], "summary": {"total": 0, "passed": 0, "failed": 0, "errors": 0, "duration": 0.0, "exit_code": 0}}',
+            "stdout": (
+                '{"protocol_version": 2, "collected": [{"nodeid": "tests.py::test_pass", "markers": ["ag_test"], "xfail": false}], '
+                '"tests": [{"nodeid": "tests.py::test_pass", "markers": ["ag_test"], "xfail": false, "outcome": "passed", "duration": 0.01}], '
+                '"summary": {"total": 1, "passed": 1, "failed": 0, "errors": 0, "skipped": 0, "duration": 0.01, "exit_code": 0}, '
+                '"completed": true, "diagnostics": {"stdout": "", "stderr": "", "stdout_truncated": false, "stderr_truncated": false}, '
+                '"infrastructure_error": null}'
+            ),
         }
     )
 
@@ -133,7 +139,7 @@ async def test_executor_parse_failure(tmp_path):
         )
 
     assert outcome.success is False
-    assert outcome.failure_category == "test_failure"
+    assert outcome.failure_category == "invalid_runner_report"
     assert outcome.pytest_result is not None
     assert outcome.pytest_result.error_message
 

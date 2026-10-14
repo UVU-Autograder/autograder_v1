@@ -1,7 +1,7 @@
 """Autograding test suite for Lab 7: Data Classes."""
 
 import contextlib
-import io
+from autograder_capture import BoundedOutput
 
 import pytest
 from python_autograder_helpers import import_student_modules
@@ -63,7 +63,7 @@ def test_main_output() -> None:
     (student_mod,) = import_student_modules("student")
     assert hasattr(student_mod, "main"), "student.py missing main function"
 
-    f = io.StringIO()
+    f = BoundedOutput()
     with contextlib.redirect_stdout(f):
         student_mod.main()
 

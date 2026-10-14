@@ -47,6 +47,9 @@ def generate_pedagogical_feedback_html(
                 sub_tests_html += "</li>"
             sub_tests_html += "</ul>"
 
+        guidance_html = ""
+        if not test.get("passed") and test.get("hint"):
+            guidance_html = "<p style=" + chr(34) + "white-space: pre-wrap" + chr(34) + "><strong>Instructor Hint:</strong> " + escape(str(test["hint"])) + "</p>"
         tests_html += f"""
         <div style="border: 1px solid #e5e7eb; padding: 15px; margin-bottom: 12px; border-radius: 8px; background-color: #ffffff; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; margin-bottom: 8px;">
@@ -54,6 +57,7 @@ def generate_pedagogical_feedback_html(
                 <span style="color: {status_color}; font-weight: bold; font-size: 0.9em; background-color: {status_color}15; padding: 2px 8px; border-radius: 4px;">{status_text}</span>
             </div>
             <p style="margin: 4px 0; font-size: 0.95em; color: #374151;"><strong>Points:</strong> {test.get("points_awarded", 0)} / {test.get("points", 0)}</p>
+            {guidance_html}
             {sub_tests_html}
         </div>
         """

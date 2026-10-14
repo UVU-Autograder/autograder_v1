@@ -65,9 +65,11 @@ Activate `backend/venv` before direct Python commands: `backend\venv\Scripts\Act
 
 Pause official intake and drain queued/running batches before upgrading from execution-time snapshots. Deploy the API, Celery worker and development mock code from the same revision. There is no legacy-package backfill or execution compatibility path; completed review/export work remains available until normal expiry. Drain batches before subsequent runtime/seed deployments too, because package capture freezes requested parameters and grading assets, not the running image or host grading implementation.
 
-During the drained window, run [validate_grading_package_host.py](../backend/scripts/validate_grading_package_host.py) inside the rebuilt backend container using its deployed environment:
+During the drained window, run the coordinated rollout script [rollout_grading_package.sh](../scripts/rollout_grading_package.sh) (detailed in [Workstation](guides/workstation.md#official-grading-package-rollout-and-worker-coordination)), or execute [validate_grading_package_host.py](../backend/scripts/validate_grading_package_host.py) directly inside the rebuilt backend container using its deployed environment:
 
 ```bash
+bash scripts/rollout_grading_package.sh --course cs1400 --assignment simple-python-functions
+# or directly inside the container:
 dc exec -T backend python scripts/validate_grading_package_host.py --course cs1400 --assignment simple-python-functions
 ```
 

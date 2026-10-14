@@ -134,6 +134,7 @@ def get_sandbox_assignment(
             )
             for group in config.rubric_groups
         ],
+        completion_requirements=[item.model_dump() for item in config.completion_requirements],
     )
 
 

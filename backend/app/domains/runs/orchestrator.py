@@ -167,6 +167,7 @@ def execute_sandbox_run(
     artifact_refs: dict[str, str],
     allowed_concepts: list[str],
     stdin: str | None = None,
+    expected_manifest: dict | None = None,
 ) -> dict:
     """Execute a sandbox grading run directly through the pipeline."""
     if is_run_cancelled(run_id):
@@ -186,6 +187,7 @@ def execute_sandbox_run(
             config=config_obj,
             artifact_refs=artifact_refs,
             allowed_concepts=allowed_concepts,
+            expected_manifest=expected_manifest,
         )
         grading_result = engine.grade_submission_sync(zip_data=zip_data, stdin=stdin)
 

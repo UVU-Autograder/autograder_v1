@@ -13,6 +13,9 @@ class ExtractionError(Exception):
 RESERVED_HARNESS_FILENAMES: frozenset[str] = frozenset(
     {
         "runner.py",
+        "script.py",
+        "autograder_capture.py",
+        ".ag_results.json",
         "conftest.py",
         "ag_test_helpers.py",
     }
@@ -114,7 +117,7 @@ def validate_submission_bundle(extract_dir: Path, config: AssignmentConfigV1) ->
         raise ValueError(f"Submission exceeds maximum allowed files limit: {settings.default_max_files}")
 
     for file_path in all_files:
-        if file_path.name.lower() in RESERVED_HARNESS_FILENAMES:
+        if file_path.name.lower() in RESERVED_HARNESS_FILENAMES or any(part.lower().startswith(".ag_report_") for part in file_path.relative_to(extract_dir).parts):
             raise ValueError(
                 f"Reserved grading harness filename '{file_path.name}' is not allowed in student submissions."
             )

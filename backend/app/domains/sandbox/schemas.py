@@ -31,6 +31,7 @@ class SandboxRunRecord:
     artifact_refs: dict | None = None
     allowed_concepts: list | None = None
     stdin: str | None = None
+    expected_manifest: dict | None = None
 
 
 
@@ -99,6 +100,7 @@ class SandboxAssignmentDetail(SandboxAssignmentSummary):
     allowed_concepts: list[str] = Field(default_factory=list)
     rubric: list[SandboxRubricItem]
     rubric_groups: list[SandboxRubricGroup] = Field(default_factory=list)
+    completion_requirements: list[dict] = Field(default_factory=list)
 
 
 class FilePreviewMetadata(BaseModel):
@@ -118,6 +120,8 @@ class SandboxRunCreateResponse(BaseModel):
 
 
 class TestSummary(BaseModel):
+    hint: str | None = None
+    output_truncated: bool = False
     label: str
     status: Literal["passed", "failed", "warning", "not_run"]
     points_awarded: int = Field(ge=0)
@@ -148,6 +152,7 @@ DEFAULT_RETENTION_NOTICE = None
 
 
 class SandboxRunResultResponse(BaseModel):
+    diagnostics: dict = Field(default_factory=dict)
     run_id: str
     state: Literal["complete", "failure"]
     projected_score: int = Field(ge=0)

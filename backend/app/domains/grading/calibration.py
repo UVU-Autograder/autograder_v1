@@ -80,6 +80,7 @@ async def execute_local_calibration_runner(
     stdin: str | None = None,
     wall_time_limit: float = 10.0,
     runner_source: str | None = None,
+    expected_manifest: dict | None = None,
 ) -> ExecutionOutcome:
     """Local subprocess runner stand-in for Judge0 during offline calibration tests."""
     outcome = ExecutionOutcome()
@@ -111,10 +112,10 @@ async def execute_local_calibration_runner(
     stdout_bytes, stderr_bytes = await proc.communicate(input=stdin_bytes)
     stdout_text = stdout_bytes.decode("utf-8", errors="replace")
 
-    pytest_result = parse_pytest_json(stdout_text)
+    pytest_result = parse_pytest_json(stdout_text, expected_manifest=expected_manifest)
     outcome.pytest_result = pytest_result
     if pytest_result.error_message:
-        outcome.failure_category = "test_failure"
+        outcome.failure_category = pytest_result.failure_category
         outcome.failure_message = pytest_result.error_message
         outcome.success = False
     else:

@@ -98,6 +98,7 @@ class SandboxService:
         artifact_refs: dict[str, str] | None = None,
         allowed_concepts: list[str] | None = None,
         stdin: str | None = None,
+        expected_manifest: dict | None = None,
     ) -> tuple[SandboxRunCreateResponse | None, str, int | None]:
         """Create a sandbox run record and optionally dispatch a Celery task with optional stdin."""
         if not assignment_exists:
@@ -139,6 +140,7 @@ class SandboxService:
             zip_b64 = base64.b64encode(zip_data).decode("ascii")
             record.zip_data_b64 = zip_b64
             record.config = config
+            record.expected_manifest = expected_manifest
             record.artifact_refs = artifact_refs or {}
             record.allowed_concepts = allowed_concepts or []
             record.stdin = stdin
@@ -166,6 +168,7 @@ class SandboxService:
                         artifact_refs=artifact_refs or {},
                         allowed_concepts=allowed_concepts or [],
                         stdin=stdin,
+                        expected_manifest=expected_manifest,
                     )
                     record.celery_task_id = grade_result.id
                     self._store.save_run(record)
@@ -403,6 +406,7 @@ class SandboxService:
                         projected_score=0,
                         max_score=record.max_score,
                         failure_category=redis_result.get("failure_category", "internal_error"),
+                        diagnostics=redis_result.get("diagnostics", {}),
                         warnings=[
                             SandboxWarning(
                                 code=redis_result.get("failure_category", "internal_error"),
@@ -458,6 +462,8 @@ class SandboxService:
                             your_value=your_val,
                             expected_value=exp_val,
                             expected_input=expected_input_val,
+                            hint=tr.get("hint"),
+                            output_truncated=tr.get("output_truncated", False),
                         )
                     )
 
@@ -484,6 +490,7 @@ class SandboxService:
                     projected_score=redis_result.get("score", 0),
                     max_score=redis_result.get("max_score", record.max_score),
                     failure_category=redis_result.get("failure_category"),
+                    diagnostics=redis_result.get("diagnostics", {}),
                     warnings=warnings,
                     test_summaries=test_summaries,
                     rubric_groups=rubric_groups,
@@ -523,6 +530,7 @@ class SandboxService:
                     artifact_refs=record.artifact_refs or {},
                     allowed_concepts=record.allowed_concepts or [],
                     stdin=record.stdin,
+                    expected_manifest=record.expected_manifest,
                 )
             except Exception:
                 logger.exception("Synchronous sandbox evaluation failed for %s", run_id)
@@ -573,6 +581,8 @@ class SandboxService:
                         your_value=your_val,
                         expected_value=exp_val,
                         expected_input=expected_input_val,
+                        hint=tr.get("hint"),
+                        output_truncated=tr.get("output_truncated", False),
                     )
                 )
 
@@ -594,6 +604,7 @@ class SandboxService:
                 projected_score=res_data.get("score", 0),
                 max_score=res_data.get("max_score", record.max_score),
                 failure_category=res_data.get("failure_category"),
+                diagnostics=res_data.get("diagnostics", {}),
                 warnings=warnings,
                 test_summaries=test_summaries,
                 sanitized_feedback=str(res_data.get("failure_message") or "Execution failed.") if not res_data.get("success") else "Review your results above.",

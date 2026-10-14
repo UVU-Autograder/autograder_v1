@@ -90,6 +90,7 @@ async def verify(course: str, assignment: str) -> None:
         config=package.config, artifact_refs={}, allowed_concepts=package.concepts,
         preloaded_artifacts=package.preloaded_artifacts(), execution_parameters=parameters,
         runner_source=package.runner_source, fallback_helper=package.fallback_helper.decode(),
+        expected_manifest=package.expected_manifest.model_dump(mode="json"),
     )
     try:
         with patch("app.domains.grading.executor.create_judge0_client",

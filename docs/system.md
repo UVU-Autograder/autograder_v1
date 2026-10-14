@@ -6,9 +6,9 @@ Canvas owns course content and official grades. The autograder owns grading conf
 
 | Layer | Stack / maintained source |
 | --- | --- |
-| Frontend | Next.js App Router, React, TypeScript, Tailwind/Shadcn/Radix, Monaco, JSZip; offline development mode (`npm run dev`) with synthetic backend fixtures; [routes](../frontend/app/), [features](../frontend/features/), [dependencies](../frontend/package.json) |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind/Shadcn/Radix, Monaco, JSZip, WorkspaceVFS; offline development mode (`npm run dev`) with synthetic backend fixtures; [routes](../frontend/app/), [features](../frontend/features/), [dependencies](../frontend/package.json) |
 | API and database | FastAPI, Pydantic v2, SQLAlchemy, Alembic; Python 3.11+, PostgreSQL, SQLite development mode; [domains](../backend/app/domains/), [dependencies](../backend/requirements.txt) |
-| Assignment/grading | Specification and grading engines, AST inspection, pytest, result normalization/parsing; [assignments](../backend/app/domains/assignments/), [grading](../backend/app/domains/grading/), [AST](../backend/app/integrations/ast_checker/) |
+| Assignment/grading | Specification and grading engines (`GradingPipeline`), decoupled language strategies (`LanguageStrategy` for Python/C++), AST inspection, pytest, result normalization/parsing; [assignments](../backend/app/domains/assignments/), [grading](../backend/app/domains/grading/), [AST](../backend/app/integrations/ast_checker/) |
 | Scheduling and cleanup | Celery/Redis transport, PostgreSQL execution tickets/dispatch records, shared-volume locks and independent dispatch/cleanup workers; [runs](../backend/app/domains/runs/) |
 | Execution | Custom Judge0 Python 3.11.9 runtime (language 711), Kata/QEMU isolation; [image](../judge0.Dockerfile), [Compose](../docker-compose.yml), [Kata overlay](../docker-compose.kata.yml) |
 | Local AI | vLLM, Gemma 4 12B QAT, reviewed `cs1410-p2c` LoRA; QLoRA training with PyTorch/Transformers/TRL/PEFT/bitsandbytes; [AI](guides/ai.md), [training dependencies](../backend/training/) |
@@ -21,29 +21,29 @@ Generated [OpenAPI](schemas/openapi.json) and [assignment JSON Schema](schemas/c
  
 **Course → modules → assignments**, alongside **course → sections**. Assignments are course-owned; sections scope official runs and staff grants. Admins manage courses/sections, staff roles/grants and monitoring. Course-scoped staff authorization is strictly enforced: instructors hold full read/write authority over assigned courses, IAs receive read-only setup access with 403 on mutations, and unassigned staff are denied access across courses, assignments, and artifacts. Section-scoped authority governs official runs.
 
-Course defaults and module concepts inherit through the selected module; assignment denylists subtract concepts. Assignment configuration/history and instructor artifacts persist. Published master-course versions, section adoption and update notices are planned work.
+Course defaults and module concepts inherit through the selected module; assignment denylists subtract concepts. Assignment configuration and instructor artifacts persist. Published master-course versions, section adoption and update notices are planned work.
 
 ## Public sandbox
 
-Students need no account. They discover active sandbox assignments, upload/create/edit/delete their own workspace files, download their files/ZIP, and submit the current bundle. Provided assignment material is read-only; workspace file renaming is supported with real-time validation, multi-pane tab sync, and required entrypoint checks.
+Students need no account. They discover active sandbox assignments, upload/create/edit/delete their own workspace files via `WorkspaceVFS`, download their files/ZIP, and submit the current bundle. Provided assignment material is read-only; workspace file renaming is supported with real-time validation, multi-pane tab sync, and required entrypoint checks.
 
 Results include projected scores, stdout, test/assertion outcomes, expected/actual I/O, diffs and concept warnings. Session-bound results are transient (normally one hour); queued work can be canceled. There is no persistent student attempt history or server-generated sandbox export.
 
-AI receives sanitized code and grounded failures, validates its complete response before streaming, and falls back when unavailable/invalid. It explains; it never changes grades or supplies solutions. Assignment markdown summaries are rendered for students in the problem overview, sanitized and truncated to 1,000 characters for AI prompts (`PROMPT_VERSION = "v7"`), and kept in sync with automated scoring requirements.
+AI receives sanitized code and grounded failures, validates its complete response before streaming, and falls back when unavailable/invalid. It explains; it never changes grades or supplies solutions. Assignment markdown summaries are rendered for students in the problem overview, sanitized and truncated to 1,000 characters for AI prompts (`PROMPT_VERSION = "v8"`), and kept in sync with automated scoring requirements.
 
 ## Assignment setup and scoring
 
-Staff use the wizard/artifact editors to configure bundles, automated/manual items and models, run preflight, and validate reference solutions. CS1410 has 17 packages; CS1400 uses `simple-python-functions`. Pygame combines headless tests with manual visual criteria.
+Staff use the wizard/artifact editors to configure bundles, automated/manual items and models, run preflight, and validate reference solutions. An interactive AI test assistant assists instructors in drafting pytest test suites from assignment requirements. CS1410 has 17 packages; CS1400 uses `simple-python-functions`. Execution strategies decouple language runners (`python` with pytest, `cpp` with compiler diagnostics). Pygame combines headless tests with manual visual criteria.
 
-Canonical `assignment_configs.config` includes bundle paths/globs, pytest/model/support artifacts, unified scoring items, concept policy, completion thresholds, dependencies and rubric groups; instructor-authored markdown/HTML instructions persist on `assignments.description`. Stable scoring keys map to `ag_<key>` markers; all tests sharing a key must pass for its points. Extra credit can exceed the base total; completion thresholds are separate. Database scoring rows are derived projections.
+Canonical `assignment_configs.config` includes bundle paths/globs, language specification, pytest/model/support artifacts, unified scoring items, completion requirements ("Pass at least X of Y" objectives), concept policy, dependencies and rubric groups; instructor-authored markdown/HTML instructions persist on `assignments.description`. Stable scoring keys map to `ag_<key>` markers; all tests sharing a key must pass for its points. Completion requirements (`completion_requirements`) allow specifying objectives where students must pass at least *M* of *N* designated test cases. Extra credit can exceed the base total. Scoring items are defined directly within configuration JSON (`config["scoring_items"]`).
 
 Student runs receive pytest/support assets, excluding model solutions. AST checks detect syntax, blocked constructs and concept policy; pytest determines correctness. [Authoring](guides/assignments.md) links models, examples and helpers.
 
 ## Official grading and review
 
-Staff select a granted section and upload a Canvas ZIP. Safe extraction groups student files, normalizes Canvas/version suffixes, reports unmatched files and resolves collisions by keeping the larger file. Before dispatch readiness, intake captures a versioned [grading package](../backend/app/domains/runs/grading_package.py): configuration/version, effective concepts, description, pytest/support bytes, generated runner, fallback helper and effective execution limits/dependency declarations. Required grading assets, filenames and digests are validated before admission. Model bytes, credentials and storage paths are excluded.
+Staff select a granted section and upload a Canvas ZIP. Pure `CanvasArchiveParser` extracts student files without database dependencies, normalizes Canvas/version suffixes, reports unmatched files and resolves collisions by keeping the larger file. Before dispatch readiness, intake captures a versioned [grading package](../backend/app/domains/runs/grading_package.py): configuration/version, effective concepts, description, pytest/support bytes, generated runner, fallback helper and effective execution limits/dependency declarations. Required grading assets, filenames and digests are validated before admission. Model bytes, credentials and storage paths are excluded.
 
-Official workers and the development mock runner use that package; subsequent assignment edits cannot change a queued batch's rubric, files or requested execution parameters. A missing/corrupt/unsupported package fails the run before execution and cannot produce exports. Package and temporary files expire with the official workspace. Runtime images and installed dependency versions are not pinned by this mechanism; upgrades require draining batches and follow the [rollout checks](running.md#official-package-rollout-and-smoke-check).
+Official workers and the development mock runner evaluate submissions through `GradingPipeline` using that package; subsequent assignment edits cannot change a queued batch's rubric, files or requested execution parameters. A missing/corrupt/unsupported package fails the run before execution and cannot produce exports. Package and temporary files expire with the official workspace. Runtime images and installed dependency versions are not pinned by this mechanism; upgrades require draining batches and follow the [rollout checks](running.md#official-package-rollout-and-smoke-check).
 
 Review provides counters, cohort histogram/filters, read-only files, isolated HTML previews, manual scores and item/overall comments. Every manual item must be completed before export. Outputs are a Canvas-grade CSV and per-student HTML `feedback.zip`; comments appear in HTML. Staff import/distribute these manually. There is no Canvas write-back or official AI.
 
@@ -60,7 +60,7 @@ Durable tickets, checkpoints and ownership leases support bounded admission, fai
 | Judge0 | 30-second grading timeout, 256MiB memory target, student networking disabled |
 | Sandbox quota | Compose: 5 uploads/hour/session; bare Python defaults differ |
 
-The target is 50 active users with queued grading. Deployment is single-host with reconciliation/restarts, not automatic host failover. Cloud/load balancing and additional languages remain future work.
+The target is 50 active users with queued grading. Deployment is single-host with reconciliation/restarts, not automatic host failover. Cloud/load balancing and additional languages remain future work (with C, C++, and HTML/CSS/JavaScript next on the docket for language implementation after Python).
 
 ## Staff identity, administration and access
  

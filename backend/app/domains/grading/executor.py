@@ -61,6 +61,7 @@ async def execute_pytest_in_judge0(
     stdin: str | None = None,
     wall_time_limit: float = DEFAULT_WALL_TIME_LIMIT,
     runner_source: str | None = None,
+    expected_manifest: dict | None = None,
 ) -> ExecutionOutcome:
     """Generate runner, submit to Judge0, parse stdout, enforce cleanup.
 
@@ -101,11 +102,11 @@ async def execute_pytest_in_judge0(
                 return outcome
 
             stdout = submission_result.get("stdout", "") or ""
-            pytest_result = parse_pytest_json(stdout)
+            pytest_result = parse_pytest_json(stdout, expected_manifest=expected_manifest)
             outcome.pytest_result = pytest_result
 
             if pytest_result.error_message:
-                outcome.failure_category = "test_failure"
+                outcome.failure_category = pytest_result.failure_category
                 outcome.failure_message = pytest_result.error_message
                 return outcome
 

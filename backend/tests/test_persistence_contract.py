@@ -58,6 +58,73 @@ def test_assignment_config_rejects_missing_extra_credit():
         AssignmentConfigV1.model_validate(raw)
 
 
+def test_assignment_config_accepts_valid_completion_requirements():
+    raw = load_example_config()
+    raw["completion_requirements"] = [
+        {
+            "key": "complete_two",
+            "label": "Complete two",
+            "test_keys": ["add_numbers", "reverse_words"],
+            "minimum_passed": 2,
+        }
+    ]
+    config = AssignmentConfigV1.model_validate(raw)
+    assert len(config.completion_requirements) == 1
+    assert config.completion_requirements[0].key == "complete_two"
+    assert config.completion_requirements[0].minimum_passed == 2
+
+
+def test_assignment_config_rejects_invalid_completion_reference():
+    raw = load_example_config()
+    raw["completion_requirements"] = [
+        {
+            "key": "complete_two",
+            "label": "Complete two",
+            "test_keys": ["add_numbers", "missing_key"],
+            "minimum_passed": 2,
+        }
+    ]
+
+    with pytest.raises(ValidationError, match="unknown tests"):
+        AssignmentConfigV1.model_validate(raw)
+
+
+def test_assignment_config_rejects_completion_minimum_passed_exceeding_tests():
+    raw = load_example_config()
+    raw["completion_requirements"] = [
+        {
+            "key": "complete_two",
+            "label": "Complete two",
+            "test_keys": ["add_numbers"],
+            "minimum_passed": 2,
+        }
+    ]
+
+    with pytest.raises(ValidationError, match="minimum_passed exceeds referenced tests"):
+        AssignmentConfigV1.model_validate(raw)
+
+
+def test_assignment_config_rejects_duplicate_completion_keys():
+    raw = load_example_config()
+    raw["completion_requirements"] = [
+        {
+            "key": "complete_two",
+            "label": "Complete two",
+            "test_keys": ["add_numbers"],
+            "minimum_passed": 1,
+        },
+        {
+            "key": "complete_two",
+            "label": "Complete two again",
+            "test_keys": ["subtract_numbers"],
+            "minimum_passed": 1,
+        },
+    ]
+
+    with pytest.raises(ValidationError, match="duplicate completion requirement keys"):
+        AssignmentConfigV1.model_validate(raw)
+
+
 def test_initial_metadata_tables_exist():
     table_names = set(inspect(engine).get_table_names())
 

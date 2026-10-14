@@ -25,6 +25,8 @@ INFRASTRUCTURE_FAILURE_CATEGORIES: frozenset[str] = frozenset(
         "internal_error",
         "execution_unavailable",
         "execution_interrupted",
+        "invalid_runner_report",
+        "inventory_not_ready",
     }
 )
 

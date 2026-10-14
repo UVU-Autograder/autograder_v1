@@ -4,6 +4,7 @@ export type Constraint = {
 };
 
 export type RubricItem = {
+    hint?: string | null;
     id?: string;
     key: string;
     label: string;
@@ -20,6 +21,13 @@ export type RubricGroup = {
     key: string;
     label: string;
     item_keys?: string[];
+};
+
+export type CompletionRequirement = {
+    key: string;
+    label: string;
+    test_keys: string[];
+    minimum_passed: number;
 };
 
 export type StaffArtifact = {
@@ -55,6 +63,7 @@ export type AssignmentConfigV1 = {
 
     scoring_items: RubricItem[];
     rubric_groups?: RubricGroup[];
+    completion_requirements?: CompletionRequirement[];
     dependencies?: string[];
 };
 
@@ -85,6 +94,7 @@ export type Assignment = AssignmentsDetails & {
     allowed_concepts?: string[];
     rubric: RubricItem[];
     rubric_groups: RubricGroup[];
+    completion_requirements?: CompletionRequirement[];
     config?: AssignmentConfigV1;
 };
 
@@ -128,6 +138,8 @@ export type SandboxRunCreateResponse = {
 };
 
 export type SandboxTestSummary = {
+    hint?: string | null;
+    output_truncated?: boolean;
     label: string;
     status: "passed" | "failed" | "warning" | "not_run";
     points_awarded: number;
@@ -155,6 +167,7 @@ export type SandboxWarning = {
 };
 
 export type SandboxRunResultResponse = {
+    diagnostics?: { stdout: string; stderr: string; stdout_truncated: boolean; stderr_truncated: boolean };
     run_id: string;
     state: "complete" | "failure";
     projected_score: number;
@@ -200,6 +213,7 @@ export type StaffAssignmentSetup = {
     entrypoint_path: string;
     scoring_items: RubricItem[];
     rubric_groups?: RubricGroup[];
+    completion_requirements?: CompletionRequirement[];
     artifacts: StaffArtifact[];
     config: AssignmentConfigV1;
     module_id?: number | null;

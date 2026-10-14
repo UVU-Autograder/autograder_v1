@@ -95,6 +95,7 @@ class EvaluationReport:
     ast_result: ASTCheckResult | None = None
     pytest_result: PytestRunResult | None = None
     parsed_outcome: ParsedOutcome | None = None
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self, run_id: str | None = None) -> dict[str, Any]:
         """Serialize EvaluationReport into a standardized dictionary for state tracking and Redis."""
@@ -106,6 +107,7 @@ class EvaluationReport:
             "warnings": self.warnings,
             "failure_category": self.failure_category,
             "failure_message": self.failure_message,
+            "diagnostics": self.diagnostics,
         }
         if self.compiler_errors:
             data["compiler_errors"] = self.compiler_errors
@@ -156,6 +158,8 @@ class GradingPipeline:
         execution_parameters: ExecutionParameters | None = None,
         runner_source: str | None = None,
         fallback_helper: bytes | None = None,
+        expected_manifest: dict | None = None,
+        reference_validation: bool = False,
         strategy: LanguageStrategy | None = None,
         *,
         executor_fn: Callable[..., Any] | None = None,
@@ -170,6 +174,8 @@ class GradingPipeline:
         self.execution_parameters = execution_parameters
         self.runner_source = runner_source
         self.fallback_helper = fallback_helper
+        self.expected_manifest = expected_manifest
+        self.reference_validation = reference_validation
         if execution_parameters is not None and (runner_source is None or fallback_helper is None):
             raise ValueError("Frozen execution requires captured runner and helper inputs")
 
@@ -367,9 +373,16 @@ class GradingPipeline:
             runner_source=self.runner_source,
             dependencies=self.config.dependencies,
             stdin=stdin,
+            expected_manifest=self.expected_manifest,
         )
 
         report.pytest_result = outcome.pytest_result
+        if outcome.pytest_result:
+            report.diagnostics = outcome.pytest_result.diagnostics
+            if isinstance(report.diagnostics, dict) and any(
+                report.diagnostics.get(key) is True for key in ("stdout_truncated", "stderr_truncated")
+            ):
+                report.warnings.append({"code": "output_truncated", "message": "Output was truncated at 64 KiB. Check for excessive printing or a loop."})
         if not outcome.success:
             report.failure_category = outcome.failure_category
             report.failure_message = outcome.failure_message

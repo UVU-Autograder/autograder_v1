@@ -120,6 +120,23 @@ def _seed_cs1400(
     db.add(assignment)
     db.flush()
     seed_assignment_artifacts(db, assignment, assignment.slug)
+    db.flush()
+    from app.domains.assignments.inventory import execution_fingerprint
+    from app.domains.grading.report_contract import ValidatedManifest
+
+    cases = [
+        {"nodeid": "assignment_tests.py::test_add_numbers_positive_values", "markers": ["ag_add_numbers"], "xfail": False},
+        {"nodeid": "assignment_tests.py::test_add_numbers_negative_values", "markers": ["ag_add_numbers"], "xfail": False},
+        {"nodeid": "assignment_tests.py::test_reverse_words_basic_sentence", "markers": ["ag_reverse_words"], "xfail": False},
+        {"nodeid": "assignment_tests.py::test_reverse_words_preserves_spacing_between_words", "markers": ["ag_reverse_words"], "xfail": False},
+        {"nodeid": "assignment_tests.py::test_count_vowels_lowercase", "markers": ["ag_count_vowels"], "xfail": False},
+        {"nodeid": "assignment_tests.py::test_count_vowels_case_insensitive", "markers": ["ag_count_vowels"], "xfail": False},
+    ]
+    assignment.config.validated_test_manifest = ValidatedManifest(
+        fingerprint=execution_fingerprint(db, assignment),
+        cases=cases,
+    ).model_dump(mode="json")
+    db.commit()
 
 
 def _seed_cs1410(

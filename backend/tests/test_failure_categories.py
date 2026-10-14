@@ -7,7 +7,6 @@ from pathlib import Path
 
 from app.domains.assignments.schemas import ScoringItemConfig
 from app.domains.grading.result_parser import (
-    RESULTS_DELIMITER,
     calculate_scores,
     parse_pytest_json,
 )
@@ -58,6 +57,22 @@ def test_classify_execution_failure_taxonomy() -> None:
 
 def test_parse_pytest_json_and_calculate_scores_tags_failure_categories() -> None:
     payload = {
+        "protocol_version": 2,
+        "completed": True,
+        "infrastructure_error": None,
+        "summary": {
+            "total": 2,
+            "passed": 0,
+            "failed": 2,
+            "errors": 0,
+            "skipped": 0,
+            "duration": 0.02,
+            "exit_code": 1,
+        },
+        "collected": [
+            {"nodeid": "tests.py::test_assert", "markers": ["ag_item_assert"], "xfail": False},
+            {"nodeid": "tests.py::test_crash", "markers": ["ag_item_crash"], "xfail": False},
+        ],
         "tests": [
             {
                 "nodeid": "tests.py::test_assert",
@@ -65,6 +80,8 @@ def test_parse_pytest_json_and_calculate_scores_tags_failure_categories() -> Non
                 "markers": ["ag_item_assert"],
                 "duration": 0.01,
                 "message": "E   AssertionError: assert 1 == 2",
+                "failure_category": None,
+                "output_truncated": False,
             },
             {
                 "nodeid": "tests.py::test_crash",
@@ -72,18 +89,13 @@ def test_parse_pytest_json_and_calculate_scores_tags_failure_categories() -> Non
                 "markers": ["ag_item_crash"],
                 "duration": 0.01,
                 "message": "IndexError: list index out of range",
+                "failure_category": None,
+                "output_truncated": False,
             },
         ],
-        "summary": {
-            "total": 2,
-            "passed": 0,
-            "failed": 2,
-            "errors": 0,
-            "duration": 0.02,
-            "exit_code": 1,
-        },
+        "diagnostics": {"stdout": "", "stderr": ""},
     }
-    raw_stdout = f"{RESULTS_DELIMITER}\n{json.dumps(payload)}"
+    raw_stdout = json.dumps(payload)
     run_result = parse_pytest_json(raw_stdout)
 
     assert run_result.tests[0].failure_category == "assertion_failure"

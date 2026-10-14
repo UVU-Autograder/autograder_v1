@@ -194,6 +194,14 @@ export function ScoringRulesSection() {
                   />
                 </div>
 
+                <div className="md:col-span-12 space-y-1">
+                  <label htmlFor={`hint-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground">Instructor Hint / Guidance</label>
+                  <textarea id={`hint-${item.id || item.key}`} value={item.hint ?? ""} maxLength={2000}
+                    onChange={(e) => updateScoringItemField(item.id || item.key, "hint", e.target.value)}
+                    className="w-full rounded-md border border-input bg-background p-2 text-sm" rows={2} />
+                  <p className="text-xs text-muted-foreground">Explain the requirement or a debugging strategy without giving solution code. Shown when this criterion fails. Output is limited to 64 KiB per stream per test.</p>
+                </div>
+
                 {/* Points */}
                 <div className="md:col-span-2 space-y-1">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">

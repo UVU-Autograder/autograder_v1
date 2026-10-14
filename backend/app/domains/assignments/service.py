@@ -19,6 +19,7 @@ from app.domains.assignments.schemas import (
     ArtifactMetadata,
     AssignmentConfigV1,
     AssignmentCreate,
+    CompletionRequirement,
     RubricGroup,
     ScoringItem,
     ScoringItemConfig,
@@ -112,7 +113,10 @@ def get_staff_setup(
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
     if assignment is None or assignment.config is None:
         return None
-    return build_staff_setup(assignment)
+    setup = build_staff_setup(assignment)
+    from app.domains.assignments.inventory import inventory_status
+    setup.inventory_status = inventory_status(db, assignment)
+    return setup
 
 
 def update_staff_setup(
@@ -153,7 +157,10 @@ def update_staff_setup(
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
     if assignment is None:
         return None
-    return build_staff_setup(assignment)
+    setup = build_staff_setup(assignment)
+    from app.domains.assignments.inventory import inventory_status
+    setup.inventory_status = inventory_status(db, assignment)
+    return setup
 
 
 def _coerce_scoring_item_type(item_type: str, label: str) -> Literal["manual", "pytest"]:
@@ -172,6 +179,7 @@ def build_scoring_items(scoring_items: list[ScoringItemConfig]) -> list[ScoringI
             item_type=_coerce_scoring_item_type(item.item_type, item.label),
             pytest_marker=pytest_marker_for_key(item.key) if item.item_type == "pytest" else None,
             rubric_group_key=item.rubric_group_key,
+            hint=item.hint,
         )
         for item in scoring_items
     ]
@@ -200,6 +208,15 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
                 item_keys=[item.key for item in config.scoring_items if item.rubric_group_key == group.key],
             )
             for group in config.rubric_groups
+        ],
+        completion_requirements=[
+            CompletionRequirement(
+                key=item.key,
+                label=item.label,
+                test_keys=item.test_keys,
+                minimum_passed=item.minimum_passed,
+            )
+            for item in config.completion_requirements
         ],
         artifacts=[
             ArtifactMetadata(
@@ -440,6 +457,7 @@ def get_default_config(slug: str | None = None) -> dict:
                 "item_type": "pytest",
             },
         ],
+        "completion_requirements": [],
         "dependencies": [],
         "rubric_groups": [],
     }

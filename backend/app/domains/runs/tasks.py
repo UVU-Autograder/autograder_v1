@@ -63,6 +63,7 @@ def grade_sandbox_run(
     artifact_refs: dict[str, str],
     allowed_concepts: list[str],
     stdin: str | None = None,
+    expected_manifest: dict | None = None,
 ) -> dict:
     """Execute a sandbox grading run through the orchestrator pipeline."""
     from app.domains.runs.queue_admission import claim, QueueFullError
@@ -79,6 +80,7 @@ def grade_sandbox_run(
         artifact_refs=artifact_refs,
         allowed_concepts=allowed_concepts,
         stdin=stdin,
+        expected_manifest=expected_manifest,
     )
 
 
@@ -138,6 +140,9 @@ def validate_assignment_model_solution(
             if not assignment or not assignment.config:
                 raise ValueError("Assignment config not found.")
             config = AssignmentConfigV1.model_validate(assignment.config.config)
+            from app.domains.assignments.inventory import execution_fingerprint
+            from app.domains.grading.pipeline import preload_grading_artifacts
+            validation_fingerprint = execution_fingerprint(db, assignment)
             max_score = sum(
                 item.points
                 for item in config.scoring_items
@@ -201,6 +206,7 @@ def validate_assignment_model_solution(
             from app.domains.assignments.service import effective_allowed_concepts
 
             allowed_concepts = effective_allowed_concepts(assignment)
+            validation_artifacts = preload_grading_artifacts(config, artifact_refs)
 
         # 5. Run the grading engine asynchronously (with execution slot tracking)
         from uuid import uuid4
@@ -228,6 +234,8 @@ def validate_assignment_model_solution(
                 config=config,
                 artifact_refs=artifact_refs,
                 allowed_concepts=allowed_concepts,
+                preloaded_artifacts=validation_artifacts,
+                reference_validation=True,
             )
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -264,6 +272,24 @@ def validate_assignment_model_solution(
             "score": grading_result.score,
             "max_score": max_score,
         }
+        if passed:
+            from app.domains.grading.report_contract import ValidatedManifest
+            collected = grading_result.pytest_result.collected if grading_result.pytest_result else []
+            scoring_markers = {f"ag_{item.key}" for item in config.scoring_items if item.item_type == "pytest"}
+            if not collected or any(case["xfail"] and scoring_markers.intersection(case["markers"]) for case in collected):
+                passed = False
+                errors.append("Reference inventory is empty or contains xfail scoring cases.")
+            else:
+                with SessionLocal() as db:
+                    current = get_assignment_for_course(db, course_code, assignment_slug)
+                    if current is None or execution_fingerprint(db, current) != validation_fingerprint:
+                        passed = False
+                        errors.append("Assignment changed during validation. Validate again.")
+                    else:
+                        current.config.validated_test_manifest = ValidatedManifest(
+                            fingerprint=validation_fingerprint, cases=collected).model_dump(mode="json")
+                        db.commit()
+            result_payload["passed"] = passed
         set_run_result(run_id, result_payload)
 
         if passed:

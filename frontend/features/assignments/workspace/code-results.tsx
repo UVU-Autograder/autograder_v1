@@ -325,6 +325,17 @@ export default function CodeResults({
           {test.points_possible}
         </p>
 
+        {test.status !== "passed" && test.hint && (
+          <div className="mt-2 rounded-md border border-border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+            <Badge variant="secondary">Instructor Hint</Badge>
+            <p className="mt-1">{test.hint}</p>
+          </div>
+        )}
+        {test.output_truncated && (
+          <p role="alert" className="mt-2 rounded-md border border-amber-400 p-2 text-xs">
+            Output exceeded 64 KiB. This test failed. Check for excessive printing or a loop.
+          </p>
+        )}
         {test.status !== "passed" &&
           (test.your_value != null ||
             test.actual != null ||
@@ -389,6 +400,11 @@ export default function CodeResults({
 
   return (
     <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-background border-l border-border text-foreground">
+      {(result?.diagnostics?.stdout_truncated || result?.diagnostics?.stderr_truncated) && (
+        <p role="alert" className="mb-3 rounded-md border border-amber-400 p-3 text-sm">
+          Console output was truncated at 64 KiB. Check for excessive printing or a loop.
+        </p>
+      )}
       <details className="mb-3 rounded-md border border-border bg-card text-card-foreground text-xs">
         <summary className="cursor-pointer select-none px-3 py-2 text-muted-foreground font-medium hover:text-foreground">
           Provide stdin{" "}
