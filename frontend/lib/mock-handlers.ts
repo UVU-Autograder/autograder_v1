@@ -16,6 +16,9 @@ import {
   MOCK_STAFF_ASSIGNMENT_SETUP_LAB1,
   MOCK_STAFF_COURSES,
   MOCK_STUDENT_FILES,
+  MOCK_AUDIT_RECORDS,
+  MOCK_AUDIT_STATS,
+  MOCK_AUDIT_VERIFICATION,
 } from "./mock-data";
 
 function makeMockResponse<T>(
@@ -451,6 +454,52 @@ def invert_pixels(pixels):
 
   if (normalizedPath === "/staff/admin/monitoring" && method === "GET") {
     return makeMockResponse(MOCK_MONITORING) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/staff/admin/logs" && method === "GET") {
+    const url = new URL(`http://localhost${normalizedWithQuery}`);
+    const search = url.searchParams.get("search")?.toLowerCase();
+    const event = url.searchParams.get("event");
+    const workflow = url.searchParams.get("workflow_type");
+    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const pageSize = parseInt(url.searchParams.get("page_size") || "25", 10);
+
+    let filtered = [...MOCK_AUDIT_RECORDS];
+    if (search) {
+      filtered = filtered.filter(
+        (r) =>
+          r.event.toLowerCase().includes(search) ||
+          r.workflow_type?.toLowerCase().includes(search) ||
+          r.course_id?.toLowerCase().includes(search)
+      );
+    }
+    if (event) {
+      filtered = filtered.filter((r) => r.event === event);
+    }
+    if (workflow) {
+      filtered = filtered.filter((r) => r.workflow_type === workflow);
+    }
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const offset = (page - 1) * pageSize;
+    const items = filtered.slice(offset, offset + pageSize);
+
+    return makeMockResponse({
+      items,
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages,
+    }) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/staff/admin/logs/stats" && method === "GET") {
+    return makeMockResponse(MOCK_AUDIT_STATS) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/staff/admin/logs/verify" && method === "POST") {
+    return makeMockResponse(MOCK_AUDIT_VERIFICATION) as { data: T; response: Response };
   }
 
   // Fallback for unhandled mock paths: return null

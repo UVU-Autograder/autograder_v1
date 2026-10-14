@@ -60,9 +60,12 @@ All structured audit entries are emitted as single-line JSON records containing 
 | `workflow_type` | string | Operational pipeline segment (`official`, `sandbox`, `logging`) | System architectural categorization |
 
 #### Enforcement and verification
-1. **Drop-By-Default Allowlisting**: Any parameter key passed to `audit_event` that is not present in the allowlist is discarded before JSON serialization.
-2. **Process-Wide Interception**: `SensitiveDataFilter` and `RedactingFormatter` wrap all application and third-party framework loggers (`uvicorn`, `celery`, `sqlalchemy`), scrubbing unhandled exception tracebacks and stack frames.
-3. **Automated Verification**: Non-retention and sanitization guarantees are continuously verified by [`backend/tests/test_audit_log.py`](../backend/tests/test_audit_log.py) and [`backend/tests/test_audit_access_denial.py`](../backend/tests/test_audit_access_denial.py).
+1. **Single-Path Validation**: Any parameter key passed to `audit_context` or `audit_event` outside the allowlist raises a `ValueError` in non-production environments (`environment != "production"`) to prevent silent metric omissions. In production, unallowlisted keys are dropped and an operational warning is emitted to the separate `autograder.audit.meta` logger, ensuring `autograder.audit` records remain parseable single-line JSON.
+2. **Process-Wide Interception**: `SensitiveDataFilter` and `RedactingFormatter` wrap all application and third-party framework loggers (`uvicorn`, `celery`, `sqlalchemy`), scrubbing unhandled exception tracebacks, stack frames, and idempotently prefixing application lines with ambient context.
+3. **Inspector Tooling**: Institutional auditors and developers can review audit streams or verify logs using [`scripts/inspect_logs.py`](../scripts/inspect_logs.py):
+   * `python scripts/inspect_logs.py --sample`: Formats sample audit records in a clean tabular report.
+   * `python scripts/inspect_logs.py --file <path> --verify-pii`: Scans records against canonical FERPA regex rules, reporting zero residual Canvas filename, email, U-number, workspace-segment, or token patterns. Pattern scanning validates automated scrubbers; it does not detect unpatterned student names or grades.
+4. **Automated Verification**: Non-retention, sanitization, and context tagging guarantees are continuously verified by [`backend/tests/test_audit_log.py`](../backend/tests/test_audit_log.py) and [`backend/tests/test_audit_access_denial.py`](../backend/tests/test_audit_access_denial.py).
 
 Back up only approved persistent metadata and instructor assets, excluding student detail, workspaces, and broker/results (FERPA contract). [Recovery](guides/workstation.md#back-up-and-restore) describes verified metadata dump and container artifact extraction procedures; institutional offsite schedule and retention cadence remain open.
 

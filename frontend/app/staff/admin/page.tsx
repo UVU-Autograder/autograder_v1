@@ -22,6 +22,11 @@ const adminLinks = [
     title: "Monitoring",
     description: "View active runs, queue size, and token usage statistics",
   },
+  {
+    href: "/staff/admin/logs",
+    title: "Logs & FERPA Audit",
+    description: "Inspect audit trail, access denials, and FERPA compliance telemetry",
+  },
 ];
 
 export default function AdminPage() {

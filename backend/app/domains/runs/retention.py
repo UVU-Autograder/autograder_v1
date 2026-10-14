@@ -277,6 +277,12 @@ def reconcile(db: Session) -> dict[str, int]:
                 counts["busy_count"] += 1
             except OSError:
                 counts["error_count"] += 1
+    try:
+        from app.domains.audit.service import prune_expired_audit_records
+
+        prune_expired_audit_records(db)
+    except Exception:
+        pass
     return counts
 
 

@@ -21,6 +21,11 @@ import type {
   RunSummary,
   StudentFile,
 } from "@/features/runs/types";
+import type {
+  AuditRecord,
+  AuditStatsResponse,
+  AuditVerificationResponse,
+} from "@/features/audit/types";
 
 export const MOCK_SANDBOX_COURSES: SandboxCoursesResponse = {
   courses: [
@@ -659,4 +664,92 @@ export const MOCK_MONITORING: MonitoringStats = {
   dispatch_service_healthy: true,
   waiting_executions: 0,
   active_executions: 0,
+};
+
+export const MOCK_AUDIT_RECORDS: AuditRecord[] = [
+  {
+    id: 1,
+    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    event: "official.run_completed",
+    workflow_type: "official",
+    actor_user_id: 1,
+    course_id: "CS 1410",
+    assignment_id: "lab1",
+    run_id: 101,
+    status_code: 200,
+    payload: {
+      action: "batch_grade",
+      submission_count: 24,
+      exports_retained: true,
+    },
+  },
+  {
+    id: 2,
+    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    event: "audit.pii_redacted",
+    workflow_type: "official",
+    actor_user_id: 1,
+    course_id: "CS 1410",
+    assignment_id: "lab1",
+    run_id: 101,
+    status_code: 200,
+    payload: {
+      rule: "canvas_filename",
+      original_length: 38,
+      replacement: "submission.py",
+    },
+  },
+  {
+    id: 3,
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+    event: "auth.access_denied",
+    workflow_type: "official",
+    actor_user_id: null,
+    course_id: null,
+    assignment_id: null,
+    run_id: null,
+    status_code: 403,
+    payload: {
+      endpoint: "/api/v1/staff/admin/courses",
+      reason: "insufficient_role",
+    },
+  },
+  {
+    id: 4,
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
+    event: "sandbox.run_completed",
+    workflow_type: "sandbox",
+    actor_user_id: null,
+    course_id: "CS 1410",
+    assignment_id: "lab1",
+    run_id: 102,
+    status_code: 200,
+    payload: {
+      student_score: 100,
+      execution_seconds: 1.24,
+    },
+  },
+];
+
+export const MOCK_AUDIT_STATS: AuditStatsResponse = {
+  total_events: 4,
+  events_24h: 4,
+  pii_redacted_count: 1,
+  access_denied_count: 1,
+  event_counts: {
+    "official.run_completed": 1,
+    "audit.pii_redacted": 1,
+    "auth.access_denied": 1,
+    "sandbox.run_completed": 1,
+  },
+};
+
+export const MOCK_AUDIT_VERIFICATION: AuditVerificationResponse = {
+  compliant: true,
+  records_scanned: 4,
+  violations_count: 0,
+  violations: [],
+  checked_at: new Date().toISOString(),
+  disclaimer:
+    "Pattern verification verifies absence of known log PII patterns (Canvas filenames, student paths, emails, UUIDs, U-numbers) in allowlisted audit fields. It does not verify student names or grades in unredacted student code.",
 };
