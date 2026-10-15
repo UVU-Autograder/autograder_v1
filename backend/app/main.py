@@ -53,6 +53,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.debug("Judge0 startup readiness check skipped or failed: %s", exc)
     yield
 
+class PrivateNetworkCORSMiddleware(CORSMiddleware):
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            if headers.get(b"access-control-request-private-network") == b"true":
+                async def send_wrapper(message):
+                    if message["type"] == "http.response.start":
+                        headers_list = list(message.get("headers", []))
+                        headers_list.append((b"access-control-allow-private-network", b"true"))
+                        message["headers"] = headers_list
+                    await send(message)
+
+                await super().__call__(scope, receive, send_wrapper)
+                return
+        await super().__call__(scope, receive, send)
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     settings.validate_production_security()
@@ -73,13 +90,12 @@ def create_app() -> FastAPI:
     )
     settings = get_settings()
     app.add_middleware(
-        CORSMiddleware,
+        PrivateNetworkCORSMiddleware,
         allow_origins=settings.parsed_cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["x-refresh-token"],
-        allow_private_network=True,
     )
     @app.middleware("http")
     async def private_cache_control(
