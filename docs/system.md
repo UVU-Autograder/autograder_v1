@@ -11,7 +11,7 @@ Canvas owns course content and official grades. The autograder owns grading conf
 | Assignment/grading | Specification and grading engines (`GradingPipeline`), decoupled language strategies (`LanguageStrategy` for Python/C++), AST inspection, pytest, result normalization/parsing; [assignments](../backend/app/domains/assignments/), [grading](../backend/app/domains/grading/), [AST](../backend/app/integrations/ast_checker/) |
 | Scheduling and cleanup | Celery/Redis transport, PostgreSQL execution tickets/dispatch records, shared-volume locks and independent dispatch/cleanup workers; [runs](../backend/app/domains/runs/) |
 | Execution | Custom Judge0 Python 3.11.9 runtime (language 711), Kata/QEMU isolation; [image](../judge0.Dockerfile), [Compose](../docker-compose.yml), [Kata overlay](../docker-compose.kata.yml) |
-| Local AI | vLLM, Gemma 4 12B QAT, reviewed `cs1410-p2c` LoRA; QLoRA training with PyTorch/Transformers/TRL/PEFT/bitsandbytes; [AI](guides/ai.md), [training dependencies](../backend/training/) |
+| Local AI | vLLM, Gemma 4 12B QAT, reviewed `cs1410-p3b` LoRA; QLoRA training with PyTorch/Transformers/TRL/PEFT/bitsandbytes; [AI](guides/ai.md), [training dependencies](../backend/training/) |
 | Identity and operations | Entra OIDC/PKCE, JWT, Nginx/TLS, Docker Compose, systemd, Python JSON audit logging; [auth](../backend/app/domains/auth/), [scripts](../scripts/) |
 | Verification | Ruff, mypy, pytest, Alembic drift, TypeScript/ESLint, Vitest, Playwright; [checks](../scripts/run_checks.ps1), [browser tests](../frontend/e2e/) |
 

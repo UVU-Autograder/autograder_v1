@@ -3,6 +3,10 @@
 #
 #   bash backend/training/install_vllm_service.sh p2c            # serve training/output/p2c as cs1410-p2c
 #   bash backend/training/install_vllm_service.sh p2c --dry-run  # show every step; change nothing
+#   bash backend/training/install_vllm_service.sh p4 --keep p3b  # serve p4, keep the promoted p3b loaded too
+#
+# --keep serves an adapter that is already promoted next to the new one, so rolling
+# back is only an env change (LOCAL_LLM_MODEL) and a container recreate, not a reinstall.
 #
 # 1. Promotes the adapter: copies training/output/<name> to
 #    /data/models/adapters/cs1410-<name> with a PROVENANCE.json (git commit,
@@ -26,16 +30,33 @@ MODEL="${SERVE_BASE_MODEL:-/data/models/gemma4-12b-qat-w4a16}"
 VLLM="${VLLM_BIN:-$HOME/venvs/serve/bin/vllm}"
 ADAPTERS="${ADAPTERS_DIR:-/data/models/adapters}"
 
-usage() { echo "usage: bash backend/training/install_vllm_service.sh <adapter> [--dry-run]" >&2; exit 2; }
-[[ $# -ge 1 && $# -le 2 ]] || usage
-NAME="$1"
+usage() { echo "usage: bash backend/training/install_vllm_service.sh <adapter> [--keep <adapter>] [--dry-run]" >&2; exit 2; }
+[[ $# -ge 1 ]] || usage
+NAME="$1"; shift
 DRY=0
-if [[ $# -eq 2 ]]; then [[ "$2" == --dry-run ]] || usage; DRY=1; fi
-[[ "$NAME" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "adapter name must be letters, digits, '.', '_' or '-'" >&2; exit 2; }
+KEEP=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY=1; shift ;;
+    --keep) [[ $# -ge 2 ]] || usage; KEEP="$2"; shift 2 ;;
+    *) usage ;;
+  esac
+done
+for n in "$NAME" ${KEEP:+"$KEEP"}; do
+  [[ "$n" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "adapter name must be letters, digits, '.', '_' or '-'" >&2; exit 2; }
+done
+[[ "$KEEP" != "$NAME" ]] || { echo "--keep names the adapter being installed" >&2; exit 2; }
 
 SRC="$HERE/output/$NAME"
 DEST="$ADAPTERS/cs1410-$NAME"
 SERVED="cs1410-$NAME"
+LORA_MODULES="$SERVED=$DEST"
+MAX_LORAS=""
+if [[ -n "$KEEP" ]]; then
+  KEPT="cs1410-$KEEP"
+  LORA_MODULES="$LORA_MODULES $KEPT=$ADAPTERS/$KEPT"
+  MAX_LORAS=" --max-loras 2"  # both adapters can serve in the same batch
+fi
 
 say() { printf '%s\n' "$*"; }
 run() { if ((DRY)); then say "  [dry-run] $*"; else "$@"; fi }
@@ -46,6 +67,9 @@ die() { say "error: $*" >&2; exit 1; }
 [[ -f "$SRC/adapter_config.json" ]] || die "no adapter at $SRC (adapter_config.json missing)"
 [[ -f "$SRC/adapter_model.safetensors" ]] || die "no weights at $SRC/adapter_model.safetensors"
 [[ -f "$MODEL/config.json" ]] || die "base model not found at $MODEL"
+if [[ -n "$KEEP" ]]; then
+  [[ -f "$ADAPTERS/$KEPT/adapter_model.safetensors" ]] || die "--keep $KEEP: no promoted adapter at $ADAPTERS/$KEPT"
+fi
 [[ -x "$VLLM" ]] || die "vllm not found at $VLLM"
 if command -v tmux >/dev/null && tmux has-session -t vllm 2>/dev/null; then
   die "the tmux vLLM session from serve.sh is running on :$PORT. Stop it first: tmux kill-session -t vllm"
@@ -96,7 +120,8 @@ fi
 # --- 2. render and install the unit -----------------------------------------
 rendered="$(mktemp)"
 trap 'rm -f "$rendered"' EXIT
-sed -e "s|@ADAPTER_NAME@|$SERVED|g" -e "s|@ADAPTER_DIR@|$DEST|g" -e "s|@MODEL@|$MODEL|g" \
+sed -e "s|@ADAPTER_NAME@|$SERVED|g" -e "s|@LORA_MODULES@|$LORA_MODULES|g" -e "s|@MAX_LORAS@|$MAX_LORAS|g" \
+    -e "s|@MODEL@|$MODEL|g" \
     -e "s|@VLLM@|$VLLM|g" -e "s|@USER@|$(id -un)|g" -e "s|@GROUP@|$(id -gn)|g" \
     -e "s|@HOME@|$HOME|g" -e "s|@REPO@|$REPO|g" "$HERE/$UNIT.service" > "$rendered"
 if grep -q '@[A-Z_]*@' "$rendered"; then die "unfilled placeholder in the rendered unit: $(grep -o '@[A-Z_]*@' "$rendered" | head -1)"; fi
@@ -119,6 +144,7 @@ for _ in $(seq 1 120); do
     ids=$(python3 -c 'import json, sys; print("\n".join(m["id"] for m in json.load(sys.stdin)["data"]))' <<<"$models")
     say "up on 127.0.0.1:$PORT, serving:"; say "$ids" | sed 's/^/  /'
     grep -qx "$SERVED" <<<"$ids" || die "$SERVED is not in the model list"
+    if [[ -n "$KEEP" ]]; then grep -qx "$KEPT" <<<"$ids" || die "$KEPT is not in the model list"; fi
     cat <<EOF
 
 Done. The service starts at boot and restarts on failure.
@@ -130,6 +156,7 @@ Autograder settings (Jaxon, in the stack's env file):
   LOCAL_LLM_ENDPOINT=http://127.0.0.1:$PORT/v1
   LOCAL_LLM_MODEL=$SERVED
 EOF
+    if [[ -n "$KEEP" ]]; then say "  rollback: LOCAL_LLM_MODEL=$KEPT (still loaded), then recreate backend and celery-worker"; fi
     exit 0
   fi
   if systemctl is-failed --quiet "$UNIT"; then

@@ -127,6 +127,11 @@ services:
     image: uvu-autograder-judge0:latest
     restart: unless-stopped
     privileged: true
+    # One container runs one Resque worker (one submission at a time). Run as many as the
+    # backend sends at once; with fewer, the extra submission waits inside Judge0, its poll
+    # times out and the delete fails while it is still queued (a cleanup_failure).
+    deploy:
+      replicas: ${JUDGE0_MAX_CONCURRENT:-2}
     depends_on:
       postgres:
         condition: service_healthy

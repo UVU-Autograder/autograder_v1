@@ -14,7 +14,7 @@ The dedicated on-prem workstation (`10.115.20.200`, hostname `CET-D24728`) opera
 - **Operating System & Kernel:** Ubuntu 24.04 LTS (kernel `6.17.0-1032-oem x86_64`).
 - **Accelerator / GPU:** NVIDIA RTX PRO 4500 Blackwell (32,623 MiB / 32 GB VRAM).
   - VRAM allocation: ~30.6 GB allocated to KV cache and model weights (`vllm-cs1410.service`), ~1.5 GB free.
-- **Local AI Feedback Service:** `vllm-cs1410.service` serving Gemma 4 12B QAT (W4A16) base model + `cs1410-p2c` reviewed LoRA adapter on `127.0.0.1:8001` (host loopback only).
+- **Local AI Feedback Service:** `vllm-cs1410.service` serving Gemma 4 12B QAT (W4A16) base model + `cs1410-p3b` reviewed LoRA adapter on `127.0.0.1:8001` (host loopback only).
 - **Network Listeners & Perimeter:**
   - External Listeners (`0.0.0.0`): Nginx reverse proxy (`:80`) and OpenSSH (`:22`).
   - Internal Loopback Listeners (`127.0.0.1`): FastAPI backend (`:8000`), Next.js frontend (`:3000`), vLLM (`:8001`), Judge0 (`:2358`), PostgreSQL (`:5432`), Redis (`:6379`).
@@ -127,7 +127,7 @@ Before deploying any dependency or runtime image change to production:
 If an updated package causes subtle grading discrepancies, timeout regressions, or AST check failures:
 1. **Dismount Active Containers:**
    ```bash
-   dc stop judge0 judge0-workers
+   dc stop judge0 judge0-worker
    ```
 2. **Retag Last Known Good Image:**
    ```bash
@@ -135,7 +135,7 @@ If an updated package causes subtle grading discrepancies, timeout regressions, 
    ```
 3. **Restart Judge0 Execution Engine:**
    ```bash
-   dc up -d --no-deps judge0 judge0-workers
+   dc up -d --no-deps judge0 judge0-worker
    ```
 4. **Verify Rollback Integrity:**
    ```bash

@@ -381,15 +381,15 @@ while read -r svc _state code; do
 done < <("${COMPOSE[@]}" ps -a --status exited --format '{{.Service}} {{.State}} {{.ExitCode}}' 2>/dev/null)
 
 for svc in judge0 judge0-worker; do
-  cid=$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null)
-  if [ -n "$cid" ]; then
+  # judge0-worker runs one container per concurrent submission (deploy.replicas).
+  for cid in $("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null); do
     runtime=$(docker inspect --format '{{.HostConfig.Runtime}}' "$cid")
     if [ $USE_KATA -eq 1 ] && [ "$runtime" != "kata-runtime" ]; then
       fail "kata-in-use" "$svc is on runtime '$runtime', expected kata-runtime"
     else
       pass "$svc runtime: $runtime"
     fi
-  fi
+  done
 done
 
 # ---------------------------------------------------------------- stack checks
