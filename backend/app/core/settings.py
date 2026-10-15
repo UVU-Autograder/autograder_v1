@@ -73,10 +73,6 @@ class Settings(BaseSettings):
 
 
     @property
-    def is_sqlite(self) -> bool:
-        return self.database_url.startswith("sqlite")
-
-    @property
     def artifact_storage_path(self) -> Path:
         path = Path(self.artifact_storage_dir)
         if not path.is_absolute():

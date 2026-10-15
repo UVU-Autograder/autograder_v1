@@ -18,8 +18,7 @@ from app.domains.courses.models import Course, Module, Section
 logger = logging.getLogger(__name__)
 
 SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
-EXAMPLE_DIR = SEEDS_DIR / "simple-python-functions"
-EXAMPLE_CONFIG = EXAMPLE_DIR / "config.json"
+EXAMPLE_CONFIG = SEEDS_DIR / "simple-python-functions" / "config.json"
 CS1400_CATALOG = SEEDS_DIR / "cs1400_catalog.json"
 CS1410_CATALOG = SEEDS_DIR / "cs1410_catalog.json"
 
