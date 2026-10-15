@@ -363,6 +363,8 @@ export async function requestAiFeedbackWithRetry(
   throw new Error("AI feedback is unavailable right now.");
 }
 
+let conceptsMetadataCache: Promise<Record<string, ConceptMetadata>> | null = null;
+
 export function getConceptsMetadata() {
   if (!conceptsMetadataCache) {
     conceptsMetadataCache = apiClient
