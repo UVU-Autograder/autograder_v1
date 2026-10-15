@@ -1,30 +1,12 @@
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
-
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(BACKEND_ROOT))
-
 import app.domains.runs.tasks as runs_tasks
-from app.db.session import SessionLocal
-from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
-def db_session(reset_database):
-    with SessionLocal() as session:
-        yield session
-
-
-@pytest.fixture(autouse=True)
-def temp_artifact_storage(tmp_path, monkeypatch):
-    from app.core.settings import get_settings
-    settings = get_settings()
-    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path))
-    yield tmp_path
+def _isolate_storage(temp_artifact_storage):
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -53,21 +35,9 @@ def mock_redis_and_celery(monkeypatch):
     monkeypatch.setattr("app.domains.runs.tasks.get_run_result", get_result)
 
 
-@pytest.fixture()
-def client():
-    return TestClient(create_app())
-
-
-@pytest.fixture()
-def headers():
-    from app.core.auth_utils import create_access_token
-    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
-    return {"Authorization": f"Bearer {token}"}
-
-
-def test_artifact_lifecycle(client, headers):
+def test_artifact_lifecycle(client, admin_headers):
     # 1. List artifacts
-    response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts", headers=headers)
+    response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts", headers=admin_headers)
     assert response.status_code == 200
     body = response.json()
     assert body["course_id"] == "cs1400"
@@ -84,7 +54,7 @@ def test_artifact_lifecycle(client, headers):
         files={
             "file": ("pytest.ini", b"[pytest]\nmarkers = ag_test", "text/plain")
         },
-        headers=headers
+        headers=admin_headers
     )
     assert upload_response.status_code == 200
     meta = upload_response.json()
@@ -93,46 +63,46 @@ def test_artifact_lifecycle(client, headers):
     assert meta["display_filename"] == "pytest.ini"
 
     # 3. Download/Retrieve file content
-    download_response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=headers)
+    download_response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=admin_headers)
     assert download_response.status_code == 200
     assert download_response.content == b"[pytest]\nmarkers = ag_test"
     assert "pytest.ini" in download_response.headers.get("Content-Disposition", "")
 
     # 4. Delete the artifact
-    delete_response = client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=headers)
+    delete_response = client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=admin_headers)
     assert delete_response.status_code == 200
     assert delete_response.json()["status"] == "success"
 
     # Try downloading deleted file - should return 404
-    download_deleted = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=headers)
+    download_deleted = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=admin_headers)
     assert download_deleted.status_code == 404
 
 
-def test_validate_assignment(client, headers):
+def test_validate_assignment(client, admin_headers):
     # Trigger synchronous preflight validation (seeded is valid)
-    response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate", headers=headers)
+    response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate", headers=admin_headers)
     assert response.status_code == 200
     body = response.json()
     assert body["passed"] is True
     assert body["errors"] == []
 
     # Deleting pytest_file artifact should make preflight validation fail
-    client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/assignment_tests", headers=headers)
-    response_fail = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate", headers=headers)
+    client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/assignment_tests", headers=admin_headers)
+    response_fail = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate", headers=admin_headers)
     assert response_fail.status_code == 200
     body_fail = response_fail.json()
     assert body_fail["passed"] is False
     assert len(body_fail["errors"]) > 0
 
 
-def test_validate_model_solution_queued_and_status(client, headers):
+def test_validate_model_solution_queued_and_status(client, admin_headers):
     run_id = "val:cs1400:simple-python-functions"
 
     # Mock validation task queueing
     with patch("app.domains.runs.tasks.validate_assignment_model_solution.delay") as mock_delay:
         # Mock preflight checks passing by overriding the validator to return no errors
         with patch("app.domains.assignments.validation.run_preflight_validation", return_value=[]):
-            response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate-model-solution", headers=headers)
+            response = client.post("/staff/courses/cs1400/assignments/simple-python-functions/validate-model-solution", headers=admin_headers)
             assert response.status_code == 200
             assert response.json()["status"] == "queued"
             assert response.json()["run_id"] == run_id
@@ -141,7 +111,7 @@ def test_validate_model_solution_queued_and_status(client, headers):
     # Now verify GET /validation-status endpoint reads from Redis correctly
     # Set status to running
     runs_tasks.set_run_state(run_id, "run")
-    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status", headers=headers)
+    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status", headers=admin_headers)
     assert status_resp.status_code == 200
     assert status_resp.json()["status"] == "run"
 
@@ -153,7 +123,7 @@ def test_validate_model_solution_queued_and_status(client, headers):
         "score": 25,
         "max_score": 25,
     })
-    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status", headers=headers)
+    status_resp = client.get("/staff/courses/cs1400/assignments/simple-python-functions/validation-status", headers=admin_headers)
     assert status_resp.status_code == 200
     body = status_resp.json()
     assert body["status"] == "success"
@@ -162,7 +132,7 @@ def test_validate_model_solution_queued_and_status(client, headers):
     assert body["errors"] == []
 
 
-def test_artifact_physical_file_deletion(client, headers, temp_artifact_storage):
+def test_artifact_physical_file_deletion(client, admin_headers, temp_artifact_storage):
     # 1. Upload a support file artifact
     upload_response = client.post(
         "/staff/courses/cs1400/assignments/simple-python-functions/artifacts",
@@ -173,7 +143,7 @@ def test_artifact_physical_file_deletion(client, headers, temp_artifact_storage)
         files={
             "file": ("test_delete.txt", b"temporary test file content", "text/plain")
         },
-        headers=headers
+        headers=admin_headers
     )
     assert upload_response.status_code == 200
 
@@ -189,7 +159,7 @@ def test_artifact_physical_file_deletion(client, headers, temp_artifact_storage)
     # 3. Delete the artifact
     delete_response = client.delete(
         "/staff/courses/cs1400/assignments/simple-python-functions/artifacts/test_physical_delete",
-        headers=headers
+        headers=admin_headers
     )
     assert delete_response.status_code == 200
     assert delete_response.json()["status"] == "success"

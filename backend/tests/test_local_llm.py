@@ -3,6 +3,8 @@
 import json
 import unittest.mock as mock
 
+import httpx
+
 from app.integrations.ai.prompts import (
     EXECUTION_ERROR_KEY,
     MAX_FAILURE_MESSAGE_CHARS,
@@ -46,9 +48,10 @@ def test_sanitize_code_and_text():
 
 
 def test_local_llm_client_fallback_on_connection_error():
-    client = LocalLLMClient(endpoint="http://127.0.0.1:99999/v1", timeout_seconds=1.0)
-    res = client.generate_chat_completion([{"role": "user", "content": "hello"}])
-    assert "unreachable" in res or "error" in res.lower() or "timed out" in res.lower()
+    with mock.patch("httpx.Client.post", side_effect=httpx.ConnectError("Connection refused at 127.0.0.1:99999")):
+        client = LocalLLMClient(endpoint="http://127.0.0.1:99999/v1", timeout_seconds=1.0)
+        res = client.generate_chat_completion([{"role": "user", "content": "hello"}])
+        assert "unreachable" in res or "error" in res.lower() or "timed out" in res.lower()
 
 
 FAILING_RESULTS = [

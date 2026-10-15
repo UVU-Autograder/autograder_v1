@@ -285,10 +285,10 @@ def test_local_ai_outage_does_not_block_or_fail_grading_runs() -> None:
         service.get_status(run_id)
 
         # Simulate complete Local AI outage (ConnectError) during result + AI feedback fetch
-        with patch(
-            "httpx.Client.post",
-            side_effect=httpx.ConnectError("Connection refused at 127.0.0.1:8001"),
-        ):
+        with patch("httpx.Client") as mock_client_cls:
+            mock_client_cls.return_value.__enter__.return_value.post.side_effect = (
+                httpx.ConnectError("Connection refused at 127.0.0.1:8001")
+            )
             result_resp = service.get_result(run_id, session_id)
             assert result_resp is not None and result_resp != "not_ready"
             assert result_resp.state == "complete"
@@ -305,10 +305,10 @@ def test_local_ai_outage_does_not_block_or_fail_grading_runs() -> None:
                 list(service.generate_ai_feedback_stream(run_id, session_id) or [])
 
         # Simulate Local AI timeout (TimeoutException)
-        with patch(
-            "httpx.Client.post",
-            side_effect=httpx.TimeoutException("vLLM timed out"),
-        ):
+        with patch("httpx.Client") as mock_client_cls:
+            mock_client_cls.return_value.__enter__.return_value.post.side_effect = (
+                httpx.TimeoutException("vLLM timed out")
+            )
             with pytest.raises(AiFeedbackUnavailable) as timed_out:
                 service.generate_ai_feedback(run_id, session_id)
             assert timed_out.value.status == 504 and timed_out.value.code == "ai_timeout"

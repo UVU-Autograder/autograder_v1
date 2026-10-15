@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.session import SessionLocal
 from app.domains.assignments.service import (
     get_assignment_for_course,
     save_artifact,
@@ -19,17 +18,8 @@ from app.domains.assignments.validation import (
 
 
 @pytest.fixture(autouse=True)
-def db_session(reset_database):
-    with SessionLocal() as session:
-        yield session
-
-
-@pytest.fixture(autouse=True)
-def temp_artifact_storage(tmp_path, monkeypatch):
-    from app.core.settings import get_settings
-    settings = get_settings()
-    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path))
-    yield tmp_path
+def _isolate_storage(temp_artifact_storage):
+    yield
 
 
 def test_extract_ag_markers():

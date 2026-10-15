@@ -14,23 +14,14 @@ from app.domains.runs.queue_admission import QueueFullError, queue_snapshot, res
 from app.domains.sandbox.ai_capacity import AiBusy, AiCapacity
 from app.domains.sandbox.service import GRADER_FAULT_MESSAGE, sandbox_service
 from app.integrations.llm.client import FeedbackOutcome
-from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
-def celery_mode(reset_database, monkeypatch):
-    sandbox_service._runs.clear()
-    sandbox_service._session_uploads.clear()
+def celery_mode(reset_database, reset_sandbox_state, tmp_path, monkeypatch):
+    monkeypatch.setattr(get_settings(), "artifact_storage_dir", str(tmp_path / "artifacts"))
     monkeypatch.setattr("app.domains.runs.tasks.grade_sandbox_run.delay", MagicMock(return_value=MagicMock(id="task")))
     monkeypatch.setattr(sandbox_service, "_use_celery", True)
     yield
-    sandbox_service._runs.clear()
-    sandbox_service._session_uploads.clear()
-
-
-@pytest.fixture()
-def client():
-    return TestClient(create_app())
 
 
 def create_run(client: TestClient, session: str | None = None):
@@ -171,7 +162,7 @@ def test_ai_capacity_turns_away_requests_beyond_the_waiting_limit(monkeypatch):
 
         async with anyio.create_task_group() as tg:
             tg.start_soon(first)
-            await anyio.sleep(0.05)
+            await anyio.sleep(0.005)
             with pytest.raises(AiBusy) as busy:
                 await capacity.run(lambda: "second")
             assert busy.value.retry_after_seconds >= 5
@@ -182,18 +173,18 @@ def test_ai_capacity_turns_away_requests_beyond_the_waiting_limit(monkeypatch):
 
 
 def test_ai_capacity_waits_then_gives_up(monkeypatch):
-    _hold_capacity(monkeypatch, concurrent=1, waiting=1, wait_seconds=0.2)
+    _hold_capacity(monkeypatch, concurrent=1, waiting=1, wait_seconds=0.02)
     capacity = AiCapacity()
     release = threading.Event()
 
     async def scenario():
         async with anyio.create_task_group() as tg:
             tg.start_soon(capacity.run, lambda: release.wait(5))
-            await anyio.sleep(0.05)
+            await anyio.sleep(0.005)
             started = time.monotonic()
             with pytest.raises(AiBusy):
                 await capacity.run(lambda: "late")
-            assert time.monotonic() - started >= 0.18
+            assert time.monotonic() - started >= 0.015
             release.set()
         assert capacity.waiting == 0 and capacity.running == 0
 

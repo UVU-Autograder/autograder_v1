@@ -3,89 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import pytest
-from app.core.auth_utils import create_access_token
-from app.db.session import SessionLocal
 from app.domains.assignments.models import Assignment
-from app.domains.auth.models import Role, StaffAccess, User
-from app.domains.courses.models import Course, Section
-from app.main import create_app
-from fastapi.testclient import TestClient
 from sqlalchemy import select
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-@pytest.fixture
-def client():
-    app = create_app()
-    return TestClient(app)
-
-@pytest.fixture
-def db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@pytest.fixture
-def admin_token():
-    return create_access_token(email="dev.staff@uvu.edu", display_name="Dev Admin Staff")
-
-@pytest.fixture
-def instructor_token(db_session):
-    email = "instructor.test@uvu.edu"
-    user = db_session.scalar(select(User).where(User.email == email))
-    if not user:
-        user = User(email=email, display_name="Test Instructor", is_active=True)
-        db_session.add(user)
-        db_session.flush()
-
-        role = db_session.scalar(select(Role).where(Role.name == "instructor"))
-        course = db_session.scalar(select(Course).where(Course.code == "cs1400"))
-        section = db_session.scalar(select(Section).where(Section.course_id == course.id))
-
-        access = StaffAccess(
-            user=user,
-            role=role,
-            course=course,
-            section=section,
-            is_active=True,
-        )
-        db_session.add(access)
-        db_session.commit()
-    return create_access_token(email=email, display_name="Test Instructor")
-
-@pytest.fixture
-def ia_token(db_session):
-    email = "ia.test@uvu.edu"
-    user = db_session.scalar(select(User).where(User.email == email))
-    if not user:
-        user = User(email=email, display_name="Test IA", is_active=True)
-        db_session.add(user)
-        db_session.flush()
-
-        role = db_session.scalar(select(Role).where(Role.name == "IA"))
-        course = db_session.scalar(select(Course).where(Course.code == "cs1400"))
-        section = db_session.scalar(select(Section).where(Section.course_id == course.id))
-
-        access = StaffAccess(
-            user=user,
-            role=role,
-            course=course,
-            section=section,
-            is_active=True,
-        )
-        db_session.add(access)
-        db_session.commit()
-    return create_access_token(email=email, display_name="Test IA")
-
-@pytest.fixture
-def student_token():
-    return create_access_token(email="student.test@uvu.edu", display_name="Test Student")
 
 
 # 1. Access Control Tests

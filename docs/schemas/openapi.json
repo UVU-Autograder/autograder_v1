@@ -4652,6 +4652,46 @@
               }
             ],
             "title": "Message"
+          },
+          "submissions_ahead": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submissions Ahead"
+          },
+          "eta_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Seconds"
+          },
+          "failure_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Category"
+          },
+          "grader_fault": {
+            "type": "boolean",
+            "title": "Grader Fault",
+            "default": false
           }
         },
         "type": "object",

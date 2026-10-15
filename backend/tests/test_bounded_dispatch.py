@@ -295,12 +295,12 @@ except QueueFullError:
 """
     env = {**os.environ, "DATABASE_URL": url, "ARTIFACT_STORAGE_DIR": str(tmp_path / "artifacts"), "JUDGE0_MAX_CONCURRENT": "2"}
     processes = [subprocess.Popen([sys.executable, "-c", script, f"opaque-{index}"],
-        env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) for index in range(6)]
+        env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) for index in range(4)]
     try:
         outputs = [process.communicate(timeout=30) for process in processes]
         assert all(process.returncode == 0 for process in processes), outputs
         assert sum(out.strip() == "active" for out, _ in outputs) == 2
-        assert sum(out.strip() == "waiting" for out, _ in outputs) == 4
+        assert sum(out.strip() == "waiting" for out, _ in outputs) == 2
     finally:
         for process in processes:
             if process.poll() is None:

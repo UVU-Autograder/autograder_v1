@@ -25,10 +25,6 @@ from app.domains.grading.strategies import (
 )
 
 
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
-
 
 # --- 1. Protocol Adherence Tests ---
 

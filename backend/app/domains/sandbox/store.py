@@ -22,6 +22,8 @@ class RunStateStore(Protocol):
 
     def record_upload(self, session_id: str, timestamp: datetime) -> None: ...
 
+    def unrecord_upload(self, session_id: str) -> None: ...
+
     def get_quota(self, session_id: str | None, limit: int, window: timedelta) -> UploadQuota: ...
 
 
@@ -46,6 +48,11 @@ class InMemoryRunStateStore:
 
     def record_upload(self, session_id: str, timestamp: datetime) -> None:
         self._session_uploads.setdefault(session_id, []).append(timestamp)
+
+    def unrecord_upload(self, session_id: str) -> None:
+        uploads = self._session_uploads.get(session_id)
+        if uploads:
+            uploads.pop()
 
     def get_quota(self, session_id: str | None, limit: int, window: timedelta) -> UploadQuota:
         now = datetime.now(UTC)
@@ -110,6 +117,15 @@ class RedisRunStateStore:
             pipe.execute()
         except Exception:
             self._fallback.record_upload(session_id, timestamp)
+
+    def unrecord_upload(self, session_id: str) -> None:
+        key = f"sandbox:uploads:{session_id}"
+        try:
+            removed = self._redis_conn().rpop(key)
+            if removed is None:
+                self._fallback.unrecord_upload(session_id)
+        except Exception:
+            self._fallback.unrecord_upload(session_id)
 
     def get_quota(self, session_id: str | None, limit: int, window: timedelta) -> UploadQuota:
         if session_id is None:

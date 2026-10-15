@@ -9,26 +9,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.settings import get_settings
 from app.domains.sandbox.service import sandbox_service
-from app.main import create_app
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-
-@pytest.fixture(autouse=True)
-def reset_sandbox_state():
-    sandbox_service._runs.clear()
-    sandbox_service._session_uploads.clear()
-    yield
-    sandbox_service._runs.clear()
-    sandbox_service._session_uploads.clear()
-
-
-@pytest.fixture()
-def client():
-    return TestClient(create_app())
+pytestmark = pytest.mark.usefixtures("reset_sandbox_state")
 
 
 def create_run(client: TestClient, session: str | None = None):

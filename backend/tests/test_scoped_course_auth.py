@@ -1,9 +1,7 @@
 import sys
 from pathlib import Path
 
-import pytest
 from fastapi import status
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -13,17 +11,6 @@ from app.core.auth_utils import create_access_token
 from app.db.session import SessionLocal
 from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course
-from app.main import create_app
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-
-@pytest.fixture
-def client():
-    return TestClient(create_app())
 
 
 def auth_headers(email: str, display_name: str) -> dict[str, str]:

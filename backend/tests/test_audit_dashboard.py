@@ -4,7 +4,6 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -21,12 +20,6 @@ from app.domains.audit.service import (
     verify_audit_records,
 )
 from app.main import create_app
-
-
-@pytest.fixture
-def db_session(reset_database):
-    with SessionLocal() as db:
-        yield db
 
 
 def test_audit_event_persists_to_database(db_session):

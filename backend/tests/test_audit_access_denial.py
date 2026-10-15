@@ -5,9 +5,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import jwt
-import pytest
 from fastapi import status
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -19,17 +17,6 @@ from app.core.settings import get_settings
 from app.db.session import SessionLocal
 from app.domains.auth.models import Role, StaffAccess, User
 from app.domains.courses.models import Course, Section
-from app.main import create_app
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-
-@pytest.fixture
-def client():
-    return TestClient(create_app())
 
 
 def get_denial_events(caplog) -> list[dict]:

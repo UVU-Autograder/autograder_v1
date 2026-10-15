@@ -92,16 +92,24 @@ class Judge0Client:
         Optional authentication token sent as ``X-Auth-Token`` header.
     """
 
-    def __init__(self, base_url: str, auth_token: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        auth_token: str | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if auth_token is not None:
             headers["X-Auth-Token"] = auth_token
 
-        self._client = httpx.AsyncClient(
-            base_url=base_url,
-            headers=headers,
-            timeout=30.0,
-        )
+        if client is not None:
+            self._client = client
+        else:
+            self._client = httpx.AsyncClient(
+                base_url=base_url,
+                headers=headers,
+                timeout=30.0,
+            )
 
     # -- public API ----------------------------------------------------------
 
