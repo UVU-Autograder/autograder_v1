@@ -18,6 +18,10 @@ import time
 LIMIT = 65536
 REPORT_LIMIT = 1024 * 1024
 CAPTURES = []
+# Judge0 applies the memory limit per process as an address-space cap, and glibc sizes
+# every new thread's stack from the stack limit (64 MB by default). The output readers
+# only drain pipes, so they get small stacks; several 64 MB stacks exceed a 256 MB cap.
+READER_STACK_BYTES = 1 << 20
 
 
 def clipped(text, limit=LIMIT):
@@ -84,8 +88,12 @@ class PipeBuffer:
         self.lock = threading.Lock()
         self.finished = threading.Event()
         os.set_blocking(read_fd, False)
-        self.thread = threading.Thread(target=self.run, daemon=True)
-        self.thread.start()
+        previous = threading.stack_size(READER_STACK_BYTES)
+        try:
+            self.thread = threading.Thread(target=self.run, daemon=True)
+            self.thread.start()
+        finally:
+            threading.stack_size(previous)  # student threads keep the default
 
     def drain(self):
         with self.lock:
@@ -385,8 +393,11 @@ def child_main(report_path):
 def supervisor_main():
     with tempfile.TemporaryDirectory(prefix=".ag_report_", dir=".") as directory:
         report_path = os.path.join(directory, "results.json")
+        # One malloc arena: otherwise each reader thread reserves its own 64 MB arena, and
+        # under the address-space cap that comes out of the student code's memory.
         process = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--ag-child", report_path],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=sys.stdin)
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=sys.stdin,
+                                   env={**os.environ, "MALLOC_ARENA_MAX": "1"})
         readers = [PipeBuffer(process.stdout.fileno(), 1, account=False), PipeBuffer(process.stderr.fileno(), 2, account=False)]
         try:
             process.wait(timeout=35)
