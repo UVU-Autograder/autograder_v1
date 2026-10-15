@@ -24,38 +24,6 @@ def create_zip_bytes(files: dict[str, bytes]) -> bytes:
     return buffer.getvalue()
 
 
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
-
-
-@pytest.fixture
-def base_config() -> AssignmentConfigV1:
-    config_dict = {
-        "bundle": {
-            "entrypoint": "main.py",
-            "file_requirements": [
-                {"paths": ["main.py"]},
-            ],
-        },
-        "artifacts": {
-            "assignment_tests": {
-                "type": "pytest_file",
-                "display_filename": "tests.py",
-            }
-        },
-        "scoring_items": [
-            {
-                "key": "test_pass",
-                "label": "Test Pass",
-                "points": 10,
-                "extra_credit": False,
-                "item_type": "pytest",
-            }
-        ],
-    }
-    return AssignmentConfigV1.model_validate(config_dict)
-
 
 def test_submission_payload_validation() -> None:
     # 0 sources

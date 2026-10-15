@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 import sys
 from collections.abc import Generator
 from pathlib import Path
@@ -9,6 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session, close_all_sessions
 
 backend_dir = str(Path(__file__).resolve().parents[1])
 if backend_dir not in sys.path:
@@ -20,6 +23,7 @@ if "PYTHONPATH" not in os.environ or backend_dir not in os.environ["PYTHONPATH"]
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("AUTOGRADER_DISABLE_FSYNC", "1")
 
 
 def _seed_test_fixtures() -> None:
@@ -105,18 +109,36 @@ def mock_httpx_client():
         yield mock_instance
 
 
-@pytest.fixture
-def reset_database():
-    """Recreate seeded tables before a test and leave a clean database after it."""
-    from app.db.base import Base, import_domain_models
-    from app.db.seed import initialize_database
-    from app.db.session import engine
+_db_template_conn: sqlite3.Connection | None = None
 
+
+def _get_seeded_db_template() -> sqlite3.Connection:
+    """Initialize and seed a template database once per pytest session."""
+    global _db_template_conn
+    if _db_template_conn is None:
+        from app.db.base import Base, import_domain_models
+        from app.db.seed import initialize_database
+        from app.db.session import engine
+
+        import_domain_models()
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+        _seed_test_fixtures()
+        initialize_database(seed=True)
+
+        raw_conn = engine.raw_connection().dbapi_connection
+        _db_template_conn = sqlite3.connect(":memory:")
+        raw_conn.backup(_db_template_conn)
+
+    return _db_template_conn
+
+
+@pytest.fixture
+def reset_database() -> Generator[None, None, None]:
+    """Fast in-memory database reset using SQLite page backup/restore."""
+    from app.db.session import engine
     from app.domains.runs.orchestrator import clear_local_orchestrator_cache
 
-    # drop_all() empties whatever DATABASE_URL points at. Inside a deployed
-    # container that is the live Postgres, which is how a stack ends up with
-    # only alembic_version left. The suite only ever needs SQLite.
     if engine.url.get_backend_name() != "sqlite":
         pytest.exit(
             f"refusing to run database tests against {engine.url.render_as_string(hide_password=True)}: "
@@ -124,15 +146,20 @@ def reset_database():
             returncode=2,
         )
 
-    import_domain_models()
+    template = _get_seeded_db_template()
+    close_all_sessions()
     clear_local_orchestrator_cache()
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    _seed_test_fixtures()
-    initialize_database(seed=True)
+    raw_conn = engine.raw_connection().dbapi_connection
+    raw_conn.rollback()
+    template.backup(raw_conn)
+
     yield
+
+    close_all_sessions()
     clear_local_orchestrator_cache()
-    Base.metadata.drop_all(bind=engine)
+    raw_conn = engine.raw_connection().dbapi_connection
+    raw_conn.rollback()
+    template.backup(raw_conn)
 
 
 class FakeRedis:
@@ -244,4 +271,205 @@ def mock_redis_global() -> Generator[FakeRedis, None, None]:
     fake = FakeRedis()
     with patch("redis.Redis.from_url", return_value=fake):
         yield fake
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Close the in-memory SQLite template at session completion."""
+    global _db_template_conn
+    if _db_template_conn is not None:
+        _db_template_conn.close()
+        _db_template_conn = None
+
+
+# --- Centralized Shared Test Fixtures ---
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    """Default backend for anyio async tests."""
+    return "asyncio"
+
+
+@pytest.fixture
+def client(reset_database: Any) -> Generator[TestClient, None, None]:
+    """Pre-configured FastAPI TestClient bound to the initialized test database."""
+    from app.main import create_app
+
+    app = create_app()
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def db_session(reset_database: Any) -> Generator[Session, None, None]:
+    """Active SQLAlchemy session bound to the test database with admission queue isolation."""
+    from app.db.session import SessionLocal
+    from app.domains.runs.queue_admission import reset_admission_state_for_tests
+
+    reset_admission_state_for_tests()
+    with SessionLocal() as session:
+        yield session
+    reset_admission_state_for_tests()
+
+
+@pytest.fixture
+def admin_token() -> str:
+    """JWT bearer access token for default seeded development admin staff."""
+    from app.core.auth_utils import create_access_token
+
+    return create_access_token(email="dev.staff@uvu.edu", display_name="Dev Admin Staff")
+
+
+@pytest.fixture
+def admin_headers(admin_token: str) -> dict[str, str]:
+    """Authorization headers for default admin staff."""
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest.fixture
+def student_token() -> str:
+    """JWT bearer access token for standard student user without staff roles."""
+    from app.core.auth_utils import create_access_token
+
+    return create_access_token(email="student.test@uvu.edu", display_name="Test Student")
+
+
+def _ensure_staff_token(
+    db_session: Session,
+    *,
+    email: str,
+    display_name: str,
+    role_name: str,
+) -> str:
+    from sqlalchemy import select
+
+    from app.core.auth_utils import create_access_token
+    from app.domains.auth.models import Role, StaffAccess, User
+    from app.domains.courses.models import Course, Section
+
+    user = db_session.scalar(select(User).where(User.email == email))
+    if not user:
+        user = User(email=email, display_name=display_name, is_active=True)
+        db_session.add(user)
+        db_session.flush()
+
+        role = db_session.scalar(select(Role).where(Role.name == role_name))
+        course = db_session.scalar(select(Course).where(Course.code == "cs1400"))
+        assert course is not None
+        section = db_session.scalar(select(Section).where(Section.course_id == course.id))
+
+        db_session.add(
+            StaffAccess(
+                user=user,
+                role=role,
+                course=course,
+                section=section,
+                is_active=True,
+            )
+        )
+        db_session.commit()
+    return create_access_token(email=email, display_name=display_name)
+
+
+@pytest.fixture
+def instructor_token(db_session: Session) -> str:
+    """JWT bearer access token for an active course instructor."""
+    return _ensure_staff_token(
+        db_session,
+        email="instructor.test@uvu.edu",
+        display_name="Test Instructor",
+        role_name="instructor",
+    )
+
+
+@pytest.fixture
+def ia_token(db_session: Session) -> str:
+    """JWT bearer access token for an active teaching assistant (IA)."""
+    return _ensure_staff_token(
+        db_session,
+        email="ia.test@uvu.edu",
+        display_name="Test IA",
+        role_name="IA",
+    )
+
+
+@pytest.fixture
+def section_id(db_session: Session) -> int:
+    """CRN 12345 section ID seeded for cs1400."""
+    from sqlalchemy import select
+
+    from app.domains.courses.models import Section
+
+    section = db_session.scalar(select(Section).where(Section.crn == "12345"))
+    assert section is not None
+    return section.id
+
+
+@pytest.fixture
+def temp_workspaces(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Isolated temporary workspace root with settings.artifact_storage_dir redirected."""
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path / "artifacts"))
+    return tmp_path
+
+
+@pytest.fixture
+def temp_artifact_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Isolated artifact storage root without 'artifacts' subdirectory."""
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path))
+    return tmp_path
+
+
+@pytest.fixture
+def reset_sandbox_state() -> Generator[None, None, None]:
+    """Ensure sandbox service memory store is clear before and after test execution."""
+    from app.domains.sandbox.service import sandbox_service
+
+    sandbox_service._runs.clear()
+    sandbox_service._session_uploads.clear()
+    yield
+    sandbox_service._runs.clear()
+    sandbox_service._session_uploads.clear()
+
+
+@pytest.fixture
+def base_config() -> Any:
+    """Standard AssignmentConfigV1 for Python pytest testing."""
+    from app.domains.assignments.schemas import AssignmentConfigV1
+
+    config_dict = {
+        "bundle": {
+            "entrypoint": "main.py",
+            "file_requirements": [{"paths": ["main.py"]}],
+        },
+        "artifacts": {
+            "assignment_tests": {
+                "type": "pytest_file",
+                "display_filename": "tests.py",
+            }
+        },
+        "scoring_items": [
+            {
+                "key": "test_pass",
+                "label": "Test Pass",
+                "points": 10,
+                "extra_credit": False,
+                "item_type": "pytest",
+            }
+        ],
+    }
+    return AssignmentConfigV1.model_validate(config_dict)
+
+
+@pytest.fixture
+def mock_official_run_dispatch() -> Generator[MagicMock, None, None]:
+    """Patch background task runner for official runs."""
+    with patch("app.domains.runs.tasks.run_mock_official_run") as mock_runner:
+        yield mock_runner
 

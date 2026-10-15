@@ -8,7 +8,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,7 +15,6 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.auth_utils import create_access_token
-from app.db.session import SessionLocal
 from app.domains.assignments.models import Assignment
 from app.domains.assignments.service import (
     effective_allowed_concepts,
@@ -35,43 +33,7 @@ from app.domains.runs.queue_admission import (
     reset_admission_state_for_tests,
     waiting_count,
 )
-from app.main import create_app
 from test_ingestion_extractor import create_zip_bytes
-
-
-@pytest.fixture(autouse=True)
-def db_session(reset_database):
-    reset_admission_state_for_tests()
-    with SessionLocal() as session:
-        yield session
-    reset_admission_state_for_tests()
-
-
-@pytest.fixture(autouse=True)
-def temp_workspace_storage(tmp_path, monkeypatch):
-    from app.core.settings import get_settings
-
-    settings = get_settings()
-    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path / "artifacts"))
-    yield tmp_path
-
-
-@pytest.fixture()
-def client():
-    return TestClient(create_app())
-
-
-@pytest.fixture()
-def admin_headers():
-    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.fixture()
-def section_id(db_session):
-    section = db_session.scalar(select(Section).where(Section.crn == "12345"))
-    assert section is not None
-    return section.id
 
 
 def _ia_headers(db_session, section_id: int) -> dict[str, str]:
@@ -94,7 +56,7 @@ def _ia_headers(db_session, section_id: int) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_queue_admission_thresholds():
+def test_queue_admission_thresholds(reset_database):
     reset_admission_state_for_tests()
     reserve_execution_slots(HIGH_LOAD_THRESHOLD - 1)
     assert waiting_count() == HIGH_LOAD_THRESHOLD - 1
@@ -206,7 +168,7 @@ def test_wrong_section_ingest_forbidden(client, db_session, section_id):
     assert response.status_code == 403
 
 
-def test_ia_can_ingest_own_section(client, db_session, section_id):
+def test_ia_can_ingest_own_section(client, db_session, section_id, temp_workspaces):
     headers = _ia_headers(db_session, section_id)
     zip_bytes = create_zip_bytes(
         {"jaxonlarsen_12345_67890_student_functions.py": b"print('hello')"}
@@ -298,7 +260,7 @@ def test_effective_allowed_concepts_includes_module(db_session: Session) -> None
 
 
 def test_official_intake_is_separate_from_full_execution_queue(
-    client, db_session, section_id, admin_headers, temp_workspace_storage
+    client, db_session, section_id, admin_headers, temp_workspaces
 ):
     reset_admission_state_for_tests()
     reserve_execution_slots(FULL_QUEUE_THRESHOLD)
@@ -315,7 +277,7 @@ def test_official_intake_is_separate_from_full_execution_queue(
     assert response.status_code == 200
     mock_run.assert_called_once()
     assert waiting_count() == FULL_QUEUE_THRESHOLD
-    workspaces = temp_workspace_storage / "workspaces"
+    workspaces = temp_workspaces / "workspaces"
     if workspaces.exists():
         assert len(list(workspaces.glob("official_*.zip"))) == 1
 

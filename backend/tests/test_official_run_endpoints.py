@@ -1,55 +1,19 @@
 import json
-import sys
 import zipfile
-from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
-
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(BACKEND_ROOT))
-
-from app.db.session import SessionLocal
 from app.domains.runs.models import RunSummary
-from app.main import create_app
 
 
-@pytest.fixture(autouse=True)
-def db_session(reset_database):
-    with SessionLocal() as session:
-        yield session
-
-
-@pytest.fixture()
-def client():
-    return TestClient(create_app())
-
-
-@pytest.fixture()
-def headers():
-    from app.core.auth_utils import create_access_token
-    token = create_access_token(email="dev.staff@uvu.edu", display_name="Dev Staff")
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.fixture()
-def temp_workspaces(tmp_path, monkeypatch):
-    from app.core.settings import get_settings
-    settings = get_settings()
-    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path / "artifacts"))
-    return tmp_path
-
-
-def test_list_official_runs_empty(client, headers):
+def test_list_official_runs_empty(client, admin_headers):
     response = client.get(
         "/staff/courses/cs1400/assignments/simple-python-functions/runs",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     assert response.json() == {"runs": []}
 
 
-def test_list_and_get_official_runs(client, db_session, headers):
+def test_list_and_get_official_runs(client, db_session, admin_headers):
     # Create an official run record
     run = RunSummary(
         workflow_type="official",
@@ -66,7 +30,7 @@ def test_list_and_get_official_runs(client, db_session, headers):
     # List runs
     response = client.get(
         "/staff/courses/cs1400/assignments/simple-python-functions/runs",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     runs = response.json()["runs"]
@@ -77,13 +41,13 @@ def test_list_and_get_official_runs(client, db_session, headers):
     # Get single run
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     assert response.json()["id"] == run.id
 
 
-def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
+def test_run_details_and_exports(client, db_session, temp_workspaces, admin_headers):
     run = RunSummary(
         workflow_type="official",
         assignment_id=1,
@@ -133,7 +97,7 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     # Request details
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/details",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     body = response.json()
@@ -163,7 +127,7 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     # Request CSV export
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     assert "grades.csv" in response.headers["content-disposition"]
@@ -172,7 +136,7 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     # Request Feedback ZIP export
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     assert "feedback.zip" in response.headers["content-disposition"]
@@ -180,7 +144,7 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     # Trigger cleanup
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/cleanup",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     assert "cleaned up successfully" in response.json()["message"]
@@ -192,22 +156,22 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, headers):
     # Idempotent cleanup when workspace is already gone
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/cleanup",
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     assert "cleaned up successfully" in response.json()["message"]
 
 
-def test_run_details_not_found(client, headers):
+def test_run_details_not_found(client, admin_headers):
     response = client.get(
         "/staff/courses/cs1400/assignments/simple-python-functions/runs/999/details",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 404
     assert response.json()["detail"] == "Run not found."
 
 
-def test_partial_run_details_while_running(client, db_session, temp_workspaces, headers):
+def test_partial_run_details_while_running(client, db_session, temp_workspaces, admin_headers):
     run = RunSummary(
         workflow_type="official",
         assignment_id=1,
@@ -253,7 +217,7 @@ def test_partial_run_details_while_running(client, db_session, temp_workspaces, 
 
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/details",
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     body = response.json()
@@ -264,7 +228,7 @@ def test_partial_run_details_while_running(client, db_session, temp_workspaces, 
     assert body["exports_ready"] is False
 
 
-def test_official_run_status(client, db_session, headers):
+def test_official_run_status(client, db_session, admin_headers):
     run = RunSummary(
         workflow_type="official",
         assignment_id=1,
@@ -278,7 +242,7 @@ def test_official_run_status(client, db_session, headers):
 
     response = client.get(
         f"/runs/{run.id}/status",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     body = response.json()
@@ -286,7 +250,7 @@ def test_official_run_status(client, db_session, headers):
     assert body["state"] == "run"
 
 
-def test_list_student_files_and_content(client, db_session, temp_workspaces, headers):
+def test_list_student_files_and_content(client, db_session, temp_workspaces, admin_headers):
     run = RunSummary(
         workflow_type="official",
         assignment_id=1,
@@ -311,7 +275,7 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     # 1. Test listing files
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/files",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     body = response.json()
@@ -326,7 +290,7 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     # 2. Test reading content
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/files/content?filepath=solution.py",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     text_body = response.json()
@@ -336,7 +300,7 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     # 3. Test path traversal block
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/files/content?filepath=../../secret.txt",
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 403
     assert "Access denied" in response.json()["detail"]
@@ -344,7 +308,7 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     # 4. Image files return base64 preview payload
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/files/content?filepath=diagram.png",
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     image_body = response.json()
@@ -355,12 +319,12 @@ def test_list_student_files_and_content(client, db_session, temp_workspaces, hea
     # 5. Wrong assignment is rejected
     response = client.get(
         f"/staff/courses/cs1400/assignments/nonexistent-assignment/runs/{run.id}/students/11111/files",
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 404
 
 
-def test_update_student_manual_grades(client, db_session, temp_workspaces, headers):
+def test_update_student_manual_grades(client, db_session, temp_workspaces, admin_headers):
     run = RunSummary(
         workflow_type="official",
         assignment_id=1,
@@ -407,7 +371,7 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
         json={"grades": {"style": {"score": None, "comments": "Pending review"}}},
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     body = response.json()
@@ -417,7 +381,7 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     assert body["manual_progress"]["exports_ready"] is False
     response = client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 409
 
@@ -434,7 +398,7 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
         json=payload,
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 200
     body = response.json()
@@ -446,11 +410,11 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     assert body["manual_progress"]["exports_ready"] is True
     assert client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
-        headers=headers,
+        headers=admin_headers,
     ).status_code == 200
     assert client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
-        headers=headers,
+        headers=admin_headers,
     ).status_code == 200
 
     # Check files on disk
@@ -469,7 +433,7 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
         json=payload_invalid,
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 400
     assert "exceeds maximum points" in response.json()["detail"]
@@ -486,7 +450,7 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
         json=payload_bad_key,
-        headers=headers
+        headers=admin_headers
     )
     assert response.status_code == 400
     assert "Invalid manual rubric item key" in response.json()["detail"]
@@ -495,7 +459,7 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
         json={"grades": {"style": {"score": 8.5}}},
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 422
 
@@ -503,20 +467,20 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, heade
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
         json={"grades": {"style": {"score": None, "comments": ""}}},
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     assert response.json()["manual_progress"]["exports_ready"] is False
     assert client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
-        headers=headers,
+        headers=admin_headers,
     ).status_code == 409
 
     # 6. Overall feedback can be saved without changing manual scores.
     response = client.post(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
         json={"grades": {}, "overall_comment": "Standalone instructor note."},
-        headers=headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     body = response.json()

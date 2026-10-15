@@ -29,9 +29,7 @@ from app.domains.assignments.service import update_staff_setup
 from app.domains.courses.models import Course
 
 
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
+pytestmark = pytest.mark.usefixtures("reset_database")
 
 
 def test_assignment_config_accepts_simple_python_example():

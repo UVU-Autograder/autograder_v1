@@ -153,7 +153,7 @@ def _create_run_sync(
     run_config = dict(db_assignment.config.config) if db_assignment.config and db_assignment.config.config else {}
     if db_assignment.description and not run_config.get("description"):
         run_config["description"] = db_assignment.description
-    expected_manifest = db_assignment.config.validated_test_manifest
+    expected_manifest = db_assignment.config.validated_test_manifest if db_assignment.config else None
     max_score = assignment.max_score
     # Hand this request's database connection back before scheduling. Scheduling takes
     # the scheduler lock and then needs its own connection; requests that held a

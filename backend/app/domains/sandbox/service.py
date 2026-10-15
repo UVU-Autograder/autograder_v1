@@ -156,14 +156,15 @@ class SandboxService:
         if quota.remaining <= 0:
             return None, session, 429
 
+        now = datetime.now(UTC)
+        self._store.record_upload(session, now)
+
         run_id = f"run_{token_urlsafe(16)}"
         try:
             waiting = reserve_execution_slots(1, owner=run_id)
         except QueueFullError:
+            self._store.unrecord_upload(session)
             return None, session, 503
-
-        now = datetime.now(UTC)
-        self._store.record_upload(session, now)
 
         record = SandboxRunRecord(
             run_id=run_id,
@@ -177,8 +178,8 @@ class SandboxService:
             self._store.save_run(record)
         except Exception:
             release_execution_slots(owner=run_id)
+            self._store.unrecord_upload(session)
             return None, session, 502
-
 
         # Store execution payload on record
         if zip_data is not None and config is not None:
@@ -222,6 +223,7 @@ class SandboxService:
                 except Exception:
                     from app.domains.runs.queue_admission import cancel_waiting
                     cancel_waiting(run_id)
+                    self._store.unrecord_upload(session)
                     return None, session, 502
 
         if self._use_celery:

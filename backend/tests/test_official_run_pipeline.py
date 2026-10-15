@@ -14,7 +14,6 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.settings import get_settings
-from app.db.session import SessionLocal
 from app.domains.grading.engine import GradingResult
 from app.domains.runs.mock_runner import run_mock_official_run
 from app.domains.runs.models import RunSummary
@@ -69,19 +68,6 @@ def test_failing_automated_items_ignores_manual_rubric_items():
     assert failing_automated_items([manual, auto_pass]) == []
     assert failing_automated_items([manual, auto_fail]) == [auto_fail]
 
-
-@pytest.fixture(autouse=True)
-def db_session(reset_database):
-    with SessionLocal() as session:
-        yield session
-
-
-@pytest.fixture()
-def temp_workspaces(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    from app.core.settings import get_settings
-    settings = get_settings()
-    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path / "artifacts"))
-    return tmp_path
 
 
 def test_run_mock_official_run_success(db_session: Session, temp_workspaces: Path) -> None:
@@ -302,10 +288,6 @@ def test_cleanup_expired_workspaces(db_session: Session, temp_workspaces: Path) 
     assert recent_run_dir.exists()
     assert recent_zip.exists()
 
-
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
 
 
 @pytest.mark.anyio

@@ -1,9 +1,7 @@
 import sys
 from pathlib import Path
 
-import pytest
 from fastapi import Depends, status
-from fastapi.testclient import TestClient
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
@@ -11,17 +9,6 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from app.core.dependencies import get_current_user
 from app.db.session import SessionLocal, get_db
 from app.domains.auth.models import Role, StaffAccess, User
-from app.main import create_app
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-
-@pytest.fixture
-def client():
-    return TestClient(create_app())
 
 
 def test_staff_endpoints_allow_default_dev_staff(client):

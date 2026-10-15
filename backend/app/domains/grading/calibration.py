@@ -98,9 +98,12 @@ async def execute_local_calibration_runner(
     env["SDL_VIDEODRIVER"] = "dummy"
     env["SDL_AUDIODRIVER"] = "dummy"
 
+    report_file = exec_dir / "results.json"
     proc = await asyncio.create_subprocess_exec(
         sys.executable,
         str(runner_file),
+        "--ag-child",
+        str(report_file),
         cwd=str(exec_dir),
         stdin=asyncio.subprocess.PIPE if stdin else None,
         stdout=asyncio.subprocess.PIPE,
@@ -109,8 +112,23 @@ async def execute_local_calibration_runner(
     )
 
     stdin_bytes = stdin.encode("utf-8") if stdin else None
-    stdout_bytes, stderr_bytes = await proc.communicate(input=stdin_bytes)
-    stdout_text = stdout_bytes.decode("utf-8", errors="replace")
+    try:
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            proc.communicate(input=stdin_bytes),
+            timeout=wall_time_limit,
+        )
+    except TimeoutError:
+        proc.kill()
+        await proc.communicate()
+        outcome.failure_category = "test_execution_error"
+        outcome.failure_message = f"Calibration runner exceeded wall time limit ({wall_time_limit}s)."
+        outcome.success = False
+        return outcome
+
+    if report_file.is_file():
+        stdout_text = report_file.read_text(encoding="utf-8")
+    else:
+        stdout_text = stdout_bytes.decode("utf-8", errors="replace")
 
     pytest_result = parse_pytest_json(stdout_text, expected_manifest=expected_manifest)
     outcome.pytest_result = pytest_result

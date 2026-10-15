@@ -1,4 +1,5 @@
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -24,14 +25,20 @@ def test_initialize_database_serializes_sqlite_seed(
     sessions = sessionmaker(bind=engine)
     Base.metadata.create_all(bind=engine)
 
+    barrier = threading.Barrier(2)
+
     def slow_seed(db):
         user = db.scalar(
             select(User).where(User.email == "dev.staff@uvu.edu")
         )
         if user is None:
-            time.sleep(0.1)
+            time.sleep(0.005)
             db.add(User(email="dev.staff@uvu.edu"))
         db.commit()
+
+    def run_seed():
+        barrier.wait()
+        seed_module.initialize_database(seed=True)
 
     monkeypatch.setattr(seed_module, "engine", engine)
     monkeypatch.setattr(seed_module, "SessionLocal", sessions)
@@ -39,7 +46,7 @@ def test_initialize_database_serializes_sqlite_seed(
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
-            pool.submit(seed_module.initialize_database, seed=True)
+            pool.submit(run_seed)
             for _ in range(2)
         ]
         for future in futures:

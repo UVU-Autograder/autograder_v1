@@ -129,6 +129,7 @@ def control_lock(run_id: int | str, *, blocking: bool = True, timeout: float = 2
                 handle.write(b"\0")
                 handle.flush()
             deadline = time.monotonic() + (timeout if blocking else 0)
+            poll_interval = 0.001
             while True:
                 try:
                     if os.name == "nt":
@@ -144,7 +145,8 @@ def control_lock(run_id: int | str, *, blocking: bool = True, timeout: float = 2
                 except OSError:
                     if time.monotonic() >= deadline:
                         raise BlockingIOError("workspace_busy") from None
-                    time.sleep(0.02)
+                    time.sleep(poll_interval)
+                    poll_interval = min(0.01, poll_interval * 1.5)
             held.add(run_id)
             try:
                 yield

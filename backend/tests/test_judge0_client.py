@@ -46,13 +46,23 @@ def _json_response(data: dict, status_code: int = 200) -> MagicMock:
 @pytest.fixture
 def client_no_auth() -> Judge0Client:
     """Judge0Client without an auth token."""
-    return Judge0Client(base_url="http://judge0:2358")
+    mock_async_client = AsyncMock(spec=httpx.AsyncClient)
+    mock_async_client.headers = httpx.Headers({"Content-Type": "application/json"})
+    return Judge0Client(base_url="http://judge0:2358", client=mock_async_client)
 
 
 @pytest.fixture
 def client_with_auth() -> Judge0Client:
     """Judge0Client with an auth token."""
-    return Judge0Client(base_url="http://judge0:2358", auth_token="secret-token")
+    mock_async_client = AsyncMock(spec=httpx.AsyncClient)
+    mock_async_client.headers = httpx.Headers(
+        {"Content-Type": "application/json", "X-Auth-Token": "secret-token"}
+    )
+    return Judge0Client(
+        base_url="http://judge0:2358",
+        auth_token="secret-token",
+        client=mock_async_client,
+    )
 
 
 # ---------------------------------------------------------------------------

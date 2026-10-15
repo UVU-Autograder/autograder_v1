@@ -4,29 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import pytest
-from app.core.auth_utils import create_access_token
 from app.integrations.ai.test_authoring import _validate_generated_pytest_code
-from app.main import create_app
-from fastapi.testclient import TestClient
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-
-@pytest.fixture
-def client():
-    app = create_app()
-    return TestClient(app)
-
-
-@pytest.fixture
-def admin_token():
-    return create_access_token(
-        email="dev.staff@uvu.edu", display_name="Dev Admin Staff"
-    )
 
 
 def test_validate_generated_pytest_code_requires_ag_marker():

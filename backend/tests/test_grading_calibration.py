@@ -6,6 +6,7 @@ common student misconceptions, and boundary edge cases for pilot CS 1410 assignm
 """
 from __future__ import annotations
 
+import functools
 import json
 
 import pytest
@@ -24,13 +25,10 @@ from app.domains.grading.pipeline import GradingPipeline, PreloadedArtifacts
 MANIFESTS = get_pilot_calibration_manifests()
 
 
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
 
-
-def _get_preloaded_artifacts_for_slug(slug: str) -> tuple[AssignmentConfigV1, PreloadedArtifacts]:
-    """Helper to construct config and PreloadedArtifacts from seed directory."""
+@functools.lru_cache(maxsize=None)
+def _load_cached_slug_artifacts(slug: str) -> tuple[AssignmentConfigV1, PreloadedArtifacts]:
+    """Load config and artifact bytes from disk once per slug."""
     seed_dir = SEEDS_DIR / slug
     config_data = json.loads((seed_dir / "config.json").read_text(encoding="utf-8"))
     config = AssignmentConfigV1.model_validate(config_data)
@@ -52,6 +50,12 @@ def _get_preloaded_artifacts_for_slug(slug: str) -> tuple[AssignmentConfigV1, Pr
                 pytest_filenames.append(filename)
 
     return config, PreloadedArtifacts(files=files, pytest_filenames=pytest_filenames)
+
+
+def _get_preloaded_artifacts_for_slug(slug: str) -> tuple[AssignmentConfigV1, PreloadedArtifacts]:
+    """Helper to construct config and PreloadedArtifacts from seed directory."""
+    config, preloaded = _load_cached_slug_artifacts(slug)
+    return config, PreloadedArtifacts(files=dict(preloaded.files), pytest_filenames=list(preloaded.pytest_filenames))
 
 
 def test_pilot_manifests_completeness() -> None:

@@ -5,31 +5,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
 
-import pytest
 from app.core.auth_utils import create_access_token
-from app.db.session import SessionLocal
 from app.domains.auth.models import User
-from app.main import create_app
-from fastapi.testclient import TestClient
 from sqlalchemy import select
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-@pytest.fixture
-def client():
-    app = create_app()
-    return TestClient(app)
-
-@pytest.fixture
-def db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def test_mock_login_success(client, db_session):
     email = "new.staff@uvu.edu"
