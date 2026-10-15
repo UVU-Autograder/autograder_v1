@@ -200,6 +200,12 @@ Under the hood, the script executes:
    ```
 3. Health verification across `http://127.0.0.1:8000/api/health`, Celery `inspect ping`, `dispatch_worker --health`, and `cleanup_worker --health`.
 
+A deploy that changes the grading runner or helper, a pinned dependency, or an instructor file makes every affected assignment's reference inventory stale, and the sandbox answers uploads with HTTP 400 ("requires instructor reference validation") until each model solution is graded again. Re-validate them all from the checkout (`--dry-run` lists them first):
+
+```bash
+docker exec -i uvu-autograder-backend-1 python - --wait < backend/scripts/revalidate_references.py
+```
+
 ### 3. Post-Rollout Synthetic Package Smoke Verification
 Immediately after container restart (and automatically as step 4 of `scripts/rollout_grading_package.sh`), [validate_grading_package_host.py](../../backend/scripts/validate_grading_package_host.py) executes inside the deployed `backend` container:
 ```bash
