@@ -1,8 +1,18 @@
 import { apiClient } from "@/lib/api-client";
 import { SandboxCoursesResponse, StaffCoursesResponse, CourseAdminDetail } from "@/features/courses/types";
 
+let sandboxCoursesPromise: Promise<SandboxCoursesResponse> | null = null;
+
 export function getSandboxCourses() {
-    return apiClient.get<SandboxCoursesResponse>("/sandbox/courses");
+    if (sandboxCoursesPromise) {
+        return sandboxCoursesPromise;
+    }
+    sandboxCoursesPromise = apiClient
+        .get<SandboxCoursesResponse>("/sandbox/courses")
+        .finally(() => {
+            sandboxCoursesPromise = null;
+        });
+    return sandboxCoursesPromise;
 }
 
 export function getStaffCourses() {

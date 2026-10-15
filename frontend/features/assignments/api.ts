@@ -49,9 +49,21 @@ export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const inFlightAssignments = new Map<string, Promise<AssignmentsResponse>>();
+
 /** Staff assignment lists reuse the sandbox endpoint for a student-parity view. */
 export function getAssignments(courseId: string) {
-  return apiClient.get<AssignmentsResponse>(`/sandbox/courses/${courseId}/assignments`);
+  const existing = inFlightAssignments.get(courseId);
+  if (existing) {
+    return existing;
+  }
+  const promise = apiClient
+    .get<AssignmentsResponse>(`/sandbox/courses/${courseId}/assignments`)
+    .finally(() => {
+      inFlightAssignments.delete(courseId);
+    });
+  inFlightAssignments.set(courseId, promise);
+  return promise;
 }
 
 export function getAssignment(courseId: string, assignmentId: string) {
@@ -214,8 +226,18 @@ export async function streamSandboxAiFeedback(
   return fullText;
 }
 
+let conceptsMetadataCache: Promise<Record<string, ConceptMetadata>> | null = null;
+
 export function getConceptsMetadata() {
-  return apiClient.get<Record<string, ConceptMetadata>>("/sandbox/concepts/metadata");
+  if (!conceptsMetadataCache) {
+    conceptsMetadataCache = apiClient
+      .get<Record<string, ConceptMetadata>>("/sandbox/concepts/metadata")
+      .catch((err) => {
+        conceptsMetadataCache = null;
+        throw err;
+      });
+  }
+  return conceptsMetadataCache;
 }
 
 export function createStaffAssignment(courseId: string, payload: AssignmentCreatePayload) {

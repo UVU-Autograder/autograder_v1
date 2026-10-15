@@ -408,7 +408,7 @@ export default function CodeResults({
       <details className="mb-3 rounded-md border border-border bg-card text-card-foreground text-xs">
         <summary className="cursor-pointer select-none px-3 py-2 text-muted-foreground font-medium hover:text-foreground">
           Provide stdin{" "}
-          <span className="font-mono text-xs text-muted-foreground/70">
+          <span className="font-mono text-xs text-muted-foreground">
             (optional)
           </span>
         </summary>
@@ -427,7 +427,7 @@ export default function CodeResults({
         </div>
       </details>
       {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
-        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-warning font-medium text-xs">
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
           <AlertTriangle className="size-4 shrink-0" />
           <span>
             Required entrypoint <strong>{bundleStatus.expectedEntrypoint}</strong> is missing from workspace files.
@@ -435,7 +435,7 @@ export default function CodeResults({
         </div>
       )}
       {bundleStatus.missingRequiredFiles.length > 0 && (
-        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-warning font-medium text-xs">
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
           <AlertTriangle className="size-4 shrink-0" />
           <span>
             Missing required file(s):{" "}

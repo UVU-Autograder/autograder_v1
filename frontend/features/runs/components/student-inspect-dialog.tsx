@@ -422,7 +422,7 @@ function StudentInspectDialogSession({
                             className="max-h-full max-w-full h-auto w-auto object-contain"
                           />
                         </div>
-                      ) : (
+                      ) : inspectTab === "code" ? (
                         <div className="h-full w-full">
                           <MonacoEditor
                             key={selectedFilepath}
@@ -442,7 +442,7 @@ function StudentInspectDialogSession({
                             }}
                           />
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ) : (

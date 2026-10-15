@@ -1,4 +1,14 @@
-import { handleMockDownload, handleMockRequest } from "./mock-handlers";
+let mockHandlersPromise: Promise<typeof import("./mock-handlers")> | null = null;
+
+function getMockHandlers(): Promise<typeof import("./mock-handlers")> | null {
+    if (process.env.NODE_ENV === "production" || !isMockApiEnabled()) {
+        return null;
+    }
+    if (!mockHandlersPromise) {
+        mockHandlersPromise = import("./mock-handlers");
+    }
+    return mockHandlersPromise;
+}
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -120,13 +130,16 @@ async function apiFetch<T>(
         headers.set("authorization", `Bearer ${token}`);
     }
 
-    if (isMockApiEnabled()) {
-        const mockResult = await handleMockRequest<T>(path, init);
-        if (mockResult) {
-            updateStoredToken(mockResult.response);
-            return mockResult;
+    if (process.env.NODE_ENV !== "production" && isMockApiEnabled()) {
+        const mockHandlers = await getMockHandlers();
+        if (mockHandlers) {
+            const mockResult = await mockHandlers.handleMockRequest<T>(path, init);
+            if (mockResult) {
+                updateStoredToken(mockResult.response);
+                return mockResult;
+            }
+            throw new ApiError(404, `Mock endpoint not implemented: ${(init?.method || "GET").toUpperCase()} ${path}`);
         }
-        throw new ApiError(404, `Mock endpoint not implemented: ${(init?.method || "GET").toUpperCase()} ${path}`);
     }
 
     const response = await fetch(resolveUrl(path), {
@@ -200,18 +213,21 @@ export const apiClient = {
         apiFetch<T>(path, { method: "DELETE", headers: options?.headers }).then((result) => result.data),
 
     download: async (path: string, filename: string, options?: ApiFetchOptions): Promise<void> => {
-        if (isMockApiEnabled()) {
-            const blob = await handleMockDownload(path);
-            if (blob) {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                return;
+        if (process.env.NODE_ENV !== "production" && isMockApiEnabled()) {
+            const mockHandlers = await getMockHandlers();
+            if (mockHandlers) {
+                const blob = await mockHandlers.handleMockDownload(path);
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    return;
+                }
             }
         }
 

@@ -82,12 +82,53 @@ export default function AdminLogsPage() {
   };
 
   useEffect(() => {
-    void fetchStats();
+    let ignore = false;
+    getAdminLogStats()
+      .then((data) => {
+        if (!ignore) setStats(data);
+      })
+      .catch((err) => {
+        console.error("Failed to load stats:", err);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
-    void fetchLogs(1);
-  }, [selectedEvent, selectedWorkflow]);
+    let ignore = false;
+    getAdminLogs({
+      page: 1,
+      page_size: 25,
+      search: search.trim() || undefined,
+      event: selectedEvent || undefined,
+      workflow_type: selectedWorkflow || undefined,
+    })
+      .then((data) => {
+        if (!ignore) {
+          setLogs(data.items);
+          setTotal(data.total);
+          setPage(data.page);
+          setTotalPages(data.total_pages);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          console.error("Failed to load audit logs:", err);
+          setError(err instanceof Error ? err.message : "Failed to load audit logs.");
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [search, selectedEvent, selectedWorkflow]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

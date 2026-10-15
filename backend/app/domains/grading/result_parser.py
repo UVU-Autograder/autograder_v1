@@ -158,10 +158,15 @@ def parse_pytest_json(
 # ---------------------------------------------------------------------------
 
 
+_ASSERT_E_RE = re.compile(r"E\s+assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$")
+_ASSERT_TRACEBACK_RE = re.compile(r"assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$")
+_ASSERT_MSG_RE = re.compile(r"^(.+?),\s*([\"'].*[\"'])$")
+
+
 def _clean_assertion_target(match: re.Match) -> tuple[str, str]:
     act_str = match.group(1).strip().strip("'\"")
     exp_str = match.group(3).strip().strip("'\"")
-    msg_match = re.search(r"^(.+?),\s*([\"'].*[\"'])$", exp_str)
+    msg_match = _ASSERT_MSG_RE.search(exp_str)
     if msg_match:
         exp_str = msg_match.group(1).strip().strip("'\"")
     return act_str, exp_str
@@ -179,7 +184,7 @@ def _extract_assertion_values(message: str | None, actual: str | None = None, ex
     for line in message.splitlines():
         line_str = line.strip()
         if line_str.startswith("E ") and "assert " in line_str:
-            match = re.search(r"E\s+assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
+            match = _ASSERT_E_RE.search(line_str)
             if match:
                 return _clean_assertion_target(match)
 
@@ -187,7 +192,7 @@ def _extract_assertion_values(message: str | None, actual: str | None = None, ex
     for line in message.splitlines():
         line_str = line.strip()
         if "AssertionError:" in line_str or "assert " in line_str:
-            match = re.search(r"assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
+            match = _ASSERT_TRACEBACK_RE.search(line_str)
             if match:
                 return _clean_assertion_target(match)
 
