@@ -14,7 +14,6 @@ from app.api.router import api_router
 from app.core.audit_log import configure_audit_logging
 from app.core.exception_handlers import AppError, app_error_handler, http_exception_handler
 from app.core.settings import get_settings
-from app.db.seed import initialize_database
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +23,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_audit_logging()
     settings = get_settings()
     settings.validate_production_security()
-    if settings.is_sqlite:
-        initialize_database(seed=True)
     if settings.environment != "test":
         try:
             from app.db.seed import seed_judge0_language

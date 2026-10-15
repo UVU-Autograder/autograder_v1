@@ -105,8 +105,8 @@ async def verify(course: str, assignment: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--course", default="cs1400")
-    parser.add_argument("--assignment", default="simple-python-functions")
+    parser.add_argument("--course", default="cs1410")
+    parser.add_argument("--assignment", default="lab1")
     args = parser.parse_args()
     try:
         asyncio.run(verify(args.course, args.assignment))

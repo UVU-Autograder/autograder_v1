@@ -19,8 +19,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-COURSE="cs1400"
-ASSIGNMENT="simple-python-functions"
+COURSE="cs1410"
+ASSIGNMENT="lab1"
 DRAIN_TIMEOUT_SECONDS=600
 POLL_INTERVAL_SECONDS=5
 SKIP_BACKUP=0

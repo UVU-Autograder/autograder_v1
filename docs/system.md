@@ -7,7 +7,7 @@ Canvas owns course content and official grades. The autograder owns grading conf
 | Layer | Stack / maintained source |
 | --- | --- |
 | Frontend | Next.js App Router, React, TypeScript, Tailwind/Shadcn/Radix, Monaco, JSZip, WorkspaceVFS; offline development mode (`npm run dev`) with synthetic backend fixtures; [routes](../frontend/app/), [features](../frontend/features/), [dependencies](../frontend/package.json) |
-| API and database | FastAPI, Pydantic v2, SQLAlchemy, Alembic; Python 3.11+, PostgreSQL, SQLite development mode; [domains](../backend/app/domains/), [dependencies](../backend/requirements.txt) |
+| API and database | FastAPI, Pydantic v2, SQLAlchemy, Alembic; Python 3.11+, PostgreSQL (runtime), SQLite (hermetic pytest runner); [domains](../backend/app/domains/), [dependencies](../backend/requirements.txt) |
 | Assignment/grading | Specification and grading engines (`GradingPipeline`), decoupled language strategies (`LanguageStrategy` for Python/C++), AST inspection, pytest, result normalization/parsing; [assignments](../backend/app/domains/assignments/), [grading](../backend/app/domains/grading/), [AST](../backend/app/integrations/ast_checker/) |
 | Scheduling and cleanup | Celery/Redis transport, PostgreSQL execution tickets/dispatch records, shared-volume locks and independent dispatch/cleanup workers; [runs](../backend/app/domains/runs/) |
 | Execution | Custom Judge0 Python 3.11.9 runtime (language 711), Kata/QEMU isolation; [image](../judge0.Dockerfile), [Compose](../docker-compose.yml), [Kata overlay](../docker-compose.kata.yml) |
@@ -33,7 +33,7 @@ AI receives sanitized code and grounded failures, validates its complete respons
 
 ## Assignment setup and scoring
 
-Staff use the wizard/artifact editors to configure bundles, automated/manual items and models, run preflight, and validate reference solutions. An interactive AI test assistant assists instructors in drafting pytest test suites from assignment requirements. CS1410 has 17 packages; CS1400 uses `simple-python-functions`. Execution strategies decouple language runners (`python` with pytest, `cpp` with compiler diagnostics). Pygame combines headless tests with manual visual criteria.
+Staff use the wizard/artifact editors to configure bundles, automated/manual items and models, run preflight, and validate reference solutions. An interactive AI test assistant assists instructors in drafting pytest test suites from assignment requirements. CS1410 has 17 packages; CS1400 has 44 course assignments across 14 modules. Execution strategies decouple language runners (`python` with pytest, `cpp` with compiler diagnostics). Pygame combines headless tests with manual visual criteria.
 
 Canonical `assignment_configs.config` includes bundle paths/globs, language specification, pytest/model/support artifacts, unified scoring items, completion requirements ("Pass at least X of Y" objectives), concept policy, dependencies and rubric groups; instructor-authored markdown/HTML instructions persist on `assignments.description`. Stable scoring keys map to `ag_<key>` markers; all tests sharing a key must pass for its points. Completion requirements (`completion_requirements`) allow specifying objectives where students must pass at least *M* of *N* designated test cases. Extra credit can exceed the base total. Scoring items are defined directly within configuration JSON (`config["scoring_items"]`).
 

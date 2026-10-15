@@ -189,7 +189,7 @@ When an official Canvas batch is uploaded, intake captures and validates an immu
 ### 2. Coordinated Container Rebuild & Rollout
 Run the automated rollout script to back up persistent metadata, rebuild and restart `backend`, `celery-worker`, `dispatch-worker`, and `cleanup-worker` from the identical Git revision, and verify daemon health:
 ```bash
-bash scripts/rollout_grading_package.sh --course cs1400 --assignment simple-python-functions
+bash scripts/rollout_grading_package.sh --course cs1410 --assignment lab1
 ```
 
 Under the hood, the script executes:
@@ -203,7 +203,7 @@ Under the hood, the script executes:
 ### 3. Post-Rollout Synthetic Package Smoke Verification
 Immediately after container restart (and automatically as step 4 of `scripts/rollout_grading_package.sh`), [validate_grading_package_host.py](../../backend/scripts/validate_grading_package_host.py) executes inside the deployed `backend` container:
 ```bash
-dc exec -T backend python scripts/validate_grading_package_host.py --course cs1400 --assignment simple-python-functions
+dc exec -T backend python scripts/validate_grading_package_host.py --course cs1410 --assignment lab1
 ```
 Confirm all boolean checks report `"passed": true`:
 - `workload_drained`: No unfinished official batches or active tickets exist.
@@ -256,7 +256,7 @@ The autograder operates on a single on-premise workstation (`10.115.20.200`, `CE
      ```
   4. Verify schema parity and synthetic package grading before reopening intake:
      ```bash
-     dc exec -T backend python scripts/validate_grading_package_host.py --course cs1400 --assignment simple-python-functions
+     dc exec -T backend python scripts/validate_grading_package_host.py --course cs1410 --assignment lab1
      ```
 
 ### 3. Local AI Outage (`vllm-cs1410.service` / Ollama) Graceful Degradation

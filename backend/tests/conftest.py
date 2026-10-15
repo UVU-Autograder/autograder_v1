@@ -18,6 +18,79 @@ if "PYTHONPATH" not in os.environ or backend_dir not in os.environ["PYTHONPATH"]
         f"{backend_dir}{os.pathsep}{os.environ.get('PYTHONPATH', '')}".rstrip(os.pathsep)
     )
 
+os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+os.environ.setdefault("ENVIRONMENT", "test")
+
+
+def _seed_test_fixtures() -> None:
+    from sqlalchemy import select
+    from app.db.session import SessionLocal
+    from app.domains.courses.models import Course, Module
+    from app.domains.assignments.models import Assignment
+    from app.domains.assignments.service import seed_assignment_artifacts
+    from app.domains.assignments.inventory import execution_fingerprint
+    from app.domains.grading.report_contract import ValidatedManifest
+    from app.domains.auth.models import Role, User
+
+    with SessionLocal() as db:
+        role = db.scalar(select(Role).where(Role.name == "admin"))
+        if role is None:
+            role = Role(name="admin")
+            db.add(role)
+            db.flush()
+        staff_user = db.scalar(select(User).where(User.email == "dev.staff@uvu.edu"))
+        if staff_user is None:
+            staff_user = User(email="dev.staff@uvu.edu", display_name="Development Staff")
+            db.add(staff_user)
+            db.flush()
+        course = db.scalar(select(Course).where(Course.code == "cs1400"))
+        if course is None:
+            course = Course(
+                code="cs1400",
+                title="Fundamentals of Programming",
+                term="Fall 2026",
+                default_concepts=["variables", "conditionals"],
+                instructor=staff_user,
+            )
+            db.add(course)
+            db.flush()
+        m1 = db.scalar(select(Module).where(Module.course_id == course.id, Module.name.like("Module 1:%")))
+        if m1 is None:
+            m1 = Module(course=course, name="Module 1: Introduction to Programming", concepts=["variables"])
+            db.add(m1)
+            db.flush()
+        fixture_assignment = db.scalar(
+            select(Assignment).where(Assignment.course_id == course.id, Assignment.slug == "simple-python-functions")
+        )
+        if fixture_assignment is None:
+            fixture_assignment = Assignment(
+                course=course,
+                slug="simple-python-functions",
+                title="Simple Python Functions",
+                language="python",
+                canvas_ref="canvas:synthetic:simple-python-functions",
+                sandbox_enabled=True,
+                module=m1,
+                is_active=True,
+            )
+            db.add(fixture_assignment)
+            db.flush()
+            seed_assignment_artifacts(db, fixture_assignment, fixture_assignment.slug)
+            db.flush()
+            cases = [
+                {"nodeid": "assignment_tests.py::test_add_numbers_positive_values", "markers": ["ag_add_numbers"], "xfail": False},
+                {"nodeid": "assignment_tests.py::test_add_numbers_negative_values", "markers": ["ag_add_numbers"], "xfail": False},
+                {"nodeid": "assignment_tests.py::test_reverse_words_basic_sentence", "markers": ["ag_reverse_words"], "xfail": False},
+                {"nodeid": "assignment_tests.py::test_reverse_words_preserves_spacing_between_words", "markers": ["ag_reverse_words"], "xfail": False},
+                {"nodeid": "assignment_tests.py::test_count_vowels_lowercase", "markers": ["ag_count_vowels"], "xfail": False},
+                {"nodeid": "assignment_tests.py::test_count_vowels_case_insensitive", "markers": ["ag_count_vowels"], "xfail": False},
+            ]
+            fixture_assignment.config.validated_test_manifest = ValidatedManifest(
+                fingerprint=execution_fingerprint(db, fixture_assignment),
+                cases=cases,
+            ).model_dump(mode="json")
+            db.commit()
+
 
 @pytest.fixture
 def mock_httpx_client():
@@ -54,6 +127,8 @@ def reset_database():
     import_domain_models()
     clear_local_orchestrator_cache()
     Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    _seed_test_fixtures()
     initialize_database(seed=True)
     yield
     clear_local_orchestrator_cache()

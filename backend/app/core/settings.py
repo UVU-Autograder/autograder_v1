@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
     database_url: str = Field(
-        default="sqlite+pysqlite:///:memory:",
+        default="postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder",
         validation_alias="DATABASE_URL",
     )
     artifact_storage_dir: str = Field(
@@ -89,7 +89,7 @@ class Settings(BaseSettings):
     def mock_login_enabled(self) -> bool:
         if self.environment == "production" or self.auth_provider == "microsoft":
             return False
-        return self.enable_mock_login or self.is_sqlite
+        return self.enable_mock_login or self.environment in ("development", "test")
 
     def validate_production_security(self) -> None:
         """Validate production security invariants at startup."""

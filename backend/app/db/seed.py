@@ -139,66 +139,6 @@ def _seed_cs1400(
                 section=section,
             )
         )
-
-    from app.core.settings import get_settings
-
-    settings = get_settings()
-
-    legacy_module = db.scalar(
-        select(Module).where(
-            Module.course_id == course.id,
-            Module.name == "Module 1: Expressions & Conditionals",
-        )
-    )
-    if legacy_module is not None:
-        db.delete(legacy_module)
-        db.flush()
-
-    if settings.is_sqlite:
-        fixture_assignment = db.scalar(
-            select(Assignment).where(Assignment.course_id == course.id, Assignment.slug == "simple-python-functions")
-        )
-        if fixture_assignment is None:
-            fixture_assignment = Assignment(
-                course=course,
-                slug="simple-python-functions",
-                title="Simple Python Functions",
-                language="python",
-                canvas_ref="canvas:synthetic:simple-python-functions",
-                sandbox_enabled=True,
-                module=modules["m1"],
-                is_active=True,
-            )
-            db.add(fixture_assignment)
-            db.flush()
-            seed_assignment_artifacts(db, fixture_assignment, fixture_assignment.slug)
-            db.flush()
-            from app.domains.assignments.inventory import execution_fingerprint
-            from app.domains.grading.report_contract import ValidatedManifest
-
-            cases = [
-                {"nodeid": "assignment_tests.py::test_add_numbers_positive_values", "markers": ["ag_add_numbers"], "xfail": False},
-                {"nodeid": "assignment_tests.py::test_add_numbers_negative_values", "markers": ["ag_add_numbers"], "xfail": False},
-                {"nodeid": "assignment_tests.py::test_reverse_words_basic_sentence", "markers": ["ag_reverse_words"], "xfail": False},
-                {"nodeid": "assignment_tests.py::test_reverse_words_preserves_spacing_between_words", "markers": ["ag_reverse_words"], "xfail": False},
-                {"nodeid": "assignment_tests.py::test_count_vowels_lowercase", "markers": ["ag_count_vowels"], "xfail": False},
-                {"nodeid": "assignment_tests.py::test_count_vowels_case_insensitive", "markers": ["ag_count_vowels"], "xfail": False},
-            ]
-            fixture_assignment.config.validated_test_manifest = ValidatedManifest(
-                fingerprint=execution_fingerprint(db, fixture_assignment),
-                cases=cases,
-            ).model_dump(mode="json")
-    else:
-        legacy_assignment = db.scalar(
-            select(Assignment).where(
-                Assignment.course_id == course.id,
-                Assignment.slug == "simple-python-functions",
-            )
-        )
-        if legacy_assignment is not None:
-            db.delete(legacy_assignment)
-            db.flush()
-
     existing_assignments = {a.slug: a for a in course.assignments}
     cs1400_root = Path(__file__).resolve().parents[3] / "cs1400"
     for item in catalog["assignments"]:

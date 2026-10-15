@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Official Review Acceptance Suite", () => {
-  const runPath = "/staff/courses/cs1400/assignments/simple-python-functions/runs/1";
+  const runPath = "/staff/courses/cs1400/assignments/m1-lab1/runs/1";
 
   test.beforeEach(async ({ page }) => {
     // Authenticate as staff member via mock login flow to establish a valid session

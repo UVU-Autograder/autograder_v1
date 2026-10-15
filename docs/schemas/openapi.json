@@ -76,7 +76,7 @@
           "auth"
         ],
         "summary": "Mock Login",
-        "description": "Local mock login endpoint. Enabled only in SQLite local development mode.\n\nGenerates a signed JWT token. Auto-provisions the user if they do not exist.",
+        "description": "Local mock login endpoint. Enabled only in non-production development mode.\n\nGenerates a signed JWT token. Auto-provisions the user if they do not exist.",
         "operationId": "mock_login_auth_mock_login_post",
         "requestBody": {
           "content": {
