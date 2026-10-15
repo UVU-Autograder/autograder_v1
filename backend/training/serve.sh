@@ -36,7 +36,7 @@ if command -v systemctl >/dev/null && systemctl is-active --quiet vllm-cs1410 2>
   exit 1
 fi
 
-args=(serve "$MODEL" --served-model-name gemma4-12b-qat --port "$PORT" --max-model-len 8192
+args=(serve "$MODEL" --served-model-name gemma4-12b-qat --port "$PORT" --max-model-len 12288
       --gpu-memory-utilization 0.90 --limit-mm-per-prompt '{"image":0,"audio":0}')
 if ((${#loras[@]})); then
   args+=(--enable-lora --max-lora-rank 16 --lora-modules "${loras[@]}")

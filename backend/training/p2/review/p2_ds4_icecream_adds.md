@@ -51,28 +51,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): what_went_wrong gave the fix ('rather than multiplying'). Now states the numbers from the assertion and asks the student to work it by hand.
 
+> v8 revision (Claude): removed all cost and tax values; summary no longer claims Sundae passes (its check never ran); trimmed
+
+> p3b (Claude): hint is one sentence now; shorter summary and follow-ons; trimmed to 65 words
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Candy, Cookie and Sundae are calculating correctly. One cost calculation is off, and the tax and order totals inherit that mistake.",
+  "summary": "Your Candy and Cookie costs are right, but IceCream's is off.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "IceCream's cost came out as 2.79, but the test expects 1.58.",
-      "hint": "Can you work out the cost of this IceCream by hand, then compare each step with the line in IceCream.calculate_cost?"
+      "what_went_wrong": "IceCream's cost is higher than the test expects.",
+      "hint": "How does IceCream.calculate_cost differ from working it out by hand?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The IceCream tax is 0.2 instead of 0.11 because it is based on the wrong cost.",
-      "hint": "This follows from the calculate_cost problem. Fix that first."
+      "what_went_wrong": "The tax is high because the cost is.",
+      "hint": "Fix the IceCream cost first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 10.81 instead of 7.98 because it includes the IceCream cost.",
-      "hint": "This clears once IceCream's cost is right."
+      "what_went_wrong": "The order cost is high too.",
+      "hint": "Same cause."
     }
   ],
-  "next_step": "Review the calculate_cost method in the IceCream class."
+  "next_step": "Review IceCream.calculate_cost in dessert.py."
 }
 ```

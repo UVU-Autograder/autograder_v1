@@ -16,7 +16,7 @@ optimization, not the product.
 | `schemas.py` | `EvalCase` format and loader. |
 | `metrics.py` | The five hard scorers. Unit-tested in `tests/test_eval_metrics.py`. |
 | `client.py` | OpenAI-compatible client (LM Studio / Ollama / vLLM). |
-| `run_eval.py` | CLI runner → `results/scoreboard.csv`. |
+| `run_eval.py` | CLI runner → `results/scoreboard_v8.csv`. |
 | `capture.py` | Turns a real sandbox run into a new case. |
 
 ## Run it
@@ -27,7 +27,7 @@ For current serving/environment procedures see the [AI guide](../../docs/guides/
 cd backend && python -m eval.run_eval --endpoint lmstudio --model gemma-4-12b-it-qat --label baseline-12b-q4
 ```
 
-Each run appends a row to `results/scoreboard.csv` and dumps every response to
+Each run appends a row to `results/scoreboard_v8.csv` and dumps every response to
 `results/<label>.json`. Results are gitignored — they hold model output about
 student-shaped code.
 

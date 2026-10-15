@@ -44,18 +44,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `mul`). Then set the s
 
 > Pre-edit note (Claude): Small edit: the hint now asks the student to work the example by hand.
 
+> v8 revision (Claude): removed the amounts; next_step no longer names the exact line
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, formatting, addition and equality all work. Multiplication gives the wrong amount.",
+  "summary": "Normalizing, formatting, addition, and equality all work, but multiplication gives too small an amount.",
   "items": [
     {
       "test_key": "mul",
-      "what_went_wrong": "Multiplying $3.50 by 2 gave 1 dollar; the test expects 7.",
-      "hint": "How are you working out the total number of cents before creating the new Money? Can you do it by hand for $3.50?"
+      "what_went_wrong": "Multiplying a Money by a whole number gives far fewer dollars than the test expects.",
+      "hint": "Trace __mul__ by hand with the test's amount: how many cents does your code think that amount is worth?"
     }
   ],
-  "next_step": "Review the total_cents line in __mul__."
+  "next_step": "Review the __mul__ method in money.py."
 }
 ```

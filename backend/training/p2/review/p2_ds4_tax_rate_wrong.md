@@ -53,28 +53,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > Pre-edit note (Claude): The summary blamed 'how taxes are aggregated' (they are not); one root cause, the default rate, with the tax and totals following from it.
 
+> v8 revision (Claude): removed every rate and tax value and the attribute name from the hint and next step; trimmed
+
+> p3b (Claude): summary no longer says "default"; shorter hint and follow-ons; trimmed to 65 words
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your cost calculations and Order methods work. Every tax value is a little high, and they all come from one default.",
+  "summary": "Your costs work, but every tax comes out too high.",
   "items": [
     {
       "test_key": "tax_percent",
-      "what_went_wrong": "A new Candy has tax_percent 8.25; the test expects the default to be 7.25.",
-      "hint": "Double check your code: where does DessertItem set tax_percent, and does it match the rate in the assignment?"
+      "what_went_wrong": "A new Candy's tax rate is higher than the test expects.",
+      "hint": "Where does a new dessert get its tax rate?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is 0.17 instead of 0.14 because it uses that rate.",
-      "hint": "This follows from the tax_percent problem. Fix that first."
+      "what_went_wrong": "The Cookie tax is high as a result.",
+      "hint": "Fix the tax rate first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order tax is 0.67 instead of 0.57 for the same reason.",
-      "hint": "This clears once the default rate is right."
+      "what_went_wrong": "The order tax is high too.",
+      "hint": "Same cause."
     }
   ],
-  "next_step": "Review where tax_percent is set in the DessertItem class."
+  "next_step": "Review the DessertItem constructor."
 }
 ```

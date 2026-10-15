@@ -34,12 +34,16 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Plain all-pass case, added because the first adapter invented problems on clean solutions. The next step is an extension that fits the assignment and claims nothing about the student's code.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Your title, author and description properties all pass their tests.",
+  "summary": "Your title, author, and description properties all pass their tests.",
   "items": [],
-  "next_step": "Try adding a year property that only accepts a four-digit number, using the same validation pattern as title and author."
+  "next_step": "Optional: add a validated year property using the same pattern."
 }
 ```

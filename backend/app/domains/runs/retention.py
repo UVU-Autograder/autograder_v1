@@ -98,8 +98,11 @@ def run_lock(run_id: int, *, blocking: bool = True) -> Iterator[None]:
 
 
 @contextmanager
-def control_lock(run_id: int | str, *, blocking: bool = True) -> Iterator[None]:
-    """Short shared-volume transactions, including the scheduling authority."""
+def control_lock(run_id: int | str, *, blocking: bool = True, timeout: float = 2.0) -> Iterator[None]:
+    """Short shared-volume transactions, including the scheduling authority.
+
+    ``timeout`` is how long a blocking caller waits for the lock before giving up.
+    """
     if not re.fullmatch(r"[a-z0-9_-]+", str(run_id)):
         raise ValueError("Invalid lock name")
     held = getattr(_HELD, "runs", None)
@@ -110,7 +113,7 @@ def control_lock(run_id: int | str, *, blocking: bool = True) -> Iterator[None]:
         return
     with _LOCKS_GUARD:
         local_lock = _LOCKS.setdefault(run_id, threading.RLock())
-    acquired = local_lock.acquire(timeout=2 if blocking else 0)
+    acquired = local_lock.acquire(timeout=timeout if blocking else 0)
     if not acquired:
         raise BlockingIOError("workspace_busy")
     try:
@@ -125,7 +128,8 @@ def control_lock(run_id: int | str, *, blocking: bool = True) -> Iterator[None]:
             if handle.tell() == 0:
                 handle.write(b"\0")
                 handle.flush()
-            deadline = time.monotonic() + (2 if blocking else 0)
+            deadline = time.monotonic() + (timeout if blocking else 0)
+            poll_interval = 0.001
             while True:
                 try:
                     if os.name == "nt":
@@ -141,7 +145,8 @@ def control_lock(run_id: int | str, *, blocking: bool = True) -> Iterator[None]:
                 except OSError:
                     if time.monotonic() >= deadline:
                         raise BlockingIOError("workspace_busy") from None
-                    time.sleep(0.02)
+                    time.sleep(poll_interval)
+                    poll_interval = min(0.01, poll_interval * 1.5)
             held.add(run_id)
             try:
                 yield
@@ -277,6 +282,12 @@ def reconcile(db: Session) -> dict[str, int]:
                 counts["busy_count"] += 1
             except OSError:
                 counts["error_count"] += 1
+    try:
+        from app.domains.audit.service import prune_expired_audit_records
+
+        prune_expired_audit_records(db)
+    except Exception:
+        pass
     return counts
 
 

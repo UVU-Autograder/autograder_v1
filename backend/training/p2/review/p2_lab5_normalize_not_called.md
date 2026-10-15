@@ -56,28 +56,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `add`, `m
 
 > Pre-edit note (Claude): 4 items cut to 3; the hint and next step gave the fix, and the eq item misdiagnosed. One root cause: normalize never runs.
 
+> v8 revision (Claude): removed the dollar values and the test's constructor call; hint no longer asks where normalize is called; trimmed
+
+> p3b (Claude): shortened summary, first item and add hint to fit 65 words
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your formatting works and your normalize method looks right. The problem is that it never runs, so extra cents are never carried.",
+  "summary": "Your formatting works, but extra cents never carry into dollars.",
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "A new Money with more than 99 cents keeps them as cents: the test expects 2 dollars and got 1.",
-      "hint": "Your normalize method looks correct. Can you find where in your class it actually gets called?"
+      "what_went_wrong": "A new Money keeps its overflow cents.",
+      "hint": "Trace what runs when a Money is created: does your carrying logic ever run?"
     },
     {
       "test_key": "add",
-      "what_went_wrong": "The sum has 5 dollars instead of 6 because its extra cents are never carried.",
-      "hint": "This follows from the normalize problem. Fix that first."
+      "what_went_wrong": "The sum has too few dollars.",
+      "hint": "Same cause."
     },
     {
       "test_key": "mul",
-      "what_went_wrong": "The product has 0 dollars instead of 7 for the same reason.",
-      "hint": "This clears once new Money objects are normalized."
+      "what_went_wrong": "The product is short too.",
+      "hint": "Same fix."
     }
   ],
-  "next_step": "Trace what happens when you create Money(1, 150): which of your methods run? The eq test fails for the same reason."
+  "next_step": "Trace Money.__init__; the eq test clears too."
 }
 ```

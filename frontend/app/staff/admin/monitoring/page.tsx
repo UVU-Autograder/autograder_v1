@@ -37,9 +37,24 @@ export default function MonitoringPage() {
   useEffect(() => {
     void Promise.resolve().then(fetchStats);
     
-    // Poll stats every 10 seconds
-    const interval = setInterval(() => void fetchStats(), 10000);
-    return () => clearInterval(interval);
+    // Poll stats every 10 seconds when tab is active
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void fetchStats();
+      }
+    }, 10000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchStats();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   if (isLoading) {

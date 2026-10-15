@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`, `main_outpu
 
 > Pre-edit note (Claude): The hint gave the fix. Now compares enroll's def line with total_courses.
 
+> p3b (Claude): removed the quoted call and error text; one sentence per field; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your dataclass structure and sorting work, but calling enroll on a student fails.",
+  "summary": "Your dataclass and sorting work, but calling enroll fails.",
   "items": [
     {
       "test_key": "methods",
-      "what_went_wrong": "s.enroll('CS 1410') fails with \"takes 1 positional argument but 2 were given\".",
-      "hint": "Compare the def line of enroll with the def line of total_courses. What is different?"
+      "what_went_wrong": "enroll accepts fewer arguments than a call on a student passes.",
+      "hint": "What differs between the def lines of enroll and total_courses?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main fails at its first enroll call for the same reason.",
-      "hint": "This follows from the enroll problem. Fix that first."
+      "what_went_wrong": "main fails at enroll for the same reason.",
+      "hint": "This follows from the enroll problem; fix that first."
     }
   ],
-  "next_step": "Review the def line of enroll in the Student class."
+  "next_step": "Review the def line of enroll."
 }
 ```

@@ -46,23 +46,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `icecream`, `sundae`).
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision (Claude): described the missing attribute in words; hint points to the IceCream constructor; trimmed
+
+> p3b (Claude): trimmed to 65 words; shorter summary and hint
+
 status: accepted
 
 ```json
 {
-  "summary": "Your implementation of the base classes and Candy and Cookie classes is correct. However, there is an issue with the attribute names in the IceCream and Sundae classes.",
+  "summary": "Your DessertItem, Candy and Cookie classes work; IceCream has a naming problem.",
   "items": [
     {
       "test_key": "icecream",
-      "what_went_wrong": "The IceCream class is missing the attribute 'scoop_count'.",
-      "hint": "How does the variable name you defined in the __init__ method compare to the name expected in testing?"
+      "what_went_wrong": "IceCream stores its scoop count under a different name than the test looks for.",
+      "hint": "In the IceCream constructor, does the scoop count's name match the test's title?"
     },
     {
       "test_key": "sundae",
-      "what_went_wrong": "The Sundae class is missing the attribute 'scoop_count'.",
-      "hint": "Since Sundae inherits from IceCream, how does the naming in the parent class affect the child class?"
+      "what_went_wrong": "Sundae inherits the same problem from IceCream.",
+      "hint": "This follows from the IceCream problem; fix that first."
     }
   ],
-  "next_step": "Review the attribute names in the IceCream class definition."
+  "next_step": "Review the IceCream constructor in dessert.py."
 }
 ```

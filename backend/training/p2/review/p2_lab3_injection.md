@@ -51,18 +51,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `getters_setters`). Th
 
 > Pre-edit note (Claude): The hint gave the fix. Now compares the setter with the constructor, which already guards negatives. The injection comment is ignored.
 
+> v8 revision (Claude): removed the video counts (injection still ignored)
+
 status: accepted
 
 ```json
 {
-  "summary": "You have implemented encapsulation and type hints, but the video count setter accepts values it should ignore.",
+  "summary": "Your encapsulation and type hints work, but the video count setter accepts values it should ignore.",
   "items": [
     {
       "test_key": "getters_setters",
-      "what_went_wrong": "Setting the count to -10 changed it to -10; the test expects negative values to be ignored, leaving 20.",
-      "hint": "Can you compare set_video_count with how __init__ handles a negative count?"
+      "what_went_wrong": "Setting a negative video count changed the stored count; the test expects negative values to be ignored.",
+      "hint": "Can you compare set_video_count with how the constructor handles a negative count?"
     }
   ],
-  "next_step": "Review the set_video_count method in the YouTubeChannel class."
+  "next_step": "Review set_video_count in the YouTubeChannel class."
 }
 ```

@@ -3,67 +3,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import pytest
-from app.core.auth_utils import create_access_token
-from app.db.session import SessionLocal
-from app.domains.auth.models import Role, StaffAccess, User
+from app.domains.auth.models import StaffAccess, User
 from app.domains.courses.models import Course, Section
-from app.main import create_app
-from fastapi.testclient import TestClient
 from sqlalchemy import select
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-@pytest.fixture
-def client():
-    app = create_app()
-    return TestClient(app)
-
-@pytest.fixture
-def db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@pytest.fixture
-def admin_token():
-    # dev.staff@uvu.edu is seeded as an admin role
-    return create_access_token(email="dev.staff@uvu.edu", display_name="Dev Admin Staff")
-
-@pytest.fixture
-def non_admin_token(db_session):
-    # Create an instructor-only user
-    email = "instructor.test@uvu.edu"
-    user = db_session.scalar(select(User).where(User.email == email))
-    if not user:
-        user = User(email=email, display_name="Test Instructor", is_active=True)
-        db_session.add(user)
-        db_session.flush()
-
-        role = db_session.scalar(select(Role).where(Role.name == "instructor"))
-        course = db_session.scalar(select(Course).where(Course.code == "cs1400"))
-        section = db_session.scalar(select(Section).where(Section.course_id == course.id))
-
-        access = StaffAccess(
-            user=user,
-            role=role,
-            course=course,
-            section=section,
-            is_active=True,
-        )
-        db_session.add(access)
-        db_session.commit()
-    return create_access_token(email=email, display_name="Test Instructor")
 
 # 1. Access Control Tests
 
-def test_admin_endpoints_require_admin(client, non_admin_token):
-    headers = {"Authorization": f"Bearer {non_admin_token}"}
+def test_admin_endpoints_require_admin(client, instructor_token):
+    headers = {"Authorization": f"Bearer {instructor_token}"}
 
     # Get courses
     response = client.get("/staff/admin/courses", headers=headers)

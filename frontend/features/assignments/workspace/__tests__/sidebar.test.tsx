@@ -25,7 +25,6 @@ const mockAssignment: Assignment = {
   constraints: [],
   rubric: [],
   rubric_groups: [],
-  completion_requirements: [],
   config: {
     bundle: {
       entrypoint: "main.py",

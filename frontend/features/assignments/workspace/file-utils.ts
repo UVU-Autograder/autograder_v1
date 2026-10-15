@@ -1,4 +1,3 @@
-import JSZip from "jszip";
 import type { OpenFile } from './editor-layout';
 import type { Assignment } from '@/features/assignments/types';
 
@@ -215,6 +214,8 @@ export async function readFilesAsOpenFiles(files: File[]) {
 }
 
 export async function createSubmissionBundle(files: Record<string, OpenFile>) {
+  const jszipModule = await import("jszip");
+  const JSZip = (jszipModule.default ?? jszipModule) as unknown as typeof import("jszip");
   const zip = new JSZip();
   const workspaceFiles = Object.values(files).filter((file) => file.category === "workspace");
 

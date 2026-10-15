@@ -61,18 +61,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `encapsulation`). Then
 
 > Pre-edit note (Claude): The hint said to rename it (the fix). Now points to the convention the student already used for the video count.
 
+> v8 revision: removed the exact attribute name; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your type hints and video count guard work, but the channel name is not encapsulated the way the assignment asks.",
+  "summary": "Your type hints and video count guard work, but the channel name is not encapsulated as required.",
   "items": [
     {
       "test_key": "encapsulation",
-      "what_went_wrong": "The test expects a protected _name attribute and could not find one.",
-      "hint": "Look at how you named the video count attribute. What naming convention does the assignment ask you to use for the name?"
+      "what_went_wrong": "The channel name attribute is stored as a public attribute instead of a protected one.",
+      "hint": "What naming prefix does the assignment require for protected attributes in YouTubeChannel?"
     }
   ],
-  "next_step": "Review the naming conventions for protected and private attributes in the assignment."
+  "next_step": "Review the attribute names in YouTubeChannel.__init__."
 }
 ```

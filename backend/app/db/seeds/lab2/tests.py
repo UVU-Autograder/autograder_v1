@@ -1,7 +1,7 @@
 """Autograding test suite for Lab 2: Bank Account Class."""
 
 import contextlib
-import io
+from autograder_capture import BoundedOutput
 
 import pytest
 from python_autograder_helpers import import_student_modules
@@ -44,7 +44,7 @@ def test_account_str() -> None:
 @pytest.mark.ag_demo_output
 def test_demo_output() -> None:
     """Verify demo.py executes and produces expected stdout output."""
-    f = io.StringIO()
+    f = BoundedOutput()
     with contextlib.redirect_stdout(f):
         (demo_mod,) = import_student_modules("demo")
         if hasattr(demo_mod, "main"):

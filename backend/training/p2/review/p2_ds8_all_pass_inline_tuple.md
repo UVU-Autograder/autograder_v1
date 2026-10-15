@@ -43,12 +43,18 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Replaced a generic extension. Order is cut off from the prompt, so the next step is general but points at maintainability.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
+> p3b (Claude): praise-first summary; next_step framed as optional practice
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Every test passes.",
+  "summary": "Great job! Every test passes and your payment validation and packaging protocols work.",
   "items": [],
-  "next_step": "Try adding a fourth payment type, such as GIFT_CARD, and count how many places in your code need to change. Could that number be one?"
+  "next_step": "Optional: add another PayType and see what in Order changes."
 }
 ```

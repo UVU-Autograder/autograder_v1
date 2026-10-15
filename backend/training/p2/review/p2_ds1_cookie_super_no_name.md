@@ -43,18 +43,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `cookie`). Then set th
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision: removed the quoted parameter name and value description; points to super().__init__
+
 status: accepted
 
 ```json
 {
-  "summary": "Your dessert classes are well-structured, but there is an issue with how the Cookie class handles its name.",
+  "summary": "Your dessert classes are well-structured, but a new Cookie does not keep the name passed to it.",
   "items": [
     {
       "test_key": "cookie",
-      "what_went_wrong": "The name of the Cookie instance is being set to an empty string instead of the provided name.",
-      "hint": "How is the 'name' argument currently being passed to the superclass constructor in the Cookie class?"
+      "what_went_wrong": "Creating a Cookie with a custom name still leaves it with the default name.",
+      "hint": "How does Cookie.__init__ call the parent constructor compared with Candy.__init__?"
     }
   ],
-  "next_step": "Review the Cookie class __init__ method."
+  "next_step": "Review the Cookie.__init__ method in dessert.py."
 }
 ```

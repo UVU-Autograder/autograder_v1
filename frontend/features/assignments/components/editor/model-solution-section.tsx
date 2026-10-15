@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -286,11 +285,11 @@ export function ModelSolutionSection() {
         </CardContent>
       </Card>
 
-      {/* Preflight Validation Embedded at Bottom */}
+      {/* Model Solution Validation Embedded at Bottom */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Model Solution Validation</CardTitle>
+            <CardTitle>Verify Model Solution</CardTitle>
           </div>
           <Button
             onClick={triggerValidation}
@@ -302,7 +301,7 @@ export function ModelSolutionSection() {
             <PlayIcon className="w-4 h-4 mr-1.5" />
             {validation.status === "queue" || validation.status === "run"
               ? "Validating..."
-              : "Run Preflight Validation"}
+              : "Test Model Solution"}
           </Button>
         </CardHeader>
         <CardContent>
@@ -347,7 +346,7 @@ export function ModelSolutionSection() {
                 <div className="space-y-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30 text-destructive">
                   <div className="flex items-center gap-2 text-xs font-semibold">
                     <ShieldAlertIcon className="w-5 h-5 text-destructive shrink-0" />
-                    <span>Preflight validation errors found:</span>
+                    <span>Model solution errors found:</span>
                   </div>
                   <ul className="list-disc pl-5 text-xs font-mono space-y-1">
                     {validation.errors.map((err, idx) => (

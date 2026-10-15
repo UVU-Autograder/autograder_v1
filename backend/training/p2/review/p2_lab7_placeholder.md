@@ -100,23 +100,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 2 for a placeholder: says so plainly and starts from the instructions. The ordering hint gave the fix and was removed.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p3b (Claude): trimmed to 65 or fewer; shorter next step
+
 status: accepted
 
 ```json
 {
-  "summary": "student.py is still a placeholder, so there is no Student class or main function yet.",
+  "summary": "student.py is still a placeholder with no Student class or main yet.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "The tests could not find a Student class in student.py.",
+      "what_went_wrong": "The tests found no Student class.",
       "hint": "Which fields, and which decorator, does the assignment ask Student to have?"
     },
     {
       "test_key": "main_output",
       "what_went_wrong": "student.py has no main function yet.",
-      "hint": "This comes after the class: main creates students and prints them."
+      "hint": "Does main need Student before it can create students?"
     }
   ],
-  "next_step": "Start from the assignment instructions: write the Student class first, then main, and rerun the tests as you go."
+  "next_step": "Build Student from the assignment first, then add main."
 }
 ```

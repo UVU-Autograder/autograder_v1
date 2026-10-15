@@ -76,7 +76,7 @@
           "auth"
         ],
         "summary": "Mock Login",
-        "description": "Local mock login endpoint. Enabled only in SQLite local development mode.\n\nGenerates a signed JWT token. Auto-provisions the user if they do not exist.",
+        "description": "Local mock login endpoint. Enabled only in non-production development mode.\n\nGenerates a signed JWT token. Auto-provisions the user if they do not exist.",
         "operationId": "mock_login_auth_mock_login_post",
         "requestBody": {
           "content": {
@@ -673,6 +673,276 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/staff/admin/logs": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "List Logs Admin",
+        "description": "Retrieve filtered and paginated audit records for administrators.",
+        "operationId": "list_logs_admin_staff_admin_logs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "event",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event"
+            }
+          },
+          {
+            "name": "workflow_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workflow Type"
+            }
+          },
+          {
+            "name": "actor_user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor User Id"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Time"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/admin/logs/stats": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Get Log Stats Admin",
+        "description": "Retrieve aggregate telemetry and volume counts across audit records.",
+        "operationId": "get_log_stats_admin_staff_admin_logs_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditStatsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/staff/admin/logs/verify": {
+      "post": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Verify Logs Admin",
+        "description": "Run an automated FERPA compliance pattern scan across recent audit records.",
+        "operationId": "verify_logs_admin_staff_admin_logs_verify_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 10,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditVerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/sandbox/courses": {
@@ -3081,6 +3351,247 @@
         ],
         "title": "AssignmentCreate"
       },
+      "AuditLogListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRecordOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "AuditLogListResponse"
+      },
+      "AuditRecordOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "workflow_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Type"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "assignment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignment Id"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Code"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "timestamp",
+          "event"
+        ],
+        "title": "AuditRecordOut"
+      },
+      "AuditStatsResponse": {
+        "properties": {
+          "total_events": {
+            "type": "integer",
+            "title": "Total Events"
+          },
+          "events_24h": {
+            "type": "integer",
+            "title": "Events 24H"
+          },
+          "pii_redacted_count": {
+            "type": "integer",
+            "title": "Pii Redacted Count"
+          },
+          "access_denied_count": {
+            "type": "integer",
+            "title": "Access Denied Count"
+          },
+          "event_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Event Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_events",
+          "events_24h",
+          "pii_redacted_count",
+          "access_denied_count",
+          "event_counts"
+        ],
+        "title": "AuditStatsResponse"
+      },
+      "AuditVerificationResponse": {
+        "properties": {
+          "compliant": {
+            "type": "boolean",
+            "title": "Compliant"
+          },
+          "records_scanned": {
+            "type": "integer",
+            "title": "Records Scanned"
+          },
+          "violations_count": {
+            "type": "integer",
+            "title": "Violations Count"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/AuditViolationItem"
+            },
+            "type": "array",
+            "title": "Violations"
+          },
+          "checked_at": {
+            "type": "string",
+            "title": "Checked At"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "compliant",
+          "records_scanned",
+          "violations_count",
+          "violations",
+          "checked_at",
+          "disclaimer"
+        ],
+        "title": "AuditVerificationResponse"
+      },
+      "AuditViolationItem": {
+        "properties": {
+          "record_id": {
+            "type": "integer",
+            "title": "Record Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "matched_rule": {
+            "type": "string",
+            "title": "Matched Rule"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record_id",
+          "timestamp",
+          "event",
+          "field",
+          "matched_rule"
+        ],
+        "title": "AuditViolationItem"
+      },
       "Body_create_run_sandbox_courses__course_id__assignments__assignment_id__runs_post": {
         "properties": {
           "bundle": {
@@ -3278,13 +3789,6 @@
       },
       "ConceptsConfig": {
         "properties": {
-          "allowlist": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Allowlist"
-          },
           "denylist": {
             "items": {
               "type": "string"
@@ -4148,6 +4652,46 @@
               }
             ],
             "title": "Message"
+          },
+          "submissions_ahead": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submissions Ahead"
+          },
+          "eta_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Seconds"
+          },
+          "failure_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Category"
+          },
+          "grader_fault": {
+            "type": "boolean",
+            "title": "Grader Fault",
+            "default": false
           }
         },
         "type": "object",
@@ -4809,6 +5353,11 @@
       },
       "SandboxRunResultResponse": {
         "properties": {
+          "diagnostics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Diagnostics"
+          },
           "run_id": {
             "type": "string",
             "title": "Run Id"
@@ -4983,6 +5532,17 @@
               }
             ],
             "title": "Rubric Group Key"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
           }
         },
         "type": "object",
@@ -5063,6 +5623,18 @@
               }
             ],
             "title": "Outputs"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
           }
         },
         "type": "object",
@@ -5315,6 +5887,16 @@
       },
       "StaffAssignmentSetup": {
         "properties": {
+          "inventory_status": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "stale",
+              "ready"
+            ],
+            "title": "Inventory Status",
+            "default": "missing"
+          },
           "course_id": {
             "type": "string",
             "title": "Course Id"
@@ -5431,7 +6013,6 @@
           "entrypoint_path",
           "scoring_items",
           "rubric_groups",
-          "completion_requirements",
           "artifacts",
           "config"
         ],
@@ -5662,6 +6243,22 @@
       },
       "TestSummary": {
         "properties": {
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          },
+          "output_truncated": {
+            "type": "boolean",
+            "title": "Output Truncated",
+            "default": false
+          },
           "label": {
             "type": "string",
             "title": "Label"

@@ -44,12 +44,16 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Removed 'complete' (the prompt says never to call the work complete when there is a concept warning); the next step points back to the allowed concepts.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "All the tests pass and your inheritance hierarchy works.",
+  "summary": "All the tests pass and your inheritance hierarchy works, though DessertItem uses ABC from a later module.",
   "items": [],
-  "next_step": "Your DessertItem uses ABC, which comes later in the course. Review this module's allowed concepts and rework DessertItem as a plain base class."
+  "next_step": "Rework DessertItem as a plain base class without ABC."
 }
 ```

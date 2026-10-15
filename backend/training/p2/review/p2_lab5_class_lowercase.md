@@ -67,28 +67,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > Pre-edit note (Claude): 5 identical items cut to 3: one root cause (the class name), the rest follow from it.
 
+> v8 revision (Claude): dropped the quoted error and the other test keys; trimmed to under 80 words
+
+> p3b (Claude): shortened summary, first item and follow-on items to fit 65 words
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Money logic is written, but nothing can find the class by the name the assignment uses, so every test fails.",
+  "summary": "Your methods are written, but no test can find the class.",
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "The test cannot find a class named Money in money.py.",
-      "hint": "The error ends with \"Did you mean: 'money'?\". How does the capitalization of your class name compare with the name the assignment uses?"
+      "what_went_wrong": "The tests cannot find a class named Money.",
+      "hint": "Does your class name exactly match the name the error says is missing?"
     },
     {
       "test_key": "str",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the class name. Fix that first."
+      "what_went_wrong": "This fails for the same reason.",
+      "hint": "This clears once the class is found."
     },
     {
       "test_key": "add",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This clears once the class name matches."
+      "what_went_wrong": "Same cause.",
+      "hint": "Same fix."
     }
   ],
-  "next_step": "Review the class line in money.py. The mul and eq tests fail for the same reason."
+  "next_step": "Review the class definition in money.py."
 }
 ```

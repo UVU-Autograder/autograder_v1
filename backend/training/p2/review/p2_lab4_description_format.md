@@ -46,16 +46,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `description_readonly`
 
 > Pre-edit note (Claude): The hint gave the fix ('include one of those phrases'). Now asks for a word-by-word comparison.
 
+> v8 revision (Claude): removed the quoted description; described the wording gap in words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your title and author properties validate correctly. The description text does not match the required sentence.",
+  "summary": "Your title and author properties validate correctly, but the description text does not match the required sentence.",
   "items": [
     {
       "test_key": "description_readonly",
-      "what_went_wrong": "The description is 'Harry Potter by J.K. Rowling', which does not match the format the test checks for.",
-      "hint": "Can you compare the sentence your description returns with the format the assignment asks for, word by word?"
+      "what_went_wrong": "Your description has the title and author, but the wording between them is not what the test checks for.",
+      "hint": "Compare the sentence your description property returns with the assignment's wording, word by word: what is missing?"
     }
   ],
   "next_step": "Review the description property in book.py."

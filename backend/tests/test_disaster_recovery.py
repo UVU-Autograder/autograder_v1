@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx
+import pytest
 from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.orm import sessionmaker
 
@@ -24,11 +25,11 @@ from app.db.base import Base, import_domain_models
 from app.domains.assignments.models import (
     Assignment,
     AssignmentConfig,
-    ScoringItem,
 )
 from app.domains.auth.models import Role, User
 from app.domains.courses.models import Course, Module, Section
 from app.domains.grading.engine import GradingResult
+from app.domains.sandbox.service import AiFeedbackUnavailable
 from app.domains.runs.models import RunSummary
 from app.domains.sandbox.service import SandboxService
 from app.domains.sandbox.store import InMemoryRunStateStore
@@ -111,15 +112,19 @@ def test_isolated_metadata_backup_restore_zero_schema_drift(tmp_path: Path) -> N
         config = AssignmentConfig(
             assignment_id=assignment.id,
             version=1,
-            config={"version": "1.0", "required_files": ["main.py"]},
-        )
-        scoring_item = ScoringItem(
-            assignment_id=assignment.id,
-            config_item_key="test_main",
-            label="Main Test",
-            points=100,
-            extra_credit=False,
-            item_type="pytest",
+            config={
+                "version": "1.0",
+                "required_files": ["main.py"],
+                "scoring_items": [
+                    {
+                        "key": "test_main",
+                        "label": "Main Test",
+                        "points": 100,
+                        "extra_credit": False,
+                        "item_type": "pytest",
+                    }
+                ],
+            },
         )
         ephemeral_run = RunSummary(
             assignment_id=assignment.id,
@@ -128,7 +133,7 @@ def test_isolated_metadata_backup_restore_zero_schema_drift(tmp_path: Path) -> N
             status="complete",
             total_submission_count=25,
         )
-        session.add_all([config, scoring_item, ephemeral_run])
+        session.add_all([config, ephemeral_run])
         session.commit()
 
     # 2. Dump allowlisted metadata tables from source DB and restore into isolated target DB
@@ -175,11 +180,11 @@ def test_isolated_metadata_backup_restore_zero_schema_drift(tmp_path: Path) -> N
         restored_assignment = restored_session.scalar(
             select(Assignment).where(Assignment.slug == "lab1-intro")
         )
-        assert restored_assignment is not None
-        restored_item = restored_session.scalar(
-            select(ScoringItem).where(ScoringItem.config_item_key == "test_main")
+        restored_config = restored_session.scalar(
+            select(AssignmentConfig).where(AssignmentConfig.assignment_id == restored_assignment.id)
         )
-        assert restored_item is not None and restored_item.points == 100
+        assert restored_config is not None
+        assert restored_config.config["scoring_items"][0]["points"] == 100
         # FERPA boundary: ephemeral RunSummary rows must be 0 in restored DB
         assert restored_session.scalars(select(RunSummary)).all() == []
 
@@ -280,10 +285,10 @@ def test_local_ai_outage_does_not_block_or_fail_grading_runs() -> None:
         service.get_status(run_id)
 
         # Simulate complete Local AI outage (ConnectError) during result + AI feedback fetch
-        with patch(
-            "httpx.Client.post",
-            side_effect=httpx.ConnectError("Connection refused at 127.0.0.1:8001"),
-        ):
+        with patch("httpx.Client") as mock_client_cls:
+            mock_client_cls.return_value.__enter__.return_value.post.side_effect = (
+                httpx.ConnectError("Connection refused at 127.0.0.1:8001")
+            )
             result_resp = service.get_result(run_id, session_id)
             assert result_resp is not None and result_resp != "not_ready"
             assert result_resp.state == "complete"
@@ -291,21 +296,23 @@ def test_local_ai_outage_does_not_block_or_fail_grading_runs() -> None:
             assert len(result_resp.test_summaries) == 1
             assert result_resp.test_summaries[0].status == "failed"
 
-            ai_resp = service.generate_ai_feedback(run_id, session_id)
-            assert ai_resp is not None
-            assert "unreachable" in ai_resp.ai_feedback.lower()
+            # An outage is reported as a coded error the UI can retry, not as feedback text.
+            with pytest.raises(AiFeedbackUnavailable) as unreachable:
+                service.generate_ai_feedback(run_id, session_id)
+            assert unreachable.value.status == 503 and unreachable.value.code == "ai_unavailable"
 
-            stream_chunks = list(service.generate_ai_feedback_stream(run_id, session_id) or [])
-            assert "unreachable" in "".join(stream_chunks).lower()
+            with pytest.raises(AiFeedbackUnavailable):
+                list(service.generate_ai_feedback_stream(run_id, session_id) or [])
 
         # Simulate Local AI timeout (TimeoutException)
-        with patch(
-            "httpx.Client.post",
-            side_effect=httpx.TimeoutException("vLLM timed out"),
-        ):
-            ai_timeout_resp = service.generate_ai_feedback(run_id, session_id)
-            assert ai_timeout_resp is not None
-            assert "timed out" in ai_timeout_resp.ai_feedback.lower()
+        with patch("httpx.Client") as mock_client_cls:
+            mock_client_cls.return_value.__enter__.return_value.post.side_effect = (
+                httpx.TimeoutException("vLLM timed out")
+            )
+            with pytest.raises(AiFeedbackUnavailable) as timed_out:
+                service.generate_ai_feedback(run_id, session_id)
+            assert timed_out.value.status == 504 and timed_out.value.code == "ai_timeout"
+            assert timed_out.value.retry_after_seconds
 
 
 def test_rollout_grading_package_script_and_workstation_runbook_contracts() -> None:

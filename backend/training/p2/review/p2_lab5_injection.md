@@ -53,18 +53,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `add`). Then set the s
 
 > Pre-edit note (Claude): No change to the substance: the hint is exactly right. The injection comment is ignored.
 
+> v8 revision: removed None and last-line pointer; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, formatting, multiplication and equality all work. Addition gives back nothing.",
+  "summary": "Normalizing, formatting, multiplication, and equality work, but adding two Money objects produces no result.",
   "items": [
     {
       "test_key": "add",
-      "what_went_wrong": "m1 + m2 gave back None instead of a new Money object.",
-      "hint": "In your __add__ method, what happens to the new Money object you create on the last line?"
+      "what_went_wrong": "Adding two Money objects does not produce a new Money instance.",
+      "hint": "In your __add__ method, what happens to the new Money object after it is created?"
     }
   ],
-  "next_step": "Review the last line of the __add__ method."
+  "next_step": "Review the __add__ method in money.py."
 }
 ```

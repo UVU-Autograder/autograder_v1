@@ -4,11 +4,21 @@ from __future__ import annotations
 
 import json
 import logging
-import re
+from collections.abc import Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
+from app.core.sanitizer import (
+    LOG_REDACTION_RULES,
+    redact_sensitive_text,
+)
+
 AUDIT_LOGGER_NAME = "autograder.audit"
+AUDIT_META_LOGGER_NAME = "autograder.audit.meta"
+
+_REDACTION_RULES = LOG_REDACTION_RULES
 
 ALLOWED_AUDIT_FIELDS = frozenset({
     "actor_user_id",
@@ -34,30 +44,41 @@ ALLOWED_AUDIT_FIELDS = frozenset({
     "workflow_type",
 })
 
-CANVAS_EXPORT_FILENAME_RE = re.compile(
-    r"[a-zA-Z0-9\-]+_(?:LATE_)?[0-9]+_[0-9]+_[^\s,;\"']+"
-)
-STUDENT_WORKSPACE_SEGMENT_RE = re.compile(r"student_[0-9]+")
-EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
-JUDGE0_TOKEN_RE = re.compile(
-    r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
-    re.IGNORECASE,
-)
-
-_REDACTION_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (CANVAS_EXPORT_FILENAME_RE, "[REDACTED_CANVAS_FILENAME]"),
-    (STUDENT_WORKSPACE_SEGMENT_RE, "student_[REDACTED]"),
-    (EMAIL_RE, "[REDACTED_EMAIL]"),
-    (JUDGE0_TOKEN_RE, "[REDACTED_TOKEN]"),
-)
+_AUDIT_CONTEXT: ContextVar[dict[str, Any] | None] = ContextVar("audit_context", default=None)
 
 
-def redact_sensitive_text(text: str) -> str:
-    """Remove education-record identifiers from free-form log text."""
-    redacted = text
-    for pattern, replacement in _REDACTION_RULES:
-        redacted = pattern.sub(replacement, redacted)
-    return redacted
+def _validate_and_filter_fields(fields: dict[str, Any], caller_context: str) -> dict[str, Any]:
+    """Single-path field validator: fail-fast outside production, drop and warn on meta logger in production."""
+    disallowed = set(fields) - ALLOWED_AUDIT_FIELDS
+    if not disallowed:
+        return fields
+    from app.core.settings import get_settings
+
+    if get_settings().environment != "production":
+        raise ValueError(f"Unallowlisted fields in {caller_context}: {sorted(disallowed)}")
+
+    logging.getLogger(AUDIT_META_LOGGER_NAME).warning(
+        "Dropped unallowlisted audit fields in %s: %s", caller_context, sorted(disallowed)
+    )
+    return {k: v for k, v in fields.items() if k in ALLOWED_AUDIT_FIELDS}
+
+
+@contextmanager
+def audit_context(**fields: Any) -> Generator[None, None, None]:
+    """Scoped copy-on-write ambient context manager for audit fields."""
+    validated = _validate_and_filter_fields(fields, "audit_context")
+    parent = _AUDIT_CONTEXT.get()
+    child = {**(parent or {}), **validated}
+    token = _AUDIT_CONTEXT.set(child)
+    try:
+        yield
+    finally:
+        _AUDIT_CONTEXT.reset(token)
+
+
+def current_audit_context() -> dict[str, Any]:
+    """The ambient fields set by an enclosing audit_context (empty outside one)."""
+    return dict(_AUDIT_CONTEXT.get() or {})
 
 
 def sanitize_audit_value(value: Any) -> Any:
@@ -83,13 +104,37 @@ def sanitize_audit_fields(fields: dict[str, Any]) -> dict[str, Any]:
 
 
 def audit_event(event: str, **fields: Any) -> None:
-    """Emit a structured, allowlisted audit record as JSON."""
+    """Emit a structured, allowlisted audit record as JSON and persist to database."""
+    ambient = _AUDIT_CONTEXT.get() or {}
+    raw = {**ambient, **fields}
+    validated = _validate_and_filter_fields(raw, f"audit_event '{event}'")
+    now_dt = datetime.now(UTC)
+    sanitized = sanitize_audit_fields(validated)
     payload = {
         "audit_event": event,
-        "timestamp": datetime.now(UTC).isoformat(),
-        **sanitize_audit_fields(fields),
+        "timestamp": now_dt.isoformat(),
+        **sanitized,
     }
     logging.getLogger(AUDIT_LOGGER_NAME).info(json.dumps(payload, sort_keys=True))
+
+    try:
+        from app.domains.audit.service import record_audit_event
+
+        record_audit_event(event, now_dt, sanitized)
+    except Exception:
+        pass
+
+
+
+def log_and_audit_error(
+    target_logger: logging.Logger,
+    message: str,
+    event: str,
+    **fields: Any,
+) -> None:
+    """Log an error message on the domain logger and emit a structured audit record."""
+    target_logger.error(message)
+    audit_event(event, **fields)
 
 
 def audit_access_denied(
@@ -127,9 +172,23 @@ def audit_access_denied(
 
 
 class SensitiveDataFilter(logging.Filter):
-    """Redact education-record identifiers from all application log records."""
+    """Redact education-record identifiers and idempotently tag ambient context on log records."""
 
     def filter(self, record: logging.LogRecord) -> bool:
+        if not record.name.startswith("autograder.audit") and not getattr(record, "_audit_context_tagged", False):
+            ambient = _AUDIT_CONTEXT.get()
+            if ambient:
+                tags = [
+                    f"{k}={ambient[k]}"
+                    for k in ("run_id", "course_id", "assignment_id", "workflow_type")
+                    if k in ambient
+                ]
+                if tags:
+                    tag_prefix = "[" + " ".join(tags) + "]"
+                    record.msg = f"{tag_prefix} {record.getMessage()}"
+                    record.args = ()
+            record._audit_context_tagged = True
+
         original = record.getMessage()
         redacted = redact_sensitive_text(original)
         if redacted != original:

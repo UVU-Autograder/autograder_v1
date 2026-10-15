@@ -8,8 +8,12 @@ logger = logging.getLogger(__name__)
 from app.core.settings import get_settings
 from app.domains.runs.queue_admission import (
     QueueFullError,
+    QueueSnapshot,
+    backpressure_for,
     backpressure_snapshot,
     eta_band_for_position,
+    eta_seconds_for,
+    queue_snapshot,
     release_execution_slots,
     reserve_execution_slots,
     waiting_count,
@@ -40,6 +44,49 @@ from app.domains.sandbox.store import (
 )
 
 SESSION_TTL = timedelta(hours=1)
+
+# Failures caused by the grading infrastructure, not by the student's code. Students
+# see a neutral "please re-run" message instead of the raw (internal) failure text,
+# and AI feedback is not offered: the model would otherwise blame their code.
+GRADER_FAULT_CATEGORIES = frozenset({
+    "cleanup_failure",
+    "cleanup_service_unavailable",
+    "execution_interrupted",
+    "heartbeat_unavailable",
+    "infrastructure_error",
+    "internal_error",
+    "judge0_error",
+    "preparation_error",
+    "workspace_deletion_failed",
+})
+GRADER_FAULT_MESSAGE = (
+    "The grader had a problem with this run, not with your code. Please run it again."
+)
+
+
+class AiFeedbackUnavailable(Exception):
+    """AI feedback cannot be produced right now; carries an HTTP status and a code."""
+
+    def __init__(self, status: int, code: str, message: str, retry_after_seconds: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
+        self.retry_after_seconds = retry_after_seconds
+
+    def detail(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"code": self.code, "message": self.message}
+        if self.retry_after_seconds is not None:
+            body["retry_after_seconds"] = self.retry_after_seconds
+        return body
+
+
+def student_failure_message(category: str | None, raw_message: str | None) -> str:
+    if category in GRADER_FAULT_CATEGORIES:
+        return GRADER_FAULT_MESSAGE
+    if category == "cancelled":
+        return "Run cancelled."
+    return raw_message or "Run failed during execution."
 
 
 class SandboxService:
@@ -98,6 +145,7 @@ class SandboxService:
         artifact_refs: dict[str, str] | None = None,
         allowed_concepts: list[str] | None = None,
         stdin: str | None = None,
+        expected_manifest: dict | None = None,
     ) -> tuple[SandboxRunCreateResponse | None, str, int | None]:
         """Create a sandbox run record and optionally dispatch a Celery task with optional stdin."""
         if not assignment_exists:
@@ -108,14 +156,15 @@ class SandboxService:
         if quota.remaining <= 0:
             return None, session, 429
 
+        now = datetime.now(UTC)
+        self._store.record_upload(session, now)
+
         run_id = f"run_{token_urlsafe(16)}"
         try:
             waiting = reserve_execution_slots(1, owner=run_id)
         except QueueFullError:
+            self._store.unrecord_upload(session)
             return None, session, 503
-
-        now = datetime.now(UTC)
-        self._store.record_upload(session, now)
 
         record = SandboxRunRecord(
             run_id=run_id,
@@ -129,8 +178,8 @@ class SandboxService:
             self._store.save_run(record)
         except Exception:
             release_execution_slots(owner=run_id)
-            return None, session, 503
-
+            self._store.unrecord_upload(session)
+            return None, session, 502
 
         # Store execution payload on record
         if zip_data is not None and config is not None:
@@ -139,6 +188,7 @@ class SandboxService:
             zip_b64 = base64.b64encode(zip_data).decode("ascii")
             record.zip_data_b64 = zip_b64
             record.config = config
+            record.expected_manifest = expected_manifest
             record.artifact_refs = artifact_refs or {}
             record.allowed_concepts = allowed_concepts or []
             record.stdin = stdin
@@ -166,15 +216,20 @@ class SandboxService:
                         artifact_refs=artifact_refs or {},
                         allowed_concepts=allowed_concepts or [],
                         stdin=stdin,
+                        expected_manifest=expected_manifest,
                     )
                     record.celery_task_id = grade_result.id
                     self._store.save_run(record)
                 except Exception:
                     from app.domains.runs.queue_admission import cancel_waiting
                     cancel_waiting(run_id)
-                    return None, session, 503
+                    self._store.unrecord_upload(session)
+                    return None, session, 502
 
-        status = self._status_for(record)
+        if self._use_celery:
+            status = self._build_status(run_id, "queue", None, None, queue_snapshot(run_id))
+        else:
+            status = self._status_for(record)
         return (
             SandboxRunCreateResponse(
                 run_id=run_id,
@@ -191,43 +246,82 @@ class SandboxService:
 
     def get_status(self, run_id: str) -> RunStatusResponse | None:
         self._expire_old_runs()
-        if self._use_celery:
-            from app.domains.runs.queue_admission import ticket_state
-            if ticket_state(run_id) == "expired":
-                from app.domains.runs.orchestrator import set_run_state
-                set_run_state(run_id, "failure", {"failure_category": "execution_interrupted",
-                    "failure_message": "Execution was interrupted. Submit again."})
+        if not self._use_celery:
+            record = self._store.get_run(run_id)
+            if record is None:
+                return None
+            status = self._status_for(record)
+            self._advance(record)
+            return status
 
-        # Try Redis first if Celery mode is active
-        if self._use_celery:
-            try:
-                from app.domains.runs.tasks import get_run_state
-                redis_state = get_run_state(run_id)
-                if redis_state is not None:
-                    state = redis_state.get("state", "queue")
-                    queue_pos = redis_state.get("queue_position")
-                    message = redis_state.get("failure_message") or self._message_for(state)
-                    return RunStatusResponse(
-                        run_id=run_id,
-                        state=state,
-                        queue_position=queue_pos if state == "queue" else None,
-                        eta_band=eta_band_for_position(queue_pos)
-                        if state == "queue"
-                        else None,
-                        counters=self._counters(),
-                        backpressure=self._backpressure(),
-                        message=message,
-                    )
-            except Exception:
-                pass
+        # Celery mode: Redis state is the truth for progress; scheduling counts are
+        # read without the scheduler lock. Never fall back to _advance here -- it
+        # releases execution slots and could free a slot that a worker still holds.
+        from app.domains.runs.tasks import get_run_state
 
-        # Fall back to store
+        snapshot = queue_snapshot(run_id)
+        if snapshot is not None and snapshot.owner_state == "expired":
+            from app.domains.runs.orchestrator import set_run_state
+
+            set_run_state(run_id, "failure", {"failure_category": "execution_interrupted",
+                "failure_message": "Execution was interrupted. Submit again."})
+        try:
+            redis_state = get_run_state(run_id)
+        except Exception:
+            redis_state = None
         record = self._store.get_run(run_id)
-        if record is None:
+        if redis_state is None and record is None:
             return None
-        status = self._status_for(record)
-        self._advance(record)
-        return status
+        if redis_state is not None:
+            state = redis_state.get("state", "queue")
+            category = redis_state.get("failure_category")
+            raw_message = redis_state.get("failure_message")
+        else:
+            # Redis unreachable: report the last known state instead of guessing.
+            state = "run" if snapshot is not None and snapshot.owner_state == "active" else record.state
+            category, raw_message = None, None
+        if state not in ("queue", "run", "complete", "failure"):
+            state = "queue"
+        return self._build_status(run_id, state, category, raw_message, snapshot)
+
+    def _build_status(
+        self,
+        run_id: str,
+        state: RunState,
+        category: str | None,
+        raw_message: str | None,
+        snapshot: QueueSnapshot | None,
+    ) -> RunStatusResponse:
+        queue_position = eta_band = ahead_shown = eta_s = None
+        if state == "queue":
+            ahead = snapshot.ahead if snapshot is not None else None
+            if ahead is None:
+                record = self._store.get_run(run_id)
+                ahead = max(0, record.queue_position - 1) if record is not None else 0
+            from app.domains.runs.orchestrator import mean_grade_seconds, recent_throughput_per_second
+
+            queue_position = ahead + 1
+            eta_band = eta_band_for_position(queue_position)
+            eta_s = eta_seconds_for(ahead, mean_grade_seconds(), recent_throughput_per_second())
+            if get_settings().sandbox_show_queue_ahead:
+                ahead_shown = ahead
+        if state == "failure":
+            message = student_failure_message(category, raw_message)
+        else:
+            message = self._message_for(state)
+        return RunStatusResponse(
+            run_id=run_id,
+            state=state,
+            queue_position=queue_position,
+            eta_band=eta_band,
+            counters=self._counters(),
+            backpressure=backpressure_for(snapshot.waiting if snapshot is not None else 0),
+            message=message,
+            submissions_ahead=ahead_shown,
+            eta_seconds=eta_s,
+            failure_category=category if state == "failure" else None,
+            grader_fault=state == "failure" and category in GRADER_FAULT_CATEGORIES,
+        )
 
     def cancel_run(
         self, run_id: str, session_id: str | None
@@ -336,41 +430,94 @@ class SandboxService:
             "warnings": warnings,
             "failure_message": failure_message,
             "requirements": requirements_from_config(record.config, description=desc),
+            "reference_files": self._reference_files(record),
         }
 
-    def generate_ai_feedback(
-        self, run_id: str, session_id: str | None
-    ) -> SandboxAiFeedbackResponse | None:
+    @staticmethod
+    def _reference_files(record: SandboxRunRecord) -> dict[str, str]:
+        """The assignment's Python model solution, for the AI guardrails only (never the prompt)."""
+        artifacts = (record.config or {}).get("artifacts") or {}
+        files: dict[str, str] = {}
+        for key, storage_ref in (record.artifact_refs or {}).items():
+            artifact = artifacts.get(key) or {}
+            name = str(artifact.get("display_filename") or key)
+            if artifact.get("type") != "model_solution" or not name.endswith(".py"):
+                continue
+            try:
+                from app.integrations.artifacts.resolver import load_artifact_content
+
+                files[name] = load_artifact_content(storage_ref).decode("utf-8", errors="replace")
+            except (OSError, ValueError):
+                logger.warning("Model solution for the AI guardrails could not be read: %s", key)
+        return files
+
+    def ai_feedback_context(self, run_id: str, session_id: str | None) -> dict[str, Any] | None:
+        """Prompt inputs for a run, or None if the run/session is unknown.
+
+        Raises AiFeedbackUnavailable when feedback would not make sense yet: grading
+        has not finished, or it failed because of the grader rather than the code.
+        """
         self._expire_old_runs()
         record = self._store.get_run(run_id)
         if record is None or record.session_id != session_id:
             return None
+        if self._use_celery:
+            from app.domains.runs.tasks import get_run_state
 
-        ctx = self._prepare_ai_feedback_context(record)
+            try:
+                redis_state = get_run_state(run_id) or {}
+            except Exception:
+                redis_state = {}
+            state = redis_state.get("state")
+            if state not in ("complete", "failure"):
+                raise AiFeedbackUnavailable(
+                    409, "grading_not_complete",
+                    "AI feedback is available once your test results are in.",
+                )
+            category = redis_state.get("failure_category")
+            if state == "failure" and (category in GRADER_FAULT_CATEGORIES or category == "cancelled"):
+                raise AiFeedbackUnavailable(409, "grader_fault", GRADER_FAULT_MESSAGE)
+        return self._prepare_ai_feedback_context(record)
+
+    def generate_ai_feedback(
+        self, run_id: str, session_id: str | None
+    ) -> SandboxAiFeedbackResponse | None:
+        """Validated feedback for a run. Model outages raise AiFeedbackUnavailable
+        (503/504) so the client can tell "busy, try again" from an actual answer."""
+        ctx = self.ai_feedback_context(run_id, session_id)
+        if ctx is None:
+            return None
         from app.integrations.llm.client import LocalLLMClient
 
         llm_client = LocalLLMClient()
-        feedback_text = llm_client.generate_sandbox_feedback(**ctx)
-
+        outcome = llm_client.generate_sandbox_feedback_outcome(**ctx)
+        if outcome.kind == "timeout":
+            raise AiFeedbackUnavailable(
+                504, "ai_timeout", "The AI tutor took too long to answer. Please try again in a moment.", 10,
+            )
+        if outcome.kind == "unreachable":
+            raise AiFeedbackUnavailable(
+                503, "ai_unavailable",
+                "The AI tutor is offline right now. Your test results above are complete.", 30,
+            )
+        if outcome.kind == "error":
+            raise AiFeedbackUnavailable(
+                503, "ai_error", "The AI tutor ran into a problem. Please try again in a moment.", 15,
+            )
         return SandboxAiFeedbackResponse(
             run_id=run_id,
-            ai_feedback=feedback_text,
+            ai_feedback=outcome.text,
             model=llm_client.model,
         )
 
     def generate_ai_feedback_stream(
         self, run_id: str, session_id: str | None
     ):
-        self._expire_old_runs()
-        record = self._store.get_run(run_id)
-        if record is None or record.session_id != session_id:
+        """Validated feedback split into lines (generation finishes before the first line)."""
+        response = self.generate_ai_feedback(run_id, session_id)
+        if response is None:
             return None
-
-        ctx = self._prepare_ai_feedback_context(record)
-        from app.integrations.llm.client import LocalLLMClient
-
-        llm_client = LocalLLMClient()
-        return llm_client.generate_sandbox_feedback_stream(**ctx)
+        return iter(response.ai_feedback.splitlines(keepends=True))
 
     def get_result(
         self, run_id: str, session_id: str | None
@@ -397,16 +544,18 @@ class SandboxService:
                     return "not_ready"
 
                 if state == "failure":
+                    category = redis_result.get("failure_category", "internal_error")
                     return SandboxRunResultResponse(
                         run_id=run_id,
                         state="failure",
                         projected_score=0,
                         max_score=record.max_score,
-                        failure_category=redis_result.get("failure_category", "internal_error"),
+                        failure_category=category,
+                        diagnostics=redis_result.get("diagnostics", {}),
                         warnings=[
                             SandboxWarning(
-                                code=redis_result.get("failure_category", "internal_error"),
-                                message=redis_result.get("failure_message", "Run failed."),
+                                code=category,
+                                message=student_failure_message(category, redis_result.get("failure_message")),
                             )
                         ],
                         test_summaries=[],
@@ -458,6 +607,8 @@ class SandboxService:
                             your_value=your_val,
                             expected_value=exp_val,
                             expected_input=expected_input_val,
+                            hint=tr.get("hint"),
+                            output_truncated=tr.get("output_truncated", False),
                         )
                     )
 
@@ -484,6 +635,7 @@ class SandboxService:
                     projected_score=redis_result.get("score", 0),
                     max_score=redis_result.get("max_score", record.max_score),
                     failure_category=redis_result.get("failure_category"),
+                    diagnostics=redis_result.get("diagnostics", {}),
                     warnings=warnings,
                     test_summaries=test_summaries,
                     rubric_groups=rubric_groups,
@@ -492,7 +644,10 @@ class SandboxService:
                     raw_output=redis_result.get("raw_output"),
                 )
             except Exception:
-                pass
+                # Never grade inline in Celery mode: that would run the submission in
+                # the API process without an execution slot. Ask the client to retry.
+                logger.warning("Sandbox result for %s could not be read from Redis", run_id)
+                return "not_ready"
 
         if record.state not in {"complete", "failure"}:
             return "not_ready"
@@ -523,6 +678,7 @@ class SandboxService:
                     artifact_refs=record.artifact_refs or {},
                     allowed_concepts=record.allowed_concepts or [],
                     stdin=record.stdin,
+                    expected_manifest=record.expected_manifest,
                 )
             except Exception:
                 logger.exception("Synchronous sandbox evaluation failed for %s", run_id)
@@ -573,6 +729,8 @@ class SandboxService:
                         your_value=your_val,
                         expected_value=exp_val,
                         expected_input=expected_input_val,
+                        hint=tr.get("hint"),
+                        output_truncated=tr.get("output_truncated", False),
                     )
                 )
 
@@ -594,6 +752,7 @@ class SandboxService:
                 projected_score=res_data.get("score", 0),
                 max_score=res_data.get("max_score", record.max_score),
                 failure_category=res_data.get("failure_category"),
+                diagnostics=res_data.get("diagnostics", {}),
                 warnings=warnings,
                 test_summaries=test_summaries,
                 sanitized_feedback=str(res_data.get("failure_message") or "Execution failed.") if not res_data.get("success") else "Review your results above.",
@@ -617,76 +776,8 @@ class SandboxService:
             file_preview=self._file_preview(),
         )
 
-    def _redis_conn(self):
-        import redis
-        return redis.Redis.from_url(get_settings().redis_url, decode_responses=True)
-
     def _quota_for(self, session_id: str | None) -> UploadQuota:
-        now = datetime.now(UTC)
-        if session_id is None:
-            return UploadQuota(
-                limit=self._upload_limit,
-                window_seconds=int(self._upload_window.total_seconds()),
-                remaining=self._upload_limit,
-                reset_at=(now + self._upload_window).isoformat(),
-            )
-
-        def _fallback_quota():
-            uploads = [
-                ts
-                for ts in self._session_uploads.get(session_id, [])
-                if now - ts < self._upload_window
-            ]
-            self._session_uploads[session_id] = uploads
-            reset_at = now + self._upload_window
-            if uploads:
-                reset_at = uploads[0] + self._upload_window
-            return UploadQuota(
-                limit=self._upload_limit,
-                window_seconds=int(self._upload_window.total_seconds()),
-                remaining=max(self._upload_limit - len(uploads), 0),
-                reset_at=reset_at.isoformat(),
-            )
-
-        if not self._use_celery:
-            return _fallback_quota()
-
-        try:
-            # Redis rate-limiting
-            r = self._redis_conn()
-            key = f"sandbox:uploads:{session_id}"
-            raw_uploads = r.lrange(key, 0, -1)
-            uploads_ts = []
-            for raw in raw_uploads:
-                try:
-                    uploads_ts.append(float(raw))
-                except ValueError:
-                    pass
-
-            now_ts = now.timestamp()
-            cutoff_ts = now_ts - self._upload_window.total_seconds()
-            active_ts = [ts for ts in uploads_ts if ts > cutoff_ts]
-
-            r.delete(key)
-            if active_ts:
-                r.rpush(key, *[str(ts) for ts in active_ts])
-                r.expire(key, int(self._upload_window.total_seconds()))
-
-            remaining = max(self._upload_limit - len(active_ts), 0)
-            if active_ts:
-                oldest_dt = datetime.fromtimestamp(min(active_ts), tz=UTC)
-                reset_at = oldest_dt + self._upload_window
-            else:
-                reset_at = now + self._upload_window
-
-            return UploadQuota(
-                limit=self._upload_limit,
-                window_seconds=int(self._upload_window.total_seconds()),
-                remaining=remaining,
-                reset_at=reset_at.isoformat(),
-            )
-        except Exception:
-            return _fallback_quota()
+        return self.quota_for_session(session_id)
 
     def _status_for(self, record: SandboxRunRecord) -> RunStatusResponse:
         return RunStatusResponse(
@@ -717,20 +808,22 @@ class SandboxService:
     def _message_for(self, state: RunState) -> str:
         return {
             "queue": "Sandbox run accepted and waiting for execution capacity.",
-            "run": "Sandbox run is executing in the mock contract prototype.",
+            "run": "Your submission is being graded.",
             "complete": "Sandbox run completed. Fetch session-only projected feedback from the sandbox result endpoint.",
             "failure": "Sandbox run ended with a coarse failure state.",
         }[state]
 
     def _counters(self) -> RunCounters:
         values = self._store.list_runs()
-        if self._use_celery:
+        if self._use_celery and values:
             try:
-                from app.domains.runs.tasks import get_run_state
+                from app.domains.runs.orchestrator import get_run_states
+
+                states = get_run_states([item.run_id for item in values])
                 for item in values:
-                    redis_state = get_run_state(item.run_id)
+                    redis_state = states.get(item.run_id)
                     if redis_state:
-                        item.state = redis_state.get("state", "queue")
+                        item.state = redis_state.get("state", item.state)
             except Exception:
                 pass
         return RunCounters(

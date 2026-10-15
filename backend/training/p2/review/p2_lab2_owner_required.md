@@ -49,21 +49,23 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `demo_
 
 > Pre-edit note (Claude): The hint gave the fix ('make owner optional'). Now compares owner with balance, which already has what owner is missing.
 
+> v8 revision: removed parameter names from item and hint; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your __str__ method works. Creating an account with no arguments fails.",
+  "summary": "Your __str__ method works, but creating an Account with no arguments fails.",
   "items": [
     {
       "test_key": "account_init",
-      "what_went_wrong": "The test creates Account() with no arguments, and __init__ says owner is required.",
-      "hint": "Can you compare how owner and balance are declared in __init__? Why does balance work without a value?"
+      "what_went_wrong": "Calling Account() with no arguments raises a missing-argument error.",
+      "hint": "How do the two parameters in Account.__init__ differ in how their defaults are declared?"
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py fails the same way when it creates default_account.",
-      "hint": "This follows from the __init__ problem. Fix that first."
+      "what_went_wrong": "demo.py fails for the same reason when creating a default account.",
+      "hint": "Does this clear once Account.__init__ works with no arguments?"
     }
   ],
   "next_step": "Review the __init__ signature in account.py."

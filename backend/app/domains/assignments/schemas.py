@@ -2,11 +2,10 @@ import fnmatch
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 
 TEST_KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 DEPENDENCY_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
-ARTIFACT_TYPES = {"pytest_file", "model_solution", "support_file"}
 
 
 def pytest_marker_for_key(key: str) -> str:
@@ -88,6 +87,12 @@ class ScoringItemConfig(BaseModel):
     rubric_group_key: str | None = Field(default=None, pattern=TEST_KEY_RE.pattern)
     inputs: list[str] | None = Field(default=None)
     outputs: list[str] | None = Field(default=None)
+    hint: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("hint", mode="before")
+    @classmethod
+    def normalize_hint(cls, value):
+        return value.strip() or None if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def validate_inputs_outputs(self) -> "ScoringItemConfig":
@@ -116,7 +121,6 @@ class CompletionRequirementConfig(BaseModel):
 
 
 class ConceptsConfig(BaseModel):
-    allowlist: list[str] = Field(default_factory=list)
     denylist: list[str] = Field(default_factory=list)
 
 
@@ -206,6 +210,7 @@ class ScoringItem(BaseModel):
     item_type: Literal["pytest", "manual"] = "pytest"
     pytest_marker: str | None = None
     rubric_group_key: str | None = None
+    hint: str | None = None
 
 
 class RubricGroup(BaseModel):
@@ -230,6 +235,7 @@ class ArtifactMetadata(BaseModel):
 
 
 class StaffAssignmentSetup(BaseModel):
+    inventory_status: Literal["missing", "stale", "ready"] = "missing"
     course_id: str
     assignment_id: str
     title: str
@@ -240,7 +246,7 @@ class StaffAssignmentSetup(BaseModel):
     entrypoint_path: str
     scoring_items: list[ScoringItem]
     rubric_groups: list[RubricGroup]
-    completion_requirements: list[CompletionRequirement]
+    completion_requirements: list[CompletionRequirement] = Field(default_factory=list)
     canvas_ref: str | None = None
     artifacts: list[ArtifactMetadata]
     config: AssignmentConfigV1

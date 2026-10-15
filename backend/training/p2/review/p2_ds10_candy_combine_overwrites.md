@@ -48,23 +48,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy_combinable`, `o
 
 > Pre-edit note (Claude): The hint asked 'what mathematical operation', which is an either/or in disguise. Now describes what happens to the first candy's weight and points at the line.
 
+> v8 revision (Claude): removed the weights and the attribute name from the hint; trimmed
+
+> p3b (Claude): trimmed to 65 words; shorter summary and first item
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and Cookie merging work. Candy items combine, but the weight comes out wrong.",
+  "summary": "Your Combinable protocol and Cookie merging work, but combined candies get the wrong weight.",
   "items": [
     {
       "test_key": "candy_combinable",
-      "what_went_wrong": "After combining, the first candy has a weight of 2.0, which is only the second candy's weight. The test expects 3.0.",
-      "hint": "Look at the line in Candy.combine that updates self.candy_weight. What happens to the weight the first candy already had?"
+      "what_went_wrong": "After combining, the first candy's weight reflects only the second candy.",
+      "hint": "In Candy.combine, what happens to the weight the first candy already had?"
     },
     {
       "test_key": "order_combine",
       "what_went_wrong": "The combined candy in the order has the same wrong weight.",
-      "hint": "This follows from the Candy.combine problem. Fix that first."
+      "hint": "This follows from the Candy.combine problem; fix that first."
     }
   ],
-  "next_step": "Review the Candy.combine method in dessert.py."
+  "next_step": "Review Candy.combine in dessert.py."
 }
 ```

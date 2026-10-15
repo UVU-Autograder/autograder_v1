@@ -44,16 +44,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 
 > Pre-edit note (Claude): No change to the substance: accurate and points to the comparison the student should make.
 
+> v8 revision: removed the attribute name; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your classes and most of your tests are correct, but one of your own tests is failing.",
+  "summary": "Your classes and most of your tests pass, but one of your default Candy assertions fails.",
   "items": [
     {
       "test_key": "student_tests_pass",
-      "what_went_wrong": "The test suite failed because test_candy_default did not pass.",
-      "hint": "Compare the expected value for candy_weight in your test with the default value in your Candy class constructor. Which one matches the assignment?"
+      "what_went_wrong": "Your test suite failed because test_candy_default did not pass.",
+      "hint": "How do the expected defaults in test_candy_default compare with the defaults in Candy.__init__?"
     }
   ],
   "next_step": "Review test_candy_default in test_dessert.py."

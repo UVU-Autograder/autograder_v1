@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
     database_url: str = Field(
-        default="sqlite+pysqlite:///:memory:",
+        default="postgresql+psycopg://autograder:autograder_dev_password@127.0.0.1:5432/autograder",
         validation_alias="DATABASE_URL",
     )
     artifact_storage_dir: str = Field(
@@ -30,6 +30,10 @@ class Settings(BaseSettings):
         validation_alias="JUDGE0_PREINSTALLED_DEPENDENCIES",
     )
     sandbox_upload_limit: int = Field(default=999999, ge=1, validation_alias="SANDBOX_UPLOAD_LIMIT")
+    # Runs per client address per upload window; 0 turns it off (see sandbox/ip_limit.py
+    # before enabling: the VPN or NAT can put a whole class behind one address).
+    sandbox_ip_hourly_limit: int = Field(default=0, ge=0, validation_alias="SANDBOX_IP_HOURLY_LIMIT")
+    sandbox_ip_allowlist: str = Field(default="", validation_alias="SANDBOX_IP_ALLOWLIST")
     sandbox_upload_window_seconds: int = Field(
         default=3600,
         ge=1,
@@ -54,14 +58,34 @@ class Settings(BaseSettings):
     azure_ad_client_id: str | None = Field(default=None, validation_alias="AZURE_AD_CLIENT_ID")
     enable_mock_login: bool = Field(default=False, validation_alias="ENABLE_MOCK_LOGIN")
     sandbox_use_celery: bool = Field(default=False, validation_alias="SANDBOX_USE_CELERY")
+    # Show waiting students an anonymous count of submissions queued before theirs.
+    # Off: a generic "other submissions are running" message instead.
+    sandbox_show_queue_ahead: bool = Field(default=True, validation_alias="SANDBOX_SHOW_QUEUE_AHEAD")
+    # AI feedback capacity. Measured on the Dell: ~16 simultaneous requests all finish
+    # well under the 30 s model timeout. Requests beyond that wait (bounded) for a slot;
+    # past the wait limit the student gets "busy, retrying" instead of a timeout.
+    # The limit is per API process; the backend runs one uvicorn process.
+    ai_max_concurrent: int = Field(default=16, ge=1, validation_alias="AI_MAX_CONCURRENT")
+    ai_max_waiting: int = Field(default=24, ge=0, validation_alias="AI_MAX_WAITING")
+    ai_max_wait_seconds: float = Field(default=20.0, gt=0, validation_alias="AI_MAX_WAIT_SECONDS")
     cors_allowed_origins: str = Field(
         default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://autograder-frontend-mockup.vercel.app",
         validation_alias="CORS_ALLOWED_ORIGINS",
     )
     local_llm_api_key: str | None = Field(default="none", validation_alias="LOCAL_LLM_API_KEY")
     local_llm_endpoint: str | None = Field(default="http://127.0.0.1:8001/v1", validation_alias="LOCAL_LLM_ENDPOINT")
-    local_llm_model: str = Field(default="cs1410-p2c", validation_alias="LOCAL_LLM_MODEL")
+    local_llm_model: str = Field(default="cs1410-p3b", validation_alias="LOCAL_LLM_MODEL")
+    # Which feedback prompt each served model was trained on, as "model=version,...".
+    # Unlisted models (p3b, the base-model rollback) get prompts.PROMPT_VERSION (v8).
+    # Same default as prompts.DEFAULT_PROMPT_VERSION_MAP (core settings do not import integrations).
+    local_llm_prompt_versions: str = Field(default="cs1410-p4=v9", validation_alias="LOCAL_LLM_PROMPT_VERSIONS")
     repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
+
+    def prompt_version_for(self, model: str) -> str:
+        """The prompt version ``model`` was trained on (see local_llm_prompt_versions)."""
+        from app.integrations.ai.prompts import prompt_version_for
+
+        return prompt_version_for(model, self.local_llm_prompt_versions)
 
     @property
     def parsed_cors_origins(self) -> list[str]:
@@ -71,10 +95,6 @@ class Settings(BaseSettings):
             if origin.strip()
         ]
 
-
-    @property
-    def is_sqlite(self) -> bool:
-        return self.database_url.startswith("sqlite")
 
     @property
     def artifact_storage_path(self) -> Path:
@@ -89,7 +109,7 @@ class Settings(BaseSettings):
     def mock_login_enabled(self) -> bool:
         if self.environment == "production" or self.auth_provider == "microsoft":
             return False
-        return self.enable_mock_login or self.is_sqlite
+        return self.enable_mock_login or self.environment in ("development", "test")
 
     def validate_production_security(self) -> None:
         """Validate production security invariants at startup."""

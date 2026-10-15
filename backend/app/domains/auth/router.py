@@ -98,7 +98,7 @@ def microsoft_login(request: MicrosoftLoginRequest, db: DbSession):
 
 @router.post("/mock-login")
 def mock_login(request: MockLoginRequest, db: DbSession):
-    """Local mock login endpoint. Enabled only in SQLite local development mode.
+    """Local mock login endpoint. Enabled only in non-production development mode.
 
     Generates a signed JWT token. Auto-provisions the user if they do not exist.
     """

@@ -44,12 +44,18 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic extension replaced with one about the student's own choice (__ne__ repeats the comparison instead of reusing __eq__).
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
+> p3b (Claude): praise-first summary; next_step is optional curiosity, not a reuse instruction
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Every test passes, including sorting.",
+  "summary": "Great job! Every test passes, including your relational operators and Order.sort.",
   "items": [],
-  "next_step": "Your __ne__ repeats the cost comparison instead of reusing __eq__. Can you think of what would happen if you later changed how __eq__ compares items?"
+  "next_step": "Optional: could __ne__ reuse __eq__ instead of repeating it?"
 }
 ```

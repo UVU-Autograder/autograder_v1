@@ -49,23 +49,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): what_went_wrong gave the fix ('instead of accessing the underlying list'). Now describes the RecursionError and asks the student to trace the return line.
 
+> p3b (Claude): dropped the quoted error message; one-sentence hint; trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but asking an Order for its length never finishes.",
+  "summary": "Your class hierarchy works, but asking an Order for its length never finishes.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "len(order) fails with a RecursionError: maximum recursion depth exceeded.",
-      "hint": "When Python runs len(order), it calls your __len__. Can you trace what the return line of __len__ asks Python to do next?"
+      "what_went_wrong": "Getting an Order's length raises a RecursionError.",
+      "hint": "When len runs your __len__, what does its return line ask Python to do next?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main crashes with the same RecursionError when it prints the item count.",
-      "hint": "This follows from the __len__ problem. Fix that first."
+      "what_went_wrong": "main crashes with the same error when it prints the item count.",
+      "hint": "This follows from the __len__ problem; fix that first."
     }
   ],
-  "next_step": "Review the __len__ method in the Order class in dessert.py."
+  "next_step": "Review Order.__len__ in dessert.py."
 }
 ```

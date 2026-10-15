@@ -32,6 +32,7 @@ from app.integrations.ai.prompts import (
     FeedbackResponse,
     build_messages,
     requirements_from_config,
+    resolve_seed_description,
 )
 
 OUT_DIR = Path(__file__).parent / "data" / "smoke"
@@ -40,8 +41,12 @@ SEEDS_DIR = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
 
 def seed_requirements(slug: str) -> str:
     """REQUIREMENTS exactly as the live sandbox derives them (prompts.requirements_from_config)."""
-    cfg_file = SEEDS_DIR / slug / "config.json"
-    return requirements_from_config(json.loads(cfg_file.read_text()))
+    seed_dir = SEEDS_DIR / slug
+    cfg_file = seed_dir / "config.json"
+    return requirements_from_config(
+        json.loads(cfg_file.read_text(encoding="utf-8")),
+        description=resolve_seed_description(seed_dir),
+    )
 
 
 DS1 = dict(
@@ -311,16 +316,17 @@ def main(argv: list[str] | None = None) -> int:
     valid, train = rows[: args.valid], rows[args.valid :]
     args.out.mkdir(parents=True, exist_ok=True)
     for name, split in (("train", train), ("valid", valid)):
-        with (args.out / f"{name}.jsonl").open("w") as handle:
+        with (args.out / f"{name}.jsonl").open("w", encoding="utf-8") as handle:
             for row in split:
                 handle.write(json.dumps(row, ensure_ascii=False) + "\n")
     (args.out / "meta.json").write_text(
-        json.dumps({"prompt_version": PROMPT_VERSION, "train": len(train), "valid": len(valid), "seed": args.seed}, indent=2)
+        json.dumps({"prompt_version": PROMPT_VERSION, "train": len(train), "valid": len(valid), "seed": args.seed}, indent=2),
+        encoding="utf-8",
     )
 
     # Re-read and validate exactly what was written.
     for name in ("train", "valid"):
-        for line in (args.out / f"{name}.jsonl").read_text().splitlines():
+        for line in (args.out / f"{name}.jsonl").read_text(encoding="utf-8").splitlines():
             row = json.loads(line)
             assert [m["role"] for m in row["messages"]] == ["system", "user", "assistant"]
             FeedbackResponse.model_validate_json(row["messages"][-1]["content"])

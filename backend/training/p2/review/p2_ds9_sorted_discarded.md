@@ -48,23 +48,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_sort`). Then se
 
 > Updated after 4159d52 (Claude): The student's own sort test now fails too, and Order.sort is visible to the model under prompt v5. Added a follow-on item.
 
+> v8 revision (Claude): hint no longer names the list attribute or asks about modified vs returned; now a trace question
+
 status: accepted
 
 ```json
 {
-  "summary": "Your relational operators are correct, but calling sort() does not change the order, and your own sort test notes this as well.",
+  "summary": "Your relational operators are correct, but calling Order.sort leaves the items unsorted.",
   "items": [
     {
       "test_key": "order_sort",
-      "what_went_wrong": "After order.sort(), the items are still in the order they were added.",
-      "hint": "How is the list being modified or returned inside Order.sort()? Can you print order.order right after calling it?"
+      "what_went_wrong": "After sorting, the order's items are still in the order they were added.",
+      "hint": "Trace Order.sort: once the sorting step finishes, where does its result go?"
     },
     {
       "test_key": "student_sort_tests",
-      "what_went_wrong": "Your test_order_sort fails for the same reason.",
-      "hint": "This follows from Order.sort. Fix the method, not the test."
+      "what_went_wrong": "Your own sort test fails for the same reason.",
+      "hint": "This follows from Order.sort; fix the method, not your test."
     }
   ],
-  "next_step": "Review the Order.sort() method in dessert.py."
+  "next_step": "Review Order.sort in dessert.py."
 }
 ```

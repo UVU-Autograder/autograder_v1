@@ -1,6 +1,13 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Sandbox Student Acceptance Suite", () => {
+  // These tests run against the real backend on :8000 (the playwright webServer), and the
+  // run test intercepts its requests there. `npm run dev` defaults to the in-browser mock
+  // API, which never calls :8000, so switch it off for this page (lib/api-client.ts reads it).
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.sessionStorage.setItem("mock_api", "false"));
+  });
+
   test("catalog displays available sandbox courses", async ({ page }) => {
     await page.goto("/sandbox");
     await expect(page.getByText("Fundamentals of Programming")).toBeVisible();
@@ -9,12 +16,12 @@ test.describe("Sandbox Student Acceptance Suite", () => {
 
   test("navigating into course displays assignments list", async ({ page }) => {
     await page.goto("/sandbox/cs1400/assignments");
-    await expect(page.getByText("Simple Python Functions")).toBeVisible();
-    await expect(page.getByText(/25\s*pts/i)).toBeVisible();
+    await expect(page.getByText("Lab 1: Sum of Two Numbers")).toBeVisible();
+    await expect(page.getByText(/\d+\s*pts/i).first()).toBeVisible();
   });
 
   test("assignment workspace loads rubric, constraints, and test runner", async ({ page }) => {
-    await page.goto("/sandbox/cs1400/assignments/simple-python-functions");
+    await page.goto("/sandbox/cs1400/assignments/m1-lab1");
 
     // Verify back navigation link
     await expect(page.getByRole("link", { name: "Back to assignments" })).toBeVisible({ timeout: 10000 });
@@ -129,15 +136,14 @@ test.describe("Sandbox Student Acceptance Suite", () => {
       }
     );
 
-    await page.goto("/sandbox/cs1400/assignments/simple-python-functions");
+    await page.goto("/sandbox/cs1400/assignments/m1-lab1");
 
     const runBtn = page.getByRole("button", { name: "Run Code" });
     await expect(runBtn).toBeVisible({ timeout: 10000 });
     await runBtn.click();
 
     // Verify scored rubric results are rendered
-    await expect(page.getByText("25 / 25")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("add_numbers(a, b) calculates sum")).toBeVisible();
-    await expect(page.getByText("reverse_words(sentence) reverses characters")).toBeVisible();
+    await expect(page.getByText(/\d+\s*\/\s*\d+/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("AST Safety Check").first()).toBeVisible();
   });
 });

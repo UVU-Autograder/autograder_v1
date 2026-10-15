@@ -15,11 +15,11 @@ from dataclasses import dataclass, field
 
 from app.domains.assignments.schemas import ScoringItemConfig, pytest_marker_for_key
 from app.domains.grading.schemas import classify_execution_failure
+from app.domains.grading.report_contract import RunnerPayload, ValidatedManifest, MAX_REPORT_BYTES
+from pydantic import ValidationError
+from app.core.audit_log import audit_event
 
 logger = logging.getLogger(__name__)
-
-# Delimiter emitted by the runner script right before the JSON payload.
-RESULTS_DELIMITER = "---AUTOGRADER_RESULTS---"
 
 # Maximum length of a failure message stored per test (keeps DB rows small).
 MAX_MESSAGE_LENGTH = 2000
@@ -53,6 +53,7 @@ class PytestTestResult:
     expected: str | None = None
     expected_input: str | None = None
     failure_category: str | None = None
+    output_truncated: bool = False
 
 
 @dataclass
@@ -69,6 +70,8 @@ class PytestRunResult:
     duration: float = 0.0
     exit_code: int = -1
 
+    collected: list[dict] = field(default_factory=list)
+    diagnostics: dict = field(default_factory=dict)
     error_message: str | None = None
     """Set when pytest itself failed to run (bad import, syntax error, etc.)."""
 
@@ -90,166 +93,64 @@ def _truncate(text: str | None, max_length: int = MAX_MESSAGE_LENGTH) -> str | N
     return text[: max_length - 3] + "..."
 
 
-def _extract_json_string(raw_stdout: str) -> str | None:
-    """Try to locate the JSON payload inside *raw_stdout*.
-
-    Strategy (in priority order):
-    1. Split on the ``RESULTS_DELIMITER`` and take the text after it.
-    2. Scan lines in reverse for the first line starting with ``{``.
-    3. Return ``None`` if nothing looks like JSON.
-    """
-    # Strategy 1: explicit delimiter.
-    if RESULTS_DELIMITER in raw_stdout:
-        _, _, after = raw_stdout.partition(RESULTS_DELIMITER)
-        after = after.strip()
-        if after:
-            return after
-
-    # Strategy 2: last JSON-like line.
-    for line in reversed(raw_stdout.splitlines()):
-        stripped = line.strip()
-        if stripped.startswith("{"):
-            return stripped
-
-    return None
-
-
-def _parse_test_entry(entry: dict) -> PytestTestResult:
-    """Convert a single test dict from the JSON payload."""
-    outcome = entry.get("outcome", "error")
-    message = _truncate(entry.get("message"))
-    category = entry.get("failure_category")
-    if not category and outcome != "passed":
-        classified = classify_execution_failure(message=message, outcome=outcome)
-        category = classified.value if classified is not None else None
-    return PytestTestResult(
-        nodeid=entry.get("nodeid", "<unknown>"),
-        outcome=outcome,
-        markers=entry.get("markers", []),
-        duration=float(entry.get("duration", 0.0)),
-        message=message,
-        actual=entry.get("actual"),
-        expected=entry.get("expected"),
-        expected_input=entry.get("expected_input"),
-        failure_category=category,
-    )
+def _unique_object(pairs: list[tuple[str, object]]) -> dict:
+    result: dict = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON key")
+        result[key] = value
+    return result
 
 
 def parse_pytest_json(
-    raw_stdout: str,
-    *,
-    stderr: str = "",
-    exit_code: int = -1,
+    raw_stdout: str, *, stderr: str = "", exit_code: int = -1,
+    expected_manifest: dict | None = None,
 ) -> PytestRunResult:
-    """Parse the JSON output produced by the runner script.
-
-    The runner outputs a JSON object with the following top-level keys:
-
-    * ``tests`` – list of per-test dicts (``nodeid``, ``outcome``,
-      ``markers``, ``duration``, ``message``).
-    * ``summary`` – dict with ``total``, ``passed``, ``failed``, ``errors``,
-      ``duration``, ``exit_code``.
-
-    If *raw_stdout* does not contain valid JSON (e.g. the student's code
-    printed garbage to stdout), the function attempts to extract the JSON
-    after a known delimiter or from the last JSON-looking line.  If that also
-    fails, it returns a :class:`PytestRunResult` with *error_message* set.
-
-    Args:
-        raw_stdout: The full stdout captured from the Judge0 execution.
-        stderr: Optional stderr captured from execution.
-        exit_code: Optional process exit code.
-
-    Returns:
-        A populated :class:`PytestRunResult`.
-    """
-    json_str = _extract_json_string(raw_stdout)
-
-    if json_str is None:
-        msg = "No JSON payload found in runner output."
-        if stderr.strip():
-            msg = f"{msg} { _truncate(stderr.strip(), 500) }"
-        classified = classify_execution_failure(
-            message=raw_stdout,
-            stderr=stderr,
-            exit_code=exit_code,
-        )
-        return PytestRunResult(
-            exit_code=exit_code,
-            error_message=msg,
-            failure_category=classified.value if classified is not None else "infrastructure_failure",
-        )
-
+    """Accept only a complete, bounded protocol-2 envelope; never scan console text."""
     try:
-        data = json.loads(json_str)
-    except json.JSONDecodeError as exc:
-        msg = f"Invalid JSON in runner output: {exc}"
-        classified = classify_execution_failure(
-            message=msg,
-            stderr=stderr,
-            exit_code=exit_code,
-        )
-        return PytestRunResult(
-            exit_code=exit_code,
-            error_message=msg,
-            failure_category=classified.value if classified is not None else "infrastructure_failure",
-        )
-
-    if not isinstance(data, dict):
-        return PytestRunResult(
-            exit_code=exit_code,
-            error_message=f"Expected a JSON object, got {type(data).__name__}.",
-            failure_category="infrastructure_failure",
-        )
-
-    infrastructure_error = data.get("infrastructure_error")
-    if infrastructure_error:
-        err_str = str(infrastructure_error)
-        classified = classify_execution_failure(
-            message=err_str,
-            stderr=stderr,
-            exit_code=exit_code,
-        )
-        return PytestRunResult(
-            exit_code=exit_code,
-            error_message=err_str,
-            failure_category=classified.value if classified is not None else "infrastructure_failure",
-        )
-
-    # Parse individual test entries.
-    tests: list[PytestTestResult] = []
-    for entry in data.get("tests", []):
-        tests.append(_parse_test_entry(entry))
-
-    # Parse the summary block.
-    summary = data.get("summary", {})
-    parsed_exit_code = int(summary.get("exit_code", exit_code))
-
-    run_failure_category: str | None = None
-    if parsed_exit_code not in (0, -1) or any(t.outcome != "passed" for t in tests):
-        first_failed = next((t for t in tests if t.outcome != "passed"), None)
-        if first_failed and first_failed.failure_category:
-            run_failure_category = first_failed.failure_category
-        else:
-            classified = classify_execution_failure(
-                message=first_failed.message if first_failed else None,
-                stderr=stderr,
-                exit_code=parsed_exit_code,
-                outcome=first_failed.outcome if first_failed else None,
+        if len(raw_stdout.encode("utf-8")) > MAX_REPORT_BYTES:
+            raise ValueError("Report too large")
+        data = json.loads(raw_stdout, object_pairs_hook=_unique_object,
+                          parse_constant=lambda value: (_ for _ in ()).throw(ValueError("Non-finite JSON number")))
+        payload = RunnerPayload.model_validate(data)
+        if payload.infrastructure_error:
+            audit_event("grading.infrastructure_error", failure_category="infrastructure_error", failure_count=1)
+            return PytestRunResult(
+                exit_code=payload.summary.exit_code or exit_code,
+                error_message=payload.infrastructure_error,
+                failure_category="infrastructure_error",
+                diagnostics=payload.diagnostics.model_dump(),
             )
-            run_failure_category = classified.value if classified is not None else None
-
-    return PytestRunResult(
-        tests=tests,
-        total=int(summary.get("total", len(tests))),
-        passed=int(summary.get("passed", 0)),
-        failed=int(summary.get("failed", 0)),
-        errors=int(summary.get("errors", 0)),
-        duration=float(summary.get("duration", 0.0)),
-        exit_code=parsed_exit_code,
-        error_message=None,
-        failure_category=run_failure_category,
-    )
+        if not payload.completed:
+            raise ValueError("Runner did not complete")
+        if not payload.collected:
+            raise ValueError("No collected cases")
+        if expected_manifest is not None:
+            manifest = ValidatedManifest.model_validate(expected_manifest)
+            expected = {case.nodeid: (sorted(case.markers), case.xfail) for case in manifest.cases}
+            actual = {case.nodeid: (sorted(case.markers), case.xfail) for case in payload.collected}
+            if expected != actual:
+                audit_event("grading.inventory_mismatch", warning_count=len(set(expected) ^ set(actual)),
+                            failure_category="invalid_runner_report")
+                raise ValueError("Case inventory mismatch")
+        tests = []
+        for entry in payload.tests:
+            category = entry.failure_category
+            if not category and entry.outcome != "passed":
+                classified = classify_execution_failure(message=entry.message, outcome=entry.outcome)
+                category = classified.value if classified else None
+            tests.append(PytestTestResult(nodeid=entry.nodeid, outcome=entry.outcome, markers=entry.markers,
+                duration=entry.duration, message=entry.message, actual=entry.actual, expected=entry.expected,
+                expected_input=entry.expected_input, failure_category=category, output_truncated=entry.output_truncated))
+        summary = payload.summary
+        return PytestRunResult(tests=tests, total=summary.total, passed=summary.passed, failed=summary.failed,
+            errors=summary.errors, duration=summary.duration, exit_code=summary.exit_code,
+            collected=[case.model_dump() for case in payload.collected], diagnostics=payload.diagnostics.model_dump(),
+            failure_category=next((t.failure_category for t in tests if t.outcome != "passed"), None))
+    except (ValueError, TypeError, ValidationError, RecursionError):
+        audit_event("grading.report_rejected", failure_category="invalid_runner_report", failure_count=1)
+        return PytestRunResult(exit_code=exit_code, error_message="Grading report is invalid or incomplete. Instructor review is required.",
+                               failure_category="invalid_runner_report")
 
 
 # ---------------------------------------------------------------------------
@@ -257,10 +158,15 @@ def parse_pytest_json(
 # ---------------------------------------------------------------------------
 
 
+_ASSERT_E_RE = re.compile(r"E\s+assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$")
+_ASSERT_TRACEBACK_RE = re.compile(r"assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$")
+_ASSERT_MSG_RE = re.compile(r"^(.+?),\s*([\"'].*[\"'])$")
+
+
 def _clean_assertion_target(match: re.Match) -> tuple[str, str]:
     act_str = match.group(1).strip().strip("'\"")
     exp_str = match.group(3).strip().strip("'\"")
-    msg_match = re.search(r"^(.+?),\s*([\"'].*[\"'])$", exp_str)
+    msg_match = _ASSERT_MSG_RE.search(exp_str)
     if msg_match:
         exp_str = msg_match.group(1).strip().strip("'\"")
     return act_str, exp_str
@@ -278,7 +184,7 @@ def _extract_assertion_values(message: str | None, actual: str | None = None, ex
     for line in message.splitlines():
         line_str = line.strip()
         if line_str.startswith("E ") and "assert " in line_str:
-            match = re.search(r"E\s+assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
+            match = _ASSERT_E_RE.search(line_str)
             if match:
                 return _clean_assertion_target(match)
 
@@ -286,7 +192,7 @@ def _extract_assertion_values(message: str | None, actual: str | None = None, ex
     for line in message.splitlines():
         line_str = line.strip()
         if "AssertionError:" in line_str or "assert " in line_str:
-            match = re.search(r"assert\s+(.+?)\s*(==|in|>|<|!=)\s*(.+)$", line_str)
+            match = _ASSERT_TRACEBACK_RE.search(line_str)
             if match:
                 return _clean_assertion_target(match)
 
@@ -320,6 +226,8 @@ def calculate_scores(
         A ``(total_score, details)`` tuple where *details* is a list of
         per-item result dicts.
     """
+    if run_result.error_message:
+        return 0, []
     # Build a lookup: marker -> list of PytestTestResult.
     marker_index: dict[str, list[PytestTestResult]] = {}
     for test in run_result.tests:
@@ -330,6 +238,8 @@ def calculate_scores(
     details: list[dict] = []
 
     for config in test_configs:
+        if config.item_type != "pytest":
+            continue
         marker = pytest_marker_for_key(config.key)
         matching_tests = marker_index.get(marker, [])
 
@@ -360,6 +270,7 @@ def calculate_scores(
                     "expected_value": exp_val,
                     "expected_input": t.expected_input,
                     "failure_category": cat,
+                    "output_truncated": t.output_truncated,
                 }
             )
 
@@ -388,6 +299,8 @@ def calculate_scores(
                 "your_value": item_your_val,
                 "expected_value": item_exp_val,
                 "failure_category": item_failure_cat,
+                "hint": config.hint if not passed else None,
+                "output_truncated": any(t.output_truncated for t in matching_tests),
                 "test_results": test_result_details,
             }
         )

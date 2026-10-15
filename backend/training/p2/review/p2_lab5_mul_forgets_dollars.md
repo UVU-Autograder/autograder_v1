@@ -45,18 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `mul`). Then set the s
 
 > Pre-edit note (Claude): The hint was vague ('correct values'). Now asks which part of the amount gets multiplied.
 
+> v8 revision (Claude): removed the amounts and dollar counts; describes too few dollars in words
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, formatting, addition and equality all work. Multiplication comes out too small.",
+  "summary": "Normalizing, formatting, addition and equality all work, but multiplication comes out too small.",
   "items": [
     {
       "test_key": "mul",
-      "what_went_wrong": "Multiplying $3.50 by 2 gave 4 dollars instead of 7.",
-      "hint": "Can you work out $3.50 times 2 by hand, then compare it with your __mul__? Which part of the amount gets multiplied, and which part is left as it was?"
+      "what_went_wrong": "Multiplying a Money amount gives too few dollars, so part of the amount is not being multiplied.",
+      "hint": "Can you work out a multiplication by hand and compare it with your __mul__; which part of the amount does it multiply?"
     }
   ],
-  "next_step": "Review the return line of __mul__."
+  "next_step": "Review what __mul__ returns in the Money class."
 }
 ```

@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any
 
 from app.integrations.ai.prompts import (
+    PROMPT_VERSIONS,
     FeedbackResponse,
-    build_messages,
     parse_response,
     render_markdown,
     submission_is_placeholder,
@@ -42,35 +42,27 @@ STATUS_RE = re.compile(r"^status:\s*(\S+)\s*$", re.MULTILINE)
 EDIT_MARKER = "## Your version"
 
 CHECKLIST = """\
-- The hint and next step point to **where to look**, never what to write. Naming the function that has the bug is fine; naming a missing method, the operator or value to use, or an either/or with the answer in it is not.
+- The hint and next step point to **where to look**, never what to write. Naming the function that has the bug is fine; naming a missing method, the operator or value to use, the exact attribute or parameter to change, or an either/or with the answer in it is not.
+- No values from the test results: not the student's value, not the expected one (the student already sees both). Describe the difference in words.
 - Every sentence matches the assertion and the diff above. Nothing about bugs the grader did not report.
 - One root cause is explained once; the other items say they follow from it.
-- Encouraging, plain language, starts with what works, under 150 words.
+- Encouraging, plain language, starts with what works, one sentence per field, under 80 words (at most 15 in `next_step`).
 - all-pass cases keep `"items": []`."""
 
 
-def case_messages(case: EvalCase) -> list[dict[str, str]]:
-    """The exact chat payload the sandbox would send for this case."""
-    return build_messages(
-        assignment_title=case.assignment_title,
-        requirements=case.requirements,
-        allowed_concepts=case.allowed_concepts,
-        failures=case.failures,
-        concept_violations=case.concept_violations,
-        student_code=case.student_code,
-        code_files=case.code_files or None,
-        passing_labels=case.passing_labels or None,
-    )
+def case_messages(case: EvalCase, prompt_version: str | None = None, boundary: str | None = None) -> list[dict[str, str]]:
+    """The exact chat payload the sandbox would send for this case (see EvalCase.messages)."""
+    return case.messages(prompt_version, boundary)
 
 
-def change_hidden_from_model(case: EvalCase) -> bool:
+def change_hidden_from_model(case: EvalCase, prompt_version: str | None = None) -> bool:
     """True when the mutated lines fall outside the prompt's code budget.
 
     Big bundles are truncated (prompts.MAX_FILE_CHARS / MAX_TOTAL_CODE_CHARS),
     so for some cases the model sees the failure but not the changed code. The
     reviewer should not expect the feedback to point at a line it never saw.
     """
-    user = case_messages(case)[1]["content"]
+    user = case_messages(case, prompt_version)[1]["content"]
     lines = case.bug_diff.splitlines()
     added = [line[1:].strip() for line in lines if line.startswith("+") and not line.startswith("+++")]
     context = [line[1:].strip() for line in lines if line.startswith(" ")]
@@ -129,7 +121,7 @@ def render_review(case: EvalCase, draft_raw: str, drafted_by: str, prompt_versio
     files = case.code_files or {"submission.py": case.student_code}
     if submission_is_placeholder(files):
         lines.append("- The prompt carries SUBMISSION_NOTE: the code is empty or a placeholder.")
-    if change_hidden_from_model(case):
+    if change_hidden_from_model(case, prompt_version if prompt_version in PROMPT_VERSIONS else None):
         lines.append("- **The changed lines are cut off by the prompt's code budget: the model sees the failure, not the code.** "
                      "Good feedback here reasons from the assertion alone.")
     if case.injection_canaries:
@@ -172,7 +164,7 @@ class Review:
 
 def parse_review(path: Path) -> Review:
     """Read a review file back. Raises ValueError with a readable reason."""
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     header = HEADER_RE.match(text)
     if not header:
         raise ValueError("first line is not the p2-review header (do not edit it)")

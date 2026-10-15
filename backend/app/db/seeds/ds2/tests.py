@@ -1,5 +1,5 @@
 import inspect
-import io
+from autograder_capture import BoundedOutput
 import runpy
 import sys
 
@@ -101,7 +101,7 @@ def test_order_class():
 
 @pytest.mark.ag_main_output
 def test_main_output():
-    stdout_buf = io.StringIO()
+    stdout_buf = BoundedOutput()
     old_stdout = sys.stdout
     sys.stdout = stdout_buf
     try:

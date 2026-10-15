@@ -51,28 +51,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): Kept the good hint; items 2 and 3 now say they follow from the Cookie cost.
 
+> v8 revision (Claude): removed the costs and totals; hint traces a partial dozen by hand; trimmed
+
+> p3b (Claude): shorter first item and follow-on items; trimmed to 65 words
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your abstract class and most cost calculations work. The Cookie cost is off, and the tax and order totals inherit that mistake.",
+  "summary": "Your tax rate works; the Cookie cost is off.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "A Cookie's cost is 0.0; the test expects 2.00.",
-      "hint": "How does your current math handle a quantity of 6 when the price is per dozen? Can you work it out step by step?"
+      "what_went_wrong": "A Cookie costs too little for a partial dozen.",
+      "hint": "Can you trace Cookie.calculate_cost by hand for half a dozen?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is 0.0 because it is based on the cost.",
-      "hint": "This follows from the Cookie cost problem. Fix that first."
+      "what_went_wrong": "The Cookie tax is low as a result.",
+      "hint": "Fix the Cookie cost first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 5.41 instead of 7.98 because it includes the Cookie cost.",
-      "hint": "This clears once the Cookie cost is right."
+      "what_went_wrong": "The order cost is low too.",
+      "hint": "Same cause."
     }
   ],
-  "next_step": "Review the calculate_cost method in the Cookie class."
+  "next_step": "Review Cookie.calculate_cost in dessert.py."
 }
 ```

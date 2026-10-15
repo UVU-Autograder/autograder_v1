@@ -209,16 +209,25 @@ def test_symlink_target_is_never_removed(run, workspace, monkeypatch):
 
 
 def test_cross_process_lock_busy_and_released_on_termination(run, workspace, monkeypatch):
+    lock_path = workspace / "retention" / "locks" / f"{run.id}.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     script = """
-import sys, time
-from app.core.settings import get_settings
-from app.domains.runs.retention import run_lock
-get_settings().artifact_storage_dir = sys.argv[1]
-with run_lock(int(sys.argv[2])):
+import os, sys, time
+with open(sys.argv[1], "a+b") as h:
+    if h.tell() == 0:
+        h.write(b"\\0")
+        h.flush()
+    if os.name == "nt":
+        import msvcrt
+        h.seek(0)
+        msvcrt.locking(h.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(h.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     print('locked', flush=True)
     time.sleep(30)
 """
-    child = subprocess.Popen([sys.executable, "-c", script, str(workspace / "artifacts"), str(run.id)],
+    child = subprocess.Popen([sys.executable, "-c", script, str(lock_path)],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:
         assert child.stdout.readline().strip() == "locked"

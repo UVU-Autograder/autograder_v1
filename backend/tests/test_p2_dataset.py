@@ -24,7 +24,7 @@ SEEDS = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
 def test_train_mutations_are_held_out_from_eval():
     train_ids = [m["case_id"] for m in TRAIN_MUTATIONS]
     assert len(train_ids) == len(set(train_ids))
-    assert all(i.startswith("p2_") for i in train_ids)
+    assert all(i.startswith(("p2_", "p4_")) for i in train_ids)
     assert not set(train_ids) & {m["case_id"] for m in MUTATIONS}
     eval_edits = {(m["seed"], json.dumps(m["edits"], sort_keys=True)) for m in MUTATIONS}
     for m in TRAIN_MUTATIONS:
@@ -33,6 +33,7 @@ def test_train_mutations_are_held_out_from_eval():
 
 def test_p2_cases_are_generated_and_well_formed():
     from app.integrations.ai.prompts import EXECUTION_ERROR_KEY
+    from training.make_smoke_dataset import seed_requirements
 
     cases = load_cases(CASES_DIR)
     assert len(cases) >= 130, "run: python -m eval.build_cases --split train"
@@ -42,9 +43,10 @@ def test_p2_cases_are_generated_and_well_formed():
         if not seed_folder.exists():
             seed_folder = SEEDS / case.assignment_slug.replace("-", "_")
         cfg_file = seed_folder / "config.json"
-        config = json.loads(cfg_file.read_text())
+        config = json.loads(cfg_file.read_text(encoding="utf-8"))
         keys = {item["key"] for item in config["scoring_items"]} | {EXECUTION_ERROR_KEY}
         assert {f["key"] for f in case.failures} <= keys, case.case_id
+        assert case.requirements == seed_requirements(case.assignment_slug), case.case_id
         edits = next(m["edits"] for m in TRAIN_MUTATIONS if m["case_id"] == case.case_id)
         assert case.bug_diff or not edits, f"{case.case_id}: reviewers need the diff"
 
@@ -68,7 +70,7 @@ def _write_review(tmp_path: Path, case, body: dict, status: str = "approved") ->
     text = text.replace("status: todo", f"status: {status}")
     text = re.sub(r"```json\n.*?\n```", "```json\n" + json.dumps(body, indent=2) + "\n```", text, flags=re.S)
     path = tmp_path / f"{case.case_id}.md"
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8")
     return path
 
 
@@ -93,7 +95,7 @@ def test_review_accepts_status_synonyms(tmp_path):
 
 def test_review_rejects_ambiguous_status(tmp_path):
     path = _write_review(tmp_path, _case(), GOOD)
-    path.write_text(path.read_text().replace("status: approved", "status: approved\nstatus: todo"))
+    path.write_text(path.read_text(encoding="utf-8").replace("status: approved", "status: approved\nstatus: todo"), encoding="utf-8")
     with pytest.raises(ValueError, match="exactly one 'status:'"):
         parse_review(path)
 
@@ -134,11 +136,11 @@ def test_build_writes_only_approved_rows(tmp_path):
     _write_review(reviews, _case("p2_lab2_placeholder"), GOOD, status="rejected")
     out = tmp_path / "out"
     assert build_p2_dataset.main(["--reviews", str(reviews), "--out", str(out)]) == 0
-    rows = [json.loads(line) for name in ("train", "valid") for line in (out / f"{name}.jsonl").read_text().splitlines()]
+    rows = [json.loads(line) for name in ("train", "valid") for line in (out / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()]
     assert len(rows) == 2
     for row in rows:
         assert [m["role"] for m in row["messages"]] == ["system", "user", "assistant"]
-    assert json.loads((out / "meta.json").read_text())["review_counts"] == {"approved": 2, "rejected": 1}
+    assert json.loads((out / "meta.json").read_text(encoding="utf-8"))["review_counts"] == {"approved": 2, "rejected": 1}
 
 
 def test_build_fails_closed_on_one_bad_file(tmp_path):
@@ -158,7 +160,7 @@ def test_built_targets_use_the_base_models_json_style(tmp_path):
     _write_review(reviews, _case(), GOOD)
     out = tmp_path / "out"
     assert build_p2_dataset.main(["--reviews", str(reviews), "--out", str(out)]) == 0
-    row = json.loads(next(line for name in ("train", "valid") for line in (out / f"{name}.jsonl").read_text().splitlines()))
+    row = json.loads(next(line for name in ("train", "valid") for line in (out / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()))
     content = row["messages"][-1]["content"]
     assert content.startswith("```json\n{\n  \"summary\": ") and content.endswith("\n}\n```")
     assert parse_response(content).model_dump() == GOOD

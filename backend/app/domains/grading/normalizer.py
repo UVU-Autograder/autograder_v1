@@ -12,7 +12,7 @@ def normalize_output(text: str) -> str:
     """Normalize program output for comparison.
 
     Processing steps, applied in order:
-    1. Convert Windows line endings (``\\r\\n``) to Unix (``\\n``).
+    1. Unify line endings (\r\n, \r, \n) via splitlines.
     2. Strip trailing whitespace from each line.
     3. Remove blank lines.
     4. Strip leading/trailing whitespace from the entire output.
@@ -23,14 +23,7 @@ def normalize_output(text: str) -> str:
     Returns:
         The cleaned, normalized output string.
     """
-    # Step 1: unify line endings.
-    text = text.replace("\r\n", "\n")
-
-    # Step 2 & 3: strip trailing whitespace per line and drop blank lines.
-    lines = [line.rstrip() for line in text.split("\n")]
-    lines = [line for line in lines if line]
-
-    # Step 4: join and strip the whole result.
+    lines = [stripped for line in text.splitlines() if (stripped := line.rstrip())]
     return "\n".join(lines).strip()
 
 

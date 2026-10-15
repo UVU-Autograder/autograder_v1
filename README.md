@@ -37,7 +37,7 @@ Temporary execution files are deleted after grading. Official submissions and fe
 
 The platform currently grades Python. CS1410 has the complete coursework (17 assignments) fully integrated. CS1400 has an example assignment, and is our next target.
 
-The project is preparing for a course pilot. Instructor testing, university approval, and university sign-in and secure hosting checks remain open. Canvas transfers are currently manual. Direct Canvas integration, additional courses, and other programming languages are future work.
+The project is preparing for a course pilot. Instructor testing, university approval, and university sign-in and secure hosting checks remain open. Canvas transfers are currently manual. Direct Canvas integration, additional courses, and other programming languages (with C, C++, and HTML/CSS/JavaScript next on the docket for language implementation) are future work.
 
 ## Tech Stack
 

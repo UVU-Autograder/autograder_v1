@@ -33,6 +33,7 @@ export function MetadataSection() {
     sandboxEnabled,
     setSandboxEnabled,
     language,
+    setLanguage,
     courseModules,
     entrypoint,
     setEntrypoint,
@@ -93,11 +94,20 @@ export function MetadataSection() {
 
             <div className="space-y-2">
               <Label>Programming Language</Label>
-              <Input
+              <Select
                 value={language}
-                disabled
-                className="font-mono capitalize"
-              />
+                onValueChange={(val) => {
+                  setLanguage(val);
+                  markDirty();
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="python">Python</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

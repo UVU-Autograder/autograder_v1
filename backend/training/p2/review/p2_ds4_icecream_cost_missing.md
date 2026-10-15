@@ -54,28 +54,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > Pre-edit note (Claude): Sharper first hint: compare IceCream's methods with Candy's and Cookie's.
 
+> v8 revision (Claude): removed the method name; shorter hint and follow-on items; trimmed under 80 words
+
+> p3b (Claude): shorter summary and follow-on items; trimmed to 65 words
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your DessertItem hierarchy is mostly correct, but Python will not create an IceCream, and three tests depend on it.",
+  "summary": "Your DessertItem base class works; IceCream is the problem.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "Python refuses to create an IceCream because it has no implementation of the abstract method calculate_cost.",
-      "hint": "Can you compare the methods IceCream defines with the ones Candy and Cookie define? What does DessertItem require every subclass to have?"
+      "what_went_wrong": "Python cannot create an IceCream: it leaves an abstract method unimplemented.",
+      "hint": "Which methods do Candy and Cookie define that IceCream does not?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "This test creates an IceCream, so it fails for the same reason.",
-      "hint": "This follows from the IceCream problem. Fix that first."
+      "what_went_wrong": "It creates an IceCream, so it fails.",
+      "hint": "Fix IceCream first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order includes an IceCream, so it fails for the same reason.",
-      "hint": "This clears once an IceCream can be created."
+      "what_went_wrong": "The order holds an IceCream.",
+      "hint": "Same cause."
     }
   ],
-  "next_step": "Review the IceCream class definition in dessert.py."
+  "next_step": "Review the IceCream class."
 }
 ```

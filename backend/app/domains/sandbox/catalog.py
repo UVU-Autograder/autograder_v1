@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.settings import get_settings
 from app.domains.assignments.models import Assignment
+from app.domains.assignments.schemas import pytest_marker_for_key
 from app.domains.assignments.service import (
     _coerce_scoring_item_type,
+    effective_allowed_concepts,
     validate_config,
 )
 from app.domains.courses.models import Course
@@ -65,7 +67,7 @@ def list_sandbox_assignments(
     assignments = [
         _summary_for(assignment, quota)
         for assignment in sorted(course.assignments, key=lambda item: item.slug)
-        if assignment.is_active and assignment.sandbox_enabled and assignment.config is not None
+        if assignment.is_active and assignment.sandbox_enabled
     ]
     return SandboxAssignmentListResponse(course_id=course.code, assignments=assignments)
 
@@ -87,69 +89,91 @@ def get_sandbox_assignment(
             Assignment.sandbox_enabled.is_(True),
         )
         .options(
-            selectinload(Assignment.course),
+            selectinload(Assignment.course).selectinload(Course.modules),
             selectinload(Assignment.config),
-            selectinload(Assignment.scoring_items),
             selectinload(Assignment.module),
         )
     )
-    if assignment is None or assignment.config is None:
+    if assignment is None:
         return None
 
-    config = validate_config(assignment.config.config)
     settings = get_settings()
-    from app.domains.assignments.service import effective_allowed_concepts
-
     allowed_concepts = effective_allowed_concepts(assignment)
-    tests_map = {test.key: test for test in config.scoring_items}
-    req_files = config.bundle.derived_required_files()
-    return SandboxAssignmentDetail(
-        **_summary_for(assignment, quota).model_dump(),
-        description=assignment.description or config.description or assignment.title,
-        accepted_bundle_types=["application/zip", ".zip"],
-        max_upload_bytes=settings.max_upload_bytes,
-        constraints=[
-            SandboxConstraint(label="Entrypoint", value=config.bundle.entrypoint),
-            SandboxConstraint(label="Required files", value=", ".join(req_files)),
-        ],
-        allowed_concepts=allowed_concepts,
-        rubric=[
+    if assignment.config is not None:
+        config = validate_config(assignment.config.config)
+        req_files = config.bundle.derived_required_files()
+        rubric = [
             SandboxRubricItem(
-                key=item.config_item_key,
+                key=item.key,
                 label=item.label,
                 points=item.points,
                 extra_credit=item.extra_credit,
                 item_type=_coerce_scoring_item_type(item.item_type, item.label),
-                pytest_marker=item.pytest_marker,
+                pytest_marker=pytest_marker_for_key(item.key) if item.item_type == "pytest" else None,
                 rubric_group_key=item.rubric_group_key,
-                inputs=tests_map[item.config_item_key].inputs if item.config_item_key in tests_map else None,
-                outputs=tests_map[item.config_item_key].outputs if item.config_item_key in tests_map else None,
+                inputs=item.inputs,
+                outputs=item.outputs,
             )
-            for item in sorted(assignment.scoring_items, key=lambda row: row.display_order)
-        ],
-        rubric_groups=[
+            for item in config.scoring_items
+        ]
+        rubric_groups = [
             SandboxRubricGroup(
                 key=group.key,
                 label=group.label,
                 item_keys=[item.key for item in config.scoring_items if item.rubric_group_key == group.key],
             )
             for group in config.rubric_groups
-        ],
-        completion_requirements=[item.model_dump() for item in config.completion_requirements],
+        ]
+        completion_requirements = [item.model_dump() for item in config.completion_requirements]
+        constraints = [
+            SandboxConstraint(label="Entrypoint", value=config.bundle.entrypoint),
+            SandboxConstraint(label="Required files", value=", ".join(req_files)),
+        ]
+        description = assignment.description or config.description or assignment.title
+        max_score = config.base_points
+    else:
+        rubric = []
+        rubric_groups = []
+        completion_requirements = []
+        constraints = [
+            SandboxConstraint(label="Entrypoint", value="main.py"),
+            SandboxConstraint(label="Required files", value="main.py"),
+        ]
+        description = assignment.description or assignment.title
+        max_score = 0
+
+    return SandboxAssignmentDetail(
+        id=assignment.slug,
+        course_id=assignment.course.code,
+        title=assignment.title,
+        sandbox_enabled=assignment.sandbox_enabled,
+        language=assignment.language,
+        max_score=max_score,
+        upload_quota=quota,
+        module_name=assignment.module.name if assignment.module else None,
+        description=description,
+        accepted_bundle_types=["application/zip", ".zip"],
+        max_upload_bytes=settings.max_upload_bytes,
+        constraints=constraints,
+        allowed_concepts=allowed_concepts,
+        rubric=rubric,
+        rubric_groups=rubric_groups,
+        completion_requirements=completion_requirements,
     )
 
 
 def _summary_for(assignment: Assignment, quota: UploadQuota) -> SandboxAssignmentSummary:
-    if assignment.config is None:
-        raise ValueError(f"Assignment {assignment.slug} is missing configuration")
-    config = validate_config(assignment.config.config)
+    max_score = 0
+    if assignment.config is not None:
+        config = validate_config(assignment.config.config)
+        max_score = config.base_points
     return SandboxAssignmentSummary(
         id=assignment.slug,
         course_id=assignment.course.code,
         title=assignment.title,
         sandbox_enabled=assignment.sandbox_enabled,
         language=assignment.language,
-        max_score=config.base_points,
+        max_score=max_score,
         upload_quota=quota,
         module_name=assignment.module.name if assignment.module else None,
     )

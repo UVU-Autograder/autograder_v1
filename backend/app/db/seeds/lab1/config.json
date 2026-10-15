@@ -104,7 +104,6 @@
       "item_type": "manual"
     }
   ],
-  "completion_requirements": [],
   "dependencies": [
     "pillow"
   ],

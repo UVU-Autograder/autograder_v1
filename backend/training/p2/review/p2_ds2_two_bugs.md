@@ -57,23 +57,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Updated after 4159d52 (Claude): The Candy price bug is now caught (ds1_regression), so the feedback covers both bugs instead of leaving one out. Mutation note updated to match.
 
+> v8 revision (Claude): removed the price values and the quoted item name; hints no longer point at the assignment lines or the print line; trimmed
+
+> p3b (Claude): trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Order class works. There are two separate things to fix: one Candy attribute from Dessert Shop 1, and the names in the receipt main prints.",
+  "summary": "Your Order class works; Candy and main have separate problems.",
   "items": [
     {
       "test_key": "ds1_regression",
-      "what_went_wrong": "A Candy's price_per_pound is 1.5, the weight that was passed in; the test expects 3.99.",
-      "hint": "Compare the two assignment lines in Candy's __init__. Is each attribute getting its own parameter?"
+      "what_went_wrong": "A Candy's price per pound comes out as the weight passed in.",
+      "hint": "In the Candy constructor, does each value end up where it belongs?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "The output does not contain 'candy corn', so the loop is not printing item names.",
-      "hint": "Run dessertshop.py and look at what the print in the for loop shows for each item. What would you need to print to see the name?"
+      "what_went_wrong": "main's receipt lacks the dessert names the test looks for.",
+      "hint": "Run dessertshop.py: what does main print for each dessert?"
     }
   ],
-  "next_step": "Fix one at a time: start with Candy's __init__, rerun the tests, then look at main's for loop."
+  "next_step": "Fix Candy, rerun the tests, then check main's loop."
 }
 ```

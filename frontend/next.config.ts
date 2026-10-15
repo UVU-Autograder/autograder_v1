@@ -3,6 +3,11 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, ".."),
+  poweredByHeader: false,
+  compress: true,
+  experimental: {
+    optimizePackageImports: ["lucide-react", "radix-ui"],
+  },
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {

@@ -44,6 +44,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `main_output`). Then s
 
 > Pre-edit note (Claude): Kept the good hint; next_step named sorted() (the fix).
 
+> v8 revision: removed quoted error and exact line pointer; trimmed to one sentence per field
+
 status: accepted
 
 ```json
@@ -52,10 +54,10 @@ status: accepted
   "items": [
     {
       "test_key": "main_output",
-      "what_went_wrong": "main fails with \"'NoneType' object is not iterable\" right after sorting.",
-      "hint": "What does the list method .sort() return? What does sorted_students hold after that line?"
+      "what_went_wrong": "Sorting the student list in main leaves nothing iterable for the comprehension.",
+      "hint": "What does the list .sort() method return when you assign its result to a variable?"
     }
   ],
-  "next_step": "Review the sorting line in main."
+  "next_step": "Review how students are sorted in main."
 }
 ```

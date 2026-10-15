@@ -61,18 +61,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `encapsulation`). Then
 
 > Pre-edit note (Claude): The hint was close to an either/or; next_step said 'private-mangled'. Now points to the convention and the student's own attribute.
 
+> v8 revision: removed the exact attribute name; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your type hints and validation guards work, but the video count is not encapsulated the way the assignment asks.",
+  "summary": "Your type hints and validation guards work, but the video count is not encapsulated as required.",
   "items": [
     {
       "test_key": "encapsulation",
-      "what_went_wrong": "The test expects a private __video_count attribute and could not find one.",
-      "hint": "How does the assignment mark an attribute as private, and how is your video count attribute named?"
+      "what_went_wrong": "The video count attribute is marked as protected instead of private.",
+      "hint": "How does the assignment distinguish between protected and private attribute prefixes in YouTubeChannel?"
     }
   ],
-  "next_step": "Review the naming conventions for protected and private attributes in the assignment."
+  "next_step": "Review the attribute names in YouTubeChannel.__init__."
 }
 ```

@@ -45,16 +45,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `relational_ops`). The
 
 > Pre-edit note (Claude): what_went_wrong gave the fix. Now describes the result and asks the student to trace __ne__.
 
+> v8 revision: removed the test's boolean values; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your relational operators work for most cases, but != gives the wrong answer.",
+  "summary": "Your relational operators work for most cases, but != gives the opposite result.",
   "items": [
     {
       "test_key": "relational_ops",
-      "what_went_wrong": "c1 != c2 returned False for two items with different costs.",
-      "hint": "What should != return when == is False? Can you trace your __ne__ for these two items?"
+      "what_went_wrong": "Comparing two items with different costs using != gave the wrong result.",
+      "hint": "If you trace your __ne__ method for two items with different costs, what does it return?"
     }
   ],
   "next_step": "Review the __ne__ method in the DessertItem class."

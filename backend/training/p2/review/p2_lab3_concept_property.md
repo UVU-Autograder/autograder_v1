@@ -45,12 +45,16 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The draft said 'met the core requirements' and gave a vague next step. Now names the concept and a way to rework it.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "All the tests pass and your encapsulation works.",
+  "summary": "All the tests pass and your encapsulation works, though YouTubeChannel uses @property from Module 3.",
   "items": [],
-  "next_step": "Your class adds a @property, which comes in Module 3. Review this module's allowed concepts and use your get_name method instead for now."
+  "next_step": "Replace the @property with your getter to fit this module."
 }
 ```

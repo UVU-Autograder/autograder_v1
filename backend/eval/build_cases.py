@@ -3,6 +3,7 @@
     cd backend && python -m eval.build_cases            # write eval/cases.jsonl
     cd backend && python -m eval.build_cases --check    # just verify seeds + mutations
     cd backend && python -m eval.build_cases --split train   # Phase 2 inputs -> training/p2/cases.jsonl
+    cd backend && python -m eval.build_cases --split redteam # red-team eval -> eval/redteam_cases.jsonl
 
 Each case starts from a seed assignment's model solution, applies one mutation
 from ``eval/mutations.py`` (a typical student bug), and runs the production
@@ -38,21 +39,30 @@ from app.domains.grading.executor import ExecutionOutcome
 from app.domains.grading.result_parser import parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
 from app.integrations.ai.guardrails import DEF_RE
-from app.integrations.ai.prompts import failures_from_test_results, requirements_from_config
+from app.integrations.ai.prompts import (
+    failures_from_test_results,
+    requirements_from_config,
+    resolve_seed_description,
+)
 
-from eval.mutations import MUTATIONS, TRAIN_MUTATIONS
+from eval.mutations import MUTATIONS, REDTEAM_MUTATIONS, TRAIN_MUTATIONS
 from eval.schemas import load_cases, save_cases
 
 BACKEND = Path(__file__).resolve().parents[1]
 SEEDS = BACKEND / "app" / "db" / "seeds"
 CASES_FILE = Path(__file__).parent / "cases.jsonl"
 TRAIN_CASES_FILE = BACKEND / "training" / "p2" / "cases.jsonl"
-SPLITS = {"eval": (MUTATIONS, CASES_FILE), "train": (TRAIN_MUTATIONS, TRAIN_CASES_FILE)}
+REDTEAM_CASES_FILE = Path(__file__).parent / "redteam_cases.jsonl"
+SPLITS = {
+    "eval": (MUTATIONS, CASES_FILE),
+    "train": (TRAIN_MUTATIONS, TRAIN_CASES_FILE),
+    "redteam": (REDTEAM_MUTATIONS, REDTEAM_CASES_FILE),
+}
 COURSE_DEFAULT_CONCEPTS = ["variables", "conditionals", "loops", "functions"]  # cs1410 in app/db/seed.py
 
 
 def _catalog() -> dict:
-    return json.loads((SEEDS / "cs1410_catalog.json").read_text())
+    return json.loads((SEEDS / "cs1410_catalog.json").read_text(encoding="utf-8"))
 
 
 def seed_dir_for(slug: str) -> Path:
@@ -80,8 +90,12 @@ def assignment_meta(slug: str) -> tuple[str, list[str]]:
 
 
 def load_config(slug: str) -> tuple[AssignmentConfigV1, dict]:
-    cfg_path = seed_dir_for(slug) / "config.json"
-    raw = json.loads(cfg_path.read_text())
+    seed_dir = seed_dir_for(slug)
+    cfg_path = seed_dir / "config.json"
+    raw = json.loads(cfg_path.read_text(encoding="utf-8"))
+    desc = resolve_seed_description(seed_dir)
+    if desc and not raw.get("description"):
+        raw["description"] = desc
     return AssignmentConfigV1.model_validate(raw), raw
 
 
@@ -99,10 +113,17 @@ async def _local_execute(
     dependencies: list[str] | None = None,
     memory_limit: int = 262144,
     stdin: str | None = None,
+    wall_time_limit: float | None = None,
+    runner_source: str | None = None,
+    expected_manifest: dict | None = None,
 ) -> ExecutionOutcome:
+    """Same signature as executor.execute_pytest_in_judge0; runs the runner in a local subprocess."""
     outcome = ExecutionOutcome()
     (exec_dir / "runner.py").write_text(
-        generate_runner_script(test_filenames, test_cases, entrypoint_module, dependencies)
+        runner_source
+        if runner_source is not None
+        else generate_runner_script(test_filenames, test_cases, entrypoint_module, dependencies),
+        encoding="utf-8",
     )
     env = {
         "PATH": os.environ.get("PATH", ""),
@@ -129,10 +150,10 @@ async def _local_execute(
         outcome.failure_category = "timeout"
         outcome.failure_message = "Time limit exceeded"
         return outcome
-    result = parse_pytest_json(proc.stdout)
+    result = parse_pytest_json(proc.stdout, expected_manifest=expected_manifest)
     outcome.pytest_result = result
     if result.error_message:  # mirrors executor.execute_pytest_in_judge0
-        outcome.failure_category = "test_failure"
+        outcome.failure_category = result.failure_category
         outcome.failure_message = result.error_message
         return outcome
     outcome.success = True
@@ -166,7 +187,7 @@ def model_files(slug: str) -> dict[str, str]:
         if art.type == "model_solution" and art.display_filename:
             path = seed_dir_for(slug) / art.display_filename
             if path.suffix in {".py", ".md", ".txt"}:
-                out[art.display_filename] = path.read_text()
+                out[art.display_filename] = path.read_text(encoding="utf-8")
     return out
 
 
@@ -214,7 +235,7 @@ def build_case(mutation: dict) -> tuple[dict | None, str]:
     with tempfile.TemporaryDirectory(prefix="agcase_") as tmp:
         bundle = Path(tmp)
         for name, text in files.items():
-            (bundle / name).write_text(text)
+            (bundle / name).write_text(text, encoding="utf-8")
         for path in binary_model_files(slug):
             shutil.copy(path, bundle / path.name)
         result = grade_bundle(slug, bundle)
@@ -249,6 +270,7 @@ def build_case(mutation: dict) -> tuple[dict | None, str]:
         "code_files": code_files,
         "forbidden_identifiers": sorted({n for t in code_files.values() for n in DEF_RE.findall(t)}),
         "injection_canaries": mutation.get("canaries", []),
+        "attack": mutation.get("attack", ""),
         "notes": f"generated by eval.build_cases: {mutation.get('notes', '')}".strip(),
         "bug_diff": bug_diff(original, files),
     }
@@ -265,7 +287,7 @@ def check_seeds(slugs: list[str]) -> int:
         with tempfile.TemporaryDirectory(prefix="agseed_") as tmp:
             bundle = Path(tmp)
             for name, text in model_files(slug).items():
-                (bundle / name).write_text(text)
+                (bundle / name).write_text(text, encoding="utf-8")
             for path in binary_model_files(slug):
                 shutil.copy(path, bundle / path.name)
             result = grade_bundle(slug, bundle)
@@ -283,7 +305,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="grade unmutated seeds and dry-run mutations; write nothing")
     parser.add_argument("--only", default="", help="only mutations whose case_id contains this")
     parser.add_argument("--split", choices=sorted(SPLITS), default="eval",
-                        help="eval: eval/cases.jsonl (frozen fixtures); train: training/p2/cases.jsonl (Phase 2 inputs)")
+                        help="eval: eval/cases.jsonl (frozen fixtures); train: training/p2/cases.jsonl (Phase 2 inputs); "
+                             "redteam: eval/redteam_cases.jsonl (prompt-injection and rounding eval)")
     args = parser.parse_args(argv)
     mutations, out_file = SPLITS[args.split]
 

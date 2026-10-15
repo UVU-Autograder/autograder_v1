@@ -19,6 +19,7 @@ from app.domains.assignments.service import effective_allowed_concepts, get_assi
 from app.domains.grading.runner_gen import generate_runner_script
 from app.domains.grading.runtime import ExecutionParameters, PreloadedArtifacts, load_fallback_helper
 from app.domains.runs.service import official_run_dir
+from app.domains.grading.report_contract import ValidatedManifest
 from app.integrations.artifacts.resolver import resolve_storage_ref
 
 SNAPSHOT_FILENAME = "grading_snapshot.json"
@@ -37,7 +38,7 @@ class GradingPackageError(ValueError):
 def execution_filename(key: str, display_filename: str | None) -> str:
     # Preserve the grader's historical basename placement on both platforms.
     name = (display_filename or key).replace("\\", "/").rsplit("/", 1)[-1]
-    if name in {"", ".", ".."} or name.casefold() == "runner.py" or ":" in name:
+    if name in {"", ".", ".."} or name.casefold() in {"runner.py", "script.py", "autograder_capture.py", ".ag_results.json"} or name.casefold().startswith(".ag_report_") or ":" in name:
         raise ValueError("Invalid or reserved grading filename")
     return name
 
@@ -66,7 +67,7 @@ def package_digest(payload: dict) -> str:
 
 class OfficialGradingPackage(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-    version: Literal[1]
+    version: Literal[2]
     assignment_id: int = Field(ge=1)
     config_version: int = Field(ge=1)
     config: AssignmentConfigV1
@@ -76,6 +77,7 @@ class OfficialGradingPackage(BaseModel):
     pytest_filenames: list[str] = Field(min_length=1)
     runner_source: str = Field(min_length=1)
     fallback_helper: PackageFile
+    expected_manifest: ValidatedManifest
     execution_parameters: ExecutionParameters
     digest: str = Field(pattern=r"^[0-9a-f]{64}$")
 
@@ -135,6 +137,10 @@ def capture_package(course_code: str, assignment_slug: str) -> OfficialGradingPa
             if assignment is None or assignment.config is None:
                 raise PackageCaptureError("Assignment configuration is unavailable.")
             config = AssignmentConfigV1.model_validate(assignment.config.config)
+            from app.domains.assignments.inventory import inventory_status
+            if inventory_status(db, assignment) != "ready":
+                raise PackageCaptureError("Instructor reference validation is required before official grading.")
+            expected_manifest = ValidatedManifest.model_validate(assignment.config.validated_test_manifest)
             records = {record.artifact_key: record for record in assignment.artifacts}
             contents: dict[str, bytes] = {}
             available_models: set[str] = set()
@@ -180,12 +186,13 @@ def capture_package(course_code: str, assignment_slug: str) -> OfficialGradingPa
             runner = generate_runner_script(pytest_filenames, test_cases,
                                            Path(config.bundle.entrypoint).stem, config.dependencies)
             payload = {
-                "version": 1, "assignment_id": assignment.id,
+                "version": 2, "assignment_id": assignment.id,
                 "config_version": assignment.config.version, "config": config.model_dump(mode="json"),
                 "concepts": effective_allowed_concepts(assignment), "description": assignment.description,
                 "files": {name: file.model_dump() for name, file in files.items()},
                 "pytest_filenames": pytest_filenames, "runner_source": runner,
                 "fallback_helper": PackageFile.from_bytes(load_fallback_helper()).model_dump(),
+                "expected_manifest": expected_manifest.model_dump(mode="json"),
                 "execution_parameters": parameters.model_dump(),
             }
             return OfficialGradingPackage.model_validate({**payload, "digest": package_digest(payload)})
@@ -201,7 +208,8 @@ def atomic_write(path: Path, content: bytes, *, temporary_directory: Path | None
     with temporary.open("wb") as stream:
         stream.write(content)
         stream.flush()
-        os.fsync(stream.fileno())
+        if not os.environ.get("AUTOGRADER_DISABLE_FSYNC"):
+            os.fsync(stream.fileno())
     temporary.replace(path)
 
 

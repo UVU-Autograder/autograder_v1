@@ -94,13 +94,6 @@
     },
     "ConceptsConfig": {
       "properties": {
-        "allowlist": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Allowlist",
-          "type": "array"
-        },
         "denylist": {
           "items": {
             "type": "string"
@@ -237,6 +230,19 @@
           ],
           "default": null,
           "title": "Outputs"
+        },
+        "hint": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hint"
         }
       },
       "required": [

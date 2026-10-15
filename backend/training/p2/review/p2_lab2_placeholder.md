@@ -83,11 +83,15 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Tightened for a placeholder: says so plainly, one real item, demo follows from it, and next step starts from the instructions.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p3b (Claude): trimmed summary and next_step to fit 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Both account.py and demo.py are still placeholders, so there is no Account class to test yet.",
+  "summary": "Both files are still placeholders, so there is no Account class to test yet.",
   "items": [
     {
       "test_key": "account_init",
@@ -97,9 +101,9 @@ status: accepted
     {
       "test_key": "demo_output",
       "what_went_wrong": "demo.py printed nothing.",
-      "hint": "This follows from the missing class: demo.py needs an Account to print."
+      "hint": "Does demo.py need an Account class before it can print account summaries?"
     }
   ],
-  "next_step": "Start from the assignment instructions: write the Account class first, then a demo that prints two accounts."
+  "next_step": "Start with the Account class in account.py, then demo.py."
 }
 ```

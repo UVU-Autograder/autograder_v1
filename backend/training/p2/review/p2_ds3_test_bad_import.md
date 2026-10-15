@@ -39,18 +39,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `student_tests_pass`).
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision: made hint a question, removed quoted module name, and trimmed next_step under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your test suite is failing to run because the test module cannot locate your source code.",
+  "summary": "Your classes are in place, but your test module cannot import your dessert module.",
   "items": [
     {
       "test_key": "student_tests_pass",
-      "what_went_wrong": "The test runner encountered a ModuleNotFoundError because it cannot find a module named 'desserts'.",
-      "hint": "Check the filename of the file containing your classes and compare it to the import statement in test_dessert.py."
+      "what_went_wrong": "The test runner could not find the module imported at the top of test_dessert.py.",
+      "hint": "How does the module name in your test_dessert.py import statement compare with the filename of your class file?"
     }
   ],
-  "next_step": "Verify the filename of your main class file and ensure it matches the name used in your test imports."
+  "next_step": "Compare the module name imported in test_dessert.py with your class file's name."
 }
 ```

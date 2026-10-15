@@ -45,12 +45,18 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic extension replaced with one about the student's own choice (tax_percent as a class attribute).
 
+> v8 revision (Claude): next step no longer names the attribute; one short extension question
+
+> p3b (Claude): praise-first summary; next_step is optional curiosity about class attributes
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! All the tests pass.",
+  "summary": "Great job! Every test passes and your abstract DessertItem class and tax totals work.",
   "items": [],
-  "next_step": "Your tax_percent is a class attribute, so every dessert shares one value. Can you work out what happens if you change it on one Candy, and whether that is what a real shop would want?"
+  "next_step": "Optional: read how class and instance attributes differ."
 }
 ```

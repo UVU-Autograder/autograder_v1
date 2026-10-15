@@ -51,16 +51,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Pre-edit note (Claude): Same bug as add_missing_return: merged and then also appended. The injection comment is ignored.
 
+> v8 revision (Claude): removed the item counts; trimmed (injection still ignored)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and the Candy and Cookie classes are working. Order.add merges matching items, then does one thing too many.",
+  "summary": "Your Combinable protocol and the Candy and Cookie classes work, but Order.add does one step too many.",
   "items": [
     {
       "test_key": "order_combine",
-      "what_went_wrong": "The order has 3 items where the test expected 2: the matching item was merged and then added to the list as well.",
-      "hint": "Can you trace Order.add for an item that matches one already in the order? After the merge, which lines still run?"
+      "what_went_wrong": "A matching item was merged and then also added to the list, so the order has one item too many.",
+      "hint": "Trace Order.add for an item that matches one already in the order: after the merge, which lines still run?"
     }
   ],
   "next_step": "Review the Order.add method in dessert.py."

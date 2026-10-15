@@ -2,12 +2,13 @@
 
 import json
 import logging
-from typing import Any, Generator
+from dataclasses import dataclass
+from typing import Any, Generator, Literal
 import httpx
 
 from app.core.settings import get_settings
 from app.integrations.ai import prompts
-from app.integrations.ai.guardrails import DEF_RE, validate_feedback
+from app.integrations.ai.guardrails import gate_names, validate_feedback
 from app.integrations.ai.sanitize import sanitize_code_and_text
 
 __all__ = ["LocalLLMClient", "sanitize_code_and_text", "FEEDBACK_UNAVAILABLE"]
@@ -20,7 +21,26 @@ FEEDBACK_UNAVAILABLE = (
     "and compare what your code produced with what was expected."
 )
 
+UNREACHABLE_MESSAGE = (
+    "⚠️ Local AI assistant is currently unreachable. "
+    "Please make sure the model server is running and the model is available."
+)
+TIMEOUT_MESSAGE = "⚠️ Local AI assistant request timed out. Please try again."
+ERROR_MESSAGE = "⚠️ An error occurred while generating AI feedback. Please try again later."
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class FeedbackOutcome:
+    """What happened when asking the model for feedback, plus the text to show.
+
+    ``ok`` and ``guardrail`` are answers (the guardrail text is the safe fallback);
+    ``timeout``, ``unreachable`` and ``error`` mean no answer was produced.
+    """
+
+    kind: Literal["ok", "guardrail", "timeout", "unreachable", "error"]
+    text: str
 
 
 class LocalLLMClient:
@@ -38,7 +58,9 @@ class LocalLLMClient:
             endpoint or settings.local_llm_endpoint or "http://127.0.0.1:8001/v1"
         ).rstrip("/")
         self.api_key = api_key or settings.local_llm_api_key or "none"
-        self.model = model or settings.local_llm_model or "cs1410-p2c"
+        self.model = model or settings.local_llm_model or "cs1410-p3b"
+        # Each model gets the prompt it was trained on (p3b: v8, p4: v9).
+        self.prompt_version = settings.prompt_version_for(self.model)
         self.timeout = timeout_seconds
 
     def generate_chat_completion(
@@ -170,6 +192,7 @@ class LocalLLMClient:
         failures, passing = prompts.failures_from_test_results(test_results, failure_message)
         violations = [f"{w.get('code', 'warning')}: {w.get('message', '')}" for w in (warnings or [])]
         return prompts.build_messages(
+            prompt_version=self.prompt_version,
             assignment_title=assignment_title,
             requirements=requirements or "",
             allowed_concepts=allowed_concepts or [],
@@ -189,9 +212,37 @@ class LocalLLMClient:
         warnings: list[dict[str, str]] | None = None,
         failure_message: str | None = None,
         requirements: str | None = None,
+        reference_files: dict[str, str] | None = None,
     ) -> str:
         """Generate, validate, and render feedback. Only validated text is returned."""
-        failures, _ = prompts.failures_from_test_results(test_results, failure_message)
+        return self.generate_sandbox_feedback_outcome(
+            assignment_title=assignment_title,
+            code_files=code_files,
+            test_results=test_results,
+            allowed_concepts=allowed_concepts,
+            warnings=warnings,
+            failure_message=failure_message,
+            requirements=requirements,
+            reference_files=reference_files,
+        ).text
+
+    def generate_sandbox_feedback_outcome(
+        self,
+        assignment_title: str,
+        code_files: dict[str, str],
+        test_results: list[dict[str, Any]],
+        allowed_concepts: list[str] | None = None,
+        warnings: list[dict[str, str]] | None = None,
+        failure_message: str | None = None,
+        requirements: str | None = None,
+        reference_files: dict[str, str] | None = None,
+    ) -> FeedbackOutcome:
+        """Like generate_sandbox_feedback, but says whether the model actually answered.
+
+        ``reference_files`` (the assignment's model solution) only feed the
+        guardrails; they are never part of the prompt.
+        """
+        failures, passing = prompts.failures_from_test_results(test_results, failure_message)
         messages = self.build_sandbox_messages(
             assignment_title=assignment_title,
             code_files=code_files,
@@ -205,31 +256,32 @@ class LocalLLMClient:
             raw = self._complete_structured(messages)
         except httpx.ConnectError:
             logger.warning("Failed to connect to Local LLM at %s", self.endpoint)
-            return (
-                "⚠️ Local AI assistant is currently unreachable. "
-                "Please make sure the model server is running and the model is available."
-            )
+            return FeedbackOutcome("unreachable", UNREACHABLE_MESSAGE)
         except httpx.TimeoutException:
             logger.warning("Local LLM request timed out at %s", self.endpoint)
-            return "⚠️ Local AI assistant request timed out. Please try again."
+            return FeedbackOutcome("timeout", TIMEOUT_MESSAGE)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Local LLM request failed: %s", type(exc).__name__)
-            return "⚠️ An error occurred while generating AI feedback. Please try again later."
+            return FeedbackOutcome("error", ERROR_MESSAGE)
 
         try:
             parsed = prompts.parse_response(raw)
         except ValueError:
             logger.warning("Local LLM feedback rejected: response was not valid FeedbackResponse JSON")
-            return FEEDBACK_UNAVAILABLE
+            return FeedbackOutcome("guardrail", FEEDBACK_UNAVAILABLE)
 
-        # A response that *defines* a symbol the student's code defines is writing their code.
-        forbidden = {name for code in (code_files or {}).values() for name in DEF_RE.findall(code)}
-        reasons = validate_feedback(parsed, {f["key"] for f in failures}, forbidden)
+        # Defining a symbol from the student's code or the model solution is writing their code.
+        labels = [f"{f['key']} {f.get('label', '')}" for f in failures] + passing
+        forbidden, known = gate_names(code_files or {}, reference_files, labels)
+        reasons = validate_feedback(
+            parsed, {f["key"] for f in failures}, forbidden,
+            known_names=known, placeholder=prompts.submission_is_placeholder(code_files or {}),
+        )
         if reasons:
             # Reasons name checks and test keys only -- never student code or text.
             logger.warning("Local LLM feedback rejected by guardrails: %s", "; ".join(reasons))
-            return FEEDBACK_UNAVAILABLE
-        return prompts.render_markdown(parsed, {f["key"]: f["label"] for f in failures})
+            return FeedbackOutcome("guardrail", FEEDBACK_UNAVAILABLE)
+        return FeedbackOutcome("ok", prompts.render_markdown(parsed, {f["key"]: f["label"] for f in failures}))
 
     def generate_sandbox_feedback_stream(
         self,
@@ -240,6 +292,7 @@ class LocalLLMClient:
         warnings: list[dict[str, str]] | None = None,
         failure_message: str | None = None,
         requirements: str | None = None,
+        reference_files: dict[str, str] | None = None,
     ) -> Generator[str, None, None]:
         """Stream *validated* feedback, line by line.
 
@@ -254,5 +307,6 @@ class LocalLLMClient:
             warnings=warnings,
             failure_message=failure_message,
             requirements=requirements,
+            reference_files=reference_files,
         )
         yield from text.splitlines(keepends=True)

@@ -46,23 +46,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision (Claude): hint no longer describes the missing first parameter; now compares with the other Order methods; trimmed
+
+> p3b (Claude): trimmed under 65 words; hint is one question
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but there is an issue with how the Order class methods are defined.",
+  "summary": "Your class hierarchy works, but calling Order.add fails.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "The add method is receiving more arguments than it is prepared to handle.",
-      "hint": "How should a method inside a class be defined to receive the instance of the object as its first argument?"
+      "what_went_wrong": "Calling add on an Order raises a TypeError about the number of arguments.",
+      "hint": "How does the definition of Order.add differ from your other Order methods?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "The main function failed to execute because of a TypeError in the Order.add method.",
-      "hint": "If the add method is fixed, will the main function be able to complete its execution?"
+      "what_went_wrong": "main stops at its first add call with the same error.",
+      "hint": "This follows from the Order.add problem; fix that first."
     }
   ],
-  "next_step": "Review the definition of the add method in the Order class."
+  "next_step": "Review how Order.add is defined in dessert.py."
 }
 ```

@@ -268,6 +268,7 @@ def test_generated_cases_cite_real_scoring_keys():
     import json as _json
 
     from app.integrations.ai.prompts import EXECUTION_ERROR_KEY
+    from training.make_smoke_dataset import seed_requirements
 
     seeds = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
     generated = [c for c in load_cases(CASES_DIR) if c.case_id.startswith("gen_")]
@@ -277,10 +278,11 @@ def test_generated_cases_cite_real_scoring_keys():
         if not seed_folder.exists():
             seed_folder = seeds / case.assignment_slug.replace("-", "_")
         cfg_file = seed_folder / "config.json"
-        config = _json.loads(cfg_file.read_text())
+        config = _json.loads(cfg_file.read_text(encoding="utf-8"))
         keys = {item["key"] for item in config["scoring_items"]} | {EXECUTION_ERROR_KEY}
         cited = {f["key"] for f in case.failures}
         assert cited <= keys, f"{case.case_id}: unknown keys {cited - keys}"
+        assert case.requirements == seed_requirements(case.assignment_slug), case.case_id
         assert case.code_files, f"{case.case_id}: generated cases carry the bundle's files"
 
 
@@ -327,3 +329,42 @@ def test_empty_eval_cases_are_flagged_as_placeholders():
             code_files=case.code_files or None,
         )[1]["content"]
         assert "SUBMISSION_NOTE" in user, case.case_id
+
+
+def test_answer_metrics_are_reported_but_not_part_of_passed():
+    case = make_case(
+        failures=[{"key": "order_class", "label": "Order class", "message": "E   assert 1 == 2"}],
+        bug_diff="-        self.order.append(item)\n+        self.order = [item]\n",
+    )
+    leaky = json.dumps({
+        "summary": "Order keeps 1 item; the test expects 2.",
+        "items": [{"test_key": "order_class", "what_went_wrong": "Only the last item stays.",
+                   "hint": "What does self.order hold after the second add?"}],
+        "next_step": "Review Order.add.",
+    })
+    score = score_case(case, leaky)
+    assert score.passed
+    assert not score.no_value_echo and score.pinpoints and score.no_answer_literal
+    assert score.words > 0 and score.answer_reasons
+
+    clean = json.dumps({
+        "summary": "Your classes work; the order loses items.",
+        "items": [{"test_key": "order_class", "what_went_wrong": "Only the most recent item stays in the order.",
+                   "hint": "What happens to earlier items when add runs again?"}],
+        "next_step": "Review Order.add.",
+    })
+    summary = aggregate([score, score_case(case, clean)])
+    assert summary["no_value_echo_pct"] == 50 and summary["pinpoint_pct"] == 50
+    assert summary["over_80_words_pct"] == 0 and summary["words_max"] > 0
+
+
+def test_all_pass_and_next_step_metrics():
+    case = make_case(failures=[], concept_violations=[])
+    invented = json.dumps({"summary": "Your classes work, but Sundae is overwritten.", "items": [],
+                           "next_step": "Review the Sundae constructor in dessert.py right now please today ok."})
+    clean = json.dumps({"summary": "Great job, every test passes!", "items": [],
+                        "next_step": "Try adding a new dessert to main."})
+    bad, good = score_case(case, invented), score_case(case, clean)
+    assert bad.all_pass_flagged and not good.all_pass_flagged
+    summary = aggregate([bad, good])
+    assert summary["all_pass_flagged"] == 1 and summary["next_step_over_14_pct"] == 0

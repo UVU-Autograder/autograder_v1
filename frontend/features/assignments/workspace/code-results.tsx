@@ -1,16 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  createSandboxRun,
+  createSandboxRunWithRetry,
   pollRunUntilComplete,
+  getAssignment,
   getRunResult,
   cancelSandboxRun,
-  getSandboxAiFeedback,
-  streamSandboxAiFeedback,
+  requestAiFeedbackWithRetry,
 } from "@/features/assignments/api";
+import {
+  GRADER_FAULT_MESSAGE,
+  isGraderFault,
+  RetryCancelledError,
+  RunStillPendingError,
+  WaitControl,
+} from "@/features/assignments/sandbox-retry";
 import { ApiError } from "@/lib/api-client";
 import type {
   SandboxRunResultResponse,
@@ -76,7 +83,40 @@ type CodeResultsProps = {
   assignment?: Assignment;
 };
 
-type RunPhase = "idle" | "submitting" | "running" | "complete" | "error";
+type RunPhase = "idle" | "submitting" | "running" | "pending" | "complete" | "error";
+
+type FollowedRun = { runId: string; sessionId: string; statusUrl: string; resultUrl: string };
+type WaitInfo = { until: number; message: string };
+
+function formatSeconds(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  if (seconds < 60) return `${seconds} s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return rest ? `${minutes} min ${rest} s` : `${minutes} min`;
+}
+
+function formatCountdown(ms: number): string {
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function aiWaitMessage(err: ApiError): string {
+  switch (err.code) {
+    case "ai_busy": {
+      const ahead = typeof err.detail?.ahead === "number" && err.detail.ahead > 0 ? err.detail.ahead : null;
+      return ahead
+        ? `The AI tutor is helping other students (about ${ahead} ahead of you).`
+        : "The AI tutor is helping other students.";
+    }
+    case "grading_not_complete":
+      return "Waiting for your test results to finish.";
+    case "ai_error":
+      return "The AI tutor hit a snag.";
+    default:
+      return "The AI tutor is taking longer than usual.";
+  }
+}
 
 function testStatusContainerClass(
   status: SandboxRunResultResponse["test_summaries"][number]["status"],
@@ -153,6 +193,14 @@ export default function CodeResults({
     return !!(localStorage.getItem("token") || sessionStorage.getItem("token"));
   });
   const [stdinInput, setStdinInput] = useState("");
+  const [waitInfo, setWaitInfo] = useState<WaitInfo | null>(null);
+  const [aiWaitInfo, setAiWaitInfo] = useState<WaitInfo | null>(null);
+  const [pendingRun, setPendingRun] = useState<FollowedRun | null>(null);
+  const [aiBlockedReason, setAiBlockedReason] = useState<string | null>(null);
+  const [aiFailed, setAiFailed] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const runControlRef = useRef<WaitControl | null>(null);
+  const aiControlRef = useRef<WaitControl | null>(null);
 
   if (initialQuota !== prevInitialQuota) {
     setQuota(initialQuota);
@@ -169,25 +217,45 @@ export default function CodeResults({
       );
       return;
     }
+    aiControlRef.current?.cancel();
+    const control = new WaitControl();
+    aiControlRef.current = control;
     setIsAiLoading(true);
+    setAiFailed(false);
     setAiFeedback("");
+    setAiWaitInfo(null);
     try {
-      await streamSandboxAiFeedback(targetRunId, targetSessionId, (chunk) => {
-        setAiFeedback((prev) => (prev ? prev + chunk : chunk));
-      });
+      const text = await requestAiFeedbackWithRetry(
+        targetRunId,
+        targetSessionId,
+        control,
+        (chunk) => setAiFeedback((prev) => (prev ? prev + chunk : chunk)),
+        (waitMs, _attempt, err) => {
+          setAiFeedback("");
+          setNow(Date.now());
+          setAiWaitInfo({ until: Date.now() + waitMs, message: aiWaitMessage(err) });
+        },
+      );
+      setAiFeedback(text);
     } catch (err) {
-      try {
-        const res = await getSandboxAiFeedback(targetRunId, targetSessionId);
-        setAiFeedback(res.ai_feedback);
-      } catch {
-        setAiFeedback(
-          err instanceof Error
-            ? `Could not generate AI feedback: ${err.message}`
-            : "Could not generate AI feedback at this time.",
-        );
+      if (err instanceof RetryCancelledError) {
+        setAiFeedback(null);
+        return;
       }
+      if (err instanceof ApiError && err.code === "grader_fault") {
+        setAiBlockedReason(GRADER_FAULT_MESSAGE);
+      }
+      setAiFailed(true);
+      setAiFeedback(
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not generate AI feedback at this time.",
+      );
     } finally {
-      setIsAiLoading(false);
+      if (aiControlRef.current === control) {
+        setAiWaitInfo(null);
+        setIsAiLoading(false);
+      }
     }
   };
 
@@ -205,7 +273,99 @@ export default function CodeResults({
     await requestAiFeedback();
   };
 
+  const refreshQuota = useCallback(() => {
+    getAssignment(courseId, assignmentId)
+      .then((latest) => setQuota(latest.upload_quota))
+      .catch(() => {});
+  }, [courseId, assignmentId]);
+
+  const handleRunError = (err: unknown) => {
+    if (err instanceof RetryCancelledError) {
+      setPhase("idle");
+      setErrorMessage("Run cancelled.");
+      return;
+    }
+    setPhase("error");
+    if (err instanceof ApiError) {
+      if (err.status === 429) {
+        setErrorMessage(err.message || "You have used all your runs for this hour.");
+        refreshQuota();
+      } else {
+        setErrorMessage(err.message);
+      }
+    } else if (err instanceof Error) {
+      setErrorMessage(err.message);
+    } else {
+      setErrorMessage("An unexpected error occurred.");
+    }
+  };
+
+  /** Poll a run to the end and load its results (shared by Run Code and Check again). */
+  const followRun = async (run: FollowedRun, control: WaitControl) => {
+    setActiveRunId(run.runId);
+    setActiveSessionId(run.sessionId);
+    setPhase("running");
+    let finalStatus: RunStatusResponse;
+    try {
+      finalStatus = await pollRunUntilComplete(run.statusUrl, {
+        control,
+        onStatusUpdate: (currentStatus) => {
+          setRunStatus(currentStatus);
+          setRunState(currentStatus.state);
+        },
+      });
+    } catch (err) {
+      if (err instanceof RunStillPendingError) {
+        setPendingRun(run);
+        setPhase("pending");
+        return;
+      }
+      throw err;
+    }
+
+    if (finalStatus.state === "failure") {
+      const fault = isGraderFault(finalStatus.failure_category, finalStatus.grader_fault);
+      setPhase("error");
+      setErrorMessage(
+        fault ? GRADER_FAULT_MESSAGE : finalStatus.message || "Run failed during execution.",
+      );
+      if (fault) setAiBlockedReason(GRADER_FAULT_MESSAGE);
+      try {
+        const failedResult = await getRunResult(run.resultUrl, run.sessionId);
+        setResult(failedResult);
+        if (isGraderFault(failedResult.failure_category)) {
+          setAiBlockedReason(GRADER_FAULT_MESSAGE);
+          setErrorMessage(GRADER_FAULT_MESSAGE);
+        }
+      } catch {
+        // Ignore if no stored result payload exists for the failed run
+      }
+      return;
+    }
+
+    const runResult = await getRunResult(run.resultUrl, run.sessionId);
+    setResult(runResult);
+    if (runResult.state === "failure") {
+      const fault = isGraderFault(runResult.failure_category);
+      setPhase("error");
+      setErrorMessage(
+        fault
+          ? GRADER_FAULT_MESSAGE
+          : runResult.warnings?.[0]?.message ||
+              runResult.sanitized_feedback ||
+              "Run failed during execution.",
+      );
+      if (fault) setAiBlockedReason(GRADER_FAULT_MESSAGE);
+      return;
+    }
+    setPhase("complete");
+  };
+
   const handleRunCode = async () => {
+    runControlRef.current?.cancel();
+    aiControlRef.current?.cancel();
+    const control = new WaitControl();
+    runControlRef.current = control;
     setPhase("submitting");
     setErrorMessage(null);
     setResult(null);
@@ -213,76 +373,68 @@ export default function CodeResults({
     setRunState("queue");
     setShowFeedback(false);
     setAiFeedback(null);
+    setAiFailed(false);
+    setAiBlockedReason(null);
+    setPendingRun(null);
+    setWaitInfo(null);
 
     try {
       const bundleBlob = await createSubmissionBundle(files);
-      const { run, sessionId } = await createSandboxRun(
+      const { run, sessionId } = await createSandboxRunWithRetry(
         courseId,
         assignmentId,
         bundleBlob,
         stdinInput || undefined,
+        control,
+        (waitMs, _attempt, err) => {
+          setNow(Date.now());
+          setWaitInfo({
+            until: Date.now() + waitMs,
+            message:
+              err.code === "busy"
+                ? "The grader is busy for a moment."
+                : "The grading queue is full right now. Your run has not been counted yet.",
+          });
+        },
       );
-
+      setWaitInfo(null);
       setQuota(run.upload_quota);
-
-      const runId = run.run_id;
-      setActiveRunId(runId);
-      setActiveSessionId(sessionId);
-      setLastRunId(runId);
+      setLastRunId(run.run_id);
       setLastSessionId(sessionId);
       setRunStatus(run.initial_status);
       setRunState(run.initial_status.state);
-      setPhase("running");
-
-      const finalStatus = await pollRunUntilComplete(run.status_url, {
-        onStatusUpdate: (currentStatus) => {
-          setRunStatus(currentStatus);
-          setRunState(currentStatus.state);
-        },
-      });
-
-      if (finalStatus.state === "failure") {
-        setPhase("error");
-        setErrorMessage(finalStatus.message || "Run failed during execution.");
-        try {
-          const failedResult = await getRunResult(run.result_url, sessionId);
-          setResult(failedResult);
-        } catch {
-          // Ignore if no stored result payload exists for the failed run
-        }
-        return;
-      }
-
-      const runResult = await getRunResult(run.result_url, sessionId);
-      setResult(runResult);
-      if (runResult.state === "failure") {
-        setPhase("error");
-        setErrorMessage(
-          runResult.warnings?.[0]?.message ||
-            runResult.sanitized_feedback ||
-            "Run failed during execution.",
-        );
-        return;
-      }
-      setPhase("complete");
+      await followRun(
+        { runId: run.run_id, sessionId, statusUrl: run.status_url, resultUrl: run.result_url },
+        control,
+      );
     } catch (err) {
-      setPhase("error");
-      if (err instanceof ApiError) {
-        if (err.status === 429) {
-          setErrorMessage(
-            "Upload quota exceeded. Please wait for the window to reset.",
-          );
-        } else {
-          setErrorMessage(err.message);
-        }
-      } else if (err instanceof Error) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage("An unexpected error occurred.");
-      }
+      setWaitInfo(null);
+      handleRunError(err);
     } finally {
-      setActiveRunId(null);
-      setActiveSessionId(null);
+      if (runControlRef.current === control) {
+        setActiveRunId(null);
+        setActiveSessionId(null);
+      }
+    }
+  };
+
+  const handleCheckAgain = async () => {
+    if (!pendingRun) return;
+    runControlRef.current?.cancel();
+    const control = new WaitControl();
+    runControlRef.current = control;
+    const run = pendingRun;
+    setPendingRun(null);
+    setErrorMessage(null);
+    try {
+      await followRun(run, control);
+    } catch (err) {
+      handleRunError(err);
+    } finally {
+      if (runControlRef.current === control) {
+        setActiveRunId(null);
+        setActiveSessionId(null);
+      }
     }
   };
 
@@ -290,6 +442,7 @@ export default function CodeResults({
     if (!activeRunId || !activeSessionId || runState !== "queue") return;
     try {
       await cancelSandboxRun(activeRunId, activeSessionId);
+      runControlRef.current?.cancel();
       setPhase("idle");
       setErrorMessage("Run cancelled.");
     } catch (err) {
@@ -301,6 +454,38 @@ export default function CodeResults({
 
   const isLoading = phase === "submitting" || phase === "running";
   const isQuotaExceeded = quota ? quota.remaining === 0 : false;
+  const quotaResetMs = quota ? Date.parse(quota.reset_at) : NaN;
+  const aiAvailable =
+    Boolean(lastRunId) &&
+    !isLoading &&
+    phase !== "pending" &&
+    !aiBlockedReason &&
+    (phase === "complete" || (phase === "error" && result !== null));
+
+  // Tick once a second while a countdown is on screen.
+  useEffect(() => {
+    if (!waitInfo && !aiWaitInfo && !isQuotaExceeded) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [waitInfo, aiWaitInfo, isQuotaExceeded]);
+
+  // When the hourly run limit is used up, re-enable Run Code as soon as it resets.
+  useEffect(() => {
+    if (!quota || quota.remaining > 0) return;
+    const resetAt = Date.parse(quota.reset_at);
+    const delay = Math.max((Number.isFinite(resetAt) ? resetAt - Date.now() : 60_000) + 1_000, 5_000);
+    const timer = setTimeout(refreshQuota, delay);
+    return () => clearTimeout(timer);
+  }, [quota, refreshQuota]);
+
+  // Stop any waits or polling when the workspace closes.
+  useEffect(
+    () => () => {
+      runControlRef.current?.cancel();
+      aiControlRef.current?.cancel();
+    },
+    [],
+  );
   const score = result?.projected_score ?? 0;
   const totalScore = result?.max_score ?? maxScore;
   const percent = totalScore > 0 ? (score / totalScore) * 100 : 0;
@@ -325,6 +510,17 @@ export default function CodeResults({
           {test.points_possible}
         </p>
 
+        {test.status !== "passed" && test.hint && (
+          <div className="mt-2 rounded-md border border-border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+            <Badge variant="secondary">Instructor Hint</Badge>
+            <p className="mt-1">{test.hint}</p>
+          </div>
+        )}
+        {test.output_truncated && (
+          <p role="alert" className="mt-2 rounded-md border border-amber-400 p-2 text-xs">
+            Output exceeded 64 KiB. This test failed. Check for excessive printing or a loop.
+          </p>
+        )}
         {test.status !== "passed" &&
           (test.your_value != null ||
             test.actual != null ||
@@ -389,10 +585,15 @@ export default function CodeResults({
 
   return (
     <div className="w-full max-w-full min-w-0 flex-1 h-full flex flex-col p-4 overflow-y-auto overflow-x-hidden bg-background border-l border-border text-foreground">
+      {(result?.diagnostics?.stdout_truncated || result?.diagnostics?.stderr_truncated) && (
+        <p role="alert" className="mb-3 rounded-md border border-amber-400 p-3 text-sm">
+          Console output was truncated at 64 KiB. Check for excessive printing or a loop.
+        </p>
+      )}
       <details className="mb-3 rounded-md border border-border bg-card text-card-foreground text-xs">
         <summary className="cursor-pointer select-none px-3 py-2 text-muted-foreground font-medium hover:text-foreground">
           Provide stdin{" "}
-          <span className="font-mono text-xs text-muted-foreground/70">
+          <span className="font-mono text-xs text-muted-foreground">
             (optional)
           </span>
         </summary>
@@ -411,7 +612,7 @@ export default function CodeResults({
         </div>
       </details>
       {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
-        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-warning font-medium text-xs">
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
           <AlertTriangle className="size-4 shrink-0" />
           <span>
             Required entrypoint <strong>{bundleStatus.expectedEntrypoint}</strong> is missing from workspace files.
@@ -419,7 +620,7 @@ export default function CodeResults({
         </div>
       )}
       {bundleStatus.missingRequiredFiles.length > 0 && (
-        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-warning font-medium text-xs">
+        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
           <AlertTriangle className="size-4 shrink-0" />
           <span>
             Missing required file(s):{" "}
@@ -435,8 +636,58 @@ export default function CodeResults({
       >
         {isLoading ? "Running Tests..." : "Run Code"}
       </Button>
+      {quota && !isQuotaExceeded && (
+        <p className="mt-1.5 text-center text-[11px] text-muted-foreground" data-testid="quota-remaining">
+          {quota.remaining} of {quota.limit} runs left this hour
+        </p>
+      )}
+      {quota && isQuotaExceeded && (
+        <p
+          role="status"
+          data-testid="quota-exhausted"
+          className="mt-2 rounded-lg border border-warning/30 bg-warning/10 p-2.5 text-xs font-medium text-warning"
+        >
+          You have used all {quota.limit} runs for this hour.{" "}
+          {Number.isFinite(quotaResetMs)
+            ? `Run Code unlocks in ${formatCountdown(quotaResetMs - now)}.`
+            : "Run Code unlocks when the hour resets."}
+        </p>
+      )}
 
-      {isLoading && (
+      {waitInfo && (
+        <div
+          role="status"
+          data-testid="admission-wait"
+          className="mt-3 rounded-lg border border-primary/30 bg-primary/5 dark:bg-primary/10 p-3 text-xs text-foreground space-y-2"
+        >
+          <p>
+            {waitInfo.message} Retrying in {formatSeconds((waitInfo.until - now) / 1000)}.
+          </p>
+          <div className="flex gap-3 font-semibold">
+            <button type="button" className="text-primary hover:underline cursor-pointer" onClick={() => runControlRef.current?.skip()}>
+              Try now
+            </button>
+            <button type="button" className="text-destructive hover:underline cursor-pointer" onClick={() => runControlRef.current?.cancel()}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {phase === "pending" && pendingRun && (
+        <div
+          role="status"
+          data-testid="run-pending"
+          className="mt-3 rounded-lg border border-primary/30 bg-primary/5 dark:bg-primary/10 p-3 text-xs text-foreground space-y-2"
+        >
+          <p>Your run is taking longer than usual and is still in line. Your results will be kept.</p>
+          <button type="button" className="font-semibold text-primary hover:underline cursor-pointer" onClick={handleCheckAgain}>
+            Check again
+          </button>
+        </div>
+      )}
+
+      {isLoading && !waitInfo && (
         <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 dark:bg-primary/10 p-3 text-xs text-foreground space-y-1.5">
           <div className="flex items-center justify-between font-semibold">
             <span>Status: {runStateLabel(runState)}</span>
@@ -450,12 +701,23 @@ export default function CodeResults({
               </button>
             )}
           </div>
-          {runStatus?.queue_position != null && (
+          {runState === "queue" && runStatus?.submissions_ahead != null ? (
+            <p data-testid="queue-ahead">
+              {runStatus.submissions_ahead === 0
+                ? "You're next in line."
+                : `About ${runStatus.submissions_ahead} submission${runStatus.submissions_ahead === 1 ? "" : "s"} ahead of yours.`}
+            </p>
+          ) : runState === "queue" && runStatus?.queue_position != null ? (
             <p>Queue position: #{runStatus.queue_position}</p>
+          ) : null}
+          {runState === "queue" && runStatus?.submissions_ahead == null && runStatus?.eta_seconds != null && (
+            <p>Other students&apos; submissions are being graded; yours is in line.</p>
           )}
-          {runStatus?.eta_band && (
+          {runState === "queue" && runStatus?.eta_seconds != null ? (
+            <p>Estimated wait: about {formatSeconds(runStatus.eta_seconds)}</p>
+          ) : runStatus?.eta_band ? (
             <p>Estimated wait: {formatEtaBand(runStatus.eta_band)}</p>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -578,7 +840,7 @@ export default function CodeResults({
           <p className="mt-4 text-sm text-muted-foreground">
             {isLoading
               ? runState === "queue"
-                ? "Your submission is queued. Position and ETA update as capacity clears."
+                ? "Your submission is queued. Your place in line updates as other submissions finish."
                 : runState === "run"
                   ? "Your submission is running. Results will appear here when grading finishes."
                   : "Waiting for sandbox results..."
@@ -590,7 +852,11 @@ export default function CodeResults({
       <Button
         variant="outline"
         onClick={handleToggleAiFeedback}
-        disabled={isAiLoading}
+        disabled={isAiLoading || (!showFeedback && !aiFeedback && !aiAvailable)}
+        title={
+          aiBlockedReason ??
+          (!aiAvailable && !aiFeedback ? "Run your tests first; AI feedback uses your results." : undefined)
+        }
         className="w-full mt-4 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 border-primary/30 hover:border-primary/50 transition-colors"
       >
         {isAiLoading ? (
@@ -634,11 +900,28 @@ export default function CodeResults({
                   className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors px-1.5 py-0.5 rounded hover:bg-muted/50"
                 >
                   <RefreshCw className="h-3 w-3" />
-                  <span>Regenerate</span>
+                  <span>{aiFailed ? "Try again" : "Regenerate"}</span>
                 </button>
               )}
             </div>
-            {isAiLoading ? (
+            {aiBlockedReason && !aiFeedback ? (
+              <p className="text-xs text-muted-foreground leading-relaxed" data-testid="ai-blocked">
+                {aiBlockedReason} AI feedback is skipped for this run.
+              </p>
+            ) : isAiLoading && aiWaitInfo ? (
+              <div className="space-y-2 py-2 text-xs" role="status" data-testid="ai-wait">
+                <p className="text-foreground">
+                  {aiWaitInfo.message} Retrying in {formatSeconds((aiWaitInfo.until - now) / 1000)}.
+                </p>
+                <button
+                  type="button"
+                  className="font-semibold text-primary hover:underline cursor-pointer"
+                  onClick={() => aiControlRef.current?.skip()}
+                >
+                  Try now
+                </button>
+              </div>
+            ) : isAiLoading ? (
               <div className="space-y-3 py-2">
                 <div className="flex items-center gap-2 text-xs text-primary font-medium">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

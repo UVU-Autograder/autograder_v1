@@ -55,28 +55,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > Pre-edit note (Claude): 4 items cut to 3; the first hint gave the fix. Now points to the requirements for Student.
 
+> v8 revision (Claude): dropped the quoted call and the line pointer; trimmed to under 80 words
+
+> p3b (Claude): trimmed to 65 or fewer; shorter hint and follow-ons
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your fields and methods are written, but Student cannot be created with arguments, so every test stops there.",
+  "summary": "Your fields and methods are written, but Student rejects arguments.",
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Student(101, ...) fails with \"Student() takes no arguments\".",
-      "hint": "Your fields are declared, but something has to turn them into constructor arguments. Which part of the requirements for Student does that, and is it in your file?"
+      "what_went_wrong": "Creating a Student with values raises a TypeError.",
+      "hint": "Which part of the test's title turns fields into constructor arguments?"
     },
     {
       "test_key": "methods",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the class setup. Fix that first."
+      "what_went_wrong": "This fails for the same reason.",
+      "hint": "This follows from the Student setup."
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This clears once Student accepts its fields."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix the Student setup first."
     }
   ],
-  "next_step": "Compare the lines just above class Student with the assignment's requirements. main_output fails for the same reason."
+  "next_step": "Compare Student with the assignment's requirements."
 }
 ```

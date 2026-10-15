@@ -45,18 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `str`). Then set the s
 
 > Pre-edit note (Claude): The draft misread it as a zero-padding problem. The real cause is building the text from float arithmetic.
 
+> v8 revision (Claude): removed both strings and the number; describes the missing zero in words
+
 status: accepted
 
 ```json
 {
-  "summary": "Normalizing, addition and multiplication all work. The string for a Money object loses a digit.",
+  "summary": "Normalizing, addition, multiplication and equality work, but the text for a Money object is missing a digit.",
   "items": [
     {
       "test_key": "str",
-      "what_went_wrong": "str(m1) gave '$3.5'; the test expects '$3.50'.",
-      "hint": "Your __str__ builds the amount with arithmetic. What happens to the trailing zero when Python turns the number 3.5 into text?"
+      "what_went_wrong": "The formatted amount is missing a trailing zero in the cents.",
+      "hint": "Your __str__ turns a computed number into text; what happens to trailing zeros when Python does that?"
     }
   ],
-  "next_step": "Compare your __str__ with the format the assignment gives: dollars, a dot, then cents as two digits."
+  "next_step": "Compare your __str__ with the format shown in the test's title."
 }
 ```

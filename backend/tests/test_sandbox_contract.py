@@ -9,26 +9,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.settings import get_settings
 from app.domains.sandbox.service import sandbox_service
-from app.main import create_app
-
-
-@pytest.fixture(autouse=True)
-def initialized_database(reset_database):
-    yield
-
-
-@pytest.fixture(autouse=True)
-def reset_sandbox_state():
-    sandbox_service._runs.clear()
-    sandbox_service._session_uploads.clear()
-    yield
-    sandbox_service._runs.clear()
-    sandbox_service._session_uploads.clear()
-
-
-@pytest.fixture()
-def client():
-    return TestClient(create_app())
+pytestmark = pytest.mark.usefixtures("reset_sandbox_state")
 
 
 def create_run(client: TestClient, session: str | None = None):
@@ -228,7 +209,9 @@ def test_quota_rejects_sixth_upload_in_one_hour(client, monkeypatch):
 
     assert [item.status_code for item in responses[:5]] == [202, 202, 202, 202, 202]
     assert responses[5].status_code == 429
-    assert responses[5].json()["detail"] == "Sandbox upload quota exhausted."
+    detail = responses[5].json()["detail"]
+    assert detail["code"] == "quota_exhausted"
+    assert detail["limit"] == 5 and detail["reset_at"]
 
 
 def test_cancel_only_queued_runs_with_matching_session(client):

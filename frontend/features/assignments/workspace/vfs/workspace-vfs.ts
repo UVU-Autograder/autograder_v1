@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import type { FileCategory, OpenFile } from '../editor-layout';
 import {
   dataUrlToBytes,
@@ -241,6 +240,8 @@ export class WorkspaceVFS {
    * Packages workspace category files into a JSZip Blob.
    */
   public async toZipBlob(): Promise<Blob> {
+    const jszipModule = await import('jszip');
+    const JSZip = (jszipModule.default ?? jszipModule) as unknown as typeof import('jszip');
     const zip = new JSZip();
     const workspaceFiles = this.listFiles('workspace');
 
@@ -264,6 +265,8 @@ export class WorkspaceVFS {
    * Returns an array of imported filenames.
    */
   public async fromZipBlob(blob: Blob): Promise<string[]> {
+    const jszipModule = await import('jszip');
+    const JSZip = (jszipModule.default ?? jszipModule) as unknown as typeof import('jszip');
     const zip = await JSZip.loadAsync(blob);
     const importedFilenames: string[] = [];
 

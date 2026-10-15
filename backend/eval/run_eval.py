@@ -2,7 +2,7 @@
 
     python -m eval.run_eval --endpoint lmstudio --model gemma-4-12b-it-qat --label baseline-12b
 
-Appends one row per run to ``eval/results/scoreboard.csv`` and writes the full
+Appends one row per run to ``eval/results/scoreboard_v8.csv`` and writes the full
 per-case transcript to ``eval/results/<label>.json`` so a regression can be read
 back rather than re-run.
 """
@@ -18,9 +18,9 @@ from pathlib import Path
 
 from app.integrations.ai.prompts import (
     GENERATION_TEMPERATURE,
-    PROMPT_VERSION,
+    PROMPT_VERSIONS,
     RESPONSE_JSON_SCHEMA,
-    build_messages,
+    prompt_version_for,
 )
 
 from eval.client import ChatClient
@@ -31,7 +31,24 @@ EVAL_DIR = Path(__file__).parent
 CASES_FILE = EVAL_DIR / "cases.jsonl"
 CASES_DIR = CASES_FILE
 RESULTS_DIR = EVAL_DIR / "results"
-SCOREBOARD = RESULTS_DIR / "scoreboard.csv"
+# The answer metrics (prompt v8) added columns; a CSV's header is written once, so
+# they start a new file and the old scoreboard.csv keeps its rows intact.
+SCOREBOARD = RESULTS_DIR / "scoreboard_v8.csv"
+
+
+def append_row(path: Path, row: dict) -> None:
+    """Add a scoreboard row; when the columns changed, rewrite the file under the combined header."""
+    rows: list[dict] = []
+    fields = list(row)
+    if path.exists():
+        with path.open(newline="") as handle:
+            reader = csv.DictReader(handle)
+            rows = list(reader)
+            fields = list(reader.fieldnames or []) + [k for k in row if k not in (reader.fieldnames or [])]
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, restval="")
+        writer.writeheader()
+        writer.writerows(rows + [row])
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,6 +60,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cases", type=Path, default=CASES_DIR)
     parser.add_argument("--filter", default="", help="Only run cases whose id contains this")
     parser.add_argument(
+        "--prompt-version",
+        choices=PROMPT_VERSIONS,
+        help="Prompt to send. Default: the one the backend would use for --model (LOCAL_LLM_PROMPT_VERSIONS).",
+    )
+    parser.add_argument(
         "--guided",
         action="store_true",
         help="Request server-side JSON-schema enforcement. Leave OFF for a true "
@@ -50,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    prompt_version = args.prompt_version or prompt_version_for(args.model)
     cases = [c for c in load_cases(args.cases) if args.filter in c.case_id]
     if not cases:
         print(f"No cases matched in {args.cases}", file=sys.stderr)
@@ -65,16 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     scores = []
     try:
         for i, case in enumerate(cases, 1):
-            messages = build_messages(
-                assignment_title=case.assignment_title,
-                requirements=case.requirements,
-                allowed_concepts=case.allowed_concepts,
-                failures=case.failures,
-                concept_violations=case.concept_violations,
-                student_code=case.student_code,
-                code_files=case.code_files or None,
-                passing_labels=case.passing_labels or None,
-            )
+            messages = case.messages(prompt_version)
             try:
                 completion = client.complete(messages)
                 score = score_case(case, completion.text, completion.latency_s)
@@ -83,6 +97,13 @@ def main(argv: list[str] | None = None) -> int:
             scores.append(score)
             mark = "ok  " if score.passed else "FAIL"
             detail = "" if score.passed else f"  <- {'; '.join(score.failure_reasons)}"
+            if score.answer_reasons:
+                detail += f"  [answer: {'; '.join(score.answer_reasons)}]"
+            if score.attack:
+                detail += f"  [attack: {'OBEYED' if score.obeyed else 'resisted'}"
+                detail += f", {'shown' if score.gate_ok else 'hidden by the gate'}]"
+            elif not score.gate_ok:
+                detail += f"  [gate would hide: {'; '.join(score.gate_reasons)}]"
             print(f"[{i:>3}/{len(cases)}] {mark} {case.case_id} ({score.latency_s:.1f}s){detail}")
     finally:
         client.close()
@@ -93,19 +114,14 @@ def main(argv: list[str] | None = None) -> int:
         "label": args.label,
         "model": args.model,
         "endpoint": args.endpoint,
-        "prompt_version": PROMPT_VERSION,
+        "prompt_version": prompt_version,
         "guided": args.guided,
         "temperature": args.temperature,
         **{k: (round(v, 2) if isinstance(v, float) else v) for k, v in summary.items()},
     }
 
     RESULTS_DIR.mkdir(exist_ok=True)
-    write_header = not SCOREBOARD.exists()
-    with SCOREBOARD.open("a", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(row))
-        if write_header:
-            writer.writeheader()
-        writer.writerow(row)
+    append_row(SCOREBOARD, row)
 
     (RESULTS_DIR / f"{args.label}.json").write_text(
         json.dumps(

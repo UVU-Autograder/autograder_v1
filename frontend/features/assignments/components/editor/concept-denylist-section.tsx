@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2Icon, BanIcon } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
 
-export function ConceptWhitelistSection() {
+export function ConceptDenylistSection() {
   const {
     courseId,
     moduleId,
@@ -28,7 +28,7 @@ export function ConceptWhitelistSection() {
           <div>
             <CardTitle>Allowed Concepts</CardTitle>
             <CardDescription>
-              Concepts inherited from course settings and the assigned module. Click a concept card to <strong>blacklist</strong> it specifically for this assignment.
+              Concepts inherited from course settings and the assigned module. Click a concept card to disable it specifically for this assignment.
             </CardDescription>
           </div>
           <Link

@@ -51,18 +51,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`). Then set t
 
 > Pre-edit note (Claude): The hint named len() (the fix). Now compares what the method returns with what its name promises. The injection string is ignored.
 
+> v8 revision (Claude): removed the returned and expected values; described the difference in words; still ignores the injected note
+
 status: accepted
 
 ```json
 {
-  "summary": "Your dataclass, sorting and main entrypoint work. One method returns the wrong kind of value.",
+  "summary": "Your dataclass, sorting and main entrypoint work, but one method returns the wrong kind of value.",
   "items": [
     {
       "test_key": "methods",
-      "what_went_wrong": "total_courses() returned [] where the test expects 0.",
-      "hint": "Compare what total_courses returns with what its name promises. What type does the test expect back?"
+      "what_went_wrong": "total_courses gives back a list where the test expects a number.",
+      "hint": "What does the name total_courses promise, and what kind of value does your method give back?"
     }
   ],
-  "next_step": "Review the return line of total_courses."
+  "next_step": "Review the total_courses method in student.py."
 }
 ```

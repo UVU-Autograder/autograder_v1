@@ -1,4 +1,5 @@
-from fastapi import APIRouter, File, Form, Header, HTTPException, Response, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from app.core.dependencies import DbSession
@@ -23,7 +24,13 @@ from app.domains.sandbox.schemas import (
     SandboxRunCreateResponse,
     SandboxRunResultResponse,
 )
-from app.domains.sandbox.service import sandbox_service
+from app.domains.sandbox import ip_limit
+from app.domains.sandbox.ai_capacity import AiBusy, ai_capacity
+from app.domains.sandbox.service import AiFeedbackUnavailable, sandbox_service
+
+# Retry hint for a full grading queue. Admission is checked before the upload is
+# counted, so retrying a queue_full response never uses up the student's run limit.
+QUEUE_FULL_RETRY_SECONDS = 15
 
 router = APIRouter(prefix="/sandbox", tags=["sandbox"])
 
@@ -80,6 +87,7 @@ def get_assignment(
 )
 async def create_run(
     db: DbSession,
+    request: Request,
     response: Response,
     course_id: str,
     assignment_id: str,
@@ -94,7 +102,24 @@ async def create_run(
     zip_data = await bundle.read()
     if len(zip_data) > settings.max_upload_bytes:
         raise HTTPException(status_code=413, detail="Upload exceeds maximum size.")
+    # Database and scheduling work is synchronous; keep it off the event loop so a
+    # burst of uploads cannot stall status polls and AI requests.
+    ip = ip_limit.client_ip(request.client.host if request.client else None, request.headers.get("x-real-ip"))
+    return await run_in_threadpool(
+        _create_run_sync, db, response, course_id, assignment_id, zip_data, stdin, x_sandbox_session, ip,
+    )
 
+
+def _create_run_sync(
+    db,
+    response: Response,
+    course_id: str,
+    assignment_id: str,
+    zip_data: bytes,
+    stdin: str | None,
+    x_sandbox_session: str | None,
+    ip: str | None = None,
+) -> SandboxRunCreateResponse:
     assignment = get_sandbox_assignment(
         db,
         course_id,
@@ -114,6 +139,9 @@ async def create_run(
             status_code=400,
             detail="Assignment is not ready for grading. Contact your instructor.",
         )
+    from app.domains.assignments.inventory import inventory_status
+    if inventory_status(db, db_assignment) != "ready":
+        raise HTTPException(status_code=400, detail="Assignment requires instructor reference validation before grading.")
 
     artifact_refs: dict[str, str] = {}
     for art in db_assignment.artifacts:
@@ -125,26 +153,88 @@ async def create_run(
     run_config = dict(db_assignment.config.config) if db_assignment.config and db_assignment.config.config else {}
     if db_assignment.description and not run_config.get("description"):
         run_config["description"] = db_assignment.description
+    expected_manifest = db_assignment.config.validated_test_manifest if db_assignment.config else None
+    max_score = assignment.max_score
+    # Hand this request's database connection back before scheduling. Scheduling takes
+    # the scheduler lock and then needs its own connection; requests that held a
+    # connection while waiting for the lock exhausted the pool under a burst of
+    # uploads, so the lock holder stalled and grading workers timed out.
+    db.close()
 
-    run, session, error_status = sandbox_service.create_run(
-        course_id=course_id,
-        assignment_id=assignment_id,
-        session_id=x_sandbox_session,
-        assignment_exists=True,
-        max_score=assignment.max_score,
-        zip_data=zip_data,
-        config=run_config,
-        artifact_refs=artifact_refs,
-        allowed_concepts=allowed_concepts,
-        stdin=stdin,
-    )
+    limited = ip_limit.charge(ip)
+    if limited is not None:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "network_limit",
+                "message": "Too many runs from your network this hour. Please try again later.",
+                "reset_at": limited.reset_at,
+                "limit": limited.limit,
+            },
+        )
+    try:
+        run, session, error_status = sandbox_service.create_run(
+            course_id=course_id,
+            assignment_id=assignment_id,
+            session_id=x_sandbox_session,
+            assignment_exists=True,
+            max_score=max_score,
+            zip_data=zip_data,
+            config=run_config,
+            artifact_refs=artifact_refs,
+            allowed_concepts=allowed_concepts,
+            stdin=stdin,
+            expected_manifest=expected_manifest,
+        )
+    except HTTPException as exc:
+        ip_limit.refund(ip)
+        if exc.status_code == 503:
+            # The scheduler lock or database is momentarily unavailable; nothing was counted.
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "busy",
+                    "message": "The grader is busy. Retrying automatically.",
+                    "retry_after_seconds": 5,
+                },
+                headers={"Retry-After": "5"},
+            ) from None
+        raise
+    if error_status is not None:
+        ip_limit.refund(ip)  # not admitted, so it does not count against the network either
     response.headers["X-Sandbox-Session"] = session
+    session_header = {"X-Sandbox-Session": session}
     if error_status == 429:
-        raise HTTPException(status_code=429, detail="Sandbox upload quota exhausted.")
+        quota = sandbox_service.quota_for_session(session)
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "quota_exhausted",
+                "message": f"You have used all {quota.limit} runs for this hour.",
+                "reset_at": quota.reset_at,
+                "limit": quota.limit,
+            },
+            headers=session_header,
+        )
     if error_status == 503:
         raise HTTPException(
             status_code=503,
-            detail="Sandbox queue is full. Please retry after capacity clears.",
+            detail={
+                "code": "queue_full",
+                "message": "The grading queue is full right now. Your run was not counted; retrying automatically.",
+                "retry_after_seconds": QUEUE_FULL_RETRY_SECONDS,
+            },
+            headers={**session_header, "Retry-After": str(QUEUE_FULL_RETRY_SECONDS)},
+        )
+    if error_status == 502:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "grader_unavailable",
+                "message": "The grader could not start your run. Please try again in a minute.",
+                "retry_after_seconds": 60,
+            },
+            headers={**session_header, "Retry-After": "60"},
         )
     if run is None:
         raise HTTPException(status_code=500, detail="Failed to initialize sandbox run.")
@@ -177,27 +267,51 @@ def get_result(
     return result
 
 
-@router.post("/runs/{run_id}/ai-feedback", response_model=SandboxAiFeedbackResponse)
-def generate_ai_feedback_endpoint(
-    run_id: str,
-    x_sandbox_session: str | None = Header(default=None),
-) -> SandboxAiFeedbackResponse:
-    feedback = sandbox_service.generate_ai_feedback(run_id, x_sandbox_session)
+async def _ai_feedback(run_id: str, session_id: str | None) -> SandboxAiFeedbackResponse:
+    """Run the model inside the AI capacity limit; outages become coded HTTP errors."""
+    try:
+        # Cheap checks (unknown run, grading not finished, grader fault) before taking a slot.
+        context = await run_in_threadpool(sandbox_service.ai_feedback_context, run_id, session_id)
+        if context is None:
+            raise HTTPException(status_code=404, detail="Run not found.")
+        feedback = await ai_capacity.run(sandbox_service.generate_ai_feedback, run_id, session_id)
+    except AiBusy as busy:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "ai_busy",
+                "message": "The AI tutor is helping other students. Retrying automatically.",
+                "ahead": busy.ahead,
+                "retry_after_seconds": busy.retry_after_seconds,
+            },
+            headers={"Retry-After": str(busy.retry_after_seconds)},
+        ) from None
+    except AiFeedbackUnavailable as exc:
+        headers = {"Retry-After": str(exc.retry_after_seconds)} if exc.retry_after_seconds else None
+        raise HTTPException(status_code=exc.status, detail=exc.detail(), headers=headers) from None
     if feedback is None:
         raise HTTPException(status_code=404, detail="Run not found.")
     return feedback
 
 
+@router.post("/runs/{run_id}/ai-feedback", response_model=SandboxAiFeedbackResponse)
+async def generate_ai_feedback_endpoint(
+    run_id: str,
+    x_sandbox_session: str | None = Header(default=None),
+) -> SandboxAiFeedbackResponse:
+    return await _ai_feedback(run_id, x_sandbox_session)
+
+
 @router.post("/runs/{run_id}/ai-feedback/stream")
-def generate_ai_feedback_stream_endpoint(
+async def generate_ai_feedback_stream_endpoint(
     run_id: str,
     x_sandbox_session: str | None = Header(default=None),
 ) -> StreamingResponse:
-    generator = sandbox_service.generate_ai_feedback_stream(run_id, x_sandbox_session)
-    if generator is None:
-        raise HTTPException(status_code=404, detail="Run not found.")
+    # Feedback is generated and validated before the first line is sent, so errors
+    # still arrive as proper HTTP statuses rather than mid-stream.
+    feedback = await _ai_feedback(run_id, x_sandbox_session)
     return StreamingResponse(
-        generator,
+        iter(feedback.ai_feedback.splitlines(keepends=True)),
         media_type="text/plain; charset=utf-8",
         headers={
             "Cache-Control": "no-cache",

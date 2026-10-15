@@ -47,23 +47,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision (Claude): tightened wording; follow-on item now points back to Order.add; trimmed
+
+> p3b (Claude): trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but there are issues with how items are being stored and displayed in the order.",
+  "summary": "Your class hierarchy works, but the order keeps only the latest item.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "The length of the order is only reflecting the most recently added item instead of the full collection.",
-      "hint": "In your add method, what happens to the existing items in the list when a new one is assigned?"
+      "what_went_wrong": "After several adds, the order's length counts only the last item.",
+      "hint": "In Order.add, what happens to the items already in the order?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "The final output contains fewer lines than expected, suggesting some items are not being printed.",
-      "hint": "If the order length is incorrect, how might that affect the loop that prints the item names?"
+      "what_went_wrong": "The receipt prints fewer lines than expected for the same reason.",
+      "hint": "This follows from the Order.add problem; fix that first."
     }
   ],
-  "next_step": "Review the logic inside the Order.add method."
+  "next_step": "Review the Order.add method in dessert.py."
 }
 ```

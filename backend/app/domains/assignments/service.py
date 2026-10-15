@@ -13,11 +13,7 @@ from app.domains.assignments.models import (
     Assignment,
     AssignmentArtifact,
     AssignmentConfig,
-    AssignmentConfigHistory,
     file_storage_ref_to_path,
-)
-from app.domains.assignments.models import (
-    ScoringItem as ScoringItemProjection,
 )
 from app.domains.assignments.schemas import (
     ArtifactMetadata,
@@ -26,6 +22,7 @@ from app.domains.assignments.schemas import (
     CompletionRequirement,
     RubricGroup,
     ScoringItem,
+    ScoringItemConfig,
     StaffAssignmentSetup,
     StaffAssignmentSetupUpdate,
     pytest_marker_for_key,
@@ -37,27 +34,6 @@ def validate_config(config: dict) -> AssignmentConfigV1:
     return AssignmentConfigV1.model_validate(config)
 
 
-
-
-def regenerate_scoring_items(db: Session, assignment: Assignment, config: AssignmentConfigV1) -> None:
-    db.execute(delete(ScoringItemProjection).where(ScoringItemProjection.assignment_id == assignment.id))
-    projections: list[ScoringItemProjection] = []
-    for index, item in enumerate(config.scoring_items):
-        is_pytest = (item.item_type == "pytest")
-        projections.append(
-            ScoringItemProjection(
-                assignment_id=assignment.id,
-                config_item_key=item.key,
-                label=item.label,
-                points=item.points,
-                extra_credit=item.extra_credit,
-                item_type=item.item_type,
-                pytest_marker=pytest_marker_for_key(item.key) if is_pytest else None,
-                rubric_group_key=item.rubric_group_key,
-                display_order=index,
-            )
-        )
-    db.add_all(projections)
 
 
 def upsert_assignment_config(
@@ -72,16 +48,9 @@ def upsert_assignment_config(
             version=1,
         )
     else:
-        history_entry = AssignmentConfigHistory(
-            assignment_id=assignment.id,
-            config=assignment.config.config,
-            version=assignment.config.version,
-        )
-        db.add(history_entry)
         assignment.config.config = config_obj.model_dump(mode="json")
         assignment.config.version += 1
 
-    regenerate_scoring_items(db, assignment, config_obj)
     return config_obj
 
 
@@ -102,7 +71,6 @@ def get_assignment_for_course(
             selectinload(Assignment.course),
             selectinload(Assignment.config),
             selectinload(Assignment.artifacts),
-            selectinload(Assignment.scoring_items),
             selectinload(Assignment.module),
         )
     )
@@ -145,7 +113,10 @@ def get_staff_setup(
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
     if assignment is None or assignment.config is None:
         return None
-    return build_staff_setup(assignment)
+    setup = build_staff_setup(assignment)
+    from app.domains.assignments.inventory import inventory_status
+    setup.inventory_status = inventory_status(db, assignment)
+    return setup
 
 
 def update_staff_setup(
@@ -186,7 +157,10 @@ def update_staff_setup(
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
     if assignment is None:
         return None
-    return build_staff_setup(assignment)
+    setup = build_staff_setup(assignment)
+    from app.domains.assignments.inventory import inventory_status
+    setup.inventory_status = inventory_status(db, assignment)
+    return setup
 
 
 def _coerce_scoring_item_type(item_type: str, label: str) -> Literal["manual", "pytest"]:
@@ -195,18 +169,19 @@ def _coerce_scoring_item_type(item_type: str, label: str) -> Literal["manual", "
     return "manual" if item_type == "manual" else "pytest"
 
 
-def build_scoring_items(scoring_items: list[ScoringItemProjection]) -> list[ScoringItem]:
+def build_scoring_items(scoring_items: list[ScoringItemConfig]) -> list[ScoringItem]:
     return [
         ScoringItem(
-            key=item.config_item_key,
+            key=item.key,
             label=item.label,
             points=item.points,
             extra_credit=item.extra_credit,
             item_type=_coerce_scoring_item_type(item.item_type, item.label),
-            pytest_marker=item.pytest_marker,
+            pytest_marker=pytest_marker_for_key(item.key) if item.item_type == "pytest" else None,
             rubric_group_key=item.rubric_group_key,
+            hint=item.hint,
         )
-        for item in sorted(scoring_items, key=lambda item: item.display_order)
+        for item in scoring_items
     ]
 
 
@@ -225,12 +200,12 @@ def build_staff_setup(assignment: Assignment) -> StaffAssignmentSetup:
         base_points=config.base_points,
         extra_credit_points=config.extra_credit_points,
         entrypoint_path=config.bundle.entrypoint,
-        scoring_items=build_scoring_items(assignment.scoring_items),
+        scoring_items=build_scoring_items(config.scoring_items),
         rubric_groups=[
             RubricGroup(
                 key=group.key,
                 label=group.label,
-                item_keys=[item.config_item_key for item in assignment.scoring_items if item.rubric_group_key == group.key],
+                item_keys=[item.key for item in config.scoring_items if item.rubric_group_key == group.key],
             )
             for group in config.rubric_groups
         ],
@@ -446,12 +421,7 @@ def resolve_seed_folder(slug: str | None = None) -> Path:
     return SEEDS_DIR
 
 
-def resolve_seed_description(seed_dir: Path) -> str | None:
-    for filename in ("description.html", "description.md", "desc.html", "desc.md"):
-        p = seed_dir / filename
-        if p.is_file():
-            return p.read_text(encoding="utf-8").strip()
-    return None
+from app.integrations.ai.prompts import resolve_seed_description  # noqa: E402
 
 
 def get_default_config(slug: str | None = None) -> dict:
@@ -470,7 +440,7 @@ def get_default_config(slug: str | None = None) -> dict:
             ],
         },
         "concepts": {
-            "additions": [],
+            "denylist": [],
         },
         "artifacts": {
             "tests": {

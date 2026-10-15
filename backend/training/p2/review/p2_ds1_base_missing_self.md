@@ -58,28 +58,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > Pre-edit note (Claude): The Candy item blamed the super() call, and its hint would lead a student to break working code. The only bug is DessertItem.__init__ missing self. Cut to 3 items; the others follow from the base class.
 
+> v8 revision (Claude): hint no longer points at the first line of __init__; dropped the quoted error; trimmed under 80 words
+
+> p3b (Claude): trimmed to 65 words; hint is one sentence now
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your subclasses all pass their values up to DessertItem, which is the right design. One problem in the base class is breaking every class at once.",
+  "summary": "Your subclasses are fine, but DessertItem's constructor breaks every class.",
   "items": [
     {
       "test_key": "dessert_item",
-      "what_went_wrong": "Creating a DessertItem fails with \"name 'self' is not defined\".",
-      "hint": "Compare the first line of DessertItem.__init__ with the __init__ of any other class in your file. What is different?"
+      "what_went_wrong": "Creating a DessertItem raises a NameError.",
+      "hint": "How is DessertItem.__init__ defined differently from your other constructors?"
     },
     {
       "test_key": "candy",
-      "what_went_wrong": "Candy's super().__init__(name) call is fine; it fails because it reaches the broken DessertItem constructor.",
-      "hint": "This follows from the DessertItem problem. Fix that first."
+      "what_went_wrong": "Candy fails inside DessertItem's constructor.",
+      "hint": "Fix DessertItem.__init__ first."
     },
     {
       "test_key": "cookie",
-      "what_went_wrong": "Same cause as Candy: the shared DessertItem constructor.",
-      "hint": "This clears once DessertItem.__init__ is fixed."
+      "what_went_wrong": "This fails for the same reason.",
+      "hint": "This clears with it."
     }
   ],
-  "next_step": "Look closely at DessertItem.__init__, then rerun the tests. IceCream and Sundae fail for the same reason."
+  "next_step": "Review DessertItem.__init__; fixing it clears IceCream and Sundae."
 }
 ```

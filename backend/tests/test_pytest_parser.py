@@ -1,4 +1,3 @@
-import json
 import os
 import subprocess
 import sys
@@ -142,20 +141,16 @@ def test_runner_execution_passing(tmp_path):
     )
 
     assert result.returncode == 0
-    assert "---AUTOGRADER_RESULTS---" in result.stdout
-    _, _, json_part = result.stdout.partition("---AUTOGRADER_RESULTS---")
-
-    outcomes = json.loads(json_part.strip())
-    assert outcomes["summary"]["total"] == 2
-    assert outcomes["summary"]["passed"] == 2
-    assert outcomes["summary"]["failed"] == 0
+    parsed = parse_pytest_json(result.stdout)
+    assert parsed.total == 2
+    assert parsed.passed == 2
+    assert parsed.failed == 0
 
     # Check individual outcomes
-    tests = outcomes["tests"]
-    assert len(tests) == 2
-    assert tests[0]["outcome"] == "passed"
-    assert "ag_t1" in tests[0]["markers"]
-    assert tests[1]["outcome"] == "passed"
+    assert len(parsed.tests) == 2
+    assert parsed.tests[0].outcome == "passed"
+    assert "ag_t1" in parsed.tests[0].markers
+    assert parsed.tests[1].outcome == "passed"
 
 
 def test_runner_execution_failing(tmp_path):
@@ -199,23 +194,18 @@ def test_runner_execution_failing(tmp_path):
         env=env,
     )
 
-    # Note: exit_code may be non-zero since a test failed, but runner prints results json
-    assert "---AUTOGRADER_RESULTS---" in result.stdout
-    _, _, json_part = result.stdout.partition("---AUTOGRADER_RESULTS---")
+    parsed = parse_pytest_json(result.stdout)
+    assert parsed.total == 2
+    assert parsed.passed == 0
+    assert parsed.failed == 2
 
-    outcomes = json.loads(json_part.strip())
-    assert outcomes["summary"]["total"] == 2
-    assert outcomes["summary"]["passed"] == 0
-    assert outcomes["summary"]["failed"] == 2
-
-    tests = outcomes["tests"]
-    assert len(tests) == 2
-    assert tests[0]["outcome"] == "failed"
-    assert "AssertionError" in tests[0]["message"]
-    assert tests[1]["outcome"] == "failed"
-    assert "AssertionError" in tests[1]["message"]
-    assert tests[0]["actual"].strip() == "2"
-    assert tests[0]["expected"].strip() == "8"
+    # Check individual outcomes
+    assert len(parsed.tests) == 2
+    assert parsed.tests[0].outcome == "failed"
+    assert "AssertionError" in (parsed.tests[0].message or "")
+    assert "AssertionError" in (parsed.tests[1].message or "")
+    assert (parsed.tests[0].actual or "").strip() == "2"
+    assert (parsed.tests[0].expected or "").strip() == "8"
 
 
 def test_extract_assertion_values():

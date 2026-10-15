@@ -1,6 +1,7 @@
 """Tests for multi-language runner decoupling, protocols, and language strategies."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -23,10 +24,6 @@ from app.domains.grading.strategies import (
     get_strategy,
 )
 
-
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
 
 
 # --- 1. Protocol Adherence Tests ---
@@ -140,16 +137,23 @@ def test_python_strategy_parse_execution() -> None:
         ],
     })
 
-    # Simulated pytest JSON output
-    stdout = (
-        "running pytest...\n"
-        "---AUTOGRADER_RESULTS---\n"
-        '{"total": 2, "passed": 1, "failed": 1, "errors": 0, "duration": 0.1, "exit_code": 1, '
-        '"tests": ['
-        '  {"nodeid": "test_a", "outcome": "passed", "markers": ["ag_test_a"], "duration": 0.05, "message": null},'
-        '  {"nodeid": "test_b", "outcome": "failed", "markers": ["ag_test_b"], "duration": 0.05, "message": "AssertionError: 1 != 2"}'
-        ']}'
-    )
+    # Simulated pytest Protocol 2 JSON output
+    payload = {
+        "protocol_version": 2,
+        "completed": True,
+        "infrastructure_error": None,
+        "summary": {"total": 2, "passed": 1, "failed": 1, "errors": 0, "skipped": 0, "duration": 0.1, "exit_code": 1},
+        "collected": [
+            {"nodeid": "test_a", "markers": ["ag_test_a"], "xfail": False},
+            {"nodeid": "test_b", "markers": ["ag_test_b"], "xfail": False},
+        ],
+        "tests": [
+            {"nodeid": "test_a", "outcome": "passed", "markers": ["ag_test_a"], "duration": 0.05, "message": None, "failure_category": None, "output_truncated": False},
+            {"nodeid": "test_b", "outcome": "failed", "markers": ["ag_test_b"], "duration": 0.05, "message": "AssertionError: 1 != 2", "failure_category": None, "output_truncated": False},
+        ],
+        "diagnostics": {"stdout": "", "stderr": ""},
+    }
+    stdout = json.dumps(payload)
 
     raw = ExecutionRawResult(stdout=stdout, exit_code=1)
     parsed = strat.parse_execution(raw, config)

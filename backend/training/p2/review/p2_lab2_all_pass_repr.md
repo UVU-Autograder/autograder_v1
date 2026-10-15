@@ -42,12 +42,18 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Extension now about the student's choice: __repr__ passes only because print() falls back to it.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
+> p3b (Claude): praise-first summary; next_step reframed as an optional extension.
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Your Account class passes all the automated tests.",
+  "summary": "Great job! Every test passes, and printing an Account shows its full summary.",
   "items": [],
-  "next_step": "Your class defines __repr__, and print() uses it because there is no __str__. Look up the difference between __str__ and __repr__ and decide which one this lab is asking for."
+  "next_step": "Optional: look up how print() falls back to __repr__."
 }
 ```

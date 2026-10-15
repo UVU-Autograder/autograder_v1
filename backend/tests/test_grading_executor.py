@@ -36,7 +36,13 @@ def _mock_judge0_client(
         return_value=submission_result
         or {
             "status": {"id": 3},
-            "stdout": '---AUTOGRADER_RESULTS---\n{"tests": [], "summary": {"total": 0, "passed": 0, "failed": 0, "errors": 0, "duration": 0.0, "exit_code": 0}}',
+            "stdout": (
+                '{"protocol_version": 2, "collected": [{"nodeid": "tests.py::test_pass", "markers": ["ag_test"], "xfail": false}], '
+                '"tests": [{"nodeid": "tests.py::test_pass", "markers": ["ag_test"], "xfail": false, "outcome": "passed", "duration": 0.01}], '
+                '"summary": {"total": 1, "passed": 1, "failed": 0, "errors": 0, "skipped": 0, "duration": 0.01, "exit_code": 0}, '
+                '"completed": true, "diagnostics": {"stdout": "", "stderr": "", "stdout_truncated": false, "stderr_truncated": false}, '
+                '"infrastructure_error": null}'
+            ),
         }
     )
 
@@ -133,7 +139,7 @@ async def test_executor_parse_failure(tmp_path):
         )
 
     assert outcome.success is False
-    assert outcome.failure_category == "test_failure"
+    assert outcome.failure_category == "invalid_runner_report"
     assert outcome.pytest_result is not None
     assert outcome.pytest_result.error_message
 
@@ -179,3 +185,22 @@ async def test_executor_judge0_error(tmp_path):
         failure_category="judge0_error",
         failure_message="boom",
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ambient, expected", [(None, "official"), ("sandbox", "sandbox")])
+async def test_cleanup_failure_audit_names_the_workflow(tmp_path, ambient, expected):
+    from contextlib import nullcontext
+
+    from app.core.audit_log import audit_context
+
+    client = _mock_judge0_client(delete_error=Judge0CleanupError("delete failed"))
+    with patch("app.domains.grading.executor.create_judge0_client", return_value=client), patch(
+        "app.domains.grading.executor.log_and_audit_error"
+    ) as audit:
+        with audit_context(workflow_type=ambient) if ambient else nullcontext():
+            await execute_pytest_in_judge0(
+                tmp_path, test_filenames=["tests.py"], test_cases={}, entrypoint_module="main",
+                language_id=71, cpu_time_limit=10.0,
+            )
+    assert audit.call_args.kwargs["workflow_type"] == expected

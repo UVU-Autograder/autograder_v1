@@ -47,12 +47,16 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The draft ignored the concept warning. Now it does not call the work done and points back to the allowed concepts.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "All the tests pass and your payment logic works.",
+  "summary": "All the tests pass and your payment logic works, though dessertshop.py uses a dataclass from a later module.",
   "items": [],
-  "next_step": "Your dessertshop.py adds a dataclass, which comes in a later module. Review this module's allowed concepts and write Customer as a regular class for now."
+  "next_step": "Rewrite Customer as a regular class to fit this module."
 }
 ```

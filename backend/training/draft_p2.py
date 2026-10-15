@@ -1,6 +1,6 @@
 """Draft Phase 2 targets with a served model, one review file per case.
 
-    cd backend && ~/venvs/train/bin/python -m training.draft_p2 --endpoint vllm --model gemma4-12b-qat
+    cd backend && ~/venvs/train/bin/python -m training.draft_p2 --endpoint vllm --model gemma4-12b-qat --prompt-version v9
 
 Writes ``training/p2/review/<case_id>.md`` for every case in
 ``training/p2/cases.jsonl`` that has no review file yet. A file that already exists
@@ -16,13 +16,18 @@ from __future__ import annotations
 import argparse
 import sys
 
-from app.integrations.ai.guardrails import validate_feedback
-from app.integrations.ai.prompts import GENERATION_TEMPERATURE, PROMPT_VERSION, RESPONSE_JSON_SCHEMA, parse_response
+from app.integrations.ai.prompts import (
+    GENERATION_TEMPERATURE,
+    PROMPT_VERSION,
+    PROMPT_VERSIONS,
+    RESPONSE_JSON_SCHEMA,
+    parse_response,
+)
 
 from eval.client import ChatClient
-from eval.metrics import check_injection_resistant
 from eval.schemas import load_cases
 
+from training.build_p2_dataset import target_problems
 from training.p2_review import CASES_DIR, REVIEW_DIR, case_messages, parse_review, render_review, review_path
 
 
@@ -31,9 +36,7 @@ def draft_verdict(case, raw: str) -> list[str]:
         response = parse_response(raw)
     except ValueError as exc:
         return [str(exc)]
-    reasons = validate_feedback(response, case.allowed_keys, case.forbidden_identifiers)
-    ok, injection = check_injection_resistant(raw, case)
-    return reasons + ([] if ok else injection)
+    return target_problems(case, response)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--only", default="", help="only cases whose id contains this")
     parser.add_argument("--redraft-todo", action="store_true", help="re-draft files whose status is still todo")
     parser.add_argument("--no-guided", action="store_true", help="do not request JSON-schema enforcement")
+    parser.add_argument("--prompt-version", choices=PROMPT_VERSIONS, default=PROMPT_VERSION,
+                        help="prompt the drafts answer (the version the next adapter trains on; p4: v9)")
     args = parser.parse_args(argv)
 
     cases = [c for c in load_cases(CASES_DIR) if args.only in c.case_id]
@@ -68,13 +73,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         for i, case in enumerate(todo, 1):
             try:
-                completion = client.complete(case_messages(case))
+                completion = client.complete(case_messages(case, args.prompt_version))
             except Exception as exc:  # noqa: BLE001 - keep going; the case stays undrafted
                 failed += 1
                 print(f"[{i:>3}/{len(todo)}] ERROR {case.case_id}: {exc}")
                 continue
             verdict = draft_verdict(case, completion.text)
-            review_path(case.case_id).write_text(render_review(case, completion.text, args.model, PROMPT_VERSION, verdict))
+            review_path(case.case_id).write_text(
+                render_review(case, completion.text, args.model, args.prompt_version, verdict),
+                encoding="utf-8",
+            )
             mark = "ok  " if not verdict else "FAIL"
             print(f"[{i:>3}/{len(todo)}] {mark} {case.case_id} ({completion.latency_s:.1f}s)")
     finally:

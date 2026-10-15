@@ -50,28 +50,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): Small edit: items 2 and 3 now say they follow from the syntax error instead of repeating the hint.
 
+> v8 revision: removed line number and exact line pointer; trimmed to one sentence per field
+
+> p3b (Claude): shortened summary, first item, demo item and next_step to fit 65 words
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your code has a syntax error, so account.py cannot run yet.",
+  "summary": "A syntax error stops account.py from loading.",
   "items": [
     {
       "test_key": "account_init",
-      "what_went_wrong": "Python reports a SyntaxError on line 14: a return statement is outside a function.",
-      "hint": "How is the return line in your __str__ method indented compared with the lines around it?"
+      "what_went_wrong": "A statement in __str__ sits outside the method body.",
+      "hint": "How is the body of your __str__ method indented compared with __init__?"
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "This follows from the syntax error.",
-      "hint": "Fix the syntax error first."
+      "what_went_wrong": "Same cause.",
+      "hint": "This clears once account.py loads."
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py cannot import account.py because of the same syntax error.",
-      "hint": "This clears once account.py loads."
+      "what_went_wrong": "demo.py imports account.py, so it fails too.",
+      "hint": "Same cause."
     }
   ],
-  "next_step": "Review the indentation of the __str__ method in account.py."
+  "next_step": "Review the indentation of __str__ in account.py."
 }
 ```

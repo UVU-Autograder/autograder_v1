@@ -48,23 +48,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The stricter grading now runs the student's own test_order.py, which fails on the same bug. Added as a follow-on item.
 
+> v8 revision (Claude): dropped the quoted error; trimmed to one sentence per field and under 80 words
+
+> p3b (Claude): trimmed summary, follow-on item and next step
+
 status: accepted
 
 ```json
 {
-  "summary": "Your submission implements the required protocols, but get_pay_type reaches for an attribute that does not exist. Your own tests caught it too.",
+  "summary": "Your payment protocols work, but get_pay_type reads a missing attribute.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "get_pay_type() fails with \"'Order' object has no attribute 'pay_type'\".",
-      "hint": "Look at the attribute name you set in the Order __init__ and compare it with the one get_pay_type returns."
+      "what_went_wrong": "Calling get_pay_type raises an AttributeError because it reads an attribute the Order never set.",
+      "hint": "Does the attribute get_pay_type returns match the one the Order constructor sets, character for character?"
     },
     {
       "test_key": "student_order_tests",
-      "what_went_wrong": "Your pay-type tests in test_order.py fail for the same reason.",
-      "hint": "This follows from get_pay_type. Your tests are doing their job: fix the method, not the tests."
+      "what_went_wrong": "Your pay type tests in test_order.py fail for the same reason.",
+      "hint": "This follows from get_pay_type; fix the method, not your tests."
     }
   ],
-  "next_step": "Review get_pay_type in the Order class in dessert.py."
+  "next_step": "Review get_pay_type in dessert.py."
 }
 ```

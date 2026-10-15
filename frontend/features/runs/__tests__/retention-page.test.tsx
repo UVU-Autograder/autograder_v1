@@ -6,7 +6,7 @@ import Page from "@/app/staff/courses/[courseId]/assignments/[assignmentId]/runs
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), download: vi.fn() }));
 vi.mock("react", async original => ({
   ...await original<typeof import("react")>(),
-  use: () => ({ courseId: "cs1400", assignmentId: "simple", runId: "1" }),
+  use: () => ({ courseId: "cs1400", assignmentId: "m1-lab1", runId: "1" }),
 }));
 vi.mock("@/lib/api-client", () => ({ apiClient: mocks }));
 vi.mock("@/features/runs/components/grade-histogram", () => ({ GradeHistogram: () => null }));
@@ -34,7 +34,7 @@ describe("review expiry in the run page", () => {
 
   async function show() {
     await act(async () => {
-      render(<Page params={Promise.resolve({ courseId: "cs1400", assignmentId: "simple", runId: "1" })} />);
+      render(<Page params={Promise.resolve({ courseId: "cs1400", assignmentId: "m1-lab1", runId: "1" })} />);
     });
   }
 
@@ -50,7 +50,7 @@ describe("review expiry in the run page", () => {
   it("clears cached review data when any review request reports HTTP 410", async () => {
     await show();
     act(() => window.dispatchEvent(new CustomEvent("official-review-expired", {
-      detail: "/staff/courses/cs1400/assignments/simple/runs/1/students/123/files",
+      detail: "/staff/courses/cs1400/assignments/m1-lab1/runs/1/students/123/files",
     })));
     expect(screen.queryByText("Synthetic Student")).toBeNull();
   });

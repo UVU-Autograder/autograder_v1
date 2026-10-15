@@ -43,12 +43,18 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The extension referred to views, which this class does not have. Now about the student's own choice (guard clause).
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
+> p3b (Claude): praise-first summary; next_step reframed as an optional extension.
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Congratulations! Every test passes, including the setter guard.",
+  "summary": "Great job! Every test passes, including your private attributes and setter guard.",
   "items": [],
-  "next_step": "Your setter uses an early return for negative counts. Can you compare it with writing the same rule as one if block, and decide which reads better as more rules are added?"
+  "next_step": "Optional: read about guard clauses, the style set_video_count uses."
 }
 ```

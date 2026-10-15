@@ -66,23 +66,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `encapsulation`, `type
 
 > Pre-edit note (Claude): Both hints gave the fix. Two separate problems now, each pointing to where to look, and a next step to do them one at a time.
 
+> v8 revision (Claude): removed the private attribute name; hints no longer point at specific lines; trimmed under 80 words
+
+> p3b (Claude): shortened all fields to fit 65 words; type_hints hint is now one sentence
+
 status: accepted
 
 ```json
 {
-  "summary": "Your validation guards work. There are two separate things to fix: how the video count is named, and one missing type hint.",
+  "summary": "Your validation guards work; two separate issues remain.",
   "items": [
     {
       "test_key": "encapsulation",
-      "what_went_wrong": "The test expects a private __video_count attribute and could not find one.",
-      "hint": "How does the assignment mark an attribute as private, and how is your video count attribute named?"
+      "what_went_wrong": "The video count attribute is not private, so the test cannot find it.",
+      "hint": "How does the assignment name private attributes, and how is your video count named?"
     },
     {
       "test_key": "type_hints",
-      "what_went_wrong": "The __str__ method has no return type hint.",
-      "hint": "Compare the first line of __str__ with the first line of get_name. What is missing?"
+      "what_went_wrong": "Your __str__ method has no return type hint.",
+      "hint": "What does get_name's definition declare that your __str__ definition does not?"
     }
   ],
-  "next_step": "Fix one at a time: start with the video count attribute, rerun the tests, then look at __str__."
+  "next_step": "Fix one, rerun the tests, then fix the other."
 }
 ```

@@ -4,6 +4,7 @@ export type Constraint = {
 };
 
 export type RubricItem = {
+    hint?: string | null;
     id?: string;
     key: string;
     label: string;
@@ -57,7 +58,6 @@ export type AssignmentConfigV1 = {
     bundle: BundleConfig;
     artifacts?: Record<string, ArtifactConfig>;
     concepts?: {
-        allowlist?: string[];
         denylist?: string[];
     };
 
@@ -94,7 +94,7 @@ export type Assignment = AssignmentsDetails & {
     allowed_concepts?: string[];
     rubric: RubricItem[];
     rubric_groups: RubricGroup[];
-    completion_requirements: CompletionRequirement[];
+    completion_requirements?: CompletionRequirement[];
     config?: AssignmentConfigV1;
 };
 
@@ -121,6 +121,14 @@ export type RunStatusResponse = {
     eta_band: string | null;
     message: string | null;
     counters?: RunCounters;
+    // Newer backends only; optional so the UI works against either version.
+    /** Anonymous count of submissions queued before this one (null when hidden). */
+    submissions_ahead?: number | null;
+    /** Estimated seconds until this run starts, from recent grading times. */
+    eta_seconds?: number | null;
+    failure_category?: string | null;
+    /** The run failed because of the grader, not the student's code. */
+    grader_fault?: boolean;
 };
 
 export function runProcessedCount(counters: RunCounters | undefined): number {
@@ -138,6 +146,8 @@ export type SandboxRunCreateResponse = {
 };
 
 export type SandboxTestSummary = {
+    hint?: string | null;
+    output_truncated?: boolean;
     label: string;
     status: "passed" | "failed" | "warning" | "not_run";
     points_awarded: number;
@@ -165,6 +175,7 @@ export type SandboxWarning = {
 };
 
 export type SandboxRunResultResponse = {
+    diagnostics?: { stdout: string; stderr: string; stdout_truncated: boolean; stderr_truncated: boolean };
     run_id: string;
     state: "complete" | "failure";
     projected_score: number;

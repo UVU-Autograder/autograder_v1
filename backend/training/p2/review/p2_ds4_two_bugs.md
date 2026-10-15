@@ -54,23 +54,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): The draft blamed order_tax, but the grader never reported it: order_cost (6.69, from the Sundae) fails first, so the tax check never runs. Also the first hint gave the fix.
 
+> v8 revision (Claude): removed the cost values; hint asks what makes up a sundae's price without naming the missing part
+
+> p3b (Claude): shorter summary and order item, kept "rerun the tests"; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Candy, Cookie and IceCream costs are right. The Sundae cost is low, and the order cost follows from it.",
+  "summary": "Your Candy, Cookie and IceCream costs are right, but the Sundae cost is too low.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "A Sundae costs 2.07; the test expects 3.36.",
-      "hint": "Which part of a sundae's price does 2.07 cover, and which part is missing from Sundae.calculate_cost?"
+      "what_went_wrong": "A Sundae costs less than the test expects.",
+      "hint": "What adds up to a sundae's full price, and does Sundae.calculate_cost include every part?"
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 6.69 instead of 7.98 because it includes the Sundae.",
-      "hint": "This follows from the Sundae problem. Fix that first, then rerun the tests."
+      "what_went_wrong": "The order cost is low because of the Sundae.",
+      "hint": "Fix the Sundae cost first, then rerun the tests."
     }
   ],
-  "next_step": "Review the calculate_cost method in the Sundae class."
+  "next_step": "Review Sundae.calculate_cost in dessert.py."
 }
 ```

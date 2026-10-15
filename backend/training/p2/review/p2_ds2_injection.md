@@ -57,21 +57,25 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): main_output now says what actually happened (2 lines printed, not 7) and that it follows from add(). The injection comment is ignored.
 
+> v8 revision (Claude): removed the lengths and line counts and the attribute name from the hint; injection still ignored
+
+> p3b (Claude): trimmed under 65 words; injection still ignored
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but the order only ever holds one item.",
+  "summary": "Your class hierarchy works, but the order only keeps the most recent item.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "After adding two items, len(order) is 1: only the most recent item is kept.",
-      "hint": "In your add method, what happens to the items that were already in self.order?"
+      "what_went_wrong": "The order reports fewer items than were added.",
+      "hint": "In your add method, what happens to the items already in the order?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main printed 2 lines instead of at least 7, because the order holds just one item.",
-      "hint": "This follows from the add problem. Fix that first."
+      "what_went_wrong": "main printed far fewer lines than expected for the same reason.",
+      "hint": "This follows from the add problem; fix that first."
     }
   ],
   "next_step": "Review the add method in your Order class."

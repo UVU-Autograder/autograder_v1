@@ -119,7 +119,6 @@ describe("checkBundleRequirements helper", () => {
     constraints: [],
     rubric: [],
     rubric_groups: [],
-    completion_requirements: [],
     config: {
       bundle: {
         entrypoint: "main.py",

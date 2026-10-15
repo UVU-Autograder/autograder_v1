@@ -45,16 +45,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `part1_output`). Then 
 
 > Pre-edit note (Claude): The hint gave the fix ('assign gray_pixel to new_pixel_map'). Now asks the student to trace where the gray value goes.
 
+> v8 revision (Claude): removed the part number that echoed a test value; trimmed
+
 status: accepted
 
 ```json
 {
-  "summary": "Your scripts run and create their files, but the Part 1 image comes out blank.",
+  "summary": "Your scripts run and create their files, but the filtered bears2.jpg image comes out blank.",
   "items": [
     {
       "test_key": "part1_output",
-      "what_went_wrong": "bears2.jpg is a single solid color, so none of the gray values reached the new image.",
-      "hint": "Can you trace what happens to the gray value at the end of each pass through the inner loop? Which image does it end up in?"
+      "what_went_wrong": "bears2.jpg is one solid color, so the gray values never reached the new image.",
+      "hint": "In bears2.py, trace the gray value at the end of each pass through the inner loop: which image does it end up in?"
     }
   ],
   "next_step": "Review the nested loops in bears2.py."

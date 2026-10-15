@@ -47,23 +47,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Pre-edit note (Claude): The hint gave the fix ('what element should be returned instead of the list'). Now asks the student to compare what __next__ picks out with what it returns.
 
+> v8 revision (Claude): dropped the quoted error and the return-line pointer; trimmed
+
+> p3b (Claude): no longer echoes the type from the error; trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is correctly implemented, but looping over an Order gives back the wrong thing on each step.",
+  "summary": "Your class hierarchy works, but iterating over an Order goes wrong.",
   "items": [
     {
       "test_key": "order_class",
-      "what_went_wrong": "Each step of the loop gives back the whole list instead of one item.",
-      "hint": "In __next__ you pick out one item and then return something. Can you compare what you pick out with what you return?"
+      "what_went_wrong": "Each loop step gives back every item at once instead of one dessert.",
+      "hint": "In __next__, how does what you pick out compare with what you return?"
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "main crashes with \"'list' object has no attribute 'name'\" because each loop item is a list.",
-      "hint": "This follows from the __next__ problem. Fix that first."
+      "what_went_wrong": "main crashes for the same reason while printing the receipt.",
+      "hint": "This follows from the __next__ problem; fix that first."
     }
   ],
-  "next_step": "Review the return line of the __next__ method in the Order class."
+  "next_step": "Review what Order.__next__ returns."
 }
 ```

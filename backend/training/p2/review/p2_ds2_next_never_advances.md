@@ -47,18 +47,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_class`, `main_o
 
 > Updated after 4159d52 (Claude): The whole run now hits the time limit, so the grader reports one execution_error instead of two test failures. Rewritten around that.
 
+> v8 revision: removed quoted error and trimmed next_step under 15 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your class hierarchy is written, but the submission never finished running: there is something in your code that loops indefinitely.",
+  "summary": "Your class hierarchy is written, but the submission never finished running because a loop does not terminate.",
   "items": [
     {
       "test_key": "execution_error",
-      "what_went_wrong": "The run was stopped with \"Time limit exceeded\", so none of the tests could finish.",
-      "hint": "Can you trace __next__ for an order with two items? Does anything change between one call and the next?"
+      "what_went_wrong": "The run timed out before the tests could finish.",
+      "hint": "If you trace __next__ for an order with two items, does anything change between one call and the next?"
     }
   ],
-  "next_step": "Review the __next__ method in the Order class, then run dessertshop.py yourself to check it finishes."
+  "next_step": "Review the __next__ method in Order and run dessertshop.py to verify it finishes."
 }
 ```

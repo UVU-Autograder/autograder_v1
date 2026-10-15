@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Editor, type EditorProps } from "@monaco-editor/react";
+import { Editor, loader, type EditorProps } from "@monaco-editor/react";
+
+// Serve Monaco from this app (public/monaco/vs, copied by scripts/copy-monaco.mjs)
+// rather than the jsdelivr default, which some networks block.
+loader.config({ paths: { vs: "/monaco/vs" } });
 
 export default function MonacoEditor({
   height = "100%",
@@ -27,6 +31,7 @@ export default function MonacoEditor({
   const [editorTheme, setEditorTheme] = useState<"vs" | "vs-dark">(() =>
     typeof window !== "undefined" && document.documentElement.classList.contains("dark") ? "vs-dark" : "vs"
   );
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     const updateTheme = () => {
@@ -48,6 +53,33 @@ export default function MonacoEditor({
 
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loader.init().catch(() => {
+      if (!cancelled) setLoadFailed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loadFailed) {
+    // Plain editor so students can still edit and run when Monaco cannot load.
+    return (
+      <textarea
+        aria-label="Code editor"
+        data-testid="editor-fallback"
+        className="h-full w-full resize-none bg-background p-3 font-mono text-sm outline-none"
+        style={{ height, width }}
+        spellCheck={false}
+        readOnly={Boolean(options?.readOnly)}
+        defaultValue={value === undefined ? defaultValue : undefined}
+        value={value}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
+    );
+  }
 
   return (
     <Editor

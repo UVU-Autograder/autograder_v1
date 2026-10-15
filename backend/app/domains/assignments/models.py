@@ -100,11 +100,6 @@ class Assignment(Base):
         back_populates="assignment",
         cascade="all, delete-orphan",
     )
-    scoring_items: Mapped[list["ScoringItem"]] = relationship(
-        back_populates="assignment",
-        cascade="all, delete-orphan",
-        order_by="ScoringItem.display_order",
-    )
     run_summaries: Mapped[list["RunSummary"]] = relationship(back_populates="assignment")
 
 
@@ -118,43 +113,10 @@ class AssignmentConfig(Base):
     )
     config: Mapped[dict] = mapped_column(JSON)
     version: Mapped[int] = mapped_column(Integer, default=1)
+    validated_test_manifest: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
     )
-
     assignment: Mapped[Assignment] = relationship(back_populates="config")
-
-
-class AssignmentConfigHistory(Base):
-    __tablename__ = "assignment_config_history"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    assignment_id: Mapped[int] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
-    config: Mapped[dict] = mapped_column(JSON)
-    version: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-
-
-
-
-
-
-class ScoringItem(Base):
-    __tablename__ = "scoring_items"
-    __table_args__ = (UniqueConstraint("assignment_id", "config_item_key", name="uq_scoring_items_assignment_key"),)
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    assignment_id: Mapped[int] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
-    config_item_key: Mapped[str] = mapped_column(String(120))
-    label: Mapped[str] = mapped_column(String(255))
-    points: Mapped[int] = mapped_column(Integer)
-    extra_credit: Mapped[bool] = mapped_column(Boolean, default=False)
-    item_type: Mapped[str] = mapped_column(String(40))
-    pytest_marker: Mapped[str | None] = mapped_column(String(160))
-    rubric_group_key: Mapped[str | None] = mapped_column(String(120))
-    display_order: Mapped[int] = mapped_column(Integer, default=0)
-
-    assignment: Mapped[Assignment] = relationship(back_populates="scoring_items")

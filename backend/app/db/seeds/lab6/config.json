@@ -55,7 +55,6 @@
       "item_type": "manual"
     }
   ],
-  "completion_requirements": [],
   "dependencies": [
     "pygame"
   ],

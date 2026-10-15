@@ -1,4 +1,5 @@
 """Effective execution parameters, independently of runtime-image management."""
+import functools
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +16,7 @@ class PreloadedArtifacts:
     pytest_filenames: list[str]
 
 
+@functools.lru_cache(maxsize=1)
 def load_fallback_helper() -> bytes:
     """Use the same built-in helper source for live and captured execution."""
     domain = Path(__file__).resolve().parent / "resources" / "python_autograder_helpers.py"

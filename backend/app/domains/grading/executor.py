@@ -13,7 +13,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.core.audit_log import audit_event
+from app.core.audit_log import current_audit_context, log_and_audit_error
 from app.domains.grading.result_parser import PytestRunResult, parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
 from app.integrations.judge0.client import (
@@ -61,6 +61,7 @@ async def execute_pytest_in_judge0(
     stdin: str | None = None,
     wall_time_limit: float = DEFAULT_WALL_TIME_LIMIT,
     runner_source: str | None = None,
+    expected_manifest: dict | None = None,
 ) -> ExecutionOutcome:
     """Generate runner, submit to Judge0, parse stdout, enforce cleanup.
 
@@ -101,11 +102,11 @@ async def execute_pytest_in_judge0(
                 return outcome
 
             stdout = submission_result.get("stdout", "") or ""
-            pytest_result = parse_pytest_json(stdout)
+            pytest_result = parse_pytest_json(stdout, expected_manifest=expected_manifest)
             outcome.pytest_result = pytest_result
 
             if pytest_result.error_message:
-                outcome.failure_category = "test_failure"
+                outcome.failure_category = pytest_result.failure_category
                 outcome.failure_message = pytest_result.error_message
                 return outcome
 
@@ -122,14 +123,14 @@ async def execute_pytest_in_judge0(
                 try:
                     await judge0.delete_submission(token)
                 except Judge0CleanupError:
-                    logger.error(
+                    log_and_audit_error(
+                        logger,
                         "CLEANUP FAILURE: Could not delete Judge0 submission. "
-                        "This is a launch-blocking violation of the zero-retention contract."
-                    )
-                    audit_event(
-                        "judge0.cleanup_failed",
+                        "This is a launch-blocking violation of the zero-retention contract.",
+                        event="judge0.cleanup_failed",
                         failure_category="cleanup_failure",
-                        workflow_type="official",
+                        # Sandbox runs set workflow_type="sandbox" around grading (runs/orchestrator.py).
+                        workflow_type=current_audit_context().get("workflow_type", "official"),
                     )
                     outcome.failure_category = "cleanup_failure"
                     outcome.failure_message = (

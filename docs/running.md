@@ -65,10 +65,12 @@ Activate `backend/venv` before direct Python commands: `backend\venv\Scripts\Act
 
 Pause official intake and drain queued/running batches before upgrading from execution-time snapshots. Deploy the API, Celery worker and development mock code from the same revision. There is no legacy-package backfill or execution compatibility path; completed review/export work remains available until normal expiry. Drain batches before subsequent runtime/seed deployments too, because package capture freezes requested parameters and grading assets, not the running image or host grading implementation.
 
-During the drained window, run [validate_grading_package_host.py](../backend/scripts/validate_grading_package_host.py) inside the rebuilt backend container using its deployed environment:
+During the drained window, run the coordinated rollout script [rollout_grading_package.sh](../scripts/rollout_grading_package.sh) (detailed in [Workstation](guides/workstation.md#official-grading-package-rollout-and-worker-coordination)), or execute [validate_grading_package_host.py](../backend/scripts/validate_grading_package_host.py) directly inside the rebuilt backend container using its deployed environment:
 
 ```bash
-dc exec -T backend python scripts/validate_grading_package_host.py --course cs1400 --assignment simple-python-functions
+bash scripts/rollout_grading_package.sh --course cs1410 --assignment lab1
+# or directly inside the container:
+dc exec -T backend python scripts/validate_grading_package_host.py --course cs1410 --assignment lab1
 ```
 
 `dc` is the configured Compose command in [Workstation](guides/workstation.md#install-kata-and-start-infrastructure). Select an instructor-owned synthetic assignment with validated model fixtures. This check reads metadata without changing assignments or creating official runs, submits one real synthetic execution using captured parameters despite changed process-local defaults, and verifies expected scoring, deletion and Judge0 non-retrievability. It prints only boolean checks and refuses an unfinished workload; it does not prove deployed API/worker admission or capacity. Then use a designated synthetic course/section for an actual upload, review/export and cleanup check before reopening intake. Keep detailed evidence transient and record only revision/configuration and aggregate outcomes.

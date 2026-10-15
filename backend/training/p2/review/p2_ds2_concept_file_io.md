@@ -41,12 +41,16 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): The draft ignored the concept warning and suggested an unrelated extension. Now it does not call the work done, and points back to the allowed concepts.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "All the tests pass and your Order class works.",
+  "summary": "All the tests pass and your Order class works, though main uses file I/O from a later module.",
   "items": [],
-  "next_step": "Your main also writes a receipt file, which uses file I/O from a later module. Review this module's allowed concepts and keep main to printing for now."
+  "next_step": "Remove the file-writing code from main to fit this module."
 }
 ```

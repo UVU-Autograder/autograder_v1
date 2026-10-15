@@ -116,6 +116,7 @@ export function useRunStatusPolling({
   useEffect(() => {
     let active = true;
     const refresh = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
         const value = await apiClient.get<RunSummary>(basePath);
         if (active) acceptSummary(value);
@@ -124,11 +125,36 @@ export function useRunStatusPolling({
       }
     };
 
-    const timer = setInterval(() => {
-      if (summaryRef.current && !reviewAvailable(summaryRef.current)) clearReview();
-    }, 1000);
+    let expirationTimer: ReturnType<typeof setTimeout> | null = null;
+    const currentSummary = summary ?? summaryRef.current;
+    if (currentSummary) {
+      if (!reviewAvailable(currentSummary)) {
+        clearReview();
+      } else {
+        const expires = currentSummary.review_expires_at
+          ? Date.parse(currentSummary.review_expires_at)
+          : Date.parse(currentSummary.created_at) + 23 * 60 * 60 * 1000;
+        const delay = expires - Date.now();
+        if (delay <= 0) {
+          clearReview();
+        } else {
+          expirationTimer = setTimeout(() => {
+            if (active) clearReview();
+          }, delay);
+        }
+      }
+    }
 
     const poll = setInterval(() => void refresh(), 15000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refresh();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
 
     const expired = (event: Event) => {
       const path = (event as CustomEvent<string>).detail;
@@ -138,11 +164,14 @@ export function useRunStatusPolling({
 
     return () => {
       active = false;
-      clearInterval(timer);
+      if (expirationTimer) clearTimeout(expirationTimer);
       clearInterval(poll);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
       window.removeEventListener('official-review-expired', expired);
     };
-  }, [basePath, acceptSummary, clearReview]);
+  }, [basePath, summary, acceptSummary, clearReview]);
 
   // Adaptive run polling when in queue or run
   useEffect(() => {

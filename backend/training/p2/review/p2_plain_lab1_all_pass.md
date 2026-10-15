@@ -34,12 +34,16 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Plain all-pass case, added because the first adapter invented problems on clean solutions. The next step is an extension that fits the assignment and claims nothing about the student's code.
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Both parts of the lab pass their automated checks.",
+  "summary": "Both parts of the lab pass their automated checks.",
   "items": [],
-  "next_step": "Try another filter with the same pixel loop, such as a sepia tone or an inverted image, and compare the results."
+  "next_step": "Optional: try a sepia filter using the same loop."
 }
 ```

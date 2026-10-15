@@ -43,18 +43,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `methods`). Then set t
 
 > Pre-edit note (Claude): The hint gave the fix ('turn a list into its length'). Now compares the return value with what the test expects.
 
+> v8 revision (Claude): removed the returned and expected values; described the difference in words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your dataclass structure, sorting and main entrypoint work. One method returns the wrong kind of value.",
+  "summary": "Your dataclass structure, sorting and main entrypoint work, but one method returns the wrong kind of value.",
   "items": [
     {
       "test_key": "methods",
-      "what_went_wrong": "total_courses() returned [] where the test expects 0.",
-      "hint": "What type of value does the test expect from total_courses, and what type does your return line give back?"
+      "what_went_wrong": "total_courses gives back a list where the test expects a number.",
+      "hint": "What kind of value should a method named total_courses return, and what kind does yours return?"
     }
   ],
-  "next_step": "Review the return line of total_courses."
+  "next_step": "Review the total_courses method in student.py."
 }
 ```

@@ -33,6 +33,11 @@ export default defineConfig({
       url: "http://127.0.0.1:8000/health",
       reuseExistingServer: !process.env.CI,
       timeout: 30 * 1000,
+      env: {
+        ...process.env,
+        DATABASE_URL: "sqlite+pysqlite:///:memory:",
+        ENVIRONMENT: "test",
+      },
     },
     {
       command: "npm run dev",

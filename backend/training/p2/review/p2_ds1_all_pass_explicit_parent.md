@@ -40,12 +40,18 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p3b (Claude): praise-first summary; next_step is an optional super() curiosity
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: approved
 
 ```json
 {
-  "summary": "Great job! Every class in your dessert hierarchy is set up correctly and all the tests pass.",
+  "summary": "Great job! Every test passes and your whole dessert class hierarchy is set up correctly.",
   "items": [],
-  "next_step": "Your Candy class calls DessertItem.__init__ directly while the others use super(). Both work here. Look up what super() does differently and when that difference would matter."
+  "next_step": "Optional: look up how super() differs from your direct call."
 }
 ```

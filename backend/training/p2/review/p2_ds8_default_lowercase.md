@@ -48,23 +48,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_payable`). Then
 
 > Updated after 4159d52 (Claude): The student's own test_order.py now fails too, on the same bug. Added as a follow-on item.
 
+> v8 revision (Claude): removed the pay type values and the attribute name from the hint; trimmed
+
+> p3b (Claude): shorter first item and follow-on hint; trimmed to 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your submission implements the required protocols and class structure, but the default payment type does not match, and your own default test catches it.",
+  "summary": "Your payment protocol and class structure work, but a new Order's payment type is off.",
   "items": [
     {
       "test_key": "order_payable",
-      "what_went_wrong": "A new Order's get_pay_type() returned 'cash', but the test expects 'CASH'.",
-      "hint": "Check the initial value assigned to self._pay_type in the Order constructor, and compare it with the values PayType allows."
+      "what_went_wrong": "A new Order's payment type has different capitalization than the test expects.",
+      "hint": "Where does a new Order get its starting payment type, and does it match PayType?"
     },
     {
       "test_key": "student_order_tests",
-      "what_went_wrong": "Your own default-pay-type test fails for the same reason.",
-      "hint": "This follows from the default in __init__. Fix that, not the test."
+      "what_went_wrong": "Your own default test fails for the same reason.",
+      "hint": "Fix the Order constructor, not the test."
     }
   ],
-  "next_step": "Review the Order.__init__ method in dessert.py."
+  "next_step": "Review the Order constructor in dessert.py."
 }
 ```

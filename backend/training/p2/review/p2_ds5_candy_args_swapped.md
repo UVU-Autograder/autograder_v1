@@ -45,18 +45,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessertshop_class`). 
 
 > Pre-edit note (Claude): Small edit: the hint is now a question comparing the call with Candy's __init__.
 
+> v8 revision (Claude): removed the weights; hint asks whether inputs land in the right spots instead of naming the call
+
 status: accepted
 
 ```json
 {
-  "summary": "Your input prompts and inheritance work, but the Candy that user_prompt_candy builds has its values in the wrong places.",
+  "summary": "Your input prompts and inheritance work, but the Candy that user_prompt_candy builds has its values mixed up.",
   "items": [
     {
       "test_key": "dessertshop_class",
-      "what_went_wrong": "The Candy was created with a weight of 0.35, but the test entered a weight of 0.25.",
-      "hint": "Can you compare the order of the values you pass to Candy(...) in user_prompt_candy with the order Candy's __init__ expects?"
+      "what_went_wrong": "The new Candy's weight is not the weight the test typed in; a different input ended up there.",
+      "hint": "When user_prompt_candy builds the Candy, does each input land in the spot the Candy constructor expects?"
     }
   ],
-  "next_step": "Review the return line of user_prompt_candy in dessertshop.py."
+  "next_step": "Review where user_prompt_candy builds its Candy."
 }
 ```

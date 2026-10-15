@@ -3,42 +3,18 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
-
 import pytest
-from sqlalchemy import select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.session import SessionLocal
 from app.domains.auth.models import User
-from app.domains.courses.models import Section
 from app.domains.ingestion import (
     IngestError,
     ingestion_engine,
 )
-from app.domains.runs.queue_admission import (
-    reset_admission_state_for_tests,
-)
 from app.domains.runs.service import official_run_zip_path
 from test_ingestion_extractor import create_zip_bytes
-
-
-@pytest.fixture(autouse=True)
-def db_session(reset_database):
-    reset_admission_state_for_tests()
-    with SessionLocal() as session:
-        yield session
-
-
-@pytest.fixture(autouse=True)
-def temp_workspace_storage(tmp_path, monkeypatch):
-    from app.core.settings import get_settings
-
-    settings = get_settings()
-    monkeypatch.setattr(settings, "artifact_storage_dir", str(tmp_path / "artifacts"))
-    yield tmp_path
 
 
 @pytest.fixture()
@@ -47,20 +23,9 @@ def staff_user(db_session):
     return user
 
 
-@pytest.fixture()
-def section_id(db_session):
-    section = db_session.scalar(select(Section).where(Section.crn == "12345"))
-    assert section is not None
-    return section.id
-
-
-@pytest.fixture(autouse=True)
-def mock_dispatch():
-    with patch("app.domains.runs.tasks.run_mock_official_run") as mock:
-        yield mock
-
-
-def test_ingest_official_canvas_zip_success(db_session, staff_user, section_id, mock_dispatch):
+def test_ingest_official_canvas_zip_success(
+    db_session, staff_user, section_id, mock_official_run_dispatch, temp_workspaces
+):
     zip_bytes = create_zip_bytes(
         {"jaxonlarsen_12345_67890_student_functions.py": b"print('hello')"}
     )
@@ -80,7 +45,7 @@ def test_ingest_official_canvas_zip_success(db_session, staff_user, section_id, 
     assert run.section_id == section_id
     assert run.total_submission_count == 1
     assert official_run_zip_path(run.id).read_bytes() == zip_bytes
-    mock_dispatch.assert_called_once_with(run.id)
+    mock_official_run_dispatch.assert_called_once_with(run.id)
 
 
 def test_ingest_rejects_non_zip(db_session, staff_user, section_id):

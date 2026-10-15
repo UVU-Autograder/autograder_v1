@@ -60,7 +60,7 @@ def test_intake_persists_package_before_dispatch():
     assert official_run_zip_path(run_id).is_file()
     snapshot = official_run_dir(run_id) / "grading_snapshot.json"
     assert snapshot.is_file(), "A dispatchable batch must already have its grading package"
-    assert json.loads(snapshot.read_text(encoding="utf-8"))["version"] == 1
+    assert json.loads(snapshot.read_text(encoding="utf-8"))["version"] == 2
 
 
 def test_grading_and_package_import_without_api_initialization():
@@ -110,10 +110,39 @@ def test_every_submission_and_retry_uses_admitted_inputs(monkeypatch):
     monkeypatch.setattr(get_settings(), "judge0_preinstalled_dependencies", "")
     now = retention.utc_now()
     monkeypatch.setattr(retention, "utc_now", lambda: now)
-    test_results = [{"nodeid": item.key, "outcome": "passed", "markers": [f"ag_{item.key}"],
-                     "duration": 0.01} for item in original.config.scoring_items if item.item_type == "pytest"]
-    client = _mock_judge0_client(submission_result={"status": {"id": 3}, "stdout": json.dumps(
-        {"tests": test_results, "summary": {"exit_code": 0}})})
+    runner_payload = {
+        "protocol_version": 2,
+        "completed": True,
+        "collected": [c.model_dump(mode="json") for c in original.expected_manifest.cases],
+        "tests": [
+            {
+                "nodeid": c.nodeid,
+                "outcome": "passed",
+                "markers": c.markers,
+                "duration": 0.01,
+                "xfail": c.xfail,
+                "phase_failures": [],
+                "output_truncated": False,
+            }
+            for c in original.expected_manifest.cases
+        ],
+        "summary": {
+            "total": len(original.expected_manifest.cases),
+            "passed": len(original.expected_manifest.cases),
+            "failed": 0,
+            "errors": 0,
+            "skipped": 0,
+            "duration": 0.05,
+            "exit_code": 0,
+        },
+        "diagnostics": {
+            "stdout": "",
+            "stderr": "",
+            "stdout_truncated": False,
+            "stderr_truncated": False,
+        },
+    }
+    client = _mock_judge0_client(submission_result={"status": {"id": 3}, "stdout": json.dumps(runner_payload)})
     from app.domains.runs import official_execution
     write_details = official_execution.write_run_details_json
     interrupted = False
@@ -171,6 +200,12 @@ def test_binary_assets_are_captured_without_model_bytes_or_storage_paths():
             if artifact["type"] == "model_solution":
                 save_artifact(db, "cs1400", "simple-python-functions", key, "model_solution",
                               artifact["display_filename"], b"UNIQUE_MODEL_SOLUTION_SECRET")
+        from app.domains.assignments.inventory import execution_fingerprint
+        from app.domains.grading.report_contract import ValidatedManifest
+        manifest = ValidatedManifest.model_validate(assignment.config.validated_test_manifest)
+        manifest.fingerprint = execution_fingerprint(db, assignment)
+        assignment.config.validated_test_manifest = manifest.model_dump(mode="json")
+        db.commit()
     package = capture_package("cs1400", "simple-python-functions")
     assert package.files["asset.bin"].decode() == binary
     assert all(b"UNIQUE_MODEL_SOLUTION_SECRET" not in file.decode() for file in package.files.values())
@@ -219,7 +254,7 @@ def test_invalid_package_fails_without_execution_or_exports(tamper):
         path.unlink()
     else:
         if tamper == "version":
-            data["version"] = 2
+            data["version"] = 999
         elif tamper == "digest":
             data["digest"] = "0" * 64
         elif tamper == "base64":
@@ -415,6 +450,12 @@ def test_captured_helper_preserves_precedence(kind, tmp_path):
         if kind == "instructor":
             save_artifact(db, "cs1400", "simple-python-functions", "captured_helper", "support_file",
                           "python_autograder_helpers.py", b"INSTRUCTOR_HELPER")
+            from app.domains.assignments.inventory import execution_fingerprint
+            from app.domains.grading.report_contract import ValidatedManifest
+            manifest = ValidatedManifest.model_validate(assignment.config.validated_test_manifest)
+            manifest.fingerprint = execution_fingerprint(db, assignment)
+            assignment.config.validated_test_manifest = manifest.model_dump(mode="json")
+            db.commit()
     package = capture_package("cs1400", "simple-python-functions")
     bundle = tmp_path / "student_bundle"
     bundle.mkdir()

@@ -2,8 +2,7 @@ import {
   MOCK_ADMIN_ACCESS,
   MOCK_ADMIN_COURSES,
   MOCK_ADMIN_USERS,
-  MOCK_ASSIGNMENT_DETAILS_DS1,
-  MOCK_ASSIGNMENT_DETAILS_LAB1,
+  MOCK_ASSIGNMENTS_CS1400,
   MOCK_ASSIGNMENTS_CS1410,
   MOCK_CONCEPTS_METADATA,
   MOCK_MONITORING,
@@ -13,10 +12,16 @@ import {
   MOCK_SANDBOX_COURSES,
   MOCK_SANDBOX_RUN_RESULT,
   MOCK_SECTIONS,
-  MOCK_STAFF_ASSIGNMENT_SETUP_LAB1,
   MOCK_STAFF_COURSES,
   MOCK_STUDENT_FILES,
+  MOCK_AUDIT_RECORDS,
+  MOCK_AUDIT_STATS,
+  MOCK_AUDIT_VERIFICATION,
+  getMockAssignment,
+  getMockStaffAssignmentSetup,
+  mockCatalog,
 } from "./mock-data";
+import type { StaffAssignmentSetup } from "@/features/assignments/types";
 
 function makeMockResponse<T>(
   data: T,
@@ -34,8 +39,8 @@ function makeMockResponse<T>(
   return { data, response };
 }
 
-// In-memory editable assignment setup to mirror UI saves
-let currentAssignmentSetup = { ...MOCK_STAFF_ASSIGNMENT_SETUP_LAB1 };
+// In-memory editable assignment setups to mirror UI saves
+const assignmentSetups = new Map<string, StaffAssignmentSetup>();
 
 export async function handleMockRequest<T>(
   path: string,
@@ -50,14 +55,19 @@ export async function handleMockRequest<T>(
     return makeMockResponse(MOCK_SANDBOX_COURSES) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/sandbox\/courses\/[^/]+\/assignments$/) && method === "GET") {
-    return makeMockResponse(MOCK_ASSIGNMENTS_CS1410) as { data: T; response: Response };
+  const assignmentsListMatch = normalizedPath.match(/^\/(?:sandbox|staff)\/courses\/([^/]+)\/assignments$/);
+  if (assignmentsListMatch && method === "GET") {
+    const courseId = assignmentsListMatch[1].toLowerCase();
+    const is1400 = courseId === "cs1400" || courseId === "2";
+    const data = is1400 ? MOCK_ASSIGNMENTS_CS1400 : MOCK_ASSIGNMENTS_CS1410;
+    return makeMockResponse(data) as { data: T; response: Response };
   }
 
-  const sandboxAssignmentMatch = normalizedPath.match(/^\/sandbox\/courses\/[^/]+\/assignments\/([^/]+)$/);
-  if (sandboxAssignmentMatch && method === "GET") {
-    const slug = sandboxAssignmentMatch[1];
-    const assignment = slug === "ds1" ? MOCK_ASSIGNMENT_DETAILS_DS1 : MOCK_ASSIGNMENT_DETAILS_LAB1;
+  const assignmentDetailMatch = normalizedPath.match(/^\/(?:sandbox|staff)\/courses\/([^/]+)\/assignments\/([^/]+)$/);
+  if (assignmentDetailMatch && method === "GET") {
+    const courseId = assignmentDetailMatch[1];
+    const slug = assignmentDetailMatch[2];
+    const assignment = getMockAssignment(courseId, slug);
     return makeMockResponse(assignment) as { data: T; response: Response };
   }
 
@@ -186,15 +196,21 @@ export async function handleMockRequest<T>(
 
   const courseConceptsMatch = normalizedPath.match(/^\/staff\/courses\/([^/]+)\/concepts$/);
   if (courseConceptsMatch) {
+    const courseId = courseConceptsMatch[1].toLowerCase();
+    const is1400 = courseId === "cs1400" || courseId === "2";
+    const courseData = is1400 ? mockCatalog.cs1400 : mockCatalog.cs1410;
+    const modules = courseData.modules.map((m, idx) => ({
+      id: idx + 1,
+      name: m.name,
+      concepts: m.concepts || [],
+    }));
+    const allConcepts = Array.from(new Set(modules.flatMap((m) => m.concepts)));
     const conceptsPayload = {
       status: "updated",
       course_id: courseConceptsMatch[1],
-      default_concepts: ["variables", "conditionals", "functions"],
-      effective_allowed_concepts: ["variables", "conditionals", "functions", "classes", "inheritance"],
-      modules: [
-        { id: 1, name: "Module 1", concepts: ["variables", "conditionals", "functions"] },
-        { id: 2, name: "Module 2", concepts: ["classes", "inheritance"] },
-      ],
+      default_concepts: allConcepts.slice(0, 3),
+      effective_allowed_concepts: allConcepts,
+      modules,
     };
     return makeMockResponse(conceptsPayload) as { data: T; response: Response };
   }
@@ -202,6 +218,7 @@ export async function handleMockRequest<T>(
   // 5. Staff assignment CRUD, setup & artifacts
   const createAssignmentMatch = normalizedPath.match(/^\/staff\/courses\/([^/]+)\/assignments$/);
   if (createAssignmentMatch && method === "POST") {
+    const courseId = createAssignmentMatch[1];
     let slug = "new-assignment";
     let title = "New Assignment";
     if (init?.body) {
@@ -214,11 +231,12 @@ export async function handleMockRequest<T>(
       }
     }
     const createdSetup = {
-      ...currentAssignmentSetup,
-      course_id: createAssignmentMatch[1],
+      ...getMockStaffAssignmentSetup(courseId, slug),
+      course_id: courseId,
       assignment_id: slug,
       title,
     };
+    assignmentSetups.set(`${courseId}:${slug}`, createdSetup);
     return makeMockResponse(createdSetup) as { data: T; response: Response };
   }
 
@@ -226,21 +244,27 @@ export async function handleMockRequest<T>(
     return makeMockResponse(undefined, 204) as { data: T; response: Response };
   }
 
-  const setupMatch = normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/([^/]+)\/setup$/);
+  const setupMatch = normalizedPath.match(/^\/staff\/courses\/([^/]+)\/assignments\/([^/]+)\/setup$/);
   if (setupMatch) {
+    const courseId = setupMatch[1];
+    const slug = setupMatch[2];
+    const key = `${courseId}:${slug}`;
     if (method === "PUT" && init?.body) {
       try {
         const bodyObj = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
-        currentAssignmentSetup = {
-          ...currentAssignmentSetup,
+        const current = assignmentSetups.get(key) || getMockStaffAssignmentSetup(courseId, slug);
+        const updated = {
+          ...current,
           ...bodyObj,
         };
+        assignmentSetups.set(key, updated);
+        return makeMockResponse(updated) as { data: T; response: Response };
       } catch {
         // preserve current state on unparseable body
       }
-      return makeMockResponse(currentAssignmentSetup) as { data: T; response: Response };
     }
-    return makeMockResponse(currentAssignmentSetup) as { data: T; response: Response };
+    const setup = assignmentSetups.get(key) || getMockStaffAssignmentSetup(courseId, slug);
+    return makeMockResponse(setup) as { data: T; response: Response };
   }
 
   if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^/]+\/artifacts\/[^/]+$/) && method === "GET") {
@@ -302,28 +326,43 @@ def test_edge_cases_boundary():
   // 6. Staff official runs & review
   const courseSectionsMatch = normalizedPath.match(/^\/staff\/courses\/([^/]+)\/sections$/);
   if ((courseSectionsMatch || normalizedPath.match(/\/assignments\/[^/]+\/sections$/)) && method === "GET") {
+    const courseId = (courseSectionsMatch?.[1] || "cs1410").toLowerCase();
+    const is1400 = courseId === "cs1400" || courseId === "2";
+    const sections = is1400
+      ? [
+          {
+            id: 1,
+            crn: "12345",
+            is_active: true,
+            name: "Section 001",
+            section_number: "001",
+            term: "Fall 2026",
+            instructor_name: "Staff Dev",
+          },
+        ]
+      : [
+          {
+            id: 1,
+            crn: "12345",
+            is_active: true,
+            name: "Section 001",
+            section_number: "001",
+            term: "Fall 2026",
+            instructor_name: "Staff Dev",
+          },
+          {
+            id: 2,
+            crn: "12346",
+            is_active: true,
+            name: "Section 002",
+            section_number: "002",
+            term: "Fall 2026",
+            instructor_name: "Staff Dev",
+          },
+        ];
     return makeMockResponse({
       course_id: courseSectionsMatch?.[1] || "cs1410",
-      sections: [
-        {
-          id: 1,
-          crn: "12345",
-          is_active: true,
-          name: "Section 001",
-          section_number: "001",
-          term: "Fall 2026",
-          instructor_name: "Staff Dev",
-        },
-        {
-          id: 2,
-          crn: "12346",
-          is_active: true,
-          name: "Section 002",
-          section_number: "002",
-          term: "Fall 2026",
-          instructor_name: "Staff Dev",
-        },
-      ],
+      sections,
     }) as { data: T; response: Response };
   }
 
@@ -451,6 +490,52 @@ def invert_pixels(pixels):
 
   if (normalizedPath === "/staff/admin/monitoring" && method === "GET") {
     return makeMockResponse(MOCK_MONITORING) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/staff/admin/logs" && method === "GET") {
+    const url = new URL(`http://localhost${normalizedWithQuery}`);
+    const search = url.searchParams.get("search")?.toLowerCase();
+    const event = url.searchParams.get("event");
+    const workflow = url.searchParams.get("workflow_type");
+    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const pageSize = parseInt(url.searchParams.get("page_size") || "25", 10);
+
+    let filtered = [...MOCK_AUDIT_RECORDS];
+    if (search) {
+      filtered = filtered.filter(
+        (r) =>
+          r.event.toLowerCase().includes(search) ||
+          r.workflow_type?.toLowerCase().includes(search) ||
+          r.course_id?.toLowerCase().includes(search)
+      );
+    }
+    if (event) {
+      filtered = filtered.filter((r) => r.event === event);
+    }
+    if (workflow) {
+      filtered = filtered.filter((r) => r.workflow_type === workflow);
+    }
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const offset = (page - 1) * pageSize;
+    const items = filtered.slice(offset, offset + pageSize);
+
+    return makeMockResponse({
+      items,
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages,
+    }) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/staff/admin/logs/stats" && method === "GET") {
+    return makeMockResponse(MOCK_AUDIT_STATS) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/staff/admin/logs/verify" && method === "POST") {
+    return makeMockResponse(MOCK_AUDIT_VERIFICATION) as { data: T; response: Response };
   }
 
   // Fallback for unhandled mock paths: return null

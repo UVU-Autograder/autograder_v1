@@ -46,23 +46,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_str`). Then s
 
 > Updated after 4159d52 (Claude): The stricter tests now check the full string, and demo_output fails too because demo.py prints 'Name:'. Added as a follow-on item.
 
+> v8 revision (Claude): removed the expected and actual strings; describes a different label in words
+
+> p3b (Claude): shortened summary, hint, demo item and next_step to fit 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Account initialization works, but the text __str__ produces does not match the required format, so the demo output is off too.",
+  "summary": "Account initialization works; the problem is in __str__.",
   "items": [
     {
       "test_key": "account_str",
-      "what_went_wrong": "The test expects 'Owner: Alice, Balance: $100.00' but got 'Name: Alice, Balance: $100.00'.",
-      "hint": "Can you compare your output with the expected text word by word?"
+      "what_went_wrong": "Your __str__ output starts with a different label than the test expects.",
+      "hint": "Can you compare your __str__ output with the test title's format, word by word?"
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py prints the same 'Name:' text, so it is missing the expected 'Owner:' lines.",
-      "hint": "This follows from __str__. Fix that first."
+      "what_went_wrong": "demo.py prints accounts the same way, so the label is wrong there too.",
+      "hint": "This follows from the __str__ problem; fix that first."
     }
   ],
-  "next_step": "Review the __str__ method in the Account class."
+  "next_step": "Review __str__ in the Account class."
 }
 ```

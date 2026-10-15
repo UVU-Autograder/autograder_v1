@@ -4,7 +4,7 @@ Sandbox feedback uses Gemma 4 12B QAT plus `cs1410-p2c`; `gemma4-12b-qat` is the
 
 ## Feedback contract
 
-[Shared prompts](../../backend/app/integrations/ai/prompts.py) and [guardrails](../../backend/app/integrations/ai/guardrails.py) own live/eval/training parity. Input caps are 10,000 characters/file, 16,000 total code, 800/failure message, and 1,000 for sanitized assignment summaries (`PROMPT_VERSION = "v7"`). Responses explain grounded failures without scores/solutions; full validation precedes streaming. Invalid/unavailable AI yields fallback. Reviewed targets are synthetic seed mutations; preserve [provenance](../../backend/training/p2/review/) and held-out separation.
+[Shared prompts](../../backend/app/integrations/ai/prompts.py) and [guardrails](../../backend/app/integrations/ai/guardrails.py) own live/eval/training parity. Input caps are 10,000 characters/file, 16,000 total code, 800/failure message, and 1,000 for sanitized assignment summaries (`PROMPT_VERSION = "v8"`). Responses explain grounded failures without scores/solutions, never repeat a value from the test results (the UI already shows both), never single out the attribute/parameter/default to change, and stay under 80 words; full validation precedes streaming. [Answer checks](../../backend/app/integrations/ai/leak_checks.py) measure those rules in the dataset gate and eval. Invalid/unavailable AI yields fallback. Reviewed targets are synthetic seed mutations; preserve [provenance](../../backend/training/p2/review/) and held-out separation.
 
 ## Operate the model service
 
@@ -63,6 +63,19 @@ Draft while serving; review/approve targets before the strict builder. Choose a 
 
 [Eval tooling](../../backend/eval/README.md) owns cases/metrics; [training tools](../../backend/training/README.md) own CLI details. Compare models under matching cases/prompt/decoding; unguided checks native schema ability, guided matches production. Hard checks do not replace staff review of diagnosis/helpfulness.
 
+### Adapter p3b (prompt v8)
+
+p2c was trained on v5 targets that repeated expected values and named the attribute to change. p3 retrained on the same cases rewritten to v8 and stopped giving answers away, but invented problems on two all-pass cases and ran over 80 words on 3-item cascades. p3b fixes the data: all-pass next steps are optional extensions, and targets stay at 65 words or fewer (the model writes about 10 words more than its targets) with next steps under 15. The builder enforces all of it and writes `training/data/p3`. Recipe (p2c's): rank 16, alpha 32, learning rate 1e-4, 66 steps.
+
+```bash
+python -m training.build_p2_dataset
+python -m training.train_lora --base /data/models/gemma4-12b-qat-bf16 --data training/data/p3 --out training/output/p3b --max-steps 66 --rank 16 --alpha 32 --max-length 12288
+sudo systemctl stop vllm-cs1410 && bash backend/training/serve.sh p2c p3b   # from the repo root
+python -m eval.run_eval --endpoint vllm --model cs1410-p3b --label p3b-v8-1 --guided   # then p3b-v8-2
+```
+
+Ship only if, in both runs: hard metrics 100%, `no_answer_literal_pct` 100, `no_value_echo_pct` ≥ 95, `over_80_words_pct` 0, `next_step_over_14_pct` 0, `all_pass_flagged` 0, and a staff read finds no new misdiagnoses. Then `install_vllm_service.sh p3b` and `LOCAL_LLM_MODEL=cs1410-p3b`. Rows land in `eval/results/scoreboard_v8.csv`.
+
 For failures, inspect `journalctl -u vllm-cs1410 -n 50 --no-pager` and the earlier EngineCore error. Re-run GPU kernel preflight for torch/NF4 failures; verify absolute adapter paths and model-license access. AI downtime must leave grading usable.
 
 ## Sandbox load and end-to-end verification
@@ -78,5 +91,21 @@ python scripts/mock_sandbox_run.py CASE_ID --api http://10.115.20.200/api
 python scripts/mock_sandbox_load.py --levels 1,2,4,8,16 --requests 48
 ```
 
-The load tester grades synthetic runs through Judge0, then triggers simultaneous AI feedback requests, reporting p50/p95/max latency, throughput, fallback causes (timeout at 30s limit, guardrail, unreachable), vLLM queue depth, KV cache utilization, and GPU metrics via `nvidia-smi`.
+The load tester grades synthetic runs through Judge0, then triggers simultaneous AI feedback requests, reporting p50/p95/max latency, throughput, fallback causes (timeout at 30s limit, guardrail, unreachable), vLLM queue depth, KV cache utilization, and GPU metrics via `nvidia-smi`. `--stream` uses the endpoint the UI calls first; levels go up to 128.
+
+### Finding maximum load
+
+Run in an agreed window (it loads the live model), never while training. Keep a GPU log in a second SSH session for the whole test:
+
+```bash
+nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.memory,memory.used,power.draw,power.limit,temperature.gpu,clocks.sm,clocks_throttle_reasons.active --format=csv -l 1 > ~/gpu-$(date +%H%M).csv
+nvidia-smi dmon -s pucvmt -o T    # live view instead
+```
+
+1. **Model capacity** (vLLM only, real v8 prompts, guided JSON, 60 s per level; stops once p95 passes 60 s): `cd backend && ~/venvs/train/bin/python -m eval.stress_vllm --model cs1410-p3b --json-out ~/stress-$(date +%H%M).json`
+2. **End to end** (backend 30 s limit, 40-thread pool, guardrails): `python3 scripts/mock_sandbox_load.py --stream --levels 1,4,8,16,32,64,96,128`
+3. **Soak** at the highest level with zero `>30s`: `python -m eval.stress_vllm --model cs1410-p3b --levels N --duration 600`; watch temperature, minimum SM clock and throttle reasons.
+4. **Tune one vLLM flag at a time** in the service unit (`--max-num-seqs`, `--max-model-len 8192` vs 12288, `--gpu-memory-utilization 0.92`), reinstall, repeat step 1.
+
+Capacity is the highest level with no `>30s` requests, no errors and no fallbacks. Past it, req/s flattens while p95 climbs; `wait` > 0 means vLLM is queueing, `preempt` > 0 means the KV cache ran out, and any throttle reason means the GPU slowed itself.
 

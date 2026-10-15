@@ -64,10 +64,34 @@ class EvalCase(BaseModel):
     notes: str = ""
     # Generated cases only: the mutation as a unified diff (never sent to the model).
     bug_diff: str = ""
+    # Red-team cases: how the attack reaches the prompt (stdout, exception, own_tests,
+    # filename, fake_delimiter, roleplay, score, ...). Empty for ordinary cases.
+    attack: str = ""
 
     @property
     def allowed_keys(self) -> set[str]:
         return {f["key"] for f in self.failures}
+
+    def messages(self, prompt_version: str | None = None, boundary: str | None = None) -> list[dict[str, str]]:
+        """The exact chat payload the sandbox would send for this case.
+
+        v9 data blocks get a fixed id from the case id unless ``boundary`` is given,
+        so eval inputs and training rows are reproducible.
+        """
+        from app.integrations.ai.prompts import PROMPT_VERSION, boundary_for, build_messages
+
+        return build_messages(
+            prompt_version=prompt_version or PROMPT_VERSION,
+            boundary=boundary or boundary_for(self.case_id),
+            assignment_title=self.assignment_title,
+            requirements=self.requirements,
+            allowed_concepts=self.allowed_concepts,
+            failures=self.failures,
+            concept_violations=self.concept_violations,
+            student_code=self.student_code,
+            code_files=self.code_files or None,
+            passing_labels=self.passing_labels or None,
+        )
 
 
 def load_cases(path: Path) -> list[EvalCase]:

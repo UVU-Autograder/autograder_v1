@@ -130,6 +130,33 @@ CONCEPT_NODE_MAP: dict[str, tuple[type, ...]] = {
     k: v["nodes"] for k, v in CONCEPT_DETAILS.items() if v["nodes"]
 }
 
+_NODE_TYPE_TO_CONCEPTS: dict[type, list[str]] = {}
+for _concept, _types in CONCEPT_NODE_MAP.items():
+    for _type in _types:
+        _NODE_TYPE_TO_CONCEPTS.setdefault(_type, []).append(_concept)
+_NODE_TYPE_MAP: dict[type, tuple[str, ...]] = {
+    _k: tuple(_v) for _k, _v in _NODE_TYPE_TO_CONCEPTS.items()
+}
+
+_SPECIAL_OPERATOR_METHODS: frozenset[str] = frozenset(
+    {
+        "__add__", "__radd__", "__iadd__",
+        "__sub__", "__rsub__", "__isub__",
+        "__mul__", "__rmul__", "__imul__",
+        "__truediv__", "__rtruediv__", "__itruediv__",
+        "__floordiv__", "__rfloordiv__", "__ifloordiv__",
+        "__mod__", "__rmod__", "__imod__",
+        "__pow__", "__rpow__", "__ipow__",
+        "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__",
+        "__and__", "__rand__", "__iand__",
+        "__or__", "__ror__", "__ior__",
+        "__xor__", "__rxor__", "__ixor__",
+        "__lshift__", "__rlshift__", "__ilshift__",
+        "__rshift__", "__rrshift__", "__irshift__",
+        "__neg__", "__pos__", "__abs__", "__invert__",
+    }
+)
+
 # ---------------------------------------------------------------------------
 # Security deny-lists
 # ---------------------------------------------------------------------------
@@ -263,18 +290,24 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
 
     for node in ast.walk(tree):
         # ---- simple concept nodes (loops, conditionals, functions, vars) --
-        for concept, node_types in CONCEPT_NODE_MAP.items():
-            if isinstance(node, node_types):
+        node_type = type(node)
+        concepts = _NODE_TYPE_MAP.get(node_type)
+        if concepts:
+            if node_type is ast.Raise and isinstance(node, ast.Raise):
                 # Special check: raise StopIteration is allowed for iterators (Module 4)
                 # and should not trigger the 'exceptions' concept.
-                if concept == "exceptions" and isinstance(node, ast.Raise):
-                    is_stop_iteration = False
-                    if node.exc:
-                        if (isinstance(node.exc, ast.Name) and node.exc.id == "StopIteration") or (isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name) and node.exc.func.id == "StopIteration"):
-                            is_stop_iteration = True
-                    if is_stop_iteration:
-                        continue
-                detected.add(concept)
+                is_stop_iteration = False
+                if node.exc:
+                    if (isinstance(node.exc, ast.Name) and node.exc.id == "StopIteration") or (
+                        isinstance(node.exc, ast.Call)
+                        and isinstance(node.exc.func, ast.Name)
+                        and node.exc.func.id == "StopIteration"
+                    ):
+                        is_stop_iteration = True
+                if not is_stop_iteration:
+                    detected.update(concepts)
+            else:
+                detected.update(concepts)
 
         # ---- imports -------------------------------------------------
         if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -333,23 +366,7 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
             if node.name.startswith("test_"):
                 detected.add("testing")
 
-            special_operator_methods = {
-                "__add__", "__radd__", "__iadd__",
-                "__sub__", "__rsub__", "__isub__",
-                "__mul__", "__rmul__", "__imul__",
-                "__truediv__", "__rtruediv__", "__itruediv__",
-                "__floordiv__", "__rfloordiv__", "__ifloordiv__",
-                "__mod__", "__rmod__", "__imod__",
-                "__pow__", "__rpow__", "__ipow__",
-                "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__",
-                "__and__", "__rand__", "__iand__",
-                "__or__", "__ror__", "__ior__",
-                "__xor__", "__rxor__", "__ixor__",
-                "__lshift__", "__rlshift__", "__ilshift__",
-                "__rshift__", "__rrshift__", "__irshift__",
-                "__neg__", "__pos__", "__abs__", "__invert__",
-            }
-            if node.name in special_operator_methods:
+            if node.name in _SPECIAL_OPERATOR_METHODS:
                 detected.add("operator-overloading")
 
             for dec in node.decorator_list:

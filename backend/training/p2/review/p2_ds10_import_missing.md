@@ -49,28 +49,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > Updated after 4159d52 (Claude): Now all four tests fail on the same NameError. Cut to 3 items: one root cause, the rest follow.
 
+> v8 revision (Claude): dropped the quoted error and the Packaging/Payable comparison; trimmed under 80 words
+
+> p3b (Claude): trimmed to 65 words; shorter summary, hint and follow-ons
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Combinable protocol and dessert classes are written, but dessert.py cannot find one of the names it uses, so every test stops there.",
+  "summary": "Your Combinable protocol is fine, but dessert.py cannot find it.",
   "items": [
     {
       "test_key": "candy_combinable",
-      "what_went_wrong": "Loading dessert.py fails with \"name 'Combinable' is not defined\".",
-      "hint": "Where does the name Combinable come from? Can you compare it with how Packaging and Payable get into dessert.py?"
+      "what_went_wrong": "Loading dessert.py fails with a NameError on Combinable.",
+      "hint": "Where does dessert.py get names from your other files?"
     },
     {
       "test_key": "cookie_combinable",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This follows from the missing name. Fix that first."
+      "what_went_wrong": "This fails for the same reason.",
+      "hint": "Fix the loading error first."
     },
     {
       "test_key": "order_combine",
-      "what_went_wrong": "This test fails for the same reason.",
-      "hint": "This clears once dessert.py can find Combinable."
+      "what_went_wrong": "Same cause.",
+      "hint": "This clears once dessert.py loads."
     }
   ],
-  "next_step": "Check the top of dessert.py. The Dessert Shop 9 test fails for the same reason."
+  "next_step": "Check the top of dessert.py; the sorting test clears too."
 }
 ```

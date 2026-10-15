@@ -34,7 +34,7 @@ type StaffSectionListResponse = {
   sections: StaffSection[];
 };
 
-type PreflightResponse = {
+type ValidationResponse = {
   passed: boolean;
   errors: string[];
 };
@@ -49,7 +49,7 @@ export default function RunsPage({ params }: PageProps) {
   const [sections, setSections] = useState<StaffSection[]>([]);
   const [sectionId, setSectionId] = useState<string>("");
   const [zipFile, setZipFile] = useState<File | null>(null);
-  const [preflight, setPreflight] = useState<PreflightResponse | null>(null);
+  const [validation, setValidation] = useState<ValidationResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -68,18 +68,18 @@ export default function RunsPage({ params }: PageProps) {
       apiClient.get<StaffSectionListResponse>(
         `/staff/courses/${courseId}/sections`,
       ),
-      apiClient.post<PreflightResponse>(
+      apiClient.post<ValidationResponse>(
         `/staff/courses/${courseId}/assignments/${assignmentId}/validate`,
         {},
       ),
     ])
-      .then(([sectionsData, preflightData]) => {
+      .then(([sectionsData, validationData]) => {
         if (!active) return;
         setSections(sectionsData.sections);
         if (sectionsData.sections.length === 1) {
           setSectionId(String(sectionsData.sections[0].id));
         }
-        setPreflight(preflightData);
+        setValidation(validationData);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -137,7 +137,7 @@ export default function RunsPage({ params }: PageProps) {
     );
   }
 
-  const preflightBlocked = preflight !== null && !preflight.passed;
+  const validationBlocked = validation !== null && !validation.passed;
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-10">
@@ -161,22 +161,22 @@ export default function RunsPage({ params }: PageProps) {
         )}
 
         <div className="mx-auto max-w-xl space-y-4">
-          {preflight && (
+          {validation && (
             <div
               className={`rounded-lg border p-3 text-sm ${
-                preflight.passed
+                validation.passed
                   ? "border-success/30 bg-success/10 text-success"
                   : "border-destructive/30 bg-destructive/10 text-destructive"
               }`}
             >
-              {preflight.passed ? (
+              {validation.passed ? (
                 <p className="font-medium">Assignment ready to grade</p>
               ) : (
                 <div className="space-y-1">
                   <p className="font-medium">
                     Assignment is not ready to grade
                   </p>
-                  {preflight.errors.slice(0, 2).map((msg) => (
+                  {validation.errors.slice(0, 2).map((msg) => (
                     <p key={msg} className="text-xs opacity-90">
                       {msg}
                     </p>
@@ -242,7 +242,7 @@ export default function RunsPage({ params }: PageProps) {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isUploading || !sectionId || preflightBlocked}
+                  disabled={isUploading || !sectionId || validationBlocked}
                 >
                   <PlayIcon className="mr-2 size-4" />
                   {isUploading ? "Uploading ZIP..." : "Launch grading run"}

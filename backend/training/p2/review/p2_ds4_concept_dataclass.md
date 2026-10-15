@@ -45,12 +45,16 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): New case from 4159d52 (replaces the exceptions case now that exceptions are allowed in Module 6). The draft was good; the next step now names the student's own Box dataclass and offers leaving it out, and the summary says what works.
 
+> v8 revision: trimmed next_step to one sentence under 15 words
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "All the cost and tax tests pass, and your abstract class works.",
+  "summary": "All the cost and tax tests pass, though dessert.py uses a dataclass from a later module.",
   "items": [],
-  "next_step": "Your dessert.py adds a dataclass, which comes in a later module. Review this module's allowed concepts and write Box as a regular class for now, or leave it out if nothing uses it."
+  "next_step": "Rewrite Box as a regular class to fit this module."
 }
 ```

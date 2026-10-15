@@ -22,6 +22,8 @@ class RunStateStore(Protocol):
 
     def record_upload(self, session_id: str, timestamp: datetime) -> None: ...
 
+    def unrecord_upload(self, session_id: str) -> None: ...
+
     def get_quota(self, session_id: str | None, limit: int, window: timedelta) -> UploadQuota: ...
 
 
@@ -46,6 +48,11 @@ class InMemoryRunStateStore:
 
     def record_upload(self, session_id: str, timestamp: datetime) -> None:
         self._session_uploads.setdefault(session_id, []).append(timestamp)
+
+    def unrecord_upload(self, session_id: str) -> None:
+        uploads = self._session_uploads.get(session_id)
+        if uploads:
+            uploads.pop()
 
     def get_quota(self, session_id: str | None, limit: int, window: timedelta) -> UploadQuota:
         now = datetime.now(UTC)
@@ -98,13 +105,27 @@ class RedisRunStateStore:
         self._fallback.delete_run(run_id)
 
     def record_upload(self, session_id: str, timestamp: datetime) -> None:
+        # One transaction: append, keep only the newest `limit` uploads (older ones can
+        # never count again within the window), refresh the expiry.
+        settings = get_settings()
+        key = f"sandbox:uploads:{session_id}"
         try:
-            r = self._redis_conn()
-            window_sec = int(get_settings().sandbox_upload_window_seconds)
-            r.rpush(f"sandbox:uploads:{session_id}", str(timestamp.timestamp()))
-            r.expire(f"sandbox:uploads:{session_id}", window_sec)
+            pipe = self._redis_conn().pipeline(transaction=True)
+            pipe.rpush(key, str(timestamp.timestamp()))
+            pipe.ltrim(key, -max(1, settings.sandbox_upload_limit), -1)
+            pipe.expire(key, int(settings.sandbox_upload_window_seconds))
+            pipe.execute()
         except Exception:
             self._fallback.record_upload(session_id, timestamp)
+
+    def unrecord_upload(self, session_id: str) -> None:
+        key = f"sandbox:uploads:{session_id}"
+        try:
+            removed = self._redis_conn().rpop(key)
+            if removed is None:
+                self._fallback.unrecord_upload(session_id)
+        except Exception:
+            self._fallback.unrecord_upload(session_id)
 
     def get_quota(self, session_id: str | None, limit: int, window: timedelta) -> UploadQuota:
         if session_id is None:
@@ -117,6 +138,7 @@ class RedisRunStateStore:
             now_ts = now.timestamp()
             cutoff_ts = now_ts - window.total_seconds()
 
+            # Read-only: rewriting the list here could drop an upload recorded concurrently.
             active_ts = []
             for raw in raw_uploads:
                 try:
@@ -125,11 +147,6 @@ class RedisRunStateStore:
                         active_ts.append(ts)
                 except ValueError:
                     pass
-
-            r.delete(key)
-            if active_ts:
-                r.rpush(key, *[str(ts) for ts in active_ts])
-                r.expire(key, int(window.total_seconds()))
 
             remaining = max(limit - len(active_ts), 0)
             if active_ts:

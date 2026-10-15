@@ -19,7 +19,7 @@ What it proves, in order:
 6. If a reverse proxy answers on port 80 (nginx on the Dell): /health and
    /api/health reach FastAPI, and / serves the Next.js frontend.
 7. Local AI model server (vLLM on :8001): /v1/models serves expected model(s)
-   (cs1410-p2c or gemma4-12b-qat).
+   (cs1410-p3b or gemma4-12b-qat).
 
 Exit code 0 only if nothing FAILed.
 """
@@ -247,7 +247,7 @@ def check_vllm(endpoint: str, expected_model: str) -> None:
     model_ids = [m.get("id") for m in data if isinstance(m, dict) and "id" in m] if isinstance(data, list) else []
     record("vllm", "PASS", "GET /v1/models", f"HTTP {status}, {len(model_ids)} model(s) registered")
 
-    acceptable = {expected_model, "gemma4-12b-qat", "cs1410-p2c"}
+    acceptable = {expected_model, "gemma4-12b-qat", "cs1410-p3b"}
     matched = [m for m in model_ids if m in acceptable]
     if matched:
         record(
@@ -495,7 +495,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--vllm-model",
-        default=os.environ.get("LOCAL_LLM_MODEL") or env.get("LOCAL_LLM_MODEL", "cs1410-p2c"),
+        default=os.environ.get("LOCAL_LLM_MODEL") or env.get("LOCAL_LLM_MODEL", "cs1410-p3b"),
         help="Expected model identifier on vLLM server",
     )
     parser.add_argument("--no-vllm", action="store_true", help="Skip local vLLM AI model server checks")

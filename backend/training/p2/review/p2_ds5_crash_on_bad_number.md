@@ -53,16 +53,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessertshop_class`). 
 
 > Pre-edit note (Claude): Clearer description: -0.5 was accepted where the prompt should keep asking. The hint compares the weight code with the price loop that works.
 
+> v8 revision (Claude): removed the entered and expected weights; describes a negative weight in words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your inheritance and cost logic work, and most of the input checks do too. The candy weight prompt accepts a value it should reject.",
+  "summary": "Your inheritance and cost logic work, but the candy weight prompt accepts a weight it should reject.",
   "items": [
     {
       "test_key": "dessertshop_class",
-      "what_went_wrong": "Given a weight of -0.5, your prompt kept it; the test expected the prompt to ask again and end up with 0.25.",
-      "hint": "Can you compare how user_prompt_candy reads the weight with how it reads the price? What does the price code do that the weight code does not?"
+      "what_went_wrong": "Given a negative weight, your prompt kept it instead of asking again for a valid one.",
+      "hint": "In user_prompt_candy, what does the price input do with a bad value that the weight input does not?"
     }
   ],
   "next_step": "Review the weight input in user_prompt_candy in dessertshop.py."

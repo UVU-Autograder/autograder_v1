@@ -51,28 +51,34 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > Pre-edit note (Claude): The hint gave the fix ('assign using self'). Now compares the owner line with the balance line right below it.
 
+> v8 revision (Claude): hint no longer names the owner and balance lines; dropped the quoted error; trimmed under 80 words
+
+> p3b (Claude): first hint now one sentence; trimmed
+
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your balance handling works, but the owner is never stored on the account, and everything that prints the owner fails.",
+  "summary": "Your balance handling works, but the owner is never stored.",
   "items": [
     {
       "test_key": "account_init",
       "what_went_wrong": "A new Account has no owner attribute.",
-      "hint": "Compare the owner line in __init__ with the balance line right below it. What is different?"
+      "hint": "Of the values Account.__init__ receives, which ones end up on the object?"
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "__str__ fails with \"'Account' object has no attribute 'owner'\".",
-      "hint": "This follows from __init__. Fix that first."
+      "what_went_wrong": "__str__ fails because there is no owner to print.",
+      "hint": "Fix Account.__init__ first."
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py fails with the same error when it prints an account.",
-      "hint": "This clears once owner is stored."
+      "what_went_wrong": "demo.py fails with the same error.",
+      "hint": "Same cause."
     }
   ],
-  "next_step": "Review the __init__ method in account.py."
+  "next_step": "Review Account.__init__ in account.py."
 }
 ```

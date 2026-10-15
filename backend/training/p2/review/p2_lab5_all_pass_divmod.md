@@ -45,12 +45,18 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > Pre-edit note (Claude): Generic extension replaced with one about the student's own choice (divmod).
 
+> v8 revision: trimmed summary and next_step to one sentence under 15 words
+
+> p3b (Claude): praise-first summary; next_step reframed as an optional extension.
+
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
-  "summary": "Great job! Every operator test passes.",
+  "summary": "Great job! Every test passes, and your Money operators all work together.",
   "items": [],
-  "next_step": "Your normalize uses divmod, which works without an if. Can you work out what it does with negative cents, and whether Money should allow them?"
+  "next_step": "Optional: explore what divmod returns when cents is negative."
 }
 ```

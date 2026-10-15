@@ -42,18 +42,20 @@ Edit the JSON, keeping each `test_key` as given (allowed: `candy`). Then set the
 - Encouraging, plain language, starts with what works, under 150 words.
 - all-pass cases keep `"items": []`.
 
+> v8 revision: removed the exact attribute name; trimmed to one sentence per field
+
 status: accepted
 
 ```json
 {
-  "summary": "Your implementation of the DessertItem base class and most subclasses is working correctly. However, there is an issue with the attribute naming in the Candy class.",
+  "summary": "Your DessertItem base class and most subclasses work, but Candy has an attribute naming mismatch.",
   "items": [
     {
       "test_key": "candy",
-      "what_went_wrong": "The test expected to find an attribute named 'candy_weight', but it could not find that specific name on the Candy object.",
-      "hint": "How does the variable name you defined in the Candy class's __init__ method compare to the name required by the rubric?"
+      "what_went_wrong": "The test could not find one of the required attributes on a Candy object.",
+      "hint": "How do the attribute names set in Candy.__init__ compare with the names in this test's title?"
     }
   ],
-  "next_step": "Review the Candy class definition in dessert.py"
+  "next_step": "Review the Candy.__init__ method in dessert.py."
 }
 ```

@@ -47,23 +47,27 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `ord
 
 > Pre-edit note (Claude): The hint was an either/or with the answer in it, and next_step named round(). Now points to comparing Candy with the classes that work.
 
+> v8 revision (Claude): removed the cost values; trimmed
+
+> p3b (Claude): one-sentence hint; trimmed under 65 words
+
 status: accepted
 
 ```json
 {
-  "summary": "Your abstract class and most of your cost calculations are working. Candy's cost is very close but not quite what the test expects.",
+  "summary": "Your abstract class and other cost methods work, but Candy's cost is slightly off.",
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "Candy's cost comes out as 0.375, but the test expects 0.38.",
-      "hint": "Double check your code: compare Candy.calculate_cost with the calculate_cost methods that pass. What do they do to the result before returning it?"
+      "what_went_wrong": "Candy's cost has more decimal places than the test expects.",
+      "hint": "What do the passing cost methods do that Candy.calculate_cost does not?"
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is 7.97 instead of 7.98 because of the Candy cost.",
-      "hint": "This follows from the Candy problem. Fix that first."
+      "what_went_wrong": "The order cost is slightly low because it includes the Candy cost.",
+      "hint": "This follows from the Candy.calculate_cost problem; fix that first."
     }
   ],
-  "next_step": "Compare calculate_cost across your four dessert classes."
+  "next_step": "Review Candy.calculate_cost in dessert.py."
 }
 ```

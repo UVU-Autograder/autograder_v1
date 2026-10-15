@@ -91,7 +91,8 @@ def step(run_id: int, token: str) -> dict:
         if prepared:
             engine = GradingEngine(config=config, artifact_refs={}, allowed_concepts=concepts,
                 preloaded_artifacts=preloaded, execution_parameters=package.execution_parameters,
-                runner_source=package.runner_source, fallback_helper=package.fallback_helper.decode())
+                runner_source=package.runner_source, fallback_helper=package.fallback_helper.decode(),
+                expected_manifest=package.expected_manifest.model_dump(mode="json"))
             try:
                 result = asyncio.run(engine.grade_submission(bundle_dir=bundle, official_run_id=run_id))
             except HTTPException:
