@@ -64,6 +64,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > p3b (Claude): shortened first item and follow-on items to fit 65 words
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -77,12 +79,12 @@ status: accepted
     },
     {
       "test_key": "str",
-      "what_went_wrong": "This fails for the same reason.",
-      "hint": "This follows from the constructor problem."
+      "what_went_wrong": "Same cause.",
+      "hint": "This follows from the constructor."
     },
     {
       "test_key": "add",
-      "what_went_wrong": "This fails for the same reason.",
+      "what_went_wrong": "Same cause.",
       "hint": "This clears once a Money can be created."
     }
   ],

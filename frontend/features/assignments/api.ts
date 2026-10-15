@@ -1,4 +1,27 @@
-import { apiClient, ApiError, isMockApiEnabled, resolveUrl } from "@/lib/api-client";
+import {
+  AI_TIMEOUT_MS,
+  apiClient,
+  ApiError,
+  type ApiErrorDetail,
+  fetchWithTimeout,
+  isMockApiEnabled,
+  resolveUrl,
+} from "@/lib/api-client";
+import {
+  aiFailureAction,
+  backoffDelayMs,
+  isLegacyAiFailureText,
+  isRetryableAdmissionError,
+  isTransientPollError,
+  MAX_ADMISSION_WAIT_MS,
+  MAX_AI_ATTEMPTS,
+  MAX_CONSECUTIVE_POLL_ERRORS,
+  MAX_POLL_DURATION_MS,
+  RetryCancelledError,
+  RunLostError,
+  RunStillPendingError,
+  WaitControl,
+} from "@/features/assignments/sandbox-retry";
 import {
   Assignment,
   AssignmentsResponse,
@@ -88,7 +111,8 @@ export async function createSandboxRun(
 ): Promise<{ run: SandboxRunCreateResponse; sessionId: string }> {
   const formData = new FormData();
   formData.append("bundle", bundle, "submission.zip");
-  if (stdin && stdin.trim()) {
+  // Whitespace-only input is still input: a blank line answers an input() call.
+  if (stdin) {
     formData.append("stdin", stdin);
   }
 
@@ -105,35 +129,89 @@ export async function createSandboxRun(
   return { run: data, sessionId };
 }
 
+/**
+ * Upload a run, retrying automatically while the grading queue is full. Those
+ * rejections happen before the run is counted, so the retries cost nothing.
+ */
+export async function createSandboxRunWithRetry(
+  courseId: string,
+  assignmentId: string,
+  bundle: Blob,
+  stdin: string | undefined,
+  control: WaitControl,
+  onWait?: (waitMs: number, attempt: number, error: ApiError) => void,
+): Promise<{ run: SandboxRunCreateResponse; sessionId: string }> {
+  const startedAt = Date.now();
+  for (let attempt = 0; ; attempt += 1) {
+    if (control.cancelled) throw new RetryCancelledError();
+    try {
+      return await createSandboxRun(courseId, assignmentId, bundle, stdin);
+    } catch (err) {
+      if (!isRetryableAdmissionError(err) || Date.now() - startedAt > MAX_ADMISSION_WAIT_MS) {
+        throw err;
+      }
+      const waitMs = backoffDelayMs(attempt, err.retryAfterSeconds);
+      onWait?.(waitMs, attempt + 1, err);
+      await control.wait(waitMs);
+    }
+  }
+}
+
 export async function getRunStatus(statusUrl: string) {
   return apiClient.get<RunStatusResponse>(statusUrl);
 }
 
+/**
+ * Poll until the run finishes. Transient errors (network blips, 5xx, timeouts) are
+ * ridden out with backoff; a long wait ends in RunStillPendingError (the run keeps
+ * going and can be checked again) rather than a failure, and a run the backend no
+ * longer knows ends in RunLostError.
+ */
 export async function pollRunUntilComplete(
   statusUrl: string,
   options?: {
     intervalMs?: number;
-    maxAttempts?: number;
+    maxDurationMs?: number;
     onStateChange?: (state: string) => void;
     onStatusUpdate?: (status: RunStatusResponse) => void;
+    control?: WaitControl;
   }
 ) {
-  const maxAttempts = options?.maxAttempts ?? 80;
+  const maxDurationMs = options?.maxDurationMs ?? MAX_POLL_DURATION_MS;
+  const control = options?.control ?? new WaitControl();
+  const startedAt = Date.now();
+  let lastStatus: RunStatusResponse | null = null;
+  let consecutiveErrors = 0;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const status = await getRunStatus(statusUrl);
-    options?.onStatusUpdate?.(status);
-    if (options?.onStateChange) {
-      options.onStateChange(status.state);
+  for (let attempt = 0; ; attempt += 1) {
+    if (control.cancelled) throw new RetryCancelledError();
+    try {
+      const status = await getRunStatus(statusUrl);
+      consecutiveErrors = 0;
+      lastStatus = status;
+      options?.onStatusUpdate?.(status);
+      options?.onStateChange?.(status.state);
+      if (status.state === "complete" || status.state === "failure") {
+        return status;
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) throw new RunLostError();
+      if (!isTransientPollError(err)) throw err;
+      consecutiveErrors += 1;
+      if (consecutiveErrors > MAX_CONSECUTIVE_POLL_ERRORS) throw err;
+      await control.wait(backoffDelayMs(consecutiveErrors - 1, err instanceof ApiError ? err.retryAfterSeconds : undefined));
+      continue;
     }
-    if (status.state === "complete" || status.state === "failure") {
-      return status;
+    if (Date.now() - startedAt > maxDurationMs) {
+      throw new RunStillPendingError(lastStatus);
     }
-    const delay = options?.intervalMs ?? getAdaptivePollDelayMs(attempt);
-    await sleep(delay);
+    let delay = options?.intervalMs ?? getAdaptivePollDelayMs(attempt);
+    // Far back in a busy queue: poll gently, the position changes slowly.
+    if (lastStatus?.state === "queue" && (lastStatus.submissions_ahead ?? lastStatus.queue_position ?? 0) > 3) {
+      delay = Math.max(delay, 2_000);
+    }
+    await control.wait(delay);
   }
-
-  throw new Error("Sandbox run timed out before completion.");
 }
 
 export async function getRunResult(
@@ -149,9 +227,10 @@ export async function getRunResult(
         headers: { [SANDBOX_SESSION_HEADER]: sessionId },
       });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
+      if (error instanceof ApiError && error.status === 404) throw new RunLostError();
+      if (isTransientPollError(error)) {
         const delay = options?.intervalMs ?? (attempt < 3 ? 150 : 350);
-        await sleep(delay);
+        await sleep(error instanceof ApiError && error.status >= 500 ? Math.max(delay, 1_000) : delay);
         continue;
       }
       throw error;
@@ -177,6 +256,7 @@ export async function getSandboxAiFeedback(runId: string, sessionId: string) {
     {},
     {
       headers: { [SANDBOX_SESSION_HEADER]: sessionId },
+      timeoutMs: AI_TIMEOUT_MS,
     }
   );
 }
@@ -194,17 +274,34 @@ export async function streamSandboxAiFeedback(
   }
 
   const url = resolveUrl(`/sandbox/runs/${runId}/ai-feedback/stream`);
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      [SANDBOX_SESSION_HEADER]: sessionId,
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        [SANDBOX_SESSION_HEADER]: sessionId,
+      },
+      body: JSON.stringify({}),
     },
-    body: JSON.stringify({}),
-  });
+    AI_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
-    throw new Error(`Failed to stream AI feedback (${response.status})`);
+    let detail: ApiErrorDetail | undefined;
+    let message = `Failed to stream AI feedback (${response.status})`;
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body.detail === "string") {
+        message = body.detail;
+      } else if (body.detail && typeof body.detail === "object") {
+        detail = body.detail as ApiErrorDetail;
+        if (typeof detail.message === "string") message = detail.message;
+      }
+    } catch {
+      // Keep the generic message.
+    }
+    throw new ApiError(response.status, message, detail);
   }
 
   if (!response.body) {
@@ -226,7 +323,45 @@ export async function streamSandboxAiFeedback(
   return fullText;
 }
 
-let conceptsMetadataCache: Promise<Record<string, ConceptMetadata>> | null = null;
+/**
+ * AI feedback with automatic retries while the tutor is busy or slow. Falls back
+ * to the non-streaming endpoint only when the stream could not connect at all;
+ * busy/timeout answers are retried instead, so overload never doubles GPU work.
+ */
+export async function requestAiFeedbackWithRetry(
+  runId: string,
+  sessionId: string,
+  control: WaitControl,
+  onChunk: (chunk: string) => void,
+  onWait?: (waitMs: number, attempt: number, error: ApiError) => void,
+): Promise<string> {
+  let useStream = true;
+  for (let attempt = 0; attempt < MAX_AI_ATTEMPTS; attempt += 1) {
+    if (control.cancelled) throw new RetryCancelledError();
+    let failure: unknown;
+    try {
+      const text = useStream
+        ? await streamSandboxAiFeedback(runId, sessionId, onChunk)
+        : (await getSandboxAiFeedback(runId, sessionId)).ai_feedback;
+      if (!isLegacyAiFailureText(text)) return text;
+      // Older backend: an outage arrived as a 200 with warning text.
+      failure = new ApiError(503, text.replace(/^\s*⚠️\s*/, ""), { code: "ai_timeout" });
+    } catch (err) {
+      failure = err;
+    }
+    const action = aiFailureAction(failure);
+    if (action === "fallback" && useStream) {
+      useStream = false;
+      continue;
+    }
+    if (action !== "retry" || attempt === MAX_AI_ATTEMPTS - 1) throw failure;
+    const apiError = failure as ApiError;
+    const waitMs = backoffDelayMs(attempt + 1, apiError.retryAfterSeconds);
+    onWait?.(waitMs, attempt + 1, apiError);
+    await control.wait(waitMs);
+  }
+  throw new Error("AI feedback is unavailable right now.");
+}
 
 export function getConceptsMetadata() {
   if (!conceptsMetadataCache) {

@@ -59,6 +59,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > p3b (Claude): trimmed to 65 or fewer; shorter hint and follow-ons
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -73,12 +75,12 @@ status: accepted
     {
       "test_key": "methods",
       "what_went_wrong": "This fails for the same reason.",
-      "hint": "This follows from the Student setup; fix that first."
+      "hint": "This follows from the Student setup."
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "This fails for the same reason.",
-      "hint": "This follows from the Student setup too."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix the Student setup first."
     }
   ],
   "next_step": "Compare Student with the assignment's requirements."

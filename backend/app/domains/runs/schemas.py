@@ -31,6 +31,14 @@ class RunStatusResponse(BaseModel):
     counters: RunCounters
     backpressure: QueueBackpressure
     message: str | None = None
+    # Live, aggregate queue info for a waiting run: how many submissions were queued
+    # before it (a count only) and a wait estimate from recent grading times.
+    # submissions_ahead is None when SANDBOX_SHOW_QUEUE_AHEAD is off.
+    submissions_ahead: int | None = Field(default=None, ge=0)
+    eta_seconds: int | None = Field(default=None, ge=0)
+    failure_category: str | None = None
+    # True when the run failed because of the grader, not the student's code.
+    grader_fault: bool = False
 
 
 from datetime import datetime

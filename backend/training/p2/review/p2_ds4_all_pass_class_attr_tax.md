@@ -49,12 +49,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step is optional curiosity about class attributes
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes and your abstract DessertItem class and tax totals work.",
   "items": [],
-  "next_step": "Optional: your shared tax rate works; read how class and instance attributes differ."
+  "next_step": "Optional: read how class and instance attributes differ."
 }
 ```

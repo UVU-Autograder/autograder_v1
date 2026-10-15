@@ -55,6 +55,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > p3b (Claude): shorter follow-on items and first hint
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -68,13 +70,13 @@ status: accepted
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "This fails for the same reason.",
+      "what_went_wrong": "Same cause.",
       "hint": "This follows from the class name."
     },
     {
       "test_key": "demo_output",
       "what_went_wrong": "demo.py cannot import it either.",
-      "hint": "This follows from the class name too."
+      "hint": "Same cause."
     }
   ],
   "next_step": "Review the class definition in account.py."

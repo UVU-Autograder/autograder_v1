@@ -48,12 +48,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step is optional curiosity, not a reuse instruction
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes, including your relational operators and Order.sort.",
   "items": [],
-  "next_step": "Optional: your __ne__ works; could it reuse __eq__ instead of repeating the comparison?"
+  "next_step": "Optional: could __ne__ reuse __eq__ instead of repeating it?"
 }
 ```

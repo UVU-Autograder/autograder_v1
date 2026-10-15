@@ -76,6 +76,11 @@ def audit_context(**fields: Any) -> Generator[None, None, None]:
         _AUDIT_CONTEXT.reset(token)
 
 
+def current_audit_context() -> dict[str, Any]:
+    """The ambient fields set by an enclosing audit_context (empty outside one)."""
+    return dict(_AUDIT_CONTEXT.get() or {})
+
+
 def sanitize_audit_value(value: Any) -> Any:
     if isinstance(value, str):
         return redact_sensitive_text(value)

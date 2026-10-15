@@ -57,26 +57,28 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > p3b (Claude): summary no longer says "default"; shorter hint and follow-ons; trimmed to 65 words
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your cost calculations work, but every tax comes out too high.",
+  "summary": "Your costs work, but every tax comes out too high.",
   "items": [
     {
       "test_key": "tax_percent",
       "what_went_wrong": "A new Candy's tax rate is higher than the test expects.",
-      "hint": "Where does a new dessert get its tax rate, and is it right?"
+      "hint": "Where does a new dessert get its tax rate?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is too high as a result.",
+      "what_went_wrong": "The Cookie tax is high as a result.",
       "hint": "Fix the tax rate first."
     },
     {
       "test_key": "order_totals",
       "what_went_wrong": "The order tax is high too.",
-      "hint": "This follows from the tax rate."
+      "hint": "Same cause."
     }
   ],
   "next_step": "Review the DessertItem constructor."

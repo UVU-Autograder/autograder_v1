@@ -36,12 +36,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Both parts of the lab pass their automated checks.",
   "items": [],
-  "next_step": "Try another pixel filter, such as sepia or inversion, using the same loop."
+  "next_step": "Optional: try a sepia filter using the same loop."
 }
 ```

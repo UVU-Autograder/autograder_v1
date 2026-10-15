@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from celery.exceptions import Retry
 
 from fastapi import HTTPException
@@ -71,6 +72,12 @@ def grade_sandbox_run(
         token = claim(run_id)
     except QueueFullError:
         raise self.retry(countdown=2, max_retries=None)
+    except HTTPException as exc:
+        # The scheduler lock or database was momentarily unavailable. Retry: failing
+        # here would leave the student's run "queued" until its ticket expired.
+        if exc.status_code != 503:
+            raise
+        raise self.retry(countdown=2 + random.random() * 3, max_retries=None) from None
     if token is None:
         return {"run_id": run_id, "state": "ignored"}
     return execute_sandbox_run(
@@ -344,6 +351,10 @@ def grade_official_run(self, run_id: int, token: str | None = None) -> dict:
         claimed = claim(f"official:{run_id}", token)
     except QueueFullError:
         raise self.retry(countdown=2, max_retries=None)
+    except HTTPException as exc:
+        if exc.status_code != 503:
+            raise
+        raise self.retry(countdown=2 + random.random() * 3, max_retries=None) from None
     if not claimed:
         return {"run_id": run_id, "state": "ignored"}
     try:

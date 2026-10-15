@@ -121,6 +121,14 @@ export type RunStatusResponse = {
     eta_band: string | null;
     message: string | null;
     counters?: RunCounters;
+    // Newer backends only; optional so the UI works against either version.
+    /** Anonymous count of submissions queued before this one (null when hidden). */
+    submissions_ahead?: number | null;
+    /** Estimated seconds until this run starts, from recent grading times. */
+    eta_seconds?: number | null;
+    failure_category?: string | null;
+    /** The run failed because of the grader, not the student's code. */
+    grader_fault?: boolean;
 };
 
 export function runProcessedCount(counters: RunCounters | undefined): number {

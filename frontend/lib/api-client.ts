@@ -12,15 +12,40 @@ function getMockHandlers(): Promise<typeof import("./mock-handlers")> | null {
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
 
+/** Structured fields the backend may put in an error body's ``detail`` object. */
+export type ApiErrorDetail = {
+    code?: string;
+    message?: string;
+    retry_after_seconds?: number;
+    ahead?: number;
+    [key: string]: unknown;
+};
+
 export class ApiError extends Error {
     status: number;
+    /** Machine-readable reason from the backend ("queue_full", "ai_busy", ...), or "client_timeout"/"network_error". */
+    code?: string;
+    /** How long the backend suggests waiting before a retry. */
+    retryAfterSeconds?: number;
+    detail?: ApiErrorDetail;
 
-    constructor(status: number, message: string) {
+    constructor(status: number, message: string, detail?: ApiErrorDetail) {
         super(message);
         this.name = "ApiError";
         this.status = status;
+        this.detail = detail;
+        this.code = detail?.code;
+        if (typeof detail?.retry_after_seconds === "number") {
+            this.retryAfterSeconds = detail.retry_after_seconds;
+        }
     }
 }
+
+/** Default time limits so a request that never answers cannot leave the UI stuck. */
+export const REQUEST_TIMEOUT_MS = 20_000;
+export const UPLOAD_TIMEOUT_MS = 90_000;
+/** Above the backend's worst case for AI feedback: up to ~20 s queued + 30 s generating + one 30 s retry. */
+export const AI_TIMEOUT_MS = 120_000;
 
 export function isMockApiEnabled(): boolean {
     if (process.env.NODE_ENV === "production") {
@@ -72,18 +97,47 @@ export function resolveUrl(path: string): string {
 
 type ApiFetchOptions = {
     headers?: Record<string, string>;
+    /** Abort after this many milliseconds (default REQUEST_TIMEOUT_MS). */
+    timeoutMs?: number;
 };
 
-async function parseErrorMessage(response: Response): Promise<string> {
+async function parseError(response: Response): Promise<{ message: string; detail?: ApiErrorDetail }> {
     try {
-        const body = (await response.json()) as { detail?: string };
+        const body = (await response.json()) as { detail?: unknown };
         if (typeof body.detail === "string") {
-            return body.detail;
+            return { message: body.detail };
+        }
+        if (body.detail && typeof body.detail === "object" && !Array.isArray(body.detail)) {
+            const detail = body.detail as ApiErrorDetail;
+            return { message: typeof detail.message === "string" ? detail.message : response.statusText, detail };
         }
     } catch {
         // Fall back to status text below.
     }
-    return response.statusText;
+    return { message: response.statusText };
+}
+
+async function parseErrorMessage(response: Response): Promise<string> {
+    return (await parseError(response)).message;
+}
+
+/** fetch with a time limit; aborts and network failures become ApiErrors with a code. */
+export async function fetchWithTimeout(
+    url: string,
+    init: RequestInit = {},
+    timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+    const signal = typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+        ? AbortSignal.timeout(timeoutMs)
+        : undefined;
+    try {
+        return await fetch(url, signal ? { ...init, signal } : init);
+    } catch (err) {
+        if (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError")) {
+            throw new ApiError(0, "The server took too long to answer. Please try again.", { code: "client_timeout" });
+        }
+        throw new ApiError(0, "Could not reach the server. Check your connection and try again.", { code: "network_error" });
+    }
 }
 
 function handleResponseError(response: Response, path: string): void {
@@ -142,15 +196,17 @@ async function apiFetch<T>(
         }
     }
 
-    const response = await fetch(resolveUrl(path), {
-        ...init,
-        headers,
-    });
+    const { timeoutMs, ...requestInit } = init ?? {};
+    const response = await fetchWithTimeout(
+        resolveUrl(path),
+        { ...requestInit, headers },
+        timeoutMs ?? REQUEST_TIMEOUT_MS,
+    );
 
     if (!response.ok) {
-        const message = await parseErrorMessage(response);
+        const { message, detail } = await parseError(response);
         handleResponseError(response, path);
-        throw new ApiError(response.status, message);
+        throw new ApiError(response.status, message, detail);
     }
 
     if (response.status === 204) {
@@ -183,7 +239,7 @@ async function apiFetch<T>(
 
 export const apiClient = {
     get: <T>(path: string, options?: ApiFetchOptions) =>
-        apiFetch<T>(path, { method: "GET", headers: options?.headers }).then((result) => result.data),
+        apiFetch<T>(path, { method: "GET", headers: options?.headers, timeoutMs: options?.timeoutMs }).then((result) => result.data),
 
     getText: (path: string, options?: ApiFetchOptions): Promise<string> =>
         apiFetch<string>(path, { method: "GET", headers: options?.headers }).then((res) => String(res.data)),
@@ -193,6 +249,7 @@ export const apiClient = {
             method: "POST",
             body: JSON.stringify(body),
             headers: options?.headers,
+            timeoutMs: options?.timeoutMs,
         }).then((result) => result.data),
 
     postForm: <T>(path: string, formData: FormData, options?: ApiFetchOptions) =>
@@ -200,6 +257,7 @@ export const apiClient = {
             method: "POST",
             body: formData,
             headers: options?.headers,
+            timeoutMs: options?.timeoutMs ?? UPLOAD_TIMEOUT_MS,
         }),
 
     put: <T>(path: string, body: unknown, options?: ApiFetchOptions) =>

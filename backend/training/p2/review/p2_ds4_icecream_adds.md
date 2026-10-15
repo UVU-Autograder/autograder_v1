@@ -55,26 +55,28 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p3b (Claude): hint is one sentence now; shorter summary and follow-ons; trimmed to 65 words
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your Candy and Cookie costs are right, but IceCream's cost is off.",
+  "summary": "Your Candy and Cookie costs are right, but IceCream's is off.",
   "items": [
     {
       "test_key": "calculate_cost",
       "what_went_wrong": "IceCream's cost is higher than the test expects.",
-      "hint": "Where does IceCream.calculate_cost differ from working the cost out by hand?"
+      "hint": "How does IceCream.calculate_cost differ from working it out by hand?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The tax is too high because the cost is.",
+      "what_went_wrong": "The tax is high because the cost is.",
       "hint": "Fix the IceCream cost first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is high as well.",
-      "hint": "This clears once IceCream's cost is right."
+      "what_went_wrong": "The order cost is high too.",
+      "hint": "Same cause."
     }
   ],
   "next_step": "Review IceCream.calculate_cost in dessert.py."

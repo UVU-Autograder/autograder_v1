@@ -44,12 +44,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step is an optional super() curiosity
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: approved
 
 ```json
 {
   "summary": "Great job! Every test passes and your whole dessert class hierarchy is set up correctly.",
   "items": [],
-  "next_step": "Optional: your direct DessertItem.__init__ call works; look up how super() differs."
+  "next_step": "Optional: look up how super() differs from your direct call."
 }
 ```

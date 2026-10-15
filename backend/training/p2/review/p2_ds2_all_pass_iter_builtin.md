@@ -47,12 +47,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; optional next_step affirms returning the list's iterator and keeps the unused-__next__ point
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes and your Order class works in a for loop.",
   "items": [],
-  "next_step": "Optional: returning the list's iterator works; look up why your __next__ never runs."
+  "next_step": "Optional: look up why your __next__ never runs."
 }
 ```

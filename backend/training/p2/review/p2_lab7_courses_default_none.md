@@ -57,11 +57,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > p3b (Claude): trimmed to 65 or fewer; first hint is now one sentence
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Sorting works, but a new Student has no usable course list.",
+  "summary": "Sorting works, but new Students have no usable course list.",
   "items": [
     {
       "test_key": "dataclass",
@@ -71,12 +73,12 @@ status: accepted
     {
       "test_key": "methods",
       "what_went_wrong": "total_courses has no list to count.",
-      "hint": "This follows from that field; fix it first."
+      "hint": "Same cause."
     },
     {
       "test_key": "main_output",
       "what_went_wrong": "enroll fails for the same reason.",
-      "hint": "This clears once that is fixed."
+      "hint": "Same fix."
     }
   ],
   "next_step": "Review the fields in Student."

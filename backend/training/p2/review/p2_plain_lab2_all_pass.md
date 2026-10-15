@@ -36,12 +36,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Your Account class passes all the automated tests.",
   "items": [],
-  "next_step": "Try adding a deposit method to Account and printing the updated balance in demo.py."
+  "next_step": "Optional: add a deposit method and print the new balance."
 }
 ```

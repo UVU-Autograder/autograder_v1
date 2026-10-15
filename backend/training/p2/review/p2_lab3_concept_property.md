@@ -47,12 +47,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "All the tests pass and your encapsulation works, though YouTubeChannel uses @property from Module 3.",
   "items": [],
-  "next_step": "Replace the @property in YouTubeChannel with your getter method to match this module's concepts."
+  "next_step": "Replace the @property with your getter to fit this module."
 }
 ```

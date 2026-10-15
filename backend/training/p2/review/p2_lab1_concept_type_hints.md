@@ -45,12 +45,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Both parts of the lab pass their automated checks, though bears2.py uses type hints from Module 2.",
   "items": [],
-  "next_step": "Remove the type annotations in bears2.py to match this module's allowed concepts."
+  "next_step": "Remove the type annotations in bears2.py for this module."
 }
 ```

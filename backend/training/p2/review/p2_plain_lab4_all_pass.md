@@ -36,12 +36,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Your title, author, and description properties all pass their tests.",
   "items": [],
-  "next_step": "Try adding a validated year property to Book using the same property pattern."
+  "next_step": "Optional: add a validated year property using the same pattern."
 }
 ```

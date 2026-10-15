@@ -32,7 +32,7 @@ import threading
 import time
 from pathlib import Path
 
-from app.integrations.ai.prompts import RESPONSE_JSON_SCHEMA, build_messages, parse_response
+from app.integrations.ai.prompts import PROMPT_VERSIONS, RESPONSE_JSON_SCHEMA, parse_response, prompt_version_for
 
 from eval.client import ChatClient
 from eval.schemas import load_cases
@@ -44,20 +44,8 @@ CASES_FILE = Path(__file__).parent / "cases.jsonl"
 BACKEND_TIMEOUT_S = 30.0  # app.integrations.llm.client.LocalLLMClient default
 
 
-def sandbox_prompts() -> list[list[dict[str, str]]]:
-    return [
-        build_messages(
-            assignment_title=case.assignment_title,
-            requirements=case.requirements,
-            allowed_concepts=case.allowed_concepts,
-            failures=case.failures,
-            concept_violations=case.concept_violations,
-            student_code=case.student_code,
-            code_files=case.code_files or None,
-            passing_labels=case.passing_labels or None,
-        )
-        for case in load_cases(CASES_FILE)
-    ]
+def sandbox_prompts(prompt_version: str | None = None) -> list[list[dict[str, str]]]:
+    return [case.messages(prompt_version) for case in load_cases(CASES_FILE)]
 
 
 def run_level(args, prompts: list, concurrency: int, metrics_url: str | None) -> dict:
@@ -140,6 +128,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-guided", action="store_true", help="skip JSON-schema decoding (the sandbox uses it)")
     parser.add_argument("--keep-going", action="store_true", help="run every level even past saturation")
     parser.add_argument("--json-out", type=Path, help="also write the results here")
+    parser.add_argument("--prompt-version", choices=PROMPT_VERSIONS,
+                        help="default: the version the backend uses for --model (LOCAL_LLM_PROMPT_VERSIONS)")
     args = parser.parse_args(argv)
 
     levels = [int(x) for x in args.levels.split(",") if x.strip()]
@@ -149,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
     if metrics_url and not read_vllm_metrics(metrics_url):
         print(f"(vLLM metrics not readable at {metrics_url}; queue columns will be blank)")
         metrics_url = None
-    prompts = sandbox_prompts()
+    prompts = sandbox_prompts(args.prompt_version or prompt_version_for(args.model))
     print(f"{len(prompts)} sandbox prompts -> {args.model} at {args.endpoint}, {args.duration:.0f} s per level\n")
     print(f"{'in flight':>9} {'reqs':>5} {'err':>4} {'>30s':>5} {'p50 s':>6} {'p95 s':>6} {'max s':>6} {'req/s':>6} "
           f"{QUEUE_GPU_HEADER}")

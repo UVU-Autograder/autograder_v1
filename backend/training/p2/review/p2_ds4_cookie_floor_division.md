@@ -55,11 +55,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p3b (Claude): shorter first item and follow-on items; trimmed to 65 words
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
 {
-  "summary": "Your abstract class and tax rate work; the Cookie cost is off.",
+  "summary": "Your tax rate works; the Cookie cost is off.",
   "items": [
     {
       "test_key": "calculate_cost",
@@ -68,13 +70,13 @@ status: accepted
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is too low as a result.",
+      "what_went_wrong": "The Cookie tax is low as a result.",
       "hint": "Fix the Cookie cost first."
     },
     {
       "test_key": "order_totals",
       "what_went_wrong": "The order cost is low too.",
-      "hint": "This follows from the Cookie cost too."
+      "hint": "Same cause."
     }
   ],
   "next_step": "Review Cookie.calculate_cost in dessert.py."

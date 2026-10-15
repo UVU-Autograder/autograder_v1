@@ -36,12 +36,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Your dessert classes and every one of your own unit tests pass.",
   "items": [],
-  "next_step": "Try writing one failing test in test_dessert.py to see how pytest reports the failure."
+  "next_step": "Optional: write one failing test to see pytest's report."
 }
 ```

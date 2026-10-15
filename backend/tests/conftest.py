@@ -155,6 +155,14 @@ class FakeRedis:
         self.data[key] = str(val)
         return val
 
+    def incr(self, key: str, amount: int = 1) -> int:
+        val = int(self.data.get(key) or 0) + amount
+        self.data[key] = str(val)
+        return val
+
+    def decr(self, key: str, amount: int = 1) -> int:
+        return self.incr(key, -amount)
+
     def delete(self, *keys: str) -> int:
         count = 0
         for k in keys:
@@ -175,6 +183,21 @@ class FakeRedis:
     def expire(self, key: str, time: int) -> bool:
         return True
 
+    def mget(self, keys: list[str]) -> list[str | None]:
+        return [self.data.get(k) if not isinstance(self.data.get(k), list) else None for k in keys]
+
+    def lpush(self, key: str, *values: Any) -> int:
+        lst = self.data.setdefault(key, [])
+        for value in values:
+            lst.insert(0, str(value))
+        return len(lst)
+
+    def ltrim(self, key: str, start: int, end: int) -> bool:
+        lst = self.data.get(key)
+        if isinstance(lst, list):
+            self.data[key] = lst[start:] if end == -1 else lst[start:end + 1]
+        return True
+
     def lrange(self, key: str, start: int, end: int) -> list[str]:
         lst = self.data.get(key)
         if lst is None:
@@ -183,14 +206,16 @@ class FakeRedis:
             return lst[start:]
         return lst[start:end+1]
 
-    def pipeline(self) -> FakePipeline:
+    def pipeline(self, transaction: bool = True) -> FakePipeline:
         return FakePipeline(self)
 
 
 class FakePipeline:
+    """Queues any client command and replays them in order on execute()."""
+
     def __init__(self, client: FakeRedis) -> None:
         self.client = client
-        self.commands: list[tuple[str, str, Any]] = []
+        self.commands: list[tuple[str, tuple[Any, ...], dict[str, Any]]] = []
 
     def watch(self, *args: Any, **kwargs: Any) -> FakePipeline:
         return self
@@ -201,16 +226,17 @@ class FakePipeline:
     def multi(self, *args: Any, **kwargs: Any) -> FakePipeline:
         return self
 
-    def set(self, key: str, value: Any, *args: Any, **kwargs: Any) -> FakePipeline:
-        self.commands.append(("set", key, value))
-        return self
+    def __getattr__(self, name: str):
+        def queue(*args: Any, **kwargs: Any) -> FakePipeline:
+            self.commands.append((name, args, kwargs))
+            return self
+
+        return queue
 
     def execute(self) -> list[Any]:
-        for cmd, key, val in self.commands:
-            if cmd == "set":
-                self.client.set(key, val)
+        results = [getattr(self.client, name)(*args, **kwargs) for name, args, kwargs in self.commands]
         self.commands = []
-        return []
+        return results
 
 
 @pytest.fixture(autouse=True)

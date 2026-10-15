@@ -47,12 +47,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "All of your operator tests pass, though Money uses a generator from Module 4.",
   "items": [],
-  "next_step": "Remove the generator __iter__ from Money to match this module's allowed concepts."
+  "next_step": "Remove the generator __iter__ from Money for this module."
 }
 ```

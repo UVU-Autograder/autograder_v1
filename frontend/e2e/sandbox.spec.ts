@@ -1,6 +1,13 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Sandbox Student Acceptance Suite", () => {
+  // These tests run against the real backend on :8000 (the playwright webServer), and the
+  // run test intercepts its requests there. `npm run dev` defaults to the in-browser mock
+  // API, which never calls :8000, so switch it off for this page (lib/api-client.ts reads it).
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.sessionStorage.setItem("mock_api", "false"));
+  });
+
   test("catalog displays available sandbox courses", async ({ page }) => {
     await page.goto("/sandbox");
     await expect(page.getByText("Fundamentals of Programming")).toBeVisible();

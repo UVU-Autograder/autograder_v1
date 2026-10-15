@@ -54,6 +54,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > p3b (Claude): shortened summary, first item, demo item and next_step to fit 65 words
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -67,13 +69,13 @@ status: accepted
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "This follows from the syntax error.",
-      "hint": "Does this clear once account.py loads?"
+      "what_went_wrong": "Same cause.",
+      "hint": "This clears once account.py loads."
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py imports account.py, so it fails the same way.",
-      "hint": "This clears once account.py loads."
+      "what_went_wrong": "demo.py imports account.py, so it fails too.",
+      "hint": "Same cause."
     }
   ],
   "next_step": "Review the indentation of __str__ in account.py."

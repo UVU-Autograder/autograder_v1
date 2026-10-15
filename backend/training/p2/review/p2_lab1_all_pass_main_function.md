@@ -51,12 +51,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step framed as optional
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes and both of your scripts produce valid images.",
   "items": [],
-  "next_step": "Optional: try different grayscale coefficients and see how the image contrast changes."
+  "next_step": "Optional: try other grayscale coefficients and compare the contrast."
 }
 ```

@@ -46,12 +46,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step reframed as an optional extension.
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes, from course enrollment to sorting students by ID.",
   "items": [],
-  "next_step": "Optional: read why += on a list updates it in place, like append."
+  "next_step": "Optional: read why += updates a list in place."
 }
 ```

@@ -49,12 +49,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step reframed as an optional extension.
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes, and your Money operators all work together.",
   "items": [],
-  "next_step": "Optional: if you're curious, explore what divmod returns when cents is negative."
+  "next_step": "Optional: explore what divmod returns when cents is negative."
 }
 ```

@@ -47,12 +47,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "All the cost and tax tests pass, though dessert.py uses a dataclass from a later module.",
   "items": [],
-  "next_step": "Write Box as a regular class in dessert.py to match this module's allowed concepts."
+  "next_step": "Rewrite Box as a regular class to fit this module."
 }
 ```

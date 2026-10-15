@@ -11,7 +11,10 @@
     "lint:fix": "eslint --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "postinstall": "node scripts/copy-monaco.mjs",
+    "prebuild": "node scripts/copy-monaco.mjs",
+    "predev": "node scripts/copy-monaco.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -19,6 +22,7 @@
     "clsx": "^2.1.1",
     "jszip": "^3.10.1",
     "lucide-react": "^1.17.0",
+    "monaco-editor": "0.56.0",
     "next": "16.3.6",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",

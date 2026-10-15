@@ -36,12 +36,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > v8 revision: trimmed summary and next_step to one sentence under 15 words
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Your comparison operators and Order.sort pass every test.",
   "items": [],
-  "next_step": "Try sorting a larger order in main and check that item costs increase."
+  "next_step": "Optional: sort a bigger order in main to test it."
 }
 ```

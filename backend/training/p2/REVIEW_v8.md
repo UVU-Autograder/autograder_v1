@@ -16,3 +16,10 @@
 63 targets changed; each has a `> p3b (Claude):` note.
 - **11 all-pass targets:** praise first, and the next step is an optional extension ("Optional: …"), so students with working code aren't sent back to re-check it.
 - **52 targets trimmed to 65 words or fewer**, because the model writes about 10 words more than its targets. Next steps are under 15 words.
+
+## p4 changes
+
+43 targets trimmed; each has a `> p4 (Claude):` note. p3b still ran long (15-17-word next steps, 87-106 words on 3-item cascades).
+- **26 all-pass/concept targets:** next step 10 words or fewer.
+- **17 three-item targets:** 55 words or fewer; follow-on items say "Same cause." or "Fix X first."
+- **34 new cases** (`p4_*`, not drafted yet): 23 injection attempts the feedback must ignore, and 11 arithmetic/rounding bugs where the test message points at the wrong thing.

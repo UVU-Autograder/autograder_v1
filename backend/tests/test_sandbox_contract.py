@@ -228,7 +228,9 @@ def test_quota_rejects_sixth_upload_in_one_hour(client, monkeypatch):
 
     assert [item.status_code for item in responses[:5]] == [202, 202, 202, 202, 202]
     assert responses[5].status_code == 429
-    assert responses[5].json()["detail"] == "Sandbox upload quota exhausted."
+    detail = responses[5].json()["detail"]
+    assert detail["code"] == "quota_exhausted"
+    assert detail["limit"] == 5 and detail["reset_at"]
 
 
 def test_cancel_only_queued_runs_with_matching_session(client):

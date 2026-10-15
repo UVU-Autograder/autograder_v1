@@ -62,6 +62,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > p3b (Claude): trimmed to 65 words; hint is one sentence now
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -76,12 +78,12 @@ status: accepted
     {
       "test_key": "candy",
       "what_went_wrong": "Candy fails inside DessertItem's constructor.",
-      "hint": "This follows from the DessertItem.__init__ problem; fix that first."
+      "hint": "Fix DessertItem.__init__ first."
     },
     {
       "test_key": "cookie",
       "what_went_wrong": "This fails for the same reason.",
-      "hint": "This clears once DessertItem.__init__ works."
+      "hint": "This clears with it."
     }
   ],
   "next_step": "Review DessertItem.__init__; fixing it clears IceCream and Sundae."

@@ -60,6 +60,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `add`, `m
 
 > p3b (Claude): shortened summary, first item and add hint to fit 65 words
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -74,12 +76,12 @@ status: accepted
     {
       "test_key": "add",
       "what_went_wrong": "The sum has too few dollars.",
-      "hint": "This follows from the same problem."
+      "hint": "Same cause."
     },
     {
       "test_key": "mul",
-      "what_went_wrong": "The product has too few dollars too.",
-      "hint": "This clears once that is fixed."
+      "what_went_wrong": "The product is short too.",
+      "hint": "Same fix."
     }
   ],
   "next_step": "Trace Money.__init__; the eq test clears too."

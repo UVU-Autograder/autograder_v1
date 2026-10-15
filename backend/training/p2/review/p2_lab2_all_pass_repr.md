@@ -46,12 +46,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step reframed as an optional extension.
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes, and printing an Account shows its full summary.",
   "items": [],
-  "next_step": "Optional: look up how print() falls back to __repr__, which your Account uses."
+  "next_step": "Optional: look up how print() falls back to __repr__."
 }
 ```

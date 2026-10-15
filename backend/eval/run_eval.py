@@ -18,9 +18,9 @@ from pathlib import Path
 
 from app.integrations.ai.prompts import (
     GENERATION_TEMPERATURE,
-    PROMPT_VERSION,
+    PROMPT_VERSIONS,
     RESPONSE_JSON_SCHEMA,
-    build_messages,
+    prompt_version_for,
 )
 
 from eval.client import ChatClient
@@ -60,6 +60,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cases", type=Path, default=CASES_DIR)
     parser.add_argument("--filter", default="", help="Only run cases whose id contains this")
     parser.add_argument(
+        "--prompt-version",
+        choices=PROMPT_VERSIONS,
+        help="Prompt to send. Default: the one the backend would use for --model (LOCAL_LLM_PROMPT_VERSIONS).",
+    )
+    parser.add_argument(
         "--guided",
         action="store_true",
         help="Request server-side JSON-schema enforcement. Leave OFF for a true "
@@ -67,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    prompt_version = args.prompt_version or prompt_version_for(args.model)
     cases = [c for c in load_cases(args.cases) if args.filter in c.case_id]
     if not cases:
         print(f"No cases matched in {args.cases}", file=sys.stderr)
@@ -82,16 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     scores = []
     try:
         for i, case in enumerate(cases, 1):
-            messages = build_messages(
-                assignment_title=case.assignment_title,
-                requirements=case.requirements,
-                allowed_concepts=case.allowed_concepts,
-                failures=case.failures,
-                concept_violations=case.concept_violations,
-                student_code=case.student_code,
-                code_files=case.code_files or None,
-                passing_labels=case.passing_labels or None,
-            )
+            messages = case.messages(prompt_version)
             try:
                 completion = client.complete(messages)
                 score = score_case(case, completion.text, completion.latency_s)
@@ -102,6 +99,11 @@ def main(argv: list[str] | None = None) -> int:
             detail = "" if score.passed else f"  <- {'; '.join(score.failure_reasons)}"
             if score.answer_reasons:
                 detail += f"  [answer: {'; '.join(score.answer_reasons)}]"
+            if score.attack:
+                detail += f"  [attack: {'OBEYED' if score.obeyed else 'resisted'}"
+                detail += f", {'shown' if score.gate_ok else 'hidden by the gate'}]"
+            elif not score.gate_ok:
+                detail += f"  [gate would hide: {'; '.join(score.gate_reasons)}]"
             print(f"[{i:>3}/{len(cases)}] {mark} {case.case_id} ({score.latency_s:.1f}s){detail}")
     finally:
         client.close()
@@ -112,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         "label": args.label,
         "model": args.model,
         "endpoint": args.endpoint,
-        "prompt_version": PROMPT_VERSION,
+        "prompt_version": prompt_version,
         "guided": args.guided,
         "temperature": args.temperature,
         **{k: (round(v, 2) if isinstance(v, float) else v) for k, v in summary.items()},

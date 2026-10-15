@@ -61,6 +61,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > p3b (Claude): trimmed to 65 or fewer; shorter first item and follow-ons
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -70,17 +72,17 @@ status: accepted
     {
       "test_key": "dataclass",
       "what_went_wrong": "Python rejects Student: a field without a default follows one with a default.",
-      "hint": "In Student, which of the error's two fields comes first, and which has a default?"
+      "hint": "Which of the error's two fields comes first, and which has a default?"
     },
     {
       "test_key": "methods",
-      "what_went_wrong": "This test fails the same way.",
+      "what_went_wrong": "Same cause.",
       "hint": "This follows from the field order."
     },
     {
       "test_key": "ordering",
-      "what_went_wrong": "This fails the same way.",
-      "hint": "Fix the field order first."
+      "what_went_wrong": "Same cause.",
+      "hint": "Same fix."
     }
   ],
   "next_step": "Review the field order in Student."

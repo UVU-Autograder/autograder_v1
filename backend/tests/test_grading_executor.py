@@ -185,3 +185,22 @@ async def test_executor_judge0_error(tmp_path):
         failure_category="judge0_error",
         failure_message="boom",
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ambient, expected", [(None, "official"), ("sandbox", "sandbox")])
+async def test_cleanup_failure_audit_names_the_workflow(tmp_path, ambient, expected):
+    from contextlib import nullcontext
+
+    from app.core.audit_log import audit_context
+
+    client = _mock_judge0_client(delete_error=Judge0CleanupError("delete failed"))
+    with patch("app.domains.grading.executor.create_judge0_client", return_value=client), patch(
+        "app.domains.grading.executor.log_and_audit_error"
+    ) as audit:
+        with audit_context(workflow_type=ambient) if ambient else nullcontext():
+            await execute_pytest_in_judge0(
+                tmp_path, test_filenames=["tests.py"], test_cases={}, entrypoint_module="main",
+                language_id=71, cpu_time_limit=10.0,
+            )
+    assert audit.call_args.kwargs["workflow_type"] == expected

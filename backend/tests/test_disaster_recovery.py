@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx
+import pytest
 from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.orm import sessionmaker
 
@@ -28,6 +29,7 @@ from app.domains.assignments.models import (
 from app.domains.auth.models import Role, User
 from app.domains.courses.models import Course, Module, Section
 from app.domains.grading.engine import GradingResult
+from app.domains.sandbox.service import AiFeedbackUnavailable
 from app.domains.runs.models import RunSummary
 from app.domains.sandbox.service import SandboxService
 from app.domains.sandbox.store import InMemoryRunStateStore
@@ -294,21 +296,23 @@ def test_local_ai_outage_does_not_block_or_fail_grading_runs() -> None:
             assert len(result_resp.test_summaries) == 1
             assert result_resp.test_summaries[0].status == "failed"
 
-            ai_resp = service.generate_ai_feedback(run_id, session_id)
-            assert ai_resp is not None
-            assert "unreachable" in ai_resp.ai_feedback.lower()
+            # An outage is reported as a coded error the UI can retry, not as feedback text.
+            with pytest.raises(AiFeedbackUnavailable) as unreachable:
+                service.generate_ai_feedback(run_id, session_id)
+            assert unreachable.value.status == 503 and unreachable.value.code == "ai_unavailable"
 
-            stream_chunks = list(service.generate_ai_feedback_stream(run_id, session_id) or [])
-            assert "unreachable" in "".join(stream_chunks).lower()
+            with pytest.raises(AiFeedbackUnavailable):
+                list(service.generate_ai_feedback_stream(run_id, session_id) or [])
 
         # Simulate Local AI timeout (TimeoutException)
         with patch(
             "httpx.Client.post",
             side_effect=httpx.TimeoutException("vLLM timed out"),
         ):
-            ai_timeout_resp = service.generate_ai_feedback(run_id, session_id)
-            assert ai_timeout_resp is not None
-            assert "timed out" in ai_timeout_resp.ai_feedback.lower()
+            with pytest.raises(AiFeedbackUnavailable) as timed_out:
+                service.generate_ai_feedback(run_id, session_id)
+            assert timed_out.value.status == 504 and timed_out.value.code == "ai_timeout"
+            assert timed_out.value.retry_after_seconds
 
 
 def test_rollout_grading_package_script_and_workstation_runbook_contracts() -> None:

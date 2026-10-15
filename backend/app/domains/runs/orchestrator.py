@@ -9,11 +9,13 @@ import base64
 import io
 import json
 import logging
+import time
 import zipfile
 from datetime import UTC, datetime
 
 import redis
 
+from app.core.audit_log import audit_context
 from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.runs.queue_admission import release_execution_slots
@@ -25,6 +27,17 @@ RUN_STATE_PREFIX = "run:state:"
 RUN_RESULT_PREFIX = "run:result:"
 RUN_CANCELLED_PREFIX = "run:cancelled:"
 RUN_STATE_TTL = 3600  # 1 hour
+# Rolling window of recent sandbox grading durations (seconds only; no run ids),
+# used to turn "N submissions ahead" into a wait estimate.
+GRADE_SECONDS_KEY = "sandbox:grade_seconds"
+GRADE_SECONDS_WINDOW = 50
+DEFAULT_GRADE_SECONDS = 10.0
+# When recent gradings finished (epoch seconds only). Observed throughput includes
+# every real-world overhead -- claim retries, a single Judge0 worker -- that the
+# ideal "slots x mean time" estimate misses.
+COMPLETIONS_KEY = "sandbox:completions"
+THROUGHPUT_WINDOW_SECONDS = 180
+MIN_COMPLETIONS_FOR_THROUGHPUT = 4
 
 
 def build_model_solution_zip(
@@ -63,12 +76,61 @@ def failing_automated_items(test_results: list[dict]) -> list[dict]:
 _local_state_cache: dict[str, dict] = {}
 _local_result_cache: dict[str, dict] = {}
 _local_cancelled_set: set[str] = set()
+_local_grade_seconds: list[float] = []
+_local_completions: list[float] = []
 
 
 def clear_local_orchestrator_cache() -> None:
     _local_state_cache.clear()
     _local_result_cache.clear()
     _local_cancelled_set.clear()
+    _local_grade_seconds.clear()
+    _local_completions.clear()
+
+
+def record_grade_seconds(seconds: float) -> None:
+    """Remember how long one sandbox grading took (aggregate timing only)."""
+    if seconds <= 0:
+        return
+    finished = time.time()
+    _local_grade_seconds.insert(0, seconds)
+    del _local_grade_seconds[GRADE_SECONDS_WINDOW:]
+    _local_completions.insert(0, finished)
+    del _local_completions[GRADE_SECONDS_WINDOW:]
+    try:
+        r = _get_redis()
+        r.lpush(GRADE_SECONDS_KEY, f"{seconds:.3f}")
+        r.ltrim(GRADE_SECONDS_KEY, 0, GRADE_SECONDS_WINDOW - 1)
+        r.lpush(COMPLETIONS_KEY, f"{finished:.3f}")
+        r.ltrim(COMPLETIONS_KEY, 0, GRADE_SECONDS_WINDOW - 1)
+    except Exception:
+        pass
+
+
+def recent_throughput_per_second() -> float | None:
+    """Gradings finished per second over the last few minutes, if there were enough of them."""
+    try:
+        r = _get_redis()
+        stamps = [float(v) for v in r.lrange(COMPLETIONS_KEY, 0, GRADE_SECONDS_WINDOW - 1)]
+    except Exception:
+        stamps = list(_local_completions)
+    cutoff = time.time() - THROUGHPUT_WINDOW_SECONDS
+    recent = [t for t in stamps if t >= cutoff]
+    if len(recent) < MIN_COMPLETIONS_FOR_THROUGHPUT:
+        return None
+    span = max(recent) - min(recent)
+    return (len(recent) - 1) / span if span > 0 else None
+
+
+def mean_grade_seconds() -> float:
+    """Mean of recent sandbox grading durations, or a default before any run finished."""
+    values: list[float] = []
+    try:
+        r = _get_redis()
+        values = [float(v) for v in r.lrange(GRADE_SECONDS_KEY, 0, GRADE_SECONDS_WINDOW - 1)]
+    except Exception:
+        values = list(_local_grade_seconds)
+    return sum(values) / len(values) if values else DEFAULT_GRADE_SECONDS
 
 
 def _get_redis():
@@ -100,6 +162,24 @@ def get_run_state(run_id: str) -> dict | None:
     except Exception:
         pass
     return _local_state_cache.get(run_id)
+
+
+def get_run_states(run_ids: list[str]) -> dict[str, dict]:
+    """Read many run states with one Redis round trip (status polls count every recent run)."""
+    states: dict[str, dict] = {}
+    if not run_ids:
+        return states
+    try:
+        r = _get_redis()
+        for run_id, raw in zip(run_ids, r.mget([f"{RUN_STATE_PREFIX}{rid}" for rid in run_ids])):
+            if raw is not None:
+                states[run_id] = json.loads(raw)
+    except Exception:
+        pass
+    for run_id in run_ids:
+        if run_id not in states and run_id in _local_state_cache:
+            states[run_id] = _local_state_cache[run_id]
+    return states
 
 
 def mark_run_cancelled(run_id: str) -> None:
@@ -177,6 +257,7 @@ def execute_sandbox_run(
     if is_run_cancelled(run_id):
         return _cancelled_response(run_id)
 
+    started = time.monotonic()
     try:
         from app.domains.grading.engine import GradingEngine
 
@@ -189,7 +270,8 @@ def execute_sandbox_run(
             allowed_concepts=allowed_concepts,
             expected_manifest=expected_manifest,
         )
-        grading_result = engine.grade_submission_sync(zip_data=zip_data, stdin=stdin)
+        with audit_context(workflow_type="sandbox"):
+            grading_result = engine.grade_submission_sync(zip_data=zip_data, stdin=stdin)
 
         if is_run_cancelled(run_id):
             return _cancelled_response(run_id, "Sandbox run was cancelled after pipeline execution.")
@@ -198,6 +280,7 @@ def execute_sandbox_run(
 
 
         set_run_result(run_id, result_dict)
+        record_grade_seconds(time.monotonic() - started)
         if grading_result.success:
             set_run_state(run_id, "complete")
         else:

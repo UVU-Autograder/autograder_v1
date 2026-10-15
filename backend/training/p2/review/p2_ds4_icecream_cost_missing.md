@@ -58,6 +58,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p3b (Claude): shorter summary and follow-on items; trimmed to 65 words
 
+> p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
+
 status: accepted
 
 ```json
@@ -66,18 +68,18 @@ status: accepted
   "items": [
     {
       "test_key": "calculate_cost",
-      "what_went_wrong": "Python cannot create an IceCream because it leaves a DessertItem abstract method unimplemented.",
+      "what_went_wrong": "Python cannot create an IceCream: it leaves an abstract method unimplemented.",
       "hint": "Which methods do Candy and Cookie define that IceCream does not?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "This test creates an IceCream, so it fails.",
-      "hint": "Fix the IceCream problem first."
+      "what_went_wrong": "It creates an IceCream, so it fails.",
+      "hint": "Fix IceCream first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order holds an IceCream, so it fails.",
-      "hint": "This follows from the IceCream problem."
+      "what_went_wrong": "The order holds an IceCream.",
+      "hint": "Same cause."
     }
   ],
   "next_step": "Review the IceCream class."

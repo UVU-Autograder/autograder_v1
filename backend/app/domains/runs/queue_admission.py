@@ -1,7 +1,9 @@
 """Durable, owned execution capacity; Redis is transport, not an authority."""
 from __future__ import annotations
 
+import math
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import timedelta
 from uuid import uuid4
 
@@ -19,6 +21,10 @@ HIGH_LOAD_THRESHOLD = 40
 FULL_QUEUE_THRESHOLD = 50
 # Longer than the 180s hard task limit plus Judge0's maximum 45s wall time.
 ACTIVE_LEASE_SECONDS = 240
+# Scheduling transactions are a few milliseconds, but a burst of uploads queues up
+# behind each other (and behind workers' claims). With a 2 s wait, 12 of 16
+# simultaneous uploads were turned away as "busy" in a local stress run.
+SCHEDULER_LOCK_TIMEOUT_SECONDS = 10.0
 
 
 class QueueFullError(Exception):
@@ -27,7 +33,7 @@ class QueueFullError(Exception):
 
 @contextmanager
 def transaction():
-    lock = retention.control_lock("scheduler")
+    lock = retention.control_lock("scheduler", timeout=SCHEDULER_LOCK_TIMEOUT_SECONDS)
     try:
         lock.__enter__()
     except OSError:
@@ -140,13 +146,76 @@ def reset_admission_state_for_tests() -> None:
         db.execute(delete(ExecutionTicket))
 
 
-def backpressure_snapshot() -> QueueBackpressure:
-    waiting = waiting_count()
+def backpressure_for(waiting: int) -> QueueBackpressure:
     return QueueBackpressure(
         high_load_threshold=HIGH_LOAD_THRESHOLD, full_queue_threshold=FULL_QUEUE_THRESHOLD,
         current_waiting=waiting, high_load=waiting >= HIGH_LOAD_THRESHOLD,
         accepting_runs=waiting < FULL_QUEUE_THRESHOLD,
     )
+
+
+def backpressure_snapshot() -> QueueBackpressure:
+    snapshot = queue_snapshot()
+    waiting = snapshot.waiting if snapshot is not None else waiting_count()
+    return backpressure_for(waiting)
+
+
+@dataclass(frozen=True)
+class QueueSnapshot:
+    """Aggregate scheduling counts. ``ahead`` is how many waiting submissions were queued
+    before ``owner``'s (None when the owner is not waiting). Counts only -- never identities."""
+
+    waiting: int
+    active: int
+    ahead: int | None
+    owner_state: str | None
+
+
+def queue_snapshot(owner: str | None = None) -> QueueSnapshot | None:
+    """Read-only counts for status polling, without the scheduler lock.
+
+    Status polls are the highest-volume scheduling call. Taking the write lock for
+    them made a busy queue answer polls with 503s; plain reads are consistent
+    enough for a progress display. Returns None when the database is unreachable.
+    """
+    try:
+        with SessionLocal() as db:
+            now = retention.utc_now()
+            waiting = _count(db, "waiting")
+            active = _count(db, "active")
+            ahead: int | None = None
+            owner_state: str | None = None
+            if owner:
+                ticket = db.get(ExecutionTicket, owner)
+                if ticket is not None:
+                    expired = (
+                        ticket.state in ("waiting", "active")
+                        and retention.as_utc(ticket.expires_at) <= now
+                    )
+                    owner_state = "expired" if expired else ticket.state
+                    if owner_state == "waiting":
+                        ahead = db.scalar(select(func.count()).select_from(ExecutionTicket).where(
+                            ExecutionTicket.state == "waiting",
+                            ExecutionTicket.expires_at > now,
+                            ExecutionTicket.created_at < ticket.created_at,
+                        )) or 0
+            return QueueSnapshot(waiting=waiting, active=active, ahead=ahead, owner_state=owner_state)
+    except SQLAlchemyError:
+        return None
+
+
+def eta_seconds_for(ahead: int, mean_grade_seconds: float, throughput_per_second: float | None = None) -> int:
+    """Rough wait until a waiting run starts.
+
+    The ideal estimate assumes every execution slot is always busy:
+    ceil((ahead + 1) / slots) rounds of the mean grading time. When recent
+    completions show the grader is actually slower (claim retries, a single Judge0
+    worker), the observed rate wins; the estimate never drops below the ideal one.
+    """
+    slots = max(1, get_settings().judge0_max_concurrent)
+    ideal = math.ceil((ahead + 1) / slots) * mean_grade_seconds
+    observed = (ahead + 1) / throughput_per_second if throughput_per_second else 0.0
+    return max(1, round(max(ideal, observed)))
 
 
 def eta_band_for_position(position: int | None) -> EtaBand | None:

@@ -47,12 +47,14 @@ Edit the JSON, keeping each `test_key` as given. Then set the status to `approve
 
 > p3b (Claude): praise-first summary; next_step reframed as an optional extension.
 
+> p4 (Claude): next step cut to 10 words or fewer (p3b wrote 15-17 on all-pass/concept cases)
+
 status: accepted
 
 ```json
 {
   "summary": "Great job! Every test passes, including your private attributes and setter guard.",
   "items": [],
-  "next_step": "Optional: read about guard clauses, the early-return style your set_video_count already uses."
+  "next_step": "Optional: read about guard clauses, the style set_video_count uses."
 }
 ```
