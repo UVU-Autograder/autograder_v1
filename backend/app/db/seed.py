@@ -188,6 +188,7 @@ def _seed_cs1400(
             assignment = existing_assignments[slug]
             assignment.title = item["title"]
             assignment.module = modules[item["module"]]
+            assignment.sandbox_enabled = True
             if desc:
                 assignment.description = desc
         else:
@@ -197,7 +198,7 @@ def _seed_cs1400(
                 title=item["title"],
                 language="python",
                 canvas_ref=f"canvas:synthetic:{slug}",
-                sandbox_enabled=False,
+                sandbox_enabled=True,
                 module=modules[item["module"]],
                 description=desc,
                 is_active=True,
