@@ -61,7 +61,7 @@ PROMPT_VERSION = "v8"  # the default for models without a mapping
 PROMPT_VERSIONS = ("v8", "v9")
 # Which version each served model was trained on, as "model=version,...".
 # LOCAL_LLM_PROMPT_VERSIONS overrides it (backend settings and the eval tools alike).
-DEFAULT_PROMPT_VERSION_MAP = "cs1410-p4=v9"
+DEFAULT_PROMPT_VERSION_MAP = "cs1410-p4=v9,cs1410-p4b=v9"
 
 
 def prompt_version_for(model: str, mapping: str | None = None) -> str:

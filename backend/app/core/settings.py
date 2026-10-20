@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     # Which feedback prompt each served model was trained on, as "model=version,...".
     # Unlisted models (p3b, the base-model rollback) get prompts.PROMPT_VERSION (v8).
     # Same default as prompts.DEFAULT_PROMPT_VERSION_MAP (core settings do not import integrations).
-    local_llm_prompt_versions: str = Field(default="cs1410-p4=v9", validation_alias="LOCAL_LLM_PROMPT_VERSIONS")
+    local_llm_prompt_versions: str = Field(default="cs1410-p4=v9,cs1410-p4b=v9", validation_alias="LOCAL_LLM_PROMPT_VERSIONS")
     repo_root: str | None = Field(default=None, validation_alias="REPO_ROOT")
 
     def prompt_version_for(self, model: str) -> str:

@@ -77,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     if not cases:
         print(f"No cases matched in {args.cases}", file=sys.stderr)
         return 1
+    print(f"{args.model} on prompt {prompt_version}, {len(cases)} cases")
 
     client = ChatClient(
         args.endpoint,

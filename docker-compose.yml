@@ -223,7 +223,7 @@ services:
       LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-none}
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:8001/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-cs1410-p3b}
-      LOCAL_LLM_PROMPT_VERSIONS: ${LOCAL_LLM_PROMPT_VERSIONS:-cs1410-p4=v9}
+      LOCAL_LLM_PROMPT_VERSIONS: ${LOCAL_LLM_PROMPT_VERSIONS:-cs1410-p4=v9,cs1410-p4b=v9}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://autograder-frontend-mockup.vercel.app}
     command: ["sh", "-c", "exec uvicorn app.main:app --host ${UVICORN_HOST:-127.0.0.1} --port ${UVICORN_PORT:-8000}"]
     volumes:
@@ -271,7 +271,7 @@ services:
       LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-none}
       LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://127.0.0.1:8001/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-cs1410-p3b}
-      LOCAL_LLM_PROMPT_VERSIONS: ${LOCAL_LLM_PROMPT_VERSIONS:-cs1410-p4=v9}
+      LOCAL_LLM_PROMPT_VERSIONS: ${LOCAL_LLM_PROMPT_VERSIONS:-cs1410-p4=v9,cs1410-p4b=v9}
     command: ["celery", "-A", "app.integrations.celery.app", "worker", "--loglevel=info", "-Q", "sandbox,official,default"]
     volumes:
       - backend_data:/data

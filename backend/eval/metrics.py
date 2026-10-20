@@ -103,8 +103,10 @@ def gate_inputs(case: EvalCase) -> tuple[set[str], set[str], bool]:
 def gate_reasons(case: EvalCase, response: FeedbackResponse) -> list[str]:
     """Why the runtime gate would hide this response (empty: a student would see it)."""
     forbidden, known, placeholder = gate_inputs(case)
+    files = case.code_files or {"submission.py": case.student_code}
+    claimed = guardrails.claimed_features(files, solution_files(case.assignment_slug), case.failures)
     return guardrails.validate_feedback(
-        response, case.allowed_keys, forbidden, known_names=known, placeholder=placeholder
+        response, case.allowed_keys, forbidden, known_names=known, placeholder=placeholder, claimed=claimed
     )
 
 

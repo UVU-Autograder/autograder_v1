@@ -113,6 +113,11 @@ def test_client_sends_the_models_prompt(monkeypatch):
     assert p4[0]["content"] == prompts.SYSTEM_PROMPT_V9 and "<<<DATA-" in p4[1]["content"]
 
 
+def test_default_map_covers_every_v9_adapter():
+    for model in ("cs1410-p4", "cs1410-p4b"):
+        assert prompts.prompt_version_for(model, prompts.DEFAULT_PROMPT_VERSION_MAP) == "v9"
+
+
 def test_settings_and_eval_tools_share_one_prompt_map(monkeypatch):
     assert Settings().local_llm_prompt_versions == prompts.DEFAULT_PROMPT_VERSION_MAP
     monkeypatch.setenv("LOCAL_LLM_PROMPT_VERSIONS", "cs1410-p5=v9")

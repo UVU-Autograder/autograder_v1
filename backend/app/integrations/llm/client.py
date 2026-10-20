@@ -8,7 +8,7 @@ import httpx
 
 from app.core.settings import get_settings
 from app.integrations.ai import prompts
-from app.integrations.ai.guardrails import gate_names, validate_feedback
+from app.integrations.ai.guardrails import claimed_features, gate_names, validate_feedback
 from app.integrations.ai.sanitize import sanitize_code_and_text
 
 __all__ = ["LocalLLMClient", "sanitize_code_and_text", "FEEDBACK_UNAVAILABLE"]
@@ -276,6 +276,7 @@ class LocalLLMClient:
         reasons = validate_feedback(
             parsed, {f["key"] for f in failures}, forbidden,
             known_names=known, placeholder=prompts.submission_is_placeholder(code_files or {}),
+            claimed=claimed_features(code_files or {}, reference_files, failures),
         )
         if reasons:
             # Reasons name checks and test keys only -- never student code or text.
