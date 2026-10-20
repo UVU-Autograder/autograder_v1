@@ -57,11 +57,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; verified: no operator named and no values; Candy and Cookie assertions ran before IceCream's, so the summary claim holds
+
+status: approved
 
 ```json
 {
-  "summary": "Your Candy and Cookie costs are right, but IceCream's is off.",
+  "summary": "Your Candy and Cookie costs work, but IceCream's is off.",
   "items": [
     {
       "test_key": "calculate_cost",
@@ -70,7 +72,7 @@ status: accepted
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The tax is high because the cost is.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix the IceCream cost first."
     },
     {
@@ -79,6 +81,6 @@ status: accepted
       "hint": "Same cause."
     }
   ],
-  "next_step": "Review IceCream.calculate_cost in dessert.py."
+  "next_step": "Review IceCream.calculate_cost."
 }
 ```

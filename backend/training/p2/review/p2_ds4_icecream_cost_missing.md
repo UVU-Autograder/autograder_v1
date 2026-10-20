@@ -60,20 +60,22 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; verified: hint compares IceCream with Candy and Cookie without naming the missing method; keys match the original
+
+status: approved
 
 ```json
 {
-  "summary": "Your DessertItem base class works; IceCream is the problem.",
+  "summary": "Your base class works; IceCream is the problem.",
   "items": [
     {
       "test_key": "calculate_cost",
       "what_went_wrong": "Python cannot create an IceCream: it leaves an abstract method unimplemented.",
-      "hint": "Which methods do Candy and Cookie define that IceCream does not?"
+      "hint": "Which methods do Candy and Cookie define that IceCream lacks?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "It creates an IceCream, so it fails.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix IceCream first."
     },
     {

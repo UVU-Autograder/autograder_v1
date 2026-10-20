@@ -61,7 +61,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; verified matches original; no passing tests, so summary keeps the original opening; decorator never named.
+
+status: approved
 
 ```json
 {
@@ -69,18 +71,18 @@ status: accepted
   "items": [
     {
       "test_key": "dataclass",
-      "what_went_wrong": "Creating a Student with values raises a TypeError.",
+      "what_went_wrong": "Passing values to Student raises a TypeError.",
       "hint": "Which part of the test's title turns fields into constructor arguments?"
     },
     {
       "test_key": "methods",
-      "what_went_wrong": "This fails for the same reason.",
-      "hint": "This follows from the Student setup."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix the Student setup first."
     },
     {
       "test_key": "ordering",
       "what_went_wrong": "Same cause.",
-      "hint": "Fix the Student setup first."
+      "hint": "Same fix."
     }
   ],
   "next_step": "Compare Student with the assignment's requirements."

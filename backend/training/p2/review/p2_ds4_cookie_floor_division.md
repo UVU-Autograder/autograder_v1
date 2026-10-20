@@ -57,7 +57,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; verified: the hand-trace hint does not name the operator; diagnosis (partial dozen costs too little) matches the diff and original
+
+status: approved
 
 ```json
 {
@@ -70,7 +72,7 @@ status: accepted
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is low as a result.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix the Cookie cost first."
     },
     {
@@ -79,6 +81,6 @@ status: accepted
       "hint": "Same cause."
     }
   ],
-  "next_step": "Review Cookie.calculate_cost in dessert.py."
+  "next_step": "Review Cookie.calculate_cost."
 }
 ```

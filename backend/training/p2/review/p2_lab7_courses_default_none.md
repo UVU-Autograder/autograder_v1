@@ -59,16 +59,18 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dataclass`, `methods`
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; verified diagnosis and test_keys match original; hint points to the test title without naming the default.
+
+status: approved
 
 ```json
 {
-  "summary": "Sorting works, but new Students have no usable course list.",
+  "summary": "Sorting works, but new Students have no course list.",
   "items": [
     {
       "test_key": "dataclass",
       "what_went_wrong": "A new Student's course collection does not start as a list.",
-      "hint": "Which of Student's fields differs from the requirement in this test's title?"
+      "hint": "Which Student field differs from this test's title?"
     },
     {
       "test_key": "methods",
@@ -77,7 +79,7 @@ status: accepted
     },
     {
       "test_key": "main_output",
-      "what_went_wrong": "enroll fails for the same reason.",
+      "what_went_wrong": "Same cause.",
       "hint": "Same fix."
     }
   ],

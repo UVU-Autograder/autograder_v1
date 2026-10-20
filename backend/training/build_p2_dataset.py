@@ -47,7 +47,7 @@ MAX_NEXT_STEP_WORDS = 14  # the prompt says "under 15 words"
 # 11-14) and 87-106 words on three-item cascades (targets 58-65): it runs ~3 words over
 # its targets per field. p4 targets leave that room.
 ALL_PASS_NEXT_STEP_WORDS = 10
-THREE_ITEM_MAX_WORDS = 55
+THREE_ITEM_MAX_WORDS = 45  # p4 still ran 83-99 words on 3-item cascades with 51-55-word targets
 SERVE_MAX_MODEL_LEN = 12288  # --max-model-len in vllm-cs1410.service and serve.sh
 VALID_EVERY = 10  # ~10% held out for eval_loss, chosen by a stable hash of the case id
 HOLDOUT_BOUNDARY = "holdout"

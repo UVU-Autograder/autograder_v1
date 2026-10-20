@@ -52,6 +52,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > p4 pre-edit (Claude): Hint points at the percent-to-rate conversion without naming the divisor. Clarified item 2. Gate ok at 55 words.
 
+> p4b (Claude): 43 words; verified lower direction; conversion hint is correct since the diff changes it; divisor never named.
+
 status: approved
 
 ```json
@@ -65,13 +67,13 @@ status: approved
     },
     {
       "test_key": "tax_percent",
-      "what_went_wrong": "The tax with a changed rate is low too.",
-      "hint": "Same cause."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix calculate_tax first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order tax is low too.",
-      "hint": "Fix calculate_tax first."
+      "what_went_wrong": "Same cause.",
+      "hint": "Same fix."
     }
   ],
   "next_step": "Review DessertItem.calculate_tax in dessert.py."

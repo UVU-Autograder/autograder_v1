@@ -59,20 +59,22 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; the rate really is the bug here (p2 case, not p4b), so blaming it is correct; no value or attribute leaked
+
+status: approved
 
 ```json
 {
-  "summary": "Your costs work, but every tax comes out too high.",
+  "summary": "Your costs work, but every tax is too high.",
   "items": [
     {
       "test_key": "tax_percent",
-      "what_went_wrong": "A new Candy's tax rate is higher than the test expects.",
+      "what_went_wrong": "A new Candy's tax rate is too high.",
       "hint": "Where does a new dessert get its tax rate?"
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "The Cookie tax is high as a result.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix the tax rate first."
     },
     {

@@ -55,7 +55,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `order_combine`). Then
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; verified: keys and diagnosis (missing import) match the approved original; hint avoids naming the fix; rules 8/9 n/a
+
+status: approved
 
 ```json
 {
@@ -68,15 +70,15 @@ status: accepted
     },
     {
       "test_key": "cookie_combinable",
-      "what_went_wrong": "This fails for the same reason.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix the loading error first."
     },
     {
       "test_key": "order_combine",
       "what_went_wrong": "Same cause.",
-      "hint": "This clears once dessert.py loads."
+      "hint": "This clears with it."
     }
   ],
-  "next_step": "Check the top of dessert.py; the sorting test clears too."
+  "next_step": "Check the top of dessert.py."
 }
 ```

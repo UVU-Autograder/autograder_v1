@@ -62,7 +62,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `add`, `m
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): trimmed to 45 words (three-item limit is now 45; p4 ran 83-99 on cascades); verified against approved original
+
+status: approved
 
 ```json
 {
@@ -70,8 +72,8 @@ status: accepted
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "A new Money keeps its overflow cents.",
-      "hint": "Trace what runs when a Money is created: does your carrying logic ever run?"
+      "what_went_wrong": "A new Money keeps overflow cents.",
+      "hint": "Does your carrying logic run when a Money is created?"
     },
     {
       "test_key": "add",
@@ -80,7 +82,7 @@ status: accepted
     },
     {
       "test_key": "mul",
-      "what_went_wrong": "The product is short too.",
+      "what_went_wrong": "Same cause.",
       "hint": "Same fix."
     }
   ],

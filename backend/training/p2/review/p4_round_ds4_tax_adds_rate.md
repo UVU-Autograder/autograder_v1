@@ -52,6 +52,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > p4 pre-edit (Claude): Diagnosis and hint were sound; clarified tax_percent item so it doesn't read as blaming the rate. Gate ok at 55 words.
 
+> p4b (Claude): 44 words; verified far-higher direction; hint names no operator; tax_percent item only says same cause.
+
 status: approved
 
 ```json
@@ -65,13 +67,13 @@ status: approved
     },
     {
       "test_key": "tax_percent",
-      "what_went_wrong": "The tax with a changed rate is high too.",
-      "hint": "Same cause."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix calculate_tax first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order tax is high too.",
-      "hint": "Fix calculate_tax first."
+      "what_went_wrong": "Same cause.",
+      "hint": "Same fix."
     }
   ],
   "next_step": "Review DessertItem.calculate_tax in dessert.py."

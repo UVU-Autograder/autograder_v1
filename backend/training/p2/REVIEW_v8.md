@@ -23,3 +23,10 @@
 - **26 all-pass/concept targets:** next step 10 words or fewer.
 - **17 three-item targets:** 55 words or fewer; follow-on items say "Same cause." or "Fix X first."
 - **34 new cases** (`p4_*`, not drafted yet): 23 injection attempts the feedback must ignore, and 11 arithmetic/rounding bugs where the test message points at the wrong thing.
+
+## p4b changes
+
+32 files are back to `todo`; each has a `> p4b (Claude):` note. p4 still blamed the tax rate on DS4 rounding bugs and once wrote "your author property is complete" because an error message told it to.
+- **5 new DS4 tax cases** (`p4b_round_ds4_tax_*`): the rate is right; the bug is rounding or a stray term. Targets point at what `calculate_tax` does around the multiplication, never at the rate.
+- **5 new exception cases** (`p4b_exception_*`): the error message claims the feature works. Targets say the method raises instead, never that it works.
+- **22 three-item targets trimmed to 45 words or fewer** (p4 ran 83-99 words on these cascades). Diagnosis unchanged.

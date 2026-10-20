@@ -62,11 +62,13 @@ Edit the JSON, keeping each `test_key` as given (allowed: `tax_percent`, `calcul
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; verified: root cause is Candy's misnamed cost method, which the target never spells out; key order matches the original
+
+status: approved
 
 ```json
 {
-  "summary": "Your base class works; one Candy problem breaks the rest.",
+  "summary": "Your base class works; Candy breaks the rest.",
   "items": [
     {
       "test_key": "calculate_cost",
@@ -75,13 +77,13 @@ status: accepted
     },
     {
       "test_key": "tax_percent",
-      "what_went_wrong": "It creates a Candy, so it fails.",
-      "hint": "Same cause."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix Candy first."
     },
     {
       "test_key": "order_totals",
       "what_went_wrong": "The order holds a Candy.",
-      "hint": "Fix Candy first."
+      "hint": "Same cause."
     }
   ],
   "next_step": "Compare Candy's method names with DessertItem's."

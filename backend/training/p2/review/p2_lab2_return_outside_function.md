@@ -56,7 +56,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): trimmed to 44 words (three-item limit is now 45; p4 ran 83-99 on cascades); verified against approved original
+
+status: approved
 
 ```json
 {
@@ -65,7 +67,7 @@ status: accepted
     {
       "test_key": "account_init",
       "what_went_wrong": "A statement in __str__ sits outside the method body.",
-      "hint": "How is the body of your __str__ method indented compared with __init__?"
+      "hint": "How is your __str__ body indented compared with __init__?"
     },
     {
       "test_key": "account_str",
@@ -74,7 +76,7 @@ status: accepted
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py imports account.py, so it fails too.",
+      "what_went_wrong": "demo.py fails too.",
       "hint": "Same cause."
     }
   ],

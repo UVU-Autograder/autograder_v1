@@ -57,7 +57,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): trimmed to 43 words (three-item limit is now 45; p4 ran 83-99 on cascades); verified against approved original
+
+status: approved
 
 ```json
 {
@@ -70,12 +72,12 @@ status: accepted
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "__str__ fails because there is no owner to print.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix Account.__init__ first."
     },
     {
       "test_key": "demo_output",
-      "what_went_wrong": "demo.py fails with the same error.",
+      "what_went_wrong": "demo.py fails too.",
       "hint": "Same cause."
     }
   ],

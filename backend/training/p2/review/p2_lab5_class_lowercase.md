@@ -73,7 +73,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): trimmed to 45 words (three-item limit is now 45; p4 ran 83-99 on cascades); verified against approved original
+
+status: approved
 
 ```json
 {
@@ -81,13 +83,13 @@ status: accepted
   "items": [
     {
       "test_key": "normalize",
-      "what_went_wrong": "The tests cannot find a class named Money.",
-      "hint": "Does your class name exactly match the name the error says is missing?"
+      "what_went_wrong": "No class named Money is found.",
+      "hint": "Does your class name match the missing name in the error?"
     },
     {
       "test_key": "str",
-      "what_went_wrong": "This fails for the same reason.",
-      "hint": "This clears once the class is found."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix the class name first."
     },
     {
       "test_key": "add",

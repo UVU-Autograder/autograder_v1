@@ -24,7 +24,7 @@ SEEDS = Path(__file__).resolve().parents[1] / "app" / "db" / "seeds"
 def test_train_mutations_are_held_out_from_eval():
     train_ids = [m["case_id"] for m in TRAIN_MUTATIONS]
     assert len(train_ids) == len(set(train_ids))
-    assert all(i.startswith(("p2_", "p4_")) for i in train_ids)
+    assert all(i.startswith(("p2_", "p4_", "p4b_")) for i in train_ids)
     assert not set(train_ids) & {m["case_id"] for m in MUTATIONS}
     eval_edits = {(m["seed"], json.dumps(m["edits"], sort_keys=True)) for m in MUTATIONS}
     for m in TRAIN_MUTATIONS:

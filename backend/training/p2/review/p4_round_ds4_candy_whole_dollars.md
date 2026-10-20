@@ -52,6 +52,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p4 pre-edit (Claude): Lower direction verified; the hint asks about an existing round call's precision without giving the value; tax_percent not blamed; follow-on items are brief.
 
+> p4b (Claude): 44 words; verified lower direction; hint asks precision of the existing round call, as approved; tax_percent not blamed.
+
 status: approved
 
 ```json
@@ -65,13 +67,13 @@ status: approved
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "Candy tax is low as a result.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix the cost first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is low too.",
-      "hint": "Same cause."
+      "what_went_wrong": "Same cause.",
+      "hint": "Same fix."
     }
   ],
   "next_step": "Review Candy.calculate_cost in dessert.py."

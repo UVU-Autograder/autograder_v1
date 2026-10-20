@@ -64,7 +64,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `dessert_item`, `candy
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): 45 words; summary restored to 'breaks every class' as in the approved original; hint never names self; rules 8/9 n/a
+
+status: approved
 
 ```json
 {
@@ -73,7 +75,7 @@ status: accepted
     {
       "test_key": "dessert_item",
       "what_went_wrong": "Creating a DessertItem raises a NameError.",
-      "hint": "How is DessertItem.__init__ defined differently from your other constructors?"
+      "hint": "How does DessertItem.__init__ differ from your other constructors?"
     },
     {
       "test_key": "candy",
@@ -82,10 +84,10 @@ status: accepted
     },
     {
       "test_key": "cookie",
-      "what_went_wrong": "This fails for the same reason.",
+      "what_went_wrong": "Same cause.",
       "hint": "This clears with it."
     }
   ],
-  "next_step": "Review DessertItem.__init__; fixing it clears IceCream and Sundae."
+  "next_step": "Review DessertItem.__init__; IceCream and Sundae clear too."
 }
 ```

@@ -52,6 +52,8 @@ Edit the JSON, keeping each `test_key` as given (allowed: `calculate_cost`, `cal
 
 > p4 pre-edit (Claude): Higher direction verified; the dozen-conversion hint names no divisor or operator; tax and order items correctly follow from the cost.
 
+> p4b (Claude): 45 words; verified higher direction; dozen hint names no divisor; test_keys and diagnosis match original.
+
 status: approved
 
 ```json
@@ -65,13 +67,13 @@ status: approved
     },
     {
       "test_key": "calculate_tax",
-      "what_went_wrong": "Cookie tax is high as a result.",
+      "what_went_wrong": "Same cause.",
       "hint": "Fix the cost first."
     },
     {
       "test_key": "order_totals",
-      "what_went_wrong": "The order cost is high too.",
-      "hint": "Same cause."
+      "what_went_wrong": "Same cause.",
+      "hint": "Same fix."
     }
   ],
   "next_step": "Review Cookie.calculate_cost in dessert.py."

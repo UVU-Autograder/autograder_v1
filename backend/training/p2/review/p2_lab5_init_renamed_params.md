@@ -66,7 +66,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `normalize`, `str`, `a
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): Restored the approved next_step wording ('the mul and eq tests'); shortened the str hint so the total stays at 45 words.
+
+status: approved
 
 ```json
 {
@@ -80,12 +82,12 @@ status: accepted
     {
       "test_key": "str",
       "what_went_wrong": "Same cause.",
-      "hint": "This follows from the constructor."
+      "hint": "Fix __init__ first."
     },
     {
       "test_key": "add",
       "what_went_wrong": "Same cause.",
-      "hint": "This clears once a Money can be created."
+      "hint": "Same fix."
     }
   ],
   "next_step": "Fix Money.__init__; the mul and eq tests clear too."

@@ -58,7 +58,9 @@ Edit the JSON, keeping each `test_key` as given (allowed: `account_init`, `accou
 
 > p4 (Claude): trimmed to 55 words or fewer; follow-on items kept brief (p3b ran 87-106 words on 3-item cascades)
 
-status: accepted
+> p4b (Claude): trimmed to 45 words (three-item limit is now 45; p4 ran 83-99 on cascades); verified against approved original
+
+status: approved
 
 ```json
 {
@@ -66,18 +68,18 @@ status: accepted
   "items": [
     {
       "test_key": "account_init",
-      "what_went_wrong": "Creating an Account fails because the name is treated as a number.",
+      "what_went_wrong": "Creation fails because the name is treated as a number.",
       "hint": "Do the values passed to Account match Account.__init__'s parameters?"
     },
     {
       "test_key": "account_str",
-      "what_went_wrong": "This test fails the same way.",
-      "hint": "Same cause."
+      "what_went_wrong": "Same cause.",
+      "hint": "Fix Account.__init__ first."
     },
     {
       "test_key": "demo_output",
       "what_went_wrong": "demo.py fails the same way.",
-      "hint": "Fix Account.__init__ first."
+      "hint": "Same cause."
     }
   ],
   "next_step": "Review the Account.__init__ signature."
