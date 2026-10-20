@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useRef, useState, ReactNode } from 'react';
+import { createContext, useContext, useRef, useState, useEffect, ReactNode } from 'react';
 import {
   computeCloseTab,
   computeMoveTab,
@@ -66,6 +66,17 @@ export function AssignmentFileProvider({
   });
   const [dragTab, setDragTab] = useState<DragTabData | null>(null);
   const dragActionInProgressRef = useRef(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (vfs.isDirty()) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [vfs]);
 
   const openFileByName = async (
     filename: string,

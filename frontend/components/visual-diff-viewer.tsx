@@ -28,16 +28,16 @@ export default function VisualDiffViewer({ expected, actual }: VisualDiffViewerP
     } else {
       if (expLine !== undefined) {
         diffLines.push(
-          <div key={`del-${i}`} className="px-3.5 py-0.5 bg-destructive/10 text-destructive font-mono text-xs border-l-2 border-destructive">
-            <span className="w-6 inline-block text-destructive/60 select-none">{i + 1}</span>
+          <div key={`del-${i}`} className="px-3.5 py-0.5 bg-muted/40 text-muted-foreground font-mono text-xs border-l-2 border-primary/40">
+            <span className="w-6 inline-block text-muted-foreground/60 select-none">{i + 1}</span>
             <span>- {expLine}</span>
           </div>
         );
       }
       if (actLine !== undefined) {
         diffLines.push(
-          <div key={`add-${i}`} className="px-3.5 py-0.5 bg-success/10 text-success font-mono text-xs border-l-2 border-success">
-            <span className="w-6 inline-block text-success/60 select-none">{i + 1}</span>
+          <div key={`add-${i}`} className="px-3.5 py-0.5 bg-destructive/10 text-destructive font-mono text-xs border-l-2 border-destructive">
+            <span className="w-6 inline-block text-destructive/60 select-none">{i + 1}</span>
             <span>+ {actLine}</span>
           </div>
         );
@@ -50,8 +50,8 @@ export default function VisualDiffViewer({ expected, actual }: VisualDiffViewerP
       <div className="bg-muted/60 px-3.5 py-2 border-b border-border flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider select-none">
         <span>Output Difference</span>
         <div className="flex gap-3">
-          <span className="flex items-center gap-1.5 text-destructive font-medium"><span className="size-2 rounded-full bg-destructive"></span> Expected</span>
-          <span className="flex items-center gap-1.5 text-success font-medium"><span className="size-2 rounded-full bg-success"></span> Student</span>
+          <span className="flex items-center gap-1.5 text-muted-foreground font-medium"><span className="size-2 rounded-full bg-primary/70"></span> Expected</span>
+          <span className="flex items-center gap-1.5 text-destructive font-medium"><span className="size-2 rounded-full bg-destructive"></span> Student</span>
         </div>
       </div>
       <div className="py-2 overflow-x-auto max-h-96 whitespace-pre font-mono">

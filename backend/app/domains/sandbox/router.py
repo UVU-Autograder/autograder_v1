@@ -4,15 +4,19 @@ from fastapi.responses import StreamingResponse
 
 from app.core.dependencies import DbSession
 from app.core.settings import get_settings
-from app.domains.assignments.service import (
-    effective_allowed_concepts,
-    get_assignment_for_course,
-)
-from app.domains.assignments.validation import run_preflight_validation
 from app.domains.sandbox.catalog import (
     get_sandbox_assignment,
     list_sandbox_assignments,
     list_sandbox_courses,
+)
+from app.domains.sandbox.intake import (
+    AssignmentNotGradableError,
+    AssignmentNotFoundError,
+    GraderServiceUnavailableError,
+    GradingQueueFullError,
+    NetworkRateLimitExceededError,
+    SessionQuotaExceededError,
+    sandbox_intake_engine,
 )
 from app.domains.sandbox.schemas import (
     ConceptMetadata,
@@ -120,125 +124,76 @@ def _create_run_sync(
     x_sandbox_session: str | None,
     ip: str | None = None,
 ) -> SandboxRunCreateResponse:
-    assignment = get_sandbox_assignment(
-        db,
-        course_id,
-        assignment_id,
-        sandbox_service.quota_for_session(x_sandbox_session),
-    )
-    if assignment is None:
-        raise HTTPException(status_code=404, detail="Assignment not found.")
-
-    db_assignment = get_assignment_for_course(db, course_id, assignment_id)
-    if db_assignment is None or db_assignment.config is None:
-        raise HTTPException(status_code=404, detail="Assignment not found.")
-
-    preflight_errors = run_preflight_validation(db, course_id, assignment_id)
-    if preflight_errors:
-        raise HTTPException(
-            status_code=400,
-            detail="Assignment is not ready for grading. Contact your instructor.",
+    try:
+        result = sandbox_intake_engine.intake_submission(
+            db,
+            course_id=course_id,
+            assignment_id=assignment_id,
+            session_id=x_sandbox_session,
+            zip_data=zip_data,
+            stdin=stdin,
+            client_ip=ip,
         )
-    from app.domains.assignments.inventory import inventory_status
-    if inventory_status(db, db_assignment) != "ready":
-        raise HTTPException(status_code=400, detail="Assignment requires instructor reference validation before grading.")
-
-    artifact_refs: dict[str, str] = {}
-    for art in db_assignment.artifacts:
-        if art.storage_ref:
-            artifact_refs[art.artifact_key] = art.storage_ref
-
-    allowed_concepts = effective_allowed_concepts(db_assignment)
-
-    run_config = dict(db_assignment.config.config) if db_assignment.config and db_assignment.config.config else {}
-    if db_assignment.description and not run_config.get("description"):
-        run_config["description"] = db_assignment.description
-    expected_manifest = db_assignment.config.validated_test_manifest if db_assignment.config else None
-    max_score = assignment.max_score
-    # Hand this request's database connection back before scheduling. Scheduling takes
-    # the scheduler lock and then needs its own connection; requests that held a
-    # connection while waiting for the lock exhausted the pool under a burst of
-    # uploads, so the lock holder stalled and grading workers timed out.
-    db.close()
-
-    limited = ip_limit.charge(ip)
-    if limited is not None:
+        response.headers["X-Sandbox-Session"] = result.session_id
+        return result.response
+    except AssignmentNotFoundError:
+        raise HTTPException(status_code=404, detail="Assignment not found.") from None
+    except AssignmentNotGradableError as exc:
+        if exc.session_id:
+            response.headers["X-Sandbox-Session"] = exc.session_id
+        raise HTTPException(status_code=400, detail=exc.message) from None
+    except NetworkRateLimitExceededError as exc:
+        session_id = exc.session_id
+        response.headers["X-Sandbox-Session"] = session_id
         raise HTTPException(
             status_code=429,
             detail={
                 "code": "network_limit",
                 "message": "Too many runs from your network this hour. Please try again later.",
-                "reset_at": limited.reset_at,
-                "limit": limited.limit,
+                "reset_at": exc.reset_at,
+                "limit": exc.limit,
             },
-        )
-    try:
-        run, session, error_status = sandbox_service.create_run(
-            course_id=course_id,
-            assignment_id=assignment_id,
-            session_id=x_sandbox_session,
-            assignment_exists=True,
-            max_score=max_score,
-            zip_data=zip_data,
-            config=run_config,
-            artifact_refs=artifact_refs,
-            allowed_concepts=allowed_concepts,
-            stdin=stdin,
-            expected_manifest=expected_manifest,
-        )
-    except HTTPException as exc:
-        ip_limit.refund(ip)
-        if exc.status_code == 503:
-            # The scheduler lock or database is momentarily unavailable; nothing was counted.
-            raise HTTPException(
-                status_code=503,
-                detail={
-                    "code": "busy",
-                    "message": "The grader is busy. Retrying automatically.",
-                    "retry_after_seconds": 5,
-                },
-                headers={"Retry-After": "5"},
-            ) from None
-        raise
-    if error_status is not None:
-        ip_limit.refund(ip)  # not admitted, so it does not count against the network either
-    response.headers["X-Sandbox-Session"] = session
-    session_header = {"X-Sandbox-Session": session}
-    if error_status == 429:
-        quota = sandbox_service.quota_for_session(session)
+            headers={"X-Sandbox-Session": session_id},
+        ) from None
+    except SessionQuotaExceededError as exc:
+        session_id = exc.session_id
+        response.headers["X-Sandbox-Session"] = session_id
         raise HTTPException(
             status_code=429,
             detail={
                 "code": "quota_exhausted",
-                "message": f"You have used all {quota.limit} runs for this hour.",
-                "reset_at": quota.reset_at,
-                "limit": quota.limit,
+                "message": f"You have used all {exc.quota.limit} runs for this hour.",
+                "reset_at": exc.quota.reset_at,
+                "limit": exc.quota.limit,
             },
-            headers=session_header,
-        )
-    if error_status == 503:
+            headers={"X-Sandbox-Session": session_id},
+        ) from None
+    except GradingQueueFullError as exc:
+        session_header = {"X-Sandbox-Session": exc.session_id} if exc.session_id else {}
+        if exc.session_id:
+            response.headers["X-Sandbox-Session"] = exc.session_id
         raise HTTPException(
             status_code=503,
             detail={
                 "code": "queue_full",
                 "message": "The grading queue is full right now. Your run was not counted; retrying automatically.",
-                "retry_after_seconds": QUEUE_FULL_RETRY_SECONDS,
+                "retry_after_seconds": exc.retry_after_seconds,
             },
-            headers={**session_header, "Retry-After": str(QUEUE_FULL_RETRY_SECONDS)},
-        )
-    if error_status == 502:
+            headers={**session_header, "Retry-After": str(exc.retry_after_seconds)},
+        ) from None
+    except GraderServiceUnavailableError as exc:
+        session_header = {"X-Sandbox-Session": exc.session_id} if exc.session_id else {}
+        if exc.session_id:
+            response.headers["X-Sandbox-Session"] = exc.session_id
         raise HTTPException(
             status_code=503,
             detail={
-                "code": "grader_unavailable",
-                "message": "The grader could not start your run. Please try again in a minute.",
-                "retry_after_seconds": 60,
+                "code": exc.code,
+                "message": exc.message,
+                "retry_after_seconds": exc.retry_after_seconds,
             },
-            headers={**session_header, "Retry-After": "60"},
-        )
-    if run is None:
-        raise HTTPException(status_code=500, detail="Failed to initialize sandbox run.")
-    return run
+            headers={**session_header, "Retry-After": str(exc.retry_after_seconds)},
+        ) from None
 
 
 @router.post("/runs/{run_id}/cancel", response_model=SandboxCancelResponse)

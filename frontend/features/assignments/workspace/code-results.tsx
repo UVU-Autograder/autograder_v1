@@ -600,6 +600,7 @@ export default function CodeResults({
         <div className="border-t border-border px-3 pb-3 pt-2">
           <textarea
             id="sandbox-stdin-input"
+            name="stdin"
             aria-label="Console input / stdin"
             value={stdinInput}
             onChange={(e) => setStdinInput(e.target.value)}
@@ -611,22 +612,35 @@ export default function CodeResults({
           />
         </div>
       </details>
-      {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
-        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
-          <AlertTriangle className="size-4 shrink-0" />
-          <span>
-            Required entrypoint <strong>{bundleStatus.expectedEntrypoint}</strong> is missing from workspace files.
-          </span>
-        </div>
-      )}
-      {bundleStatus.missingRequiredFiles.length > 0 && (
-        <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
-          <AlertTriangle className="size-4 shrink-0" />
-          <span>
-            Missing required file(s):{" "}
-            <strong>{bundleStatus.missingRequiredFiles.join(", ")}</strong>
-          </span>
-        </div>
+      {Object.values(files).every((f) => f.category !== "workspace") ? (
+        bundleStatus.expectedEntrypoint && (
+          <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-primary/20 bg-primary/5 text-primary text-xs font-medium">
+            <Sparkles className="size-4 shrink-0 text-primary" />
+            <span>
+              To begin, create or upload <strong>{bundleStatus.expectedEntrypoint}</strong> in the sidebar.
+            </span>
+          </div>
+        )
+      ) : (
+        <>
+          {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
+            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
+              <AlertTriangle className="size-4 shrink-0" />
+              <span>
+                Required entrypoint <strong>{bundleStatus.expectedEntrypoint}</strong> is missing from workspace files.
+              </span>
+            </div>
+          )}
+          {bundleStatus.missingRequiredFiles.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
+              <AlertTriangle className="size-4 shrink-0" />
+              <span>
+                Missing required file(s):{" "}
+                <strong>{bundleStatus.missingRequiredFiles.join(", ")}</strong>
+              </span>
+            </div>
+          )}
+        </>
       )}
       <Button
         onClick={handleRunCode}

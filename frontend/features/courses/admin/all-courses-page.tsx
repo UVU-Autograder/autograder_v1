@@ -300,7 +300,7 @@ export default function AllCoursesPage({
             <Card key={course.id} className={`py-3 transition-shadow hover:shadow-md ${!course.is_active ? 'opacity-60 bg-muted/40' : ''}`}>
               <CardContent className="flex items-center gap-3 py-0">
                 <Link
-                  href={`/staff/courses/${course.code}`}
+                  href={`/staff/courses/${(course.code || String(course.id)).toLowerCase().replace(/\s+/g, '')}`}
                   className="min-w-0 flex-1"
                 >
                   <div className="space-y-0.5">

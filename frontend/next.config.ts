@@ -10,14 +10,19 @@ const nextConfig: NextConfig = {
   },
   webpack: (config, { dev }) => {
     if (dev) {
+      const usePolling = process.env.WATCHPACK_POLLING === "true" || process.env.WATCHPACK_POLLING === "1";
       config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
+        ...(usePolling ? { poll: 1000, aggregateTimeout: 300 } : {}),
         ignored: [
+          "**/.git/**",
+          "**/.venv/**",
+          "**/.mypy_cache/**",
+          "**/.pytest_cache/**",
+          "**/.ruff_cache/**",
           "**/backend/**",
           "**/.next/**",
-          "**/.pytest_cache/**",
           "**/node_modules/**",
+          "**/public/monaco/**",
         ],
       };
     }

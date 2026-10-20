@@ -193,6 +193,7 @@ export default function Navbar() {
             alt="UVU Logo"
             width={256}
             height={256}
+            priority
             unoptimized
             className="h-16 w-16 shrink-0 rounded-md object-contain dark:hidden"
           />
@@ -201,6 +202,7 @@ export default function Navbar() {
             alt="UVU Logo"
             width={256}
             height={256}
+            priority
             unoptimized
             className="hidden h-16 w-16 shrink-0 rounded-md object-contain dark:block"
           />

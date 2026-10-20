@@ -226,7 +226,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button onClick={handleSave} disabled={isSaving}>
-              <SaveIcon className="mr-2 size-4" /> Apply Whitelist
+              <SaveIcon className="mr-2 size-4" /> Save Allowed Concepts
             </Button>
           </CardFooter>
         </Card>

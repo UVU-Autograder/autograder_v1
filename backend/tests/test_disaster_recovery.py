@@ -10,6 +10,7 @@ Verifies:
 """
 from __future__ import annotations
 
+import base64
 import io
 import re
 import zipfile
@@ -29,6 +30,7 @@ from app.domains.assignments.models import (
 from app.domains.auth.models import Role, User
 from app.domains.courses.models import Course, Module, Section
 from app.domains.grading.engine import GradingResult
+from app.domains.sandbox.schemas import SandboxRunRecord
 from app.domains.sandbox.service import AiFeedbackUnavailable
 from app.domains.runs.models import RunSummary
 from app.domains.sandbox.service import SandboxService
@@ -255,31 +257,31 @@ def test_local_ai_outage_does_not_block_or_fail_grading_runs() -> None:
         accepting_runs=True,
     )
 
+    run_id = "run_disaster_test_1"
+    session_id = "sandbox_disaster_session_1"
+    record = SandboxRunRecord(
+        run_id=run_id,
+        session_id=session_id,
+        course_id="cs1400",
+        assignment_id="simple-addition",
+        queue_position=1,
+        max_score=50,
+        zip_data_b64=base64.b64encode(zip_bytes).decode("ascii"),
+        config=config_dict,
+        artifact_refs={},
+        allowed_concepts=["functions"],
+    )
+    store.save_run(record)
+
     with (
         patch(
             "app.domains.grading.engine.GradingEngine.grade_submission_sync",
             return_value=mock_grading_result,
         ),
-        patch("app.domains.sandbox.service.reserve_execution_slots", return_value=1),
         patch("app.domains.sandbox.service.release_execution_slots"),
         patch("app.domains.runs.orchestrator.release_execution_slots"),
         patch("app.domains.sandbox.service.backpressure_snapshot", return_value=mock_bp),
     ):
-        create_resp, session_id, err_code = service.create_run(
-            course_id="cs1400",
-            assignment_id="simple-addition",
-            session_id=None,
-            assignment_exists=True,
-            max_score=50,
-            zip_data=zip_bytes,
-            config=config_dict,
-            artifact_refs={},
-            allowed_concepts=["functions"],
-        )
-        assert err_code is None
-        assert create_resp is not None
-        run_id = create_resp.run_id
-
         # Advance run through queue -> run -> complete
         service.get_status(run_id)
         service.get_status(run_id)

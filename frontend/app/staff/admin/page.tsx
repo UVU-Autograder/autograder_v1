@@ -25,7 +25,7 @@ const adminLinks = [
   {
     href: "/staff/admin/logs",
     title: "Logs & FERPA Audit",
-    description: "Inspect audit trail, access denials, and FERPA compliance telemetry",
+    description: "Search logs to see the system in action and audit FERPA compliance",
   },
 ];
 

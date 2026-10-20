@@ -31,6 +31,9 @@ export function FileUploadButton({
     <>
       <input
         ref={inputRef}
+        id="workspace-file-upload-input"
+        name="workspace_files"
+        aria-label="Upload workspace files"
         type="file"
         multiple={multiple}
         accept={accept}
