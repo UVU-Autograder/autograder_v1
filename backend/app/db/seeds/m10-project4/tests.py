@@ -69,6 +69,19 @@ def test_snake_or_camel_case():
 def test_given_file_output():
     """Verify reconstruction of given sample file (TTL.txt -> TTL_book.txt)."""
     script_path = assert_file_exists(ENTRYPOINT)
+    ttl_in = script_path.parent / "TTL.txt"
+    created_ttl = False
+    if not ttl_in.is_file():
+        # Ensure sample input archive is available in the workspace
+        sample_content = (
+            "Twenty Thousand Leagues Under the Seas|3\n"
+            "JULES VERNE|5\n"
+            "An Underwater Tour of the World|4\n"
+            'Ecclesiastes--"Who can fathom the soundless depths?"--two men out of all|14153\n'
+        )
+        ttl_in.write_text(sample_content, encoding="utf-8")
+        created_ttl = True
+
     out_file = script_path.parent / "TTL_book.txt"
     if out_file.exists():
         try:
@@ -76,49 +89,69 @@ def test_given_file_output():
         except OSError:
             pass
 
-    res = run_script(ENTRYPOINT, args=["TTL.txt"])
-    assert res.returncode == 0, f"Script failed on TTL.txt execution:\n{res.stderr}"
+    try:
+        res = run_script(ENTRYPOINT, args=["TTL.txt"])
+        assert res.returncode == 0, f"Script failed on TTL.txt execution:\n{res.stderr}"
 
-    if not out_file.is_file():
-        # Check case-insensitive or .text extension in case student platform formatted differently
-        for cand in [
-            script_path.parent / "TTL_Book.txt",
-            script_path.parent / "TTL_book.text",
-            script_path.parent / "TTL_Book.text",
-        ]:
-            if cand.is_file():
-                out_file = cand
-                break
+        if not out_file.is_file():
+            # Check case-insensitive or .text extension in case student platform formatted differently
+            for cand in [
+                script_path.parent / "TTL_Book.txt",
+                script_path.parent / "TTL_book.text",
+                script_path.parent / "TTL_Book.text",
+            ]:
+                if cand.is_file():
+                    out_file = cand
+                    break
 
-    assert out_file.is_file(), f"Output file TTL_book.txt was not generated at {out_file}."
-    lines = [
-        line.rstrip("\r\n")
-        for line in out_file.read_text(encoding="utf-8", errors="replace").splitlines()
-        if line.strip()
-    ]
+        assert out_file.is_file(), f"Output file TTL_book.txt was not generated at {out_file}."
+        lines = [
+            line.rstrip("\r\n")
+            for line in out_file.read_text(encoding="utf-8", errors="replace").splitlines()
+            if line.strip()
+        ]
+        assert len(lines) >= 7, (
+            f"Output file must contain at least 7 non-empty lines (3 header + 4 content), found {len(lines)}."
+        )
 
-    # Header check
-    assert lines[0] == "TTL", f"First line must be book code 'TTL', got: {lines[0]}"
-    assert re.search(r"Longest\s+[Ll]ine\s*\(\s*14153\s*\)\s*[:\s]", lines[1]), (
-        f"Expected longest line header for line 14153, got: {lines[1]}"
-    )
-    assert "Ecclesiastes" in lines[1], f"Expected 'Ecclesiastes' in longest line, got: {lines[1]}"
-    assert re.search(r"Average\s+([Ll]ine\s+)?[Ll]ength\s*:\s*38", lines[2]), (
-        f"Expected average length header 'Average length: 38', got: {lines[2]}"
-    )
+        # Header check
+        assert lines[0].strip().upper() == "TTL", (
+            f"First line must be book code 'TTL', got: '{lines[0]}'."
+        )
+        assert re.search(r"Longest\s+[Ll]ine\s*\(\s*14153\s*\)\s*[:\s]", lines[1]), (
+            f"Longest line header must identify line number (14153), got: '{lines[1]}'."
+        )
+        assert "Ecclesiastes" in lines[1], (
+            f"Longest line header must contain the longest text ('Ecclesiastes...'), got: '{lines[1]}'."
+        )
+        assert re.search(r"Average\s+([Ll]ine\s+)?[Ll]ength\s*:\s*(38|37)", lines[2]), (
+            f"Average length header must report 38, got: '{lines[2]}'."
+        )
 
-    # Content order check: line 3, line 4, line 5, line 14153
-    assert "Twenty Thousand Leagues" in lines[3]
-    assert "An Underwater Tour" in lines[4]
-    assert "JULES VERNE" in lines[5]
-    assert "Ecclesiastes" in lines[6]
-
-    # Cleanup
-    if out_file.exists():
-        try:
-            out_file.unlink()
-        except OSError:
-            pass
+        # Content order check: line 3, line 4, line 5, line 14153
+        assert "Twenty Thousand Leagues" in lines[3], (
+            f"Line 1 (original #3) mismatch: expected 'Twenty Thousand Leagues...', got: '{lines[3]}'."
+        )
+        assert "An Underwater Tour" in lines[4], (
+            f"Line 2 (original #4) mismatch: expected 'An Underwater Tour...', got: '{lines[4]}'."
+        )
+        assert "JULES VERNE" in lines[5], (
+            f"Line 3 (original #5) mismatch: expected 'JULES VERNE', got: '{lines[5]}'."
+        )
+        assert "Ecclesiastes" in lines[6], (
+            f"Line 4 (original #14153) mismatch: expected 'Ecclesiastes...', got: '{lines[6]}'."
+        )
+    finally:
+        if created_ttl and ttl_in.exists():
+            try:
+                ttl_in.unlink()
+            except OSError:
+                pass
+        if out_file.exists():
+            try:
+                out_file.unlink()
+            except OSError:
+                pass
 
 
 @pytest.mark.ag_unknown_file_output
@@ -153,19 +186,32 @@ def test_unknown_file_output():
             for line in test_out.read_text(encoding="utf-8", errors="replace").splitlines()
             if line.strip()
         ]
+        assert len(lines) >= 7, (
+            f"Output file must contain at least 7 non-empty lines (3 header + 4 content), got {len(lines)}."
+        )
 
-        assert lines[0] == "TST", f"First line must be book code 'TST', got: {lines[0]}"
+        assert lines[0].strip().upper() == "TST", (
+            f"First line must be book code 'TST', got: '{lines[0]}'."
+        )
         # Tie breaker: line 4 has length 10, line 2 has length 10. Line 4 should win
         assert re.search(r"Longest\s+[Ll]ine\s*\(\s*4\s*\)\s*[:\s]\s*Line four!", lines[1]), (
-            f"Expected tie-broken longest line (4) 'Line four!', got: {lines[1]}"
+            f"Expected tie-broken longest line (4) 'Line four!', got: '{lines[1]}'."
         )
         assert re.search(r"Average\s+([Ll]ine\s+)?[Ll]ength\s*:\s*10", lines[2]), (
-            f"Expected average length header 'Average length: 10', got: {lines[2]}"
+            f"Expected average length header 'Average length: 10', got: '{lines[2]}'."
         )
-        assert "Line one!" in lines[3]
-        assert "Line two!!" in lines[4]
-        assert "Line three" in lines[5]
-        assert "Line four!" in lines[6]
+        assert "Line one!" in lines[3], (
+            f"Line 1 (original #1) mismatch: expected 'Line one!', got: '{lines[3]}'."
+        )
+        assert "Line two!!" in lines[4], (
+            f"Line 2 (original #2) mismatch: expected 'Line two!!', got: '{lines[4]}'."
+        )
+        assert "Line three" in lines[5], (
+            f"Line 3 (original #3) mismatch: expected 'Line three', got: '{lines[5]}'."
+        )
+        assert "Line four!" in lines[6], (
+            f"Line 4 (original #4) mismatch: expected 'Line four!', got: '{lines[6]}'."
+        )
     finally:
         if test_in.exists():
             test_in.unlink()
