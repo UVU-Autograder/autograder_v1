@@ -11,6 +11,9 @@ from pathlib import Path
 # [studentname]_[id]_[otherid]_[original_filename]
 # e.g., johnsmith_12345_67890_lab1.zip or john_smith_12345_67890_student_functions.py
 CANVAS_FILENAME_PATTERN = re.compile(r"^([a-zA-Z0-9\-_\s]+?)_([0-9]+)_([0-9]+)_(.*)$")
+CANVAS_FILE_SUFFIX_PATTERN = re.compile(
+    r"-(?:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|([0-9]+))$"
+)
 
 
 def parse_canvas_filename(filename: str):
@@ -18,6 +21,33 @@ def parse_canvas_filename(filename: str):
     if not match:
         return None
     return match.groups()
+
+
+def normalize_canvas_original_filename(filename: str) -> str:
+    """Strip Canvas duplicate/version suffixes like -1 or -uuid from a filename stem."""
+    path = Path(filename)
+    new_stem = CANVAS_FILE_SUFFIX_PATTERN.sub("", path.stem)
+    if new_stem == path.stem:
+        return filename
+    return f"{new_stem}{path.suffix}"
+
+
+def normalize_canvas_file_suffixes(directory: Path) -> None:
+    """Rename files in directory by stripping trailing Canvas suffixes."""
+    directory = Path(directory).resolve()
+    for path in sorted(directory.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+        if not path.is_file():
+            continue
+        new_name = normalize_canvas_original_filename(path.name)
+        if new_name == path.name:
+            continue
+        dest = path.parent / new_name
+        if dest.exists():
+            if path.stat().st_size >= dest.stat().st_size:
+                dest.unlink()
+                path.rename(dest)
+        else:
+            path.rename(dest)
 
 
 def cleanup_system_files(directory: Path) -> None:
@@ -168,6 +198,8 @@ def main():
         print("Extracting main submissions ZIP to temporary directory...")
         try:
             safe_extract_zip(zip_file_path, temp_dir)
+            cleanup_system_files(temp_dir)
+            normalize_root_directory(temp_dir)
         except Exception as e:
             print(f"Error extracting main ZIP: {e}")
             return
@@ -189,12 +221,14 @@ def main():
             student_name, canvas_user_id, submission_id, original_filename = parsed
             is_zip = original_filename.lower().endswith(".zip")
 
-            student_files.setdefault(canvas_user_id, []).append({
-                "is_zip": is_zip,
-                "path": item,
-                "submission_id": submission_id,
-                "original_filename": original_filename
-            })
+            student_files.setdefault(canvas_user_id, []).append(
+                {
+                    "is_zip": is_zip,
+                    "path": item,
+                    "submission_id": submission_id,
+                    "original_filename": original_filename,
+                }
+            )
 
         print(f"Processing {len(student_files)} student submissions...")
 
@@ -235,15 +269,20 @@ def main():
                                         dest.unlink()
                                 shutil.move(str(sub_item), str(dest))
                         except Exception as e:
-                            print(
-                                f"Warning: Failed to extract student ZIP for {folder_name}: {e}"
-                            )
+                            print(f"Warning: Failed to extract student ZIP for {folder_name}: {e}")
                 else:
-                    # Copy loose file renamed to its original name
-                    dest = student_dir / orig_name
-                    shutil.copy2(path, dest)
+                    # Copy loose file renamed to its clean original name (stripping Canvas resubmission suffixes)
+                    clean_orig_name = normalize_canvas_original_filename(orig_name)
+                    dest = student_dir / clean_orig_name
+                    if dest.exists():
+                        if path.stat().st_size >= dest.stat().st_size:
+                            dest.unlink()
+                            shutil.copy2(path, dest)
+                    else:
+                        shutil.copy2(path, dest)
 
-            # Post-cleanup of student folder just in case
+            # Post-cleanup and Canvas suffix normalization of student folder
+            normalize_canvas_file_suffixes(student_dir)
             cleanup_system_files(student_dir)
 
         # Handle unmatched files

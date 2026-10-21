@@ -15,31 +15,51 @@ SNAKE_OR_CAMEL_RE = re.compile(r"^[a-z][a-z0-9_]*$|^[a-z][a-zA-Z0-9]*$")
 
 
 def get_submission_path(filename: str) -> Path:
-    """Return the resolved path to a submitted file."""
+    """Return the resolved path to a submitted file, supporting Canvas resubmission names and flexible fallbacks."""
     env_dir = os.getenv("STUDENT_SUBMISSION_DIR")
     if env_dir:
-        cand = Path(env_dir) / filename
+        # Strictly isolate grading to the student's submission directory
+        search_dirs = [Path(env_dir)]
+    else:
+        search_dirs = [Path.cwd()]
+        # Look in the directory of the calling module (e.g. seed directory during local development)
+        import inspect
+
+        frame = inspect.currentframe()
+        try:
+            while frame:
+                caller_dir = Path(frame.f_code.co_filename).resolve().parent
+                if caller_dir not in search_dirs:
+                    search_dirs.append(caller_dir)
+                frame = frame.f_back
+        finally:
+            del frame
+
+    # 1. Exact match across search dirs
+    for d in search_dirs:
+        cand = d / filename
         if cand.is_file():
             return cand.resolve()
 
-    cwd_cand = Path.cwd() / filename
-    if cwd_cand.is_file():
-        return cwd_cand.resolve()
+    # 2. Case-insensitive match across search dirs (e.g. Lore_Vault.py -> lore_vault.py)
+    for d in search_dirs:
+        if d.is_dir():
+            for p in d.glob("*.py"):
+                if p.name.lower() == filename.lower():
+                    return p.resolve()
 
-    # Look in the directory of the calling module (e.g. seed directory during tests)
-    import inspect
-    frame = inspect.currentframe()
-    try:
-        while frame:
-            caller_dir = Path(frame.f_code.co_filename).resolve().parent
-            candidate = caller_dir / filename
-            if candidate.is_file():
-                return candidate.resolve()
-            frame = frame.f_back
-    finally:
-        del frame
+    # 3. Canvas resubmission suffix on the exact required file (e.g. lore_vault-1.py or lore_vault-<uuid>.py -> lore_vault.py)
+    stem = Path(filename).stem.lower()
+    suffix = Path(filename).suffix.lower()
+    for d in search_dirs:
+        if d.is_dir():
+            for p in d.glob("*.py"):
+                if p.suffix.lower() == suffix and re.match(
+                    rf"^{re.escape(stem)}-(?:[0-9]+|[0-9a-fA-F-]{{36}})$", p.stem.lower()
+                ):
+                    return p.resolve()
 
-    return (Path.cwd() / filename).resolve()
+    return (search_dirs[0] / filename).resolve()
 
 
 def assert_file_exists(filename: str) -> Path:
