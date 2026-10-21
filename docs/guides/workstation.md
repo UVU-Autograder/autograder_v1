@@ -80,8 +80,8 @@ The execution sandbox operates on a single pinned grading profile to ensure exac
 | **Package Installer** | `pip==24.3.1`, `setuptools==75.8.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Test Runner** | `pytest==8.4.2` | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Allowlisted Packages** | `pillow==11.3.0`, `pygame==2.6.1`, `tabulate==0.9.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
-| **Memory Cap (Sandbox)** | `128 MB` (`131072 KB`), container hard limit `256 MB` | `DEFAULT_MEMORY_LIMIT` in [client.py](../../backend/app/integrations/judge0/client.py) |
-| **Execution Timeouts** | Per-run `30s` (host cap `<= 60s`), wall time `10s` | `TEST_EXECUTION_TIMEOUT_SECONDS` in [docker-compose.yml](../../docker-compose.yml) |
+| **Memory Cap (Sandbox)** | `256 MB` (`262144 KB`), container hard limit `256 MB` | `DEFAULT_MEMORY_LIMIT` in [client.py](../../backend/app/integrations/judge0/client.py) |
+| **Execution Timeouts** | Per-run `30s` (host cap `<= 60s`), wall time `20s` | `TEST_EXECUTION_TIMEOUT_SECONDS` in [docker-compose.yml](../../docker-compose.yml) |
 | **Upload Payload Cap** | `50 MB` (`52,428,800 bytes`) | `MAX_UPLOAD_BYTES` in [audit_deployment_readiness.py](../../scripts/audit_deployment_readiness.py) |
 | **Headless Drivers** | `SDL_VIDEODRIVER="dummy"`, `SDL_AUDIODRIVER="dummy"` | [pygame_test_helpers.py](../../backend/app/db/seeds/shared/pygame_test_helpers.py) |
 

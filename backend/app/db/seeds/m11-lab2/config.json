@@ -1,0 +1,70 @@
+{
+  "bundle": {
+    "entrypoint": "product_rating_analyzer.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "product_rating_analyzer.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "product_rating_analyzer.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "comment_or_docstring",
+      "label": "Code includes comments or docstrings; runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "map_descriptions",
+      "label": "Uses map() with lambda to convert ratings to descriptions",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "filter_positive",
+      "label": "Uses filter() with lambda to extract positive ratings (4 or 5)",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "reduce_average",
+      "label": "Uses reduce() with lambda to calculate total and average rating",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comprehensions_defined",
+      "label": "Uses list and dict comprehensions in generate_recommendation_flags and rating_summary",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "formatted_output",
+      "label": "Clearly prints original ratings, descriptions, positives, average, flags, and summary",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "bundle": {
+    "entrypoint": "random_text_generator.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "random_text_generator.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "random_text_generator.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "no_syntax_errors",
+      "label": "Code runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comment_or_docstring",
+      "label": "Code includes at least one comment or docstring explaining the logic",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "make_word_logic",
+      "label": "make_word() returns a lowercase word with length between 5 and 10 characters",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "make_line_logic",
+      "label": "make_line() returns a line of 8 to 10 space-separated random words",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "write_random_text_logic",
+      "label": "write_random_text() writes 100+ lines to randomText.txt ending with newlines",
+      "points": 4,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

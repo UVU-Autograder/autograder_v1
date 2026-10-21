@@ -1,0 +1,77 @@
+{
+  "bundle": {
+    "entrypoint": "pathfinder_tracker.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "pathfinder_tracker.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "pathfinder_tracker.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "astronaut_movement_patterns",
+      "label": "Implements unique movement patterns for Lance (4-way), Sophie (Up bias), and Finn (horizontal)",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "simulation_randomness",
+      "label": "Produces randomized, different paths on successive runs",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "astronaut_class_structure",
+      "label": "Defines Astronaut class with name, color, marker, positions, __str__, and move(dx, dy)",
+      "points": 20,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "no_code_repetition",
+      "label": "Uses loops and helper functions to prevent code duplication",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "main_execution_guard",
+      "label": "Implements main() function with standard conditional execution guard",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "limited_global_scope",
+      "label": "State is properly encapsulated in classes and functions rather than global variables",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "code_style_and_quality",
+      "label": "Adheres to Python snake_case conventions and includes helpful comments or docstrings",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "bundle": {
+    "entrypoint": "festival_ration.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "festival_ration.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "festival_ration.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "clean_run_and_comment",
+      "label": "Program runs without errors and includes an explanatory comment",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "naming_and_formatting",
+      "label": "Snake_case or camelCase variable naming and clear output formatting",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "input_and_types",
+      "label": "Correct input collection and integer data type conversion",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "calculation_accuracy",
+      "label": "Accurate calculation of 4 units per colonist ration and remaining stockpile",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

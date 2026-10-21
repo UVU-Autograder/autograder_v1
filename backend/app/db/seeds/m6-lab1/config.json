@@ -1,0 +1,72 @@
+{
+  "bundle": {
+    "entrypoint": "split_even_odd.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "split_even_odd.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "split_even_odd.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "no_syntax_errors",
+      "label": "Code runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comment_or_docstring",
+      "label": "Includes at least one comment or docstring explaining the logic",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "define_function",
+      "label": "Defines a function that accepts a list of integers",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "odd_values_list",
+      "label": "Correctly separates and identifies all odd values without mutation",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "even_values_list",
+      "label": "Correctly separates and identifies all even values without mutation",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "returns_and_prints",
+      "label": "Returns both lists and prints original, odd, and even lists clearly",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

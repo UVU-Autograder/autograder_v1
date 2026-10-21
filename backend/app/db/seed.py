@@ -169,6 +169,12 @@ def _seed_cs1400(
             )
             db.add(assignment)
 
+        seed_candidate = SEEDS_DIR / slug
+        alt_seed_candidate = SEEDS_DIR / slug.replace("-", "_")
+        if (seed_candidate / "config.json").exists() or (alt_seed_candidate / "config.json").exists():
+            db.flush()
+            seed_assignment_artifacts(db, assignment, slug)
+
     db.commit()
 
 

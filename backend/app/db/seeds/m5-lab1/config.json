@@ -1,0 +1,65 @@
+{
+  "bundle": {
+    "entrypoint": "area_multiple_pentagons.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "area_multiple_pentagons.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "area_multiple_pentagons.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "no_syntax_errors",
+      "label": "Code runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "docstring_or_comment",
+      "label": "Includes a docstring or comment explaining the functions",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "define_area_multiple",
+      "label": "Defines areaMultiplePentagons(numPentagons, lengthSide)",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "calls_helper",
+      "label": "Calls areaRegularPentagon(lengthSide) instead of duplicating formula",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "correct_total_area",
+      "label": "Returns the correct total area for various inputs",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

@@ -1,0 +1,76 @@
+{
+  "bundle": {
+    "entrypoint": "log_analyzer.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "log_analyzer.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "log_analyzer.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    },
+    "sample_log": {
+      "type": "support_file",
+      "display_filename": "server_logs.txt"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "no_syntax_errors",
+      "label": "Code runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comment_or_docstring",
+      "label": "Code includes at least one docstring or explanatory comment",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "read_and_parse",
+      "label": "Reads server_logs.txt and parses severity and message using .split('|')",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "count_severity",
+      "label": "Uses a dictionary or counter to tally occurrences of each severity level",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "longest_message",
+      "label": "Correctly identifies the longest log message by character count",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "write_summary_file",
+      "label": "Writes output to log_summary.txt matching the specified report format",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

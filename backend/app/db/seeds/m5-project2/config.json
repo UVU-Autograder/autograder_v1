@@ -1,0 +1,86 @@
+{
+  "bundle": {
+    "entrypoint": "lost_language_decoder.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "lost_language_decoder.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "lost_language_decoder.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "sample_cases",
+      "label": "String Transformation: Works with sample text and ciphering",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "unknown_cases",
+      "label": "String Transformation for Unknown Text: Works with different unknown texts and ciphers",
+      "points": 30,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "for_loop",
+      "label": "Uses at least one for loop in the code",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "while_loop",
+      "label": "Uses at least one while loop in the code",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "if_statement",
+      "label": "Has at least one if statement in the code",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "encode_decode_functions",
+      "label": "Defines dedicated functions for encoding and decoding",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "main_conditional",
+      "label": "Program contains a main function with conditional execution",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "snake_or_camel_case",
+      "label": "All variable names and code follow Python snake_case or camelCase",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

@@ -1,0 +1,63 @@
+{
+  "bundle": {
+    "entrypoint": "library_system.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "library_system.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "library_system.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "book_class_def",
+      "label": "Defines Book class with title, author, year, and available attributes",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "init_and_str",
+      "label": "Proper implementation of __init__() constructor and __str__() representation",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "instance_methods",
+      "label": "Implements instance methods borrow(), return_book(), and is_available()",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "object_list_display",
+      "label": "Creates multiple Book objects, stores in list, and prints them in a loop",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comments_and_clean_run",
+      "label": "Includes comments/docstrings and executes cleanly without errors",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

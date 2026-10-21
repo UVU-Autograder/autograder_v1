@@ -1,0 +1,63 @@
+{
+  "bundle": {
+    "entrypoint": "random_walk_basic.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "random_walk_basic.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "random_walk_basic.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "random_choice_directions",
+      "label": "Uses random.choice with 4 directions (Up, Down, Left, Right)",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "track_positions_list",
+      "label": "Tracks positions using a list of coordinate tuples starting at (0, 0)",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "loop_updates_position",
+      "label": "Loop structure correctly updates position across 100 steps",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "matplotlib_plot",
+      "label": "Uses matplotlib to plot path trajectory",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comment_and_syntax",
+      "label": "Code includes comments, runs without syntax errors, and prints final position",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

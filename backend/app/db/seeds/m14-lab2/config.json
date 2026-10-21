@@ -1,0 +1,63 @@
+{
+  "bundle": {
+    "entrypoint": "student_registration_fixed.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "student_registration_fixed.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "student_registration_fixed.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "debugging_fixes",
+      "label": "Fixes syntax, indentation, search logic, and removal errors from the buggy version",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "test_cases",
+      "label": "Includes validation/test cases for empty names, missing students, and boundary inputs",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "program_functionality",
+      "label": "All menu options work correctly: add, remove, search, roster, and exit",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "clean_menu_and_roster",
+      "label": "Displays formatted roster, options 1-5, and exit message without crashing",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "code_quality_and_comments",
+      "label": "Code uses meaningful function names, includes comments/docstrings, and runs cleanly",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

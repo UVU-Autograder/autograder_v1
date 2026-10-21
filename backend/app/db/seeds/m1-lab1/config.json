@@ -1,0 +1,65 @@
+{
+  "bundle": {
+    "entrypoint": "sum_two_numbers.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "sum_two_numbers.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "sum_two_numbers.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "no_syntax_errors",
+      "label": "Code runs without any syntax errors",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "code_comment",
+      "label": "Script includes at least one comment explaining a section of the code",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "variables_declared",
+      "label": "Two integer variables are declared and assigned values correctly",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "sum_calculated",
+      "label": "The sum of the two numbers is correctly calculated",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "output_formatted",
+      "label": "Output displays a clear and formatted message using print()",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

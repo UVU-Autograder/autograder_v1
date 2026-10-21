@@ -1,0 +1,65 @@
+{
+  "bundle": {
+    "entrypoint": "tuple_guess_game.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "tuple_guess_game.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "tuple_guess_game.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "comment_or_docstring",
+      "label": "Code includes comments or docstrings; runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "generate_random_tuple",
+      "label": "Generates a tuple with 5 random integers between 1 and 20",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "input_to_tuple",
+      "label": "Accepts user input and converts it into a tuple of integers",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "compare_and_feedback",
+      "label": "Compares input to target tuple and gives positional match feedback",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "track_best_attempt",
+      "label": "Tracks and displays best attempt with match percentage and revealed combination",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

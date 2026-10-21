@@ -1,0 +1,63 @@
+{
+  "bundle": {
+    "entrypoint": "student_grade_manager.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "student_grade_manager.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "student_grade_manager.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "program_design",
+      "label": "Includes clear program design plan and pseudocode in comments at start of code",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "program_implementation",
+      "label": "Implements functions for adding students, calculating average, finding, and reporting",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "debugging_and_error_handling",
+      "label": "Validates inputs, handles bounds 0-100, and uses try/except or conditional checks",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "testing_demonstration",
+      "label": "Includes test cases demonstrating normal, boundary, invalid, and edge cases",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "code_quality",
+      "label": "Code uses meaningful names, includes comments/docstrings, and executes without errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}
