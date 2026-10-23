@@ -1,5 +1,6 @@
 import type {
   Assignment,
+  AssignmentConfigV1,
   AssignmentsResponse,
   ConceptMetadata,
   SandboxAiFeedbackResponse,
@@ -397,15 +398,15 @@ export function getMockAssignment(courseId: string, slug: string): Assignment {
     constraints: [
       {
         label: "Entrypoint",
-        value: found.config?.bundle.entrypoint || "main.py",
+        value: (found as { config?: AssignmentConfigV1 }).config?.bundle?.entrypoint || "main.py",
       },
       {
         label: "Required files",
         value:
-          found.config?.bundle.file_requirements
-            ?.flatMap((req) => req.paths)
+          (found as { config?: AssignmentConfigV1 }).config?.bundle?.file_requirements
+            ?.flatMap((req) => req.paths ?? [])
             .join(", ") ||
-          found.config?.bundle.entrypoint ||
+          (found as { config?: AssignmentConfigV1 }).config?.bundle?.entrypoint ||
           "main.py",
       },
     ],
