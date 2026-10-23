@@ -61,6 +61,78 @@ GRADER_FAULT_MESSAGE = (
 )
 
 
+def _test_summaries_from_results(test_results: list[dict]) -> list[TestSummary]:
+    """Build student-facing test summaries from (already redacted) scoring rows."""
+    summaries: list[TestSummary] = []
+    for tr in test_results:
+        failed_sub = None
+        actual_val = None
+        expected_val = None
+        expected_input_val = None
+        is_private = bool(tr.get("is_private"))
+
+        for sub in tr.get("test_results", []):
+            if sub.get("actual") is not None and actual_val is None:
+                actual_val = sub.get("actual")
+            if sub.get("expected") is not None and expected_val is None:
+                expected_val = sub.get("expected")
+            if sub.get("expected_input") is not None and expected_input_val is None:
+                expected_input_val = sub.get("expected_input")
+            if sub.get("outcome") != "passed":
+                failed_sub = sub
+                break
+
+        msg = tr.get("message") or tr.get("label", "")
+        if failed_sub and not is_private:
+            msg = failed_sub.get("message") or msg
+            if failed_sub.get("actual") is not None:
+                actual_val = failed_sub.get("actual")
+            if failed_sub.get("expected") is not None:
+                expected_val = failed_sub.get("expected")
+            if failed_sub.get("expected_input") is not None:
+                expected_input_val = failed_sub.get("expected_input")
+
+        if is_private:
+            actual_val = None
+            expected_val = None
+            expected_input_val = None
+
+        summaries.append(
+            TestSummary(
+                label=tr.get("label", tr.get("key", "Unknown")),
+                status="passed" if tr.get("passed") else "failed",
+                points_awarded=tr.get("points_awarded", 0),
+                points_possible=tr.get("points", 0),
+                message=msg,
+                actual=actual_val,
+                expected=expected_val,
+                your_value=None if is_private else (tr.get("your_value") or actual_val),
+                expected_value=None if is_private else (tr.get("expected_value") or expected_val),
+                expected_input=expected_input_val,
+                output_truncated=tr.get("output_truncated", False),
+            )
+        )
+    return summaries
+
+
+def _warnings_excluding_failure(
+    warnings: list[dict],
+    failure_category: str | None,
+    failure_message: str | None,
+) -> list[SandboxWarning]:
+    return [
+        SandboxWarning(code=w.get("code", "warning"), message=w.get("message", ""))
+        for w in warnings
+        if not (
+            failure_category
+            and (
+                w.get("code") == failure_category
+                or w.get("message") == failure_message
+            )
+        )
+    ]
+
+
 class AiFeedbackUnavailable(Exception):
     """AI feedback cannot be produced right now; carries an HTTP status and a code."""
 
@@ -83,7 +155,21 @@ def student_failure_message(category: str | None, raw_message: str | None) -> st
         return GRADER_FAULT_MESSAGE
     if category == "cancelled":
         return "Run cancelled."
-    return raw_message or "Run failed during execution."
+    # Prefer canned copy over raw pytest/compiler text (may reference private tests).
+    canned = {
+        "missing_files": "Required files were missing from the submission.",
+        "timeout": "The submission ran out of time.",
+        "memory": "The submission used too much memory.",
+        "compile_error": "The submission did not compile.",
+        "runtime_error": "The submission stopped with a runtime error.",
+        "submission_error": "The submission could not be graded.",
+        "output_truncated": "Program output was truncated and the run failed.",
+    }
+    if category and category in canned:
+        return canned[category]
+    if raw_message and len(raw_message) <= 200 and "assert" not in raw_message.lower():
+        return raw_message
+    return "Run failed during execution."
 
 
 class SandboxService:
@@ -431,6 +517,8 @@ class SandboxService:
                     return "not_ready"
 
                 if state == "failure":
+                    from app.domains.grading.result_parser import student_safe_diagnostics
+
                     category = redis_result.get("failure_category", "internal_error")
                     return SandboxRunResultResponse(
                         run_id=run_id,
@@ -438,7 +526,7 @@ class SandboxService:
                         projected_score=0,
                         max_score=record.max_score,
                         failure_category=category,
-                        diagnostics=redis_result.get("diagnostics", {}),
+                        diagnostics=student_safe_diagnostics(redis_result.get("diagnostics")),
                         warnings=[
                             SandboxWarning(
                                 code=category,
@@ -448,87 +536,49 @@ class SandboxService:
                         test_summaries=[],
                         sanitized_feedback="The sandbox run ended with an error.",
                         file_preview=self._file_preview(),
+                        raw_output=None,
                     )
 
-                # Build test summaries from real results
-                test_summaries = []
-                for tr in redis_result.get("test_results", []):
-                    failed_sub = None
-                    actual_val = None
-                    expected_val = None
-                    expected_input_val = None
+                from app.domains.grading.result_parser import (
+                    redact_private_test_details,
+                    student_safe_diagnostics,
+                )
 
-                    for sub in tr.get("test_results", []):
-                        if sub.get("actual") is not None and actual_val is None:
-                            actual_val = sub.get("actual")
-                        if sub.get("expected") is not None and expected_val is None:
-                            expected_val = sub.get("expected")
-                        if sub.get("expected_input") is not None and expected_input_val is None:
-                            expected_input_val = sub.get("expected_input")
-                        if sub.get("outcome") != "passed":
-                            failed_sub = sub
-                            break
-
-                    msg = tr.get("label", "")
-                    if failed_sub:
-                        msg = failed_sub.get("message") or ""
-                        if failed_sub.get("actual") is not None:
-                            actual_val = failed_sub.get("actual")
-                        if failed_sub.get("expected") is not None:
-                            expected_val = failed_sub.get("expected")
-                        if failed_sub.get("expected_input") is not None:
-                            expected_input_val = failed_sub.get("expected_input")
-
-                    your_val = tr.get("your_value") or actual_val
-                    exp_val = tr.get("expected_value") or expected_val
-
-                    test_summaries.append(
-                        TestSummary(
-                            label=tr.get("label", tr.get("key", "Unknown")),
-                            status="passed" if tr.get("passed") else "failed",
-                            points_awarded=tr.get("points_awarded", 0),
-                            points_possible=tr.get("points", 0),
-                            message=msg,
-                            actual=actual_val,
-                            expected=expected_val,
-                            your_value=your_val,
-                            expected_value=exp_val,
-                            expected_input=expected_input_val,
-                            hint=tr.get("hint"),
-                            output_truncated=tr.get("output_truncated", False),
+                test_summaries = _test_summaries_from_results(
+                    redact_private_test_details(list(redis_result.get("test_results", [])))
+                )
+                failure_category = redis_result.get("failure_category")
+                failure_message = redis_result.get("failure_message")
+                warnings = _warnings_excluding_failure(
+                    list(redis_result.get("warnings", [])),
+                    failure_category,
+                    failure_message,
+                )
+                rubric_groups = []
+                if test_summaries:
+                    rubric_groups.append(
+                        RubricGroupResultResponse(
+                            group_key="default",
+                            label="Autograded Tests",
+                            points_earned=sum(ts.points_awarded for ts in test_summaries),
+                            points_possible=sum(ts.points_possible for ts in test_summaries),
+                            items=test_summaries,
                         )
                     )
-
-                warnings = [
-                    SandboxWarning(code=w.get("code", "warning"), message=w.get("message", ""))
-                    for w in redis_result.get("warnings", [])
-                ]
-
-                # Group test summaries into rubric groups if available
-                rubric_groups = []
-                default_group = RubricGroupResultResponse(
-                    group_key="default",
-                    label="Autograded Tests",
-                    points_earned=sum(ts.points_awarded for ts in test_summaries),
-                    points_possible=sum(ts.points_possible for ts in test_summaries),
-                    items=test_summaries,
-                )
-                if test_summaries:
-                    rubric_groups.append(default_group)
 
                 return SandboxRunResultResponse(
                     run_id=run_id,
                     state="complete",
                     projected_score=redis_result.get("score", 0),
                     max_score=redis_result.get("max_score", record.max_score),
-                    failure_category=redis_result.get("failure_category"),
-                    diagnostics=redis_result.get("diagnostics", {}),
+                    failure_category=failure_category,
+                    diagnostics=student_safe_diagnostics(redis_result.get("diagnostics")),
                     warnings=warnings,
                     test_summaries=test_summaries,
                     rubric_groups=rubric_groups,
                     sanitized_feedback="Review your results above.",
                     file_preview=self._file_preview(),
-                    raw_output=redis_result.get("raw_output"),
+                    raw_output=None,
                 )
             except Exception:
                 # Never grade inline in Celery mode: that would run the submission in
@@ -572,79 +622,42 @@ class SandboxService:
 
         # Check stored result from execution
         if record.result is not None:
+            from app.domains.grading.result_parser import (
+                redact_private_test_details,
+                student_safe_diagnostics,
+            )
+
             res_data = record.result
-            test_summaries = []
-            for tr in res_data.get("test_results", []):
-                failed_sub = None
-                actual_val = None
-                expected_val = None
-                expected_input_val = None
-
-                for sub in tr.get("test_results", []):
-                    if sub.get("actual") is not None and actual_val is None:
-                        actual_val = sub.get("actual")
-                    if sub.get("expected") is not None and expected_val is None:
-                        expected_val = sub.get("expected")
-                    if sub.get("expected_input") is not None and expected_input_val is None:
-                        expected_input_val = sub.get("expected_input")
-                    if sub.get("outcome") != "passed":
-                        failed_sub = sub
-                        break
-
-                msg = tr.get("label", "")
-                if failed_sub:
-                    msg = failed_sub.get("message") or ""
-                    if failed_sub.get("actual") is not None:
-                        actual_val = failed_sub.get("actual")
-                    if failed_sub.get("expected") is not None:
-                        expected_val = failed_sub.get("expected")
-                    if failed_sub.get("expected_input") is not None:
-                        expected_input_val = failed_sub.get("expected_input")
-
-                your_val = tr.get("your_value") or actual_val
-                exp_val = tr.get("expected_value") or expected_val
-
-                test_summaries.append(
-                    TestSummary(
-                        label=tr.get("label", tr.get("key", "Unknown")),
-                        status="passed" if tr.get("passed") else "failed",
-                        points_awarded=tr.get("points_awarded", 0),
-                        points_possible=tr.get("points", 0),
-                        message=msg,
-                        actual=actual_val,
-                        expected=expected_val,
-                        your_value=your_val,
-                        expected_value=exp_val,
-                        expected_input=expected_input_val,
-                        hint=tr.get("hint"),
-                        output_truncated=tr.get("output_truncated", False),
-                    )
+            test_summaries = _test_summaries_from_results(
+                redact_private_test_details(list(res_data.get("test_results", [])))
+            )
+            failure_category = res_data.get("failure_category")
+            failure_message = res_data.get("failure_message")
+            warnings = _warnings_excluding_failure(
+                list(res_data.get("warnings", [])),
+                failure_category,
+                failure_message,
+            )
+            sanitized = (
+                "Review your results above."
+                if res_data.get("success")
+                else student_failure_message(
+                    failure_category, res_data.get("failure_message")
                 )
-
-            warnings = [
-                SandboxWarning(code=w.get("code", "warning"), message=w.get("message", ""))
-                for w in res_data.get("warnings", [])
-            ]
-            if not res_data.get("success") and res_data.get("failure_message"):
-                warnings.append(
-                    SandboxWarning(
-                        code=res_data.get("failure_category", "submission_error"),
-                        message=str(res_data.get("failure_message") or "Execution failed."),
-                    )
-                )
+            )
 
             return SandboxRunResultResponse(
                 run_id=run_id,
                 state="complete" if res_data.get("success", True) else "failure",
                 projected_score=res_data.get("score", 0),
                 max_score=res_data.get("max_score", record.max_score),
-                failure_category=res_data.get("failure_category"),
-                diagnostics=res_data.get("diagnostics", {}),
+                failure_category=failure_category,
+                diagnostics=student_safe_diagnostics(res_data.get("diagnostics")),
                 warnings=warnings,
                 test_summaries=test_summaries,
-                sanitized_feedback=str(res_data.get("failure_message") or "Execution failed.") if not res_data.get("success") else "Review your results above.",
+                sanitized_feedback=sanitized,
                 file_preview=self._file_preview(),
-                raw_output=res_data.get("raw_output"),
+                raw_output=None,
             )
 
         return SandboxRunResultResponse(

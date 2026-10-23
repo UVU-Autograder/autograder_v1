@@ -9,7 +9,13 @@ from fastapi import HTTPException
 from app.db.session import SessionLocal
 from app.domains.grading.engine import GradingEngine, GradingResult
 from app.domains.grading.schemas import is_infrastructure_failure
-from app.domains.ingestion.extractor import group_canvas_files, parse_canvas_filename, prepare_student_bundle, safe_extract_zip
+from app.domains.ingestion.extractor import (
+    detect_filename_collisions,
+    group_canvas_files,
+    parse_canvas_filename,
+    prepare_student_bundle,
+    safe_extract_zip,
+)
 from app.domains.runs import retention
 from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
 from app.domains.runs.grading_package import GradingPackageError, load_package
@@ -57,8 +63,18 @@ def step(run_id: int, token: str) -> dict:
         if not details_path.exists():
             safe_extract_zip(official_run_zip_path(run_id).read_bytes(), extracted)
             groups, unmatched = group_canvas_files(extracted)
-            write_run_details_json(directory, {"unmatched_files": [p.name for p in unmatched],
-                "student_results": {}, "run_status": "running"})
+            collisions = detect_filename_collisions(groups)
+            unmatched_names = [p.name for p in unmatched]
+            write_run_details_json(
+                directory,
+                {
+                    "unmatched_files": unmatched_names,
+                    "filename_collisions": collisions,
+                    "intake_acknowledged": not (unmatched_names or collisions),
+                    "student_results": {},
+                    "run_status": "running",
+                },
+            )
         else:
             groups, _ = group_canvas_files(extracted)
         if not groups:

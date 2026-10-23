@@ -100,6 +100,8 @@ def run_mock_official_run(run_id: int) -> None:
 
                 details_payload = {
                     "unmatched_files": ["unrecognized_export_file.txt"],
+                    "filename_collisions": [],
+                    "intake_acknowledged": True,
                     "student_results": student_results,
                 }
                 (run_dir / "run_details.json").write_text(json.dumps(details_payload, indent=2))

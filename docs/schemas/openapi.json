@@ -2079,6 +2079,70 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/runs/{run_id}/intake/acknowledge": {
+      "post": {
+        "tags": [
+          "staff-runs"
+        ],
+        "summary": "Acknowledge Official Run Intake",
+        "description": "Staff confirms unmatched files / filename collisions were reviewed.",
+        "operationId": "acknowledge_official_run_intake_staff_courses__course_id__assignments__assignment_id__runs__run_id__intake_acknowledge_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses": {
       "get": {
         "tags": [
@@ -5511,6 +5575,11 @@
             "title": "Item Type",
             "default": "pytest"
           },
+          "is_private": {
+            "type": "boolean",
+            "title": "Is Private",
+            "default": false
+          },
           "pytest_marker": {
             "anyOf": [
               {
@@ -5532,17 +5601,6 @@
               }
             ],
             "title": "Rubric Group Key"
-          },
-          "hint": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hint"
           }
         },
         "type": "object",
@@ -5584,6 +5642,11 @@
             "title": "Item Type",
             "default": "pytest"
           },
+          "is_private": {
+            "type": "boolean",
+            "title": "Is Private",
+            "default": false
+          },
           "rubric_group_key": {
             "anyOf": [
               {
@@ -5623,18 +5686,6 @@
               }
             ],
             "title": "Outputs"
-          },
-          "hint": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 2000
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hint"
           }
         },
         "type": "object",
@@ -6243,17 +6294,6 @@
       },
       "TestSummary": {
         "properties": {
-          "hint": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hint"
-          },
           "output_truncated": {
             "type": "boolean",
             "title": "Output Truncated",
@@ -6395,11 +6435,17 @@
               }
             ],
             "title": "Adjudicated Automated Score"
+          },
+          "details_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Details Revision"
           }
         },
         "type": "object",
         "required": [
-          "grades"
+          "grades",
+          "details_revision"
         ],
         "title": "UpdateManualGradesRequest"
       },

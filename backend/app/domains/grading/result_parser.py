@@ -295,17 +295,83 @@ def calculate_scores(
                 "passed": passed,
                 "extra_credit": config.extra_credit,
                 "item_type": config.item_type,
+                "is_private": bool(config.is_private),
                 "marker": marker,
                 "your_value": item_your_val,
                 "expected_value": item_exp_val,
                 "failure_category": item_failure_cat,
-                "hint": config.hint if not passed else None,
                 "output_truncated": any(t.output_truncated for t in matching_tests),
                 "test_results": test_result_details,
             }
         )
 
     return total_score, details
+
+
+PRIVATE_TEST_LABEL = "Hidden test"
+PRIVATE_TEST_KEY = "hidden_test"
+
+
+def redact_private_test_details(
+    test_results: list[dict],
+) -> list[dict]:
+    """Return student-safe copies of scoring results with private details removed.
+
+    Point outcomes remain accurate. Labels, assertion text, diffs, markers, and
+    nested pytest node details are replaced for items marked ``is_private``.
+    """
+    redacted: list[dict] = []
+    private_ordinal = 0
+    for item in test_results:
+        if not item.get("is_private"):
+            redacted.append(dict(item))
+            continue
+        private_ordinal += 1
+        passed = bool(item.get("passed"))
+        redacted.append(
+            {
+                "key": f"{PRIVATE_TEST_KEY}_{private_ordinal}",
+                "label": PRIVATE_TEST_LABEL,
+                "points": item.get("points", 0),
+                "points_awarded": item.get("points_awarded", 0),
+                "passed": passed,
+                "extra_credit": bool(item.get("extra_credit")),
+                "item_type": item.get("item_type", "pytest"),
+                "is_private": True,
+                "marker": None,
+                "your_value": None,
+                "expected_value": None,
+                "failure_category": None,
+                "output_truncated": bool(item.get("output_truncated")),
+                "message": "Passed." if passed else "This hidden test did not pass.",
+                "test_results": [
+                    {
+                        "nodeid": PRIVATE_TEST_LABEL,
+                        "outcome": "passed" if passed else "failed",
+                        "message": None,
+                        "actual": None,
+                        "expected": None,
+                        "your_value": None,
+                        "expected_value": None,
+                        "expected_input": None,
+                        "failure_category": None,
+                        "output_truncated": False,
+                    }
+                ],
+            }
+        )
+    return redacted
+
+
+def student_safe_diagnostics(diagnostics: dict | None) -> dict:
+    """Drop stdout/stderr that can reveal private tests; keep truncate flags only."""
+    if not diagnostics:
+        return {}
+    safe: dict = {}
+    for key in ("stdout_truncated", "stderr_truncated"):
+        if key in diagnostics:
+            safe[key] = bool(diagnostics[key])
+    return safe
 
 
 class PytestOutcomeParser:

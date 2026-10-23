@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { slugifyKey, makeUniqueKey } from "@/lib/slugify";
@@ -16,6 +16,7 @@ import {
   FileRequirementConfig,
   AssignmentConfigV1,
   ConceptMetadata,
+  pytestMarkerForKey,
 } from "@/features/assignments/types";
 
 type CourseModule = {
@@ -42,6 +43,7 @@ type AssignmentEditorContextType = {
   setErrorMessage: (msg: string | null) => void;
   setSuccessMessage: (msg: string | null) => void;
   markDirty: () => void;
+  handleDiscard: () => Promise<void>;
 
   // Metadata
   title: string;
@@ -73,7 +75,6 @@ type AssignmentEditorContextType = {
   removeScoringItem: (key: string) => void;
   updateScoringItemField: (key: string, field: keyof RubricItem, val: unknown) => void;
   rubricGroups: RubricGroup[];
-  autoGenerateKeyFromLabel: (key: string) => void;
   syncMarkersFromTestSuite: (sourceCode: string) => number;
 
 
@@ -214,8 +215,41 @@ export function AssignmentEditorProvider({
   // Link copy
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Snapshot of last loaded/saved setup so reverting clears "Unsaved changes".
+  const savedSnapshotRef = useRef<string | null>(null);
+  const pendingBaselineRef = useRef(true);
+
+  const buildSnapshot = useCallback(() => {
+    return JSON.stringify({
+      title,
+      description,
+      moduleId,
+      sandboxEnabled,
+      language,
+      entrypoint,
+      fileRequirements,
+      scoringItems: scoringItems.map(({ id: _id, ...rest }) => rest),
+      rubricGroups,
+      conceptDenylist,
+      dependencies,
+      testSuiteCode,
+    });
+  }, [
+    title,
+    description,
+    moduleId,
+    sandboxEnabled,
+    language,
+    entrypoint,
+    fileRequirements,
+    scoringItems,
+    rubricGroups,
+    conceptDenylist,
+    dependencies,
+    testSuiteCode,
+  ]);
+
   const markDirty = () => {
-    setDirty(true);
     setSaveSuccess(false);
     setSuccessMessage(null);
   };
@@ -226,9 +260,26 @@ export function AssignmentEditorProvider({
     markDirty();
   };
 
+  useEffect(() => {
+    if (loading) return;
+    if (pendingBaselineRef.current) {
+      savedSnapshotRef.current = buildSnapshot();
+      pendingBaselineRef.current = false;
+      setDirty(false);
+      return;
+    }
+    if (savedSnapshotRef.current === null) return;
+    const nextDirty = buildSnapshot() !== savedSnapshotRef.current;
+    setDirty(nextDirty);
+    if (!nextDirty) {
+      setSaveSuccess(false);
+    }
+  }, [loading, buildSnapshot]);
+
   // Load configuration and data
   const loadSetup = useCallback(async () => {
     setLoading(true);
+    pendingBaselineRef.current = true;
     setErrorMessage(null);
     try {
       const [setupData, metaData, courseConcepts] = await Promise.all([
@@ -287,14 +338,20 @@ export function AssignmentEditorProvider({
       setDependencies(cfg.dependencies || []);
       const legacyConcepts = cfg.concepts as Record<string, string[]> | undefined;
       setConceptDenylist(cfg.concepts?.denylist || legacyConcepts?.blacklist || []);
-
-      setDirty(false);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to load assignment setup.");
     } finally {
       setLoading(false);
     }
   }, [courseId, assignmentId]);
+
+  const handleDiscard = useCallback(async () => {
+    if (!dirty) return;
+    if (!confirm("Discard unsaved changes and reload the last saved setup?")) {
+      return;
+    }
+    await loadSetup();
+  }, [dirty, loadSetup]);
 
   useEffect(() => {
     let active = true;
@@ -405,8 +462,9 @@ export function AssignmentEditorProvider({
       label: itemType === "pytest" ? `Pytest Criterion ${nextId}` : `Manual Rubric Item ${nextId}`,
       points: 10,
       extra_credit: false,
+      is_private: false,
       item_type: itemType,
-      pytest_marker: itemType === "pytest" ? `ag_${uniqueKey}` : null,
+      pytest_marker: itemType === "pytest" ? pytestMarkerForKey(uniqueKey) : null,
       rubric_group_key: null,
     };
     setScoringItems((prev) => [...prev, newItem]);
@@ -428,7 +486,7 @@ export function AssignmentEditorProvider({
             const raw = String(val).toLowerCase().replace(/[^a-z0-9_]/g, "");
             updated.key = raw;
             if (updated.item_type === "pytest") {
-              updated.pytest_marker = `ag_${raw}`;
+              updated.pytest_marker = pytestMarkerForKey(raw);
             }
           } else if (field === "label" && item.item_type === "manual") {
             const derived = slugifyKey(String(val));
@@ -443,28 +501,6 @@ export function AssignmentEditorProvider({
     });
     markDirty();
   };
-
-  const autoGenerateKeyFromLabel = (keyOrId: string) => {
-    setScoringItems((prev) => {
-      const existingKeys = prev.map((i) => i.key);
-      return prev.map((item) => {
-        if (item.id === keyOrId || item.key === keyOrId) {
-          const derived = slugifyKey(item.label);
-          if (derived) {
-            const uniqueKey = makeUniqueKey(derived, existingKeys, item.key);
-            const updated = { ...item, key: uniqueKey };
-            if (updated.item_type === "pytest") {
-              updated.pytest_marker = `ag_${uniqueKey}`;
-            }
-            return updated;
-          }
-        }
-        return item;
-      });
-    });
-    markDirty();
-  };
-
 
   const toggleConceptDenylist = (conceptKey: string) => {
     setConceptDenylist((prev) =>
@@ -536,7 +572,7 @@ export function AssignmentEditorProvider({
             points: 10,
             extra_credit: false,
             item_type: "pytest",
-            pytest_marker: `ag_${k}`,
+            pytest_marker: pytestMarkerForKey(k),
             rubric_group_key: null,
             inputs: parsed.inputs,
             outputs: parsed.outputs,
@@ -673,8 +709,8 @@ export function AssignmentEditorProvider({
       });
 
       setSaveSuccess(true);
-      setDirty(false);
-      setSuccessMessage("Assignment configuration saved successfully.");
+      setSuccessMessage(null);
+      pendingBaselineRef.current = true;
       await loadSetup();
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to save assignment configuration.");
@@ -746,7 +782,6 @@ export function AssignmentEditorProvider({
         removeScoringItem,
         updateScoringItemField,
         rubricGroups,
-        autoGenerateKeyFromLabel,
         syncMarkersFromTestSuite,
 
 
@@ -780,6 +815,7 @@ export function AssignmentEditorProvider({
         saveCodeChanges,
 
         handleSave,
+        handleDiscard,
         handleDelete,
         handleCopyStudentLink,
         copiedLink,

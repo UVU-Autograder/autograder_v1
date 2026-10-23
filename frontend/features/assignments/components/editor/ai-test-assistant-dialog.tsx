@@ -7,6 +7,7 @@ import {
   ReplaceIcon,
   CheckCircle2Icon,
   ShieldAlertIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -46,17 +46,23 @@ export function AITestAssistantDialog({
 }: AITestAssistantDialogProps) {
   const [instruction, setInstruction] = useState(assignmentDescription);
   const [prevOpen, setPrevOpen] = useState(false);
-  if (isOpen && !prevOpen) {
-    setPrevOpen(true);
-    setInstruction(assignmentDescription);
-  } else if (!isOpen && prevOpen) {
-    setPrevOpen(false);
-  }
-
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AITestAuthoringResponse | null>(null);
   const [editablePreview, setEditablePreview] = useState("");
+
+  if (isOpen && !prevOpen) {
+    setPrevOpen(true);
+    setInstruction(assignmentDescription);
+    setResult(null);
+    setEditablePreview("");
+    setError(null);
+  } else if (!isOpen && prevOpen) {
+    setPrevOpen(false);
+  }
+
+  const hasPreview = Boolean(editablePreview.trim());
+  const suiteForRequest = hasPreview ? editablePreview : currentTestCode;
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -66,7 +72,7 @@ export function AITestAssistantDialog({
         `/staff/courses/${courseId}/assignments/${assignmentId}/ai-generate-tests`,
         {
           instruction: instruction.trim() || null,
-          current_test_code: currentTestCode,
+          current_test_code: suiteForRequest || null,
         },
       );
       setResult(response);
@@ -88,32 +94,28 @@ export function AITestAssistantDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
             <SparklesIcon className="w-5 h-5 text-primary" />
-            <span>Generate Tests from Specification</span>
+            <span>AI Test Assistant</span>
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Autofilled from the assignment description. Adjust the specification
-            if needed and generate{" "}
-            <code className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">
-              @pytest.mark.ag_*
-            </code>{" "}
-            tests.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1.5">
           <Label htmlFor="ai-test-instruction" className="text-xs font-semibold">
-            Assignment Specification / Prompt
+            Instructions
           </Label>
           <Textarea
             id="ai-test-instruction"
             rows={5}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            placeholder="Assignment specification or test instructions..."
+            placeholder={
+              hasPreview
+                ? "Describe changes to the preview…"
+                : "Assignment specification or what to generate…"
+            }
             className="font-mono text-xs"
             data-testid="ai-test-instruction-input"
           />
-          <div className="flex justify-end pt-1">
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
             <Button
               type="button"
               size="sm"
@@ -121,8 +123,12 @@ export function AITestAssistantDialog({
               disabled={isGenerating}
               data-testid="ai-generate-submit-btn"
             >
-              <SparklesIcon className="w-4 h-4 mr-1.5" />
-              {isGenerating ? "Generating..." : "Generate Tests"}
+              {hasPreview ? (
+                <RefreshCwIcon className="w-4 h-4 mr-1.5" />
+              ) : (
+                <SparklesIcon className="w-4 h-4 mr-1.5" />
+              )}
+              {isGenerating ? "Working…" : hasPreview ? "Revise" : "Generate"}
             </Button>
           </div>
         </div>
@@ -146,7 +152,7 @@ export function AITestAssistantDialog({
                 htmlFor="ai-generated-code-preview"
                 className="text-xs text-muted-foreground"
               >
-                Generated Test Code Preview
+                Preview
               </Label>
               <Textarea
                 id="ai-generated-code-preview"

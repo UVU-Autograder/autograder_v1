@@ -8,7 +8,6 @@ import {
   CheckCircle2Icon,
   AlertCircleIcon,
   ShieldCheckIcon,
-  FileTextIcon,
 } from "lucide-react";
 
 type ProblemOverviewProps = {
@@ -24,64 +23,53 @@ export function ProblemOverview({
   const constraints = assignment.constraints || [];
 
   return (
-    <div className="h-full w-full overflow-y-auto p-6 bg-background space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-card rounded-xl border border-border shadow-xs">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-              Sandbox Assignment
-            </span>
-          </div>
-          <h1 className="text-xl font-bold text-foreground">
-            {assignment.title}
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <span className="text-xs text-muted-foreground block uppercase font-medium">
-              Max Score
-            </span>
-            <span className="text-lg font-bold font-mono text-success">
-              {assignment.max_score} pts
-            </span>
-          </div>
+    <div className="h-full w-full space-y-4 overflow-y-auto bg-background p-6">
+      <div className="flex flex-col justify-between gap-3 rounded-xl border border-border bg-card p-4 md:flex-row md:items-center">
+        <h1 className="text-xl font-bold text-foreground">{assignment.title}</h1>
+        <div className="text-right">
+          <span className="block text-xs font-medium uppercase text-muted-foreground">
+            Max Score
+          </span>
+          <span className="font-mono text-lg font-bold text-success">
+            {assignment.max_score} pts
+          </span>
         </div>
       </div>
 
-      {/* Assignment Description / Instructions */}
       {assignment.description ? (
-        <Card data-testid="assignment-description-card">
-          <CardHeader className="py-3 px-4 flex flex-row items-center gap-2">
-            <FileTextIcon className="w-4 h-4 text-primary" />
-            <CardTitle className="text-sm font-semibold text-foreground">
-              Assignment Description
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-3 px-4">
+        <Card
+          size="sm"
+          className="gap-1.5 py-3"
+          data-testid="assignment-description-card"
+        >
+          <CardContent className="px-4 py-0">
             <MarkdownRenderer
               content={assignment.description}
-              className="text-xs text-foreground leading-relaxed"
+              className="text-xs leading-relaxed text-foreground"
             />
           </CardContent>
         </Card>
       ) : null}
 
-      {/* Constraints & Submission Rules */}
       {constraints.length > 0 && (
-        <Card className="border-warning/30 bg-warning/10 text-card-foreground">
-          <CardHeader className="py-3 px-4 flex flex-row items-center gap-2">
-            <AlertCircleIcon className="w-4 h-4 text-warning" />
+        <Card
+          size="sm"
+          className="gap-1.5 border-warning/30 bg-warning/10 py-3 text-card-foreground"
+        >
+          <CardHeader className="flex flex-row items-center gap-2 px-4 py-0">
+            <AlertCircleIcon className="h-4 w-4 text-warning" />
             <CardTitle className="text-sm font-semibold text-warning">
-              Submission Rules & Constraints
+              Submission Rules
             </CardTitle>
           </CardHeader>
-          <CardContent className="py-2 px-4 space-y-1.5 text-xs text-muted-foreground">
+          <CardContent className="space-y-1.5 px-4 py-0 text-xs text-muted-foreground">
             {constraints.map((c, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                <span className="h-1.5 w-1.5 rounded-full bg-warning" />
                 <span>
-                  <strong className="font-semibold text-foreground">{c.label}:</strong>{" "}
+                  <strong className="font-semibold text-foreground">
+                    {c.label}:
+                  </strong>{" "}
                   {c.value}
                 </span>
               </div>
@@ -90,11 +78,10 @@ export function ProblemOverview({
         </Card>
       )}
 
-      {/* Allowed Concepts Whitelist */}
-      <Card>
-        <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="flex flex-row items-center justify-between px-4 py-0">
           <div className="flex items-center gap-2">
-            <ShieldCheckIcon className="w-4 h-4 text-primary" />
+            <ShieldCheckIcon className="h-4 w-4 text-primary" />
             <CardTitle className="text-sm font-semibold text-foreground">
               Allowed Concepts
             </CardTitle>
@@ -105,8 +92,8 @@ export function ProblemOverview({
               : "All concepts allowed"}
           </span>
         </CardHeader>
-        <CardContent className="py-3 px-4">
-          {allowedConcepts.length > 0 ? (
+        {allowedConcepts.length > 0 && (
+          <CardContent className="px-4 py-0">
             <div className="flex flex-wrap gap-2">
               {allowedConcepts.map((conceptKey) => {
                 const meta = conceptMeta[conceptKey];
@@ -114,22 +101,17 @@ export function ProblemOverview({
                 return (
                   <span
                     key={conceptKey}
-                    className="inline-flex items-center bg-primary/10 text-primary border border-primary/20 font-medium text-xs px-2.5 py-1 rounded-md"
+                    className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                     title={meta?.syntax_patterns?.join(", ") || undefined}
                   >
-                    <CheckCircle2Icon className="w-3 h-3 mr-1 text-primary inline" />
+                    <CheckCircle2Icon className="mr-1 inline h-3 w-3 text-primary" />
                     {title}
                   </span>
                 );
               })}
             </div>
-          ) : (
-            <p className="text-xs text-muted-foreground italic">
-              No specific AST concept restrictions configured for this
-              assignment.
-            </p>
-          )}
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
     </div>
   );

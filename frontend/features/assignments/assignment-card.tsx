@@ -64,7 +64,7 @@ export default function AssignmentCard({
             className="shrink-0"
           >
             <Link href={`/staff/courses/${courseId}/assignments/${assignment.id}/runs`}>
-              <PlayIcon className="mr-1.5 size-3.5" /> Grade Now
+              <PlayIcon className="mr-1.5 size-3.5" /> Grade
             </Link>
           </Button>
         )}

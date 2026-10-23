@@ -41,22 +41,24 @@ class Judge0CleanupError(Judge0Error):
 # ---------------------------------------------------------------------------
 
 JUDGE0_STATUS_MAP: dict[int, str] = {
-    3: "accepted",        # Accepted
-    4: "wrong_answer",    # Wrong Answer
-    5: "timeout",         # Time Limit Exceeded
-    6: "compile_error",   # Compilation Error
-    7: "timeout",         # Runtime Error (SIGSEGV)
-    8: "timeout",         # Runtime Error (SIGXFSZ)
-    9: "timeout",         # Runtime Error (SIGFPE)
-    10: "timeout",        # Runtime Error (SIGABRT)
-    11: "timeout",        # Runtime Error (NZEC)
-    12: "timeout",        # Runtime Error (Other)
-    13: "internal_error", # Internal Error
-    14: "compile_error",  # Exec Format Error
+    3: "accepted",                 # Accepted
+    4: "wrong_answer",             # Wrong Answer
+    5: "timeout",                  # Time Limit Exceeded
+    6: "compile_error",            # Compilation Error
+    7: "resource_limit_exceeded",  # Runtime Error (SIGSEGV)
+    8: "resource_limit_exceeded",  # Runtime Error (SIGXFSZ)
+    9: "resource_limit_exceeded",  # Runtime Error (SIGFPE)
+    10: "resource_limit_exceeded", # Runtime Error (SIGABRT)
+    11: "runtime_exception",       # Runtime Error (NZEC)
+    12: "runtime_exception",       # Runtime Error (Other)
+    13: "internal_error",          # Internal Error
+    14: "compile_error",           # Exec Format Error
 }
 
 _JUDGE0_FAILURE_MESSAGES: dict[str, str] = {
     "timeout": "Execution timed out.",
+    "resource_limit_exceeded": "Execution exceeded a resource limit (memory, signal, or abort).",
+    "runtime_exception": "Program exited with a runtime error.",
     "compile_error": "Code could not be compiled or imported.",
     "internal_error": "Execution engine internal error.",
 }

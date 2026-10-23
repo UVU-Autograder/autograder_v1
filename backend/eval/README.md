@@ -80,43 +80,24 @@ validates without writing. Needs the Judge0 image's extra packages locally
 The same generator is the starting point for a Phase 2 training set: identical
 inputs, with reviewed target responses instead of rubric scores.
 
-### Grader gaps it found
+### Grader gaps (historical)
 
-These mutations produced **no failing test**, i.e. the real autograder lets the
-bug through. Worth an instructor look:
+Most early mutation gaps were closed by tightening CS 1410 seed tests. Remaining
+items that were still manual are now automated:
 
-| Assignment | Bug that passes | Item that should catch it |
+| Assignment | Bug | Item |
 | --- | --- | --- |
-| lab2 | balance printed without 2 decimals | `account_str` |
-| lab2 | `demo.py` never prints | `demo_output` |
-| lab5 | exactly 100 cents not carried | `normalize` |
-| ds2 | total label changed to `"Total items:"` | `main_output` |
-| ds2 | `__iter__` never resets its index | `order_class` |
-| ds5 | tax rate changed to 7.5% | `ds4_regression` |
-| ds10 | candies with different prices combined | `candy_combinable` |
+| ds5 | empty candy name accepted | `input_validation` |
+| ds5 | menu uses `int(choice)` (crashes on Enter/`abc`) | `input_validation` |
+| ds5 | receipt header `Item` instead of `Name` | `receipt_output` |
 
-The Phase 2 set (`TRAIN_MUTATIONS`) found 23 more. Each was dropped from the
-training list because the grader reports nothing:
-
-| Assignment | Bug that passes |
-| --- | --- |
-| lab2 | `__str__` drops the comma between owner and balance |
-| lab3 | constructor accepts a negative count; `set_video_count(0)` is ignored (`> 0`) |
-| lab4 | `__init__` writes `_title` directly, skipping validation |
-| lab7 | `main` sorts in reverse; `main` never prints the total-courses line |
-| ds1 | `Cookie` inherits `Candy` instead of `DessertItem` |
-| ds2 | `order` list shared as a class attribute; Candy stores weight as price (DS1 regression) |
-| ds3 | `Order.__len__` deleted (DS2 regression) |
-| ds5 | empty candy name accepted; weight 0 accepted; header `Item` for `Name`; menu uses `int(choice)` |
-| ds8 | `PayType` without `PHONE`; `Payable` not a `Protocol`; **the student's own failing test still passes `student_order_tests`** |
-| ds9 | **same for `student_sort_tests`**; `__eq__` without the type check; `set_pay_type` validation removed (DS8 regression) |
-| ds10 | `Cookie.can_combine` ignores price; `Candy.combine` returns `None`; `sort` reversed (DS9 regression) |
+Re-run `python -m eval.build_cases --check` after seed changes. Drop any mutation
+the grader still does not catch from `TRAIN_MUTATIONS` rather than training on it.
 
 Not gaps, checked: lab1 Part 2 validates the submitted `bears3.jpg` by design,
-and deleting `__lt__` still sorts because Python falls back to `__gt__`.
-
-Also: the **lab4 model solution** uses `raise` (exceptions, Module 7) in a
-Module 3 lab, so the AST concept check warns on the reference solution itself.
+and deleting `__lt__` still sorts because Python falls back to `__gt__`. Module 3
+(`m3`) allows exceptions, so lab4 reference solutions no longer trip concept
+warnings for `raise`.
 
 ## Reviewing quality
 

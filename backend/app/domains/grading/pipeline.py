@@ -37,6 +37,10 @@ from app.integrations.ast_checker.validator import ASTCheckResult
 logger = logging.getLogger(__name__)
 
 
+class ArtifactLoadError(RuntimeError):
+    """Raised when a required grading artifact cannot be loaded."""
+
+
 @dataclass
 class SubmissionPayload:
     """Input payload for a student evaluation.
@@ -120,22 +124,34 @@ def preload_grading_artifacts(
     config: AssignmentConfigV1,
     artifact_refs: dict[str, str],
 ) -> PreloadedArtifacts:
-    """Load non-model-solution artifact bytes once for reuse across students."""
+    """Load non-model-solution artifact bytes once for reuse across students.
+
+    Fails closed: a missing or unreadable configured artifact raises
+    ``ArtifactLoadError`` instead of silently dropping tests.
+    """
     files: dict[str, bytes] = {}
     pytest_filenames: list[str] = []
+    expected_pytest = 0
     for artifact_key, storage_ref in artifact_refs.items():
         artifact_config = config.artifacts.get(artifact_key)
         if artifact_config is None or artifact_config.type == "model_solution":
             continue
+        if artifact_config.type == "pytest_file":
+            expected_pytest += 1
         try:
             content = load_artifact_content(storage_ref)
         except (FileNotFoundError, ValueError) as exc:
-            logger.warning("Could not preload artifact %s: %s", artifact_key, exc)
-            continue
+            raise ArtifactLoadError(
+                f"Could not load grading artifact '{artifact_key}': {exc}"
+            ) from exc
         filename = Path(artifact_config.display_filename or artifact_key).name
         files[filename] = content
         if artifact_config.type == "pytest_file":
             pytest_filenames.append(filename)
+    if expected_pytest > 0 and not pytest_filenames:
+        raise ArtifactLoadError(
+            "Configured pytest artifacts could not be loaded for this assignment."
+        )
     return PreloadedArtifacts(files=files, pytest_filenames=pytest_filenames)
 
 
@@ -318,7 +334,12 @@ class GradingPipeline:
 
         Returns (test_filenames, test_cases_map) or None on configuration error.
         """
-        test_filenames = self._inject_artifacts(exec_dir)
+        try:
+            test_filenames = self._inject_artifacts(exec_dir)
+        except ArtifactLoadError as exc:
+            report.failure_category = "preparation_error"
+            report.failure_message = str(exc)
+            return None
 
         if self.strategy.language_name == "python":
             helpers_target = exec_dir / "python_autograder_helpers.py"
@@ -332,7 +353,7 @@ class GradingPipeline:
                         pass
 
             if not test_filenames:
-                report.failure_category = "validation_error"
+                report.failure_category = "preparation_error"
                 report.failure_message = "No pytest file artifacts found for this assignment."
                 return None
 
@@ -412,7 +433,11 @@ class GradingPipeline:
                 report.compiler_errors = report.parsed_outcome.compiler_errors
 
     def _inject_artifacts(self, exec_dir: Path) -> list[str]:
-        """Write assignment artifacts into exec_dir; return pytest filenames."""
+        """Write assignment artifacts into exec_dir; return pytest filenames.
+
+        Raises ``ArtifactLoadError`` if a configured non-model artifact cannot
+        be loaded (fail closed — never silently drop tests).
+        """
         if self.preloaded_artifacts is not None:
             for filename, content in self.preloaded_artifacts.files.items():
                 (exec_dir / filename).write_bytes(content)
@@ -427,8 +452,9 @@ class GradingPipeline:
             try:
                 content = self.load_artifact_fn(storage_ref)
             except (FileNotFoundError, ValueError) as exc:
-                logger.warning("Could not load artifact %s: %s", artifact_key, exc)
-                continue
+                raise ArtifactLoadError(
+                    f"Could not load grading artifact '{artifact_key}': {exc}"
+                ) from exc
 
             filename = Path(artifact_config.display_filename or artifact_key).name
             (exec_dir / filename).write_bytes(content)

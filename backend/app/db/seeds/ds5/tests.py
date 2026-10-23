@@ -87,3 +87,40 @@ def test_dessertshop_class(monkeypatch):
     assert sundae.price_per_scoop == 0.85
     assert sundae.topping_name == "Caramel"
     assert sundae.topping_price == 0.99
+
+
+@pytest.mark.ag_input_validation
+def test_input_validation(monkeypatch):
+    shop = DessertShop()
+
+    # Empty name must not become a Candy named "" / whitespace.
+    monkeypatch.setattr(
+        "builtins.input",
+        sequential_input_mock(["", "Gummy Bears", "0.25", "0.35"]),
+    )
+    candy = None
+    try:
+        candy = shop.user_prompt_candy()
+    except ValueError:
+        candy = None
+    if candy is not None:
+        assert candy.name.strip() == "Gummy Bears"
+
+    # Menu must not crash on non-digit choice (e.g. int(choice) without guard).
+    monkeypatch.setattr("builtins.input", sequential_input_mock(["abc", ""]))
+    shop_mod.main()
+
+
+@pytest.mark.ag_receipt_output
+def test_receipt_output(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "builtins.input",
+        sequential_input_mock(["1", "Gummy Bears", "0.25", "0.35", ""]),
+    )
+    shop_mod.main()
+    out = capsys.readouterr().out
+    assert "Name" in out, "Receipt header must include Name (not Item)"
+    assert "Cost" in out
+    assert "Tax" in out
+    assert "Subtotal" in out or "subtotal" in out.lower()
+    assert "Total" in out

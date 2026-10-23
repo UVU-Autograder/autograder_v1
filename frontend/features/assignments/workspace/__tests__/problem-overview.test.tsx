@@ -34,7 +34,7 @@ describe("ProblemOverview", () => {
 
     expect(screen.getByText("Lab 1: Image Processing")).toBeDefined();
     expect(screen.getByText("100 pts")).toBeDefined();
-    expect(screen.getByText("Submission Rules & Constraints")).toBeDefined();
+    expect(screen.getByText("Submission Rules")).toBeDefined();
     expect(screen.getByText("File Format:")).toBeDefined();
   });
 
@@ -43,7 +43,6 @@ describe("ProblemOverview", () => {
 
     const descCard = screen.getByTestId("assignment-description-card");
     expect(descCard).toBeDefined();
-    expect(screen.getByText("Assignment Description")).toBeDefined();
     expect(screen.getByText("Overview")).toBeDefined();
     expect(screen.getByText(/Write a program to process images/)).toBeDefined();
   });
@@ -78,6 +77,5 @@ describe("ProblemOverview", () => {
     render(<ProblemOverview assignment={noDescAssignment} />);
 
     expect(screen.queryByTestId("assignment-description-card")).toBeNull();
-    expect(screen.queryByText("Assignment Description")).toBeNull();
   });
 });

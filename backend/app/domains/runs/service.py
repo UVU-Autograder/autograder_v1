@@ -105,6 +105,9 @@ def manual_grading_progress(
     student_results: dict,
     *,
     run_status: str | None = None,
+    unmatched_files: list | None = None,
+    filename_collisions: list | None = None,
+    intake_acknowledged: bool = False,
 ) -> dict[str, int | bool]:
     total = len(student_results)
     requires_manual = any(
@@ -122,11 +125,32 @@ def manual_grading_progress(
     )
     manual_complete = not requires_manual or completed == total
     run_complete = run_status is None or run_status == "complete"
+    intake_pending = bool(unmatched_files or filename_collisions) and not intake_acknowledged
+    pending_adjudication = any(
+        bool(result.get("requires_adjudication")) for result in student_results.values()
+    )
     return {
         "requires_manual_grading": requires_manual,
         "completed_students": completed,
         "total_students": total,
-        "exports_ready": bool(run_complete and manual_complete),
+        "intake_pending": intake_pending,
+        "exports_ready": bool(
+            run_complete and manual_complete and not intake_pending and not pending_adjudication
+        ),
+    }
+
+
+def intake_summary_from_details(data: dict) -> dict:
+    """Normalize intake ambiguity fields stored on run_details.json."""
+    unmatched = list(data.get("unmatched_files") or [])
+    collisions = list(data.get("filename_collisions") or [])
+    acknowledged = bool(data.get("intake_acknowledged"))
+    if not unmatched and not collisions:
+        acknowledged = True
+    return {
+        "unmatched_files": unmatched,
+        "filename_collisions": collisions,
+        "intake_acknowledged": acknowledged,
     }
 
 
@@ -189,11 +213,28 @@ def update_student_manual_result(
         result["requires_adjudication"] = False
 
 
+def bump_details_revision(data: dict) -> int:
+    """Increment and return the optimistic-concurrency revision on run details."""
+    try:
+        current = int(data.get("details_revision") or 0)
+    except (TypeError, ValueError):
+        current = 0
+    next_revision = current + 1
+    data["details_revision"] = next_revision
+    return next_revision
+
+
 def mutate_run_details(
     run_id: int,
     mutator: Callable[[dict], Any],
+    *,
+    expected_revision: int | None = None,
 ) -> tuple[dict, Any]:
-    """Mutate review data under the cross-process retention guard."""
+    """Mutate review data under the cross-process retention guard.
+
+    When ``expected_revision`` is provided, the stored ``details_revision`` must
+    match or a 409 conflict is raised (stale client).
+    """
     from app.domains.runs.retention import access
 
     run_dir = official_run_dir(run_id)
@@ -205,7 +246,24 @@ def mutate_run_details(
                 detail="Run details are not available or have been cleaned up.",
             )
         data = load_run_details_json(details_file)
+        if expected_revision is not None:
+            try:
+                current = int(data.get("details_revision") or 0)
+            except (TypeError, ValueError):
+                current = 0
+            if current != expected_revision:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "details_revision_conflict",
+                        "message": (
+                            "This review was updated elsewhere. Reload and try again."
+                        ),
+                        "details_revision": current,
+                    },
+                )
         result = mutator(data)
+        bump_details_revision(data)
         temp_file = details_file.with_suffix(".json.tmp")
         temp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         os.replace(temp_file, details_file)
@@ -282,7 +340,12 @@ def load_run_details_json(details_file: Path) -> dict:
 
 
 def write_run_details_json(run_dir: Path, payload: dict) -> None:
-    """Atomically write ephemeral official run details."""
+    """Atomically write ephemeral official run details and bump details_revision."""
+    try:
+        current = int(payload.get("details_revision") or 0)
+    except (TypeError, ValueError):
+        current = 0
+    payload["details_revision"] = current + 1
     details_file = run_dir / "run_details.json"
     temp_file = details_file.with_suffix(".json.tmp")
     temp_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")

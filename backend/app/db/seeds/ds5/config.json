@@ -68,14 +68,14 @@
       "label": "Input validation quality (retries on invalid type or negative values)",
       "points": 20,
       "extra_credit": false,
-      "item_type": "manual"
+      "item_type": "pytest"
     },
     {
       "key": "receipt_output",
       "label": "Formatted receipt layout, item columns, subtotal, tax, and total price alignment",
       "points": 20,
       "extra_credit": false,
-      "item_type": "manual"
+      "item_type": "pytest"
     }
   ],
   "dependencies": [

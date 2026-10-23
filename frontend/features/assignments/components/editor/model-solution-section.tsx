@@ -181,17 +181,17 @@ export function ModelSolutionSection() {
   return (
     <div className="space-y-6">
       {/* Upload Model Solution Card */}
-      <Card>
-        <CardHeader>
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="px-4 py-0">
           <CardTitle>Model Solution Files</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 px-4 py-0">
           <form
             onSubmit={handleUpload}
             className="flex flex-col sm:flex-row gap-3 items-end"
           >
             <div className="space-y-1 grow">
-              <Label className="text-xs">
+              <Label className="pl-0 text-xs">
                 Upload Solution File or ZIP Archive
               </Label>
               <Input
@@ -277,8 +277,8 @@ export function ModelSolutionSection() {
             })}
 
             {solutionArtifacts.length === 0 && (
-              <p className="text-xs text-muted-foreground italic p-6 text-center border border-dashed border-border rounded-lg">
-                No model solution files attached yet.
+              <p className="rounded-lg border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
+                No model solution files yet.
               </p>
             )}
           </div>
@@ -286,11 +286,9 @@ export function ModelSolutionSection() {
       </Card>
 
       {/* Model Solution Validation Embedded at Bottom */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Verify Model Solution</CardTitle>
-          </div>
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 py-0">
+          <CardTitle>Verify Model Solution</CardTitle>
           <Button
             onClick={triggerValidation}
             disabled={
@@ -304,13 +302,10 @@ export function ModelSolutionSection() {
               : "Test Model Solution"}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 py-0">
           {validation.status !== "idle" && (
-            <div className="rounded-lg border border-border bg-card p-5 shadow-xs space-y-4 text-card-foreground">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-foreground text-sm">
-                  Validation Run Status
-                </h4>
+            <div className="space-y-3 rounded-lg border border-border bg-card p-3 text-card-foreground">
+              <div className="flex items-center justify-end">
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
                     validation.status === "success"
@@ -323,14 +318,6 @@ export function ModelSolutionSection() {
                   {validation.status}
                 </span>
               </div>
-
-              {(validation.status === "queue" ||
-                validation.status === "run") && (
-                <p className="text-xs text-muted-foreground animate-pulse font-mono">
-                  Executing model solution against tests.py in sandbox
-                  container...
-                </p>
-              )}
 
               {validation.status === "success" && (
                 <div className="flex items-center text-success gap-2 text-xs font-semibold p-3 bg-success/10 rounded-lg border border-success/20">

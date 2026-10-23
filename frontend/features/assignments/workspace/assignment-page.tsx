@@ -74,7 +74,6 @@ export default function AssignmentWorkspace({
               assignmentId={assignmentId}
               maxScore={maxScore}
               initialQuota={initialQuota}
-              assignment={assignment}
             />
           </TabsContent>
         </Tabs>
@@ -103,7 +102,6 @@ export default function AssignmentWorkspace({
             assignmentId={assignmentId}
             maxScore={maxScore}
             initialQuota={initialQuota}
-            assignment={assignment}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

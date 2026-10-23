@@ -30,6 +30,7 @@ from app.domains.runs.schemas import (
     UpdateManualGradesRequest,
 )
 from app.domains.runs.service import (
+    intake_summary_from_details,
     is_listable_student_file,
     load_run_details_json,
     manual_grading_progress,
@@ -83,16 +84,28 @@ def _load_official_run_details(run_id: int) -> dict:
     return load_run_details_json(details_file)
 
 
-def _require_exports_ready(run_id: int, *, run_status: str) -> None:
-    data = _load_official_run_details(run_id)
-    progress = manual_grading_progress(
+def _progress_for_details(data: dict, *, run_status: str) -> dict:
+    intake = intake_summary_from_details(data)
+    return manual_grading_progress(
         data.get("student_results", {}),
         run_status=run_status,
+        unmatched_files=intake["unmatched_files"],
+        filename_collisions=intake["filename_collisions"],
+        intake_acknowledged=intake["intake_acknowledged"],
     )
+
+
+def _require_exports_ready(run_id: int, *, run_status: str) -> None:
+    data = _load_official_run_details(run_id)
+    progress = _progress_for_details(data, run_status=run_status)
     if not progress["exports_ready"]:
         raise HTTPException(
             status_code=409,
-            detail="Exports are available only after the run completes and every manual rubric score is set.",
+            detail=(
+                "Exports are available only after the run completes, intake "
+                "ambiguities are acknowledged, adjudication is finished, and "
+                "every manual rubric score is set."
+            ),
         )
 
 
@@ -307,15 +320,19 @@ def get_official_run_details(
             for canvas_id, res in data.get("student_results", {}).items()
         ]
         students.sort(key=lambda student: student["student_name"].casefold())
-        progress = manual_grading_progress(
-            data.get("student_results", {}),
-            run_status=run.status,
-        )
+        intake = intake_summary_from_details(data)
+        progress = _progress_for_details(data, run_status=run.status)
+        try:
+            details_revision = int(data.get("details_revision") or 0)
+        except (TypeError, ValueError):
+            details_revision = 0
 
         return {
             "run_id": run_id,
             "status": run.status,
             "students": students,
+            "details_revision": details_revision,
+            **intake,
             **progress,
         }
 
@@ -563,10 +580,53 @@ def update_student_manual_grades(
             )
             return result
 
-        data, result = mutate_run_details(run_id, apply_update)
-        response = student_detail_from_result(canvas_id, result)
-        response["manual_progress"] = manual_grading_progress(
-            data.get("student_results", {}),
-            run_status=run.status,
+        data, result = mutate_run_details(
+            run_id,
+            apply_update,
+            expected_revision=req.details_revision,
         )
+        response = student_detail_from_result(canvas_id, result)
+        response["manual_progress"] = _progress_for_details(data, run_status=run.status)
+        try:
+            response["details_revision"] = int(data.get("details_revision") or 0)
+        except (TypeError, ValueError):
+            response["details_revision"] = 0
         return response
+
+
+@staff_runs_router.post("/{run_id}/intake/acknowledge")
+def acknowledge_official_run_intake(
+    course_id: str,
+    assignment_id: str,
+    run_id: int,
+    db: DbSession,
+    current_user: User = Depends(require_staff),
+):
+    """Staff confirms unmatched files / filename collisions were reviewed."""
+    run = require_official_run_for_assignment(
+        db, course_id, assignment_id, run_id, user=current_user
+    )
+    with retention.access(run_id, db):
+        def apply_ack(data: dict) -> None:
+            data["intake_acknowledged"] = True
+
+        data, _ = mutate_run_details(run_id, apply_ack)
+        intake = intake_summary_from_details(data)
+        progress = _progress_for_details(data, run_status=run.status)
+        students = [
+            student_detail_from_result(canvas_id, res)
+            for canvas_id, res in data.get("student_results", {}).items()
+        ]
+        students.sort(key=lambda student: student["student_name"].casefold())
+        try:
+            details_revision = int(data.get("details_revision") or 0)
+        except (TypeError, ValueError):
+            details_revision = 0
+        return {
+            "run_id": run_id,
+            "status": run.status,
+            "students": students,
+            "details_revision": details_revision,
+            **intake,
+            **progress,
+        }

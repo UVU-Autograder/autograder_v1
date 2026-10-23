@@ -79,7 +79,7 @@ function created(remaining = 19, resetInMs?: number) {
 function renderPanel(initialQuota = quota(20)) {
   return render(
     <AssignmentFileProvider assignment={assignment}>
-      <CodeResults courseId="cs1410" assignmentId="lab5" maxScore={100} initialQuota={initialQuota} assignment={assignment} />
+      <CodeResults courseId="cs1410" assignmentId="lab5" maxScore={100} initialQuota={initialQuota} />
     </AssignmentFileProvider>,
   );
 }

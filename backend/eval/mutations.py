@@ -522,7 +522,6 @@ TRAIN_MUTATIONS = [
                 "replace": "        self.__video_count = count"}]},
 
     # ------------------------------------------------------------- lab4 (m3)
-    # Every lab4 case carries the catalog's 'exceptions' warning (backlog: lab4 vs m3).
     {"case_id": "p2_lab4_title_no_type_check", "seed": "lab4", "category": "single_failure",
      "notes": "set_title validates emptiness but not type",
      "edits": [{"file": "book.py", "find": '        if not isinstance(value, str):\n            raise TypeError("Title must be a string")\n', "replace": ""}]},
@@ -758,6 +757,18 @@ TRAIN_MUTATIONS = [
                {"file": "dessert.py", "find": "        return round(sum(item.calculate_tax() for item in self.order), 2)", "replace": "        return round(sum(item.calculate_cost() for item in self.order), 2)"}]},
 
     # ------------------------------------------------------------- ds5 (m7)
+    {"case_id": "p2_ds5_empty_name_accepted", "seed": "ds5", "category": "single_failure",
+     "notes": "empty candy name is accepted without validation",
+     "edits": [{"file": "dessertshop.py", "find": '        name = input("Enter the candy name: ")\n        if not name.strip():\n            raise ValueError("Name cannot be empty.")\n',
+                "replace": '        name = input("Enter the candy name: ")\n'}]},
+    {"case_id": "p2_ds5_menu_int_choice", "seed": "ds5", "category": "single_failure",
+     "notes": "menu uses int(choice) so Enter/abc crashes",
+     "edits": [{"file": "dessertshop.py", "find": '        choice = input(prompt)\n        match choice.strip():',
+                "replace": '        choice = str(int(input(prompt)))\n        match choice:'}]}
+    {"case_id": "p2_ds5_receipt_header_item", "seed": "ds5", "category": "single_failure",
+     "notes": "receipt header uses Item instead of Name",
+     "edits": [{"file": "dessertshop.py", "find": 'headers=["Name", "Cost", "Tax"]',
+                "replace": 'headers=["Item", "Cost", "Tax"]'}]},
     {"case_id": "p2_ds5_crash_on_bad_number", "seed": "ds5", "category": "single_failure",
      "notes": "candy weight input not wrapped in try/except, so 'abc' crashes the program",
      "edits": [{"file": "dessertshop.py", "find": '        while True:\n            try:\n                weight = float(input("Enter candy weight(lbs): "))\n                if weight <= 0:\n                    print("Weight must be greater than 0.")\n                    continue\n                break\n            except ValueError:\n                print("Invalid input. Please enter a number value.")\n',

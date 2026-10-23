@@ -378,6 +378,8 @@ def test_count_canvas_submissions():
 
 
 def test_group_canvas_files(tmp_path: Path):
+    from app.domains.ingestion.extractor import detect_filename_collisions
+
     extract_dir = tmp_path / "canvas_extracted"
     extract_dir.mkdir()
     (extract_dir / "jaxonlarsen_12345_67890_student_functions.py").write_text("code1")
@@ -399,6 +401,27 @@ def test_group_canvas_files(tmp_path: Path):
 
     assert len(unmatched) == 1
     assert unmatched[0].name == "unmatched_file.txt"
+    assert detect_filename_collisions(grouped) == []
+
+
+def test_detect_filename_collisions_keeps_larger(tmp_path: Path):
+    from app.domains.ingestion.extractor import detect_filename_collisions, group_canvas_files
+
+    extract_dir = tmp_path / "canvas_extracted"
+    extract_dir.mkdir()
+    small = extract_dir / "alice_111_1_main-1.py"
+    large = extract_dir / "alice_111_2_main-2.py"
+    small.write_text("small")
+    large.write_text("much larger content here")
+
+    grouped, unmatched = group_canvas_files(extract_dir)
+    assert unmatched == []
+    collisions = detect_filename_collisions(grouped)
+    assert len(collisions) == 1
+    assert collisions[0]["clean_filename"] == "main.py"
+    assert collisions[0]["kept"] == large.name
+    assert small.name in collisions[0]["candidates"]
+    assert large.name in collisions[0]["candidates"]
 
 
 def test_prepare_student_bundle_loose_files(tmp_path: Path):

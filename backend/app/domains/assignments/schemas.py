@@ -84,15 +84,10 @@ class ScoringItemConfig(BaseModel):
     points: int = Field(ge=0)
     extra_credit: bool
     item_type: Literal["pytest", "manual"] = "pytest"
+    is_private: bool = False
     rubric_group_key: str | None = Field(default=None, pattern=TEST_KEY_RE.pattern)
     inputs: list[str] | None = Field(default=None)
     outputs: list[str] | None = Field(default=None)
-    hint: str | None = Field(default=None, max_length=2000)
-
-    @field_validator("hint", mode="before")
-    @classmethod
-    def normalize_hint(cls, value):
-        return value.strip() or None if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def validate_inputs_outputs(self) -> "ScoringItemConfig":
@@ -208,9 +203,9 @@ class ScoringItem(BaseModel):
     points: int
     extra_credit: bool
     item_type: Literal["pytest", "manual"] = "pytest"
+    is_private: bool = False
     pytest_marker: str | None = None
     rubric_group_key: str | None = None
-    hint: str | None = None
 
 
 class RubricGroup(BaseModel):

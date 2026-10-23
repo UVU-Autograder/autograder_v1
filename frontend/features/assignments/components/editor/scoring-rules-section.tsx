@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import MonacoEditor from "@/components/monaco-editor";
 import {
@@ -17,13 +15,24 @@ import {
   Trash2Icon,
   FileTextIcon,
   DownloadIcon,
-  SaveIcon,
   RefreshCwIcon,
-  CheckCircle2Icon,
   SparklesIcon,
+  AlertCircleIcon,
 } from "lucide-react";
+import { pytestMarkerForKey } from "@/features/assignments/types";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { AITestAssistantDialog } from "./ai-test-assistant-dialog";
+import { ConceptDenylistSection } from "./concept-denylist-section";
+
+const MARKER_RE = /@(?:pytest\.)?(?:mark\.)?ag_([a-zA-Z0-9_]+)/g;
+
+function extractMarkerKeys(sourceCode: string): string[] {
+  const keys = new Set<string>();
+  for (const match of sourceCode.matchAll(MARKER_RE)) {
+    if (match[1]) keys.add(match[1]);
+  }
+  return [...keys];
+}
 
 export function ScoringRulesSection() {
   const {
@@ -34,14 +43,10 @@ export function ScoringRulesSection() {
     addScoringItem,
     removeScoringItem,
     updateScoringItemField,
-    autoGenerateKeyFromLabel,
     testSuiteCode,
     updateTestSuiteCode,
     loadingTestSuiteCode,
-    saving,
-    saveSuccess,
     syncMarkersFromTestSuite,
-    handleSave,
     setSuccessMessage,
   } = useAssignmentEditor();
 
@@ -54,11 +59,21 @@ export function ScoringRulesSection() {
     (sum, item) => (item.extra_credit ? sum : sum + (item.points || 0)),
     0,
   );
-
   const totalExtraCreditPoints = scoringItems.reduce(
     (sum, item) => (item.extra_credit ? sum + (item.points || 0) : sum),
     0,
   );
+
+  const { missingFromRubric, orphanInRubric } = useMemo(() => {
+    const codeKeys = extractMarkerKeys(testSuiteCode);
+    const rubricKeys = new Set(pytestItems.map((i) => i.key).filter(Boolean));
+    return {
+      missingFromRubric: codeKeys.filter((k) => !rubricKeys.has(k)),
+      orphanInRubric: pytestItems
+        .map((i) => i.key)
+        .filter((k) => k && !codeKeys.includes(k)),
+    };
+  }, [testSuiteCode, pytestItems]);
 
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
@@ -66,12 +81,10 @@ export function ScoringRulesSection() {
     const addedCount = syncMarkersFromTestSuite(testSuiteCode);
     if (addedCount > 0) {
       setSuccessMessage(
-        `Synced ${addedCount} new pytest test marker(s) into rubric!`,
+        `Synced ${addedCount} new pytest marker(s) into the rubric.`,
       );
     } else {
-      setSuccessMessage(
-        "All pytest test markers in code are already present in rubric.",
-      );
+      setSuccessMessage("All markers in tests.py are already in the rubric.");
     }
   };
 
@@ -87,8 +100,8 @@ export function ScoringRulesSection() {
     const added = syncMarkersFromTestSuite(nextCode);
     setSuccessMessage(
       added > 0
-        ? `Inserted AI test suite and synced ${added} new rubric criterion(s).`
-        : "Inserted AI test suite into tests.py editor.",
+        ? `Inserted AI tests and synced ${added} new rubric criterion(s).`
+        : "Inserted AI tests into tests.py.",
     );
   };
 
@@ -104,367 +117,33 @@ export function ScoringRulesSection() {
 
   return (
     <div className="space-y-6">
-      {/* Autograded Pytest Criteria */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Autograded Test Criteria</CardTitle>
-            <CardDescription>
-              Each description/label consolidates functions in the test file under a rubric section. Base Total:{" "}
-              <strong className="text-foreground font-mono">
-                {totalBasePoints} pts
-              </strong>
-              {totalExtraCreditPoints > 0 && (
-                <span className="text-amber-600 dark:text-amber-400 font-mono font-medium ml-1">
-                  (+{totalExtraCreditPoints} EC)
-                </span>
-              )}
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSyncFromCode}>
-              <RefreshCwIcon className="w-4 h-4 mr-1.5" /> Sync Markers from
-              Code
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addScoringItem("pytest")}
-            >
-              <PlusIcon className="w-4 h-4 mr-1" /> Add Pytest Item
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {pytestItems.map((item) => (
-              <div
-                key={item.id || item.key}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm"
-              >
-                {/* Key / Slug */}
-                <div className="md:col-span-3 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase">
-                      Key / Pytest Marker
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        autoGenerateKeyFromLabel(item.id || item.key)
-                      }
-                      className="text-xs flex items-center gap-1 text-primary font-semibold hover:underline cursor-pointer"
-                      title="Auto-generate key from description"
-                    >
-                      Auto-generate key
-                    </button>
-                  </div>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-2.5 text-xs font-mono font-bold text-muted-foreground select-none pointer-events-none">
-                      ag_
-                    </span>
-                    <Input
-                      id={`scoring-key-${item.id || item.key}`}
-                      aria-label="Pytest Marker Key"
-                      value={item.key}
-                      onChange={(e) =>
-                        updateScoringItemField(
-                          item.id || item.key,
-                          "key",
-                          e.target.value,
-                        )
-                      }
-                      className="font-mono text-xs pl-8"
-                    />
-                  </div>
-                </div>
-
-                {/* Label / Description Header */}
-                <div className="md:col-span-4 space-y-1">
-                  <Label htmlFor={`scoring-label-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
-                    Description
-                  </Label>
-                  <Input
-                    id={`scoring-label-${item.id || item.key}`}
-                    value={item.label}
-                    onChange={(e) =>
-                      updateScoringItemField(
-                        item.id || item.key,
-                        "label",
-                        e.target.value,
-                      )
-                    }
-                    placeholder="e.g. Basic Calculator Operations"
-                  />
-                </div>
-
-                <div className="md:col-span-12 space-y-1">
-                  <label htmlFor={`hint-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground">Instructor Hint</label>
-                  <textarea id={`hint-${item.id || item.key}`} value={item.hint ?? ""} maxLength={2000}
-                    onChange={(e) => updateScoringItemField(item.id || item.key, "hint", e.target.value)}
-                    className="w-full rounded-md border border-input bg-background p-2 text-sm" rows={2} />
-                </div>
-
-                {/* Points */}
-                <div className="md:col-span-2 space-y-1">
-                  <Label htmlFor={`scoring-points-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
-                    Points
-                  </Label>
-                  <Input
-                    id={`scoring-points-${item.id || item.key}`}
-                    type="number"
-                    min={0}
-                    value={item.points}
-                    onChange={(e) =>
-                      updateScoringItemField(
-                        item.id || item.key,
-                        "points",
-                        parseInt(e.target.value, 10) || 0,
-                      )
-                    }
-                    className="font-mono"
-                  />
-                </div>
-
-                {/* Extra Credit Toggle */}
-                <div className="md:col-span-2 space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase">
-                    Extra Credit
-                  </span>
-                  <div>
-                    <Button
-                      type="button"
-                      variant={item.extra_credit ? "secondary" : "outline"}
-                      size="sm"
-                      className={`w-full text-xs h-9 ${
-                        item.extra_credit
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
-                          : "text-muted-foreground"
-                      }`}
-                      onClick={() =>
-                        updateScoringItemField(
-                          item.id || item.key,
-                          "extra_credit",
-                          !item.extra_credit,
-                        )
-                      }
-                    >
-                      {item.extra_credit ? "Extra Credit" : "Standard"}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Delete */}
-                <div className="md:col-span-1 flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Remove test item"
-                    onClick={() => removeScoringItem(item.id || item.key)}
-                  >
-                    <Trash2Icon className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-
-                {/* Expected I/O Preview */}
-                {((item.inputs && item.inputs.length > 0) ||
-                  (item.outputs && item.outputs.length > 0)) && (
-                  <div className="md:col-span-12 mt-1 pt-2 border-t border-border flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground flex items-center gap-1">
-                      <FileTextIcon className="w-3.5 h-3.5 text-primary" />
-                      Parsed Expected I/O:
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {item.inputs && item.inputs.length > 0 && (
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-info/10 text-info border border-info/30"
-                          title="Expected Input"
-                        >
-                          <strong className="mr-1 font-sans font-semibold">
-                            Input:
-                          </strong>{" "}
-                          {item.inputs.join(", ")}
-                        </span>
-                      )}
-                      {item.outputs && item.outputs.length > 0 && (
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-success/10 text-success border border-success/30"
-                          title="Expected Output"
-                        >
-                          <strong className="mr-1 font-sans font-semibold">
-                            Output:
-                          </strong>{" "}
-                          {item.outputs.join(", ")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {pytestItems.length === 0 && (
-              <p className="text-xs text-muted-foreground italic p-4 text-center border border-dashed border-border rounded-lg">
-                No autograded pytest criteria configured. Click &quot;Add Pytest
-                Item&quot; or &quot;Sync Markers from Code&quot;.
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Manual Rubric Criteria */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Manual Rubric Criteria (Optional)</CardTitle>
-            <CardDescription>
-              Criteria evaluated manually by staff (e.g. code style, structure).
-            </CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => addScoringItem("manual")}
-          >
-            <PlusIcon className="w-4 h-4 mr-1" /> Add Manual Item
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {manualItems.map((item) => (
-              <div
-                key={item.id || item.key}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-card rounded-lg border border-border items-center text-sm text-card-foreground"
-              >
-                {/* Label / Description Header */}
-                <div className="md:col-span-7 space-y-1">
-                  <Label htmlFor={`manual-label-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
-                    Criterion Label
-                  </Label>
-                  <Input
-                    id={`manual-label-${item.id || item.key}`}
-                    value={item.label}
-                    onChange={(e) =>
-                      updateScoringItemField(
-                        item.id || item.key,
-                        "label",
-                        e.target.value,
-                      )
-                    }
-                    placeholder="e.g. Code Formatting & Comments"
-                  />
-                </div>
-
-                {/* Points */}
-                <div className="md:col-span-2 space-y-1">
-                  <Label htmlFor={`manual-points-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
-                    Points
-                  </Label>
-                  <Input
-                    id={`manual-points-${item.id || item.key}`}
-                    type="number"
-                    min={0}
-                    value={item.points}
-                    onChange={(e) =>
-                      updateScoringItemField(
-                        item.id || item.key,
-                        "points",
-                        parseInt(e.target.value, 10) || 0,
-                      )
-                    }
-                    className="font-mono"
-                  />
-                </div>
-
-                {/* Extra Credit Toggle */}
-                <div className="md:col-span-2 space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase">
-                    Extra Credit
-                  </span>
-                  <div>
-                    <Button
-                      type="button"
-                      variant={item.extra_credit ? "secondary" : "outline"}
-                      size="sm"
-                      className={`w-full text-xs h-9 ${
-                        item.extra_credit
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
-                          : "text-muted-foreground"
-                      }`}
-                      onClick={() =>
-                        updateScoringItemField(
-                          item.id || item.key,
-                          "extra_credit",
-                          !item.extra_credit,
-                        )
-                      }
-                    >
-                      {item.extra_credit ? "Extra Credit" : "Standard"}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Delete */}
-                <div className="md:col-span-1 flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Remove manual rubric item"
-                    onClick={() => removeScoringItem(item.id || item.key)}
-                  >
-                    <Trash2Icon className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-
-            {manualItems.length === 0 && (
-              <p className="text-xs text-muted-foreground italic p-4 text-center border border-dashed border-border rounded-lg">
-                No manual rubric items configured.
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Integrated tests.py Code Editor */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileTextIcon className="w-5 h-5 text-primary" />
-              <span>Assignment Test Suite</span>
-            </CardTitle>
-          </div>
+      {/* 1. Test suite first */}
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 py-0">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileTextIcon className="h-4 w-4 text-primary" />
+            tests.py
+          </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
-            {saveSuccess && (
-              <span className="text-xs text-success font-semibold flex items-center gap-1">
-                <CheckCircle2Icon className="w-4 h-4" /> Saved tests.py & rubric
-              </span>
-            )}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsAiAssistantOpen(true)}
             >
-              <SparklesIcon className="w-4 h-4 mr-1.5 text-primary" /> Generate
+              <SparklesIcon className="mr-1.5 h-4 w-4 text-primary" />
               Tests with AI
             </Button>
             <Button variant="outline" size="sm" onClick={handleDownload}>
-              <DownloadIcon className="w-4 h-4 mr-1.5" /> Download tests.py
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              <SaveIcon className="w-4 h-4 mr-1.5" />
-              {saving ? "Saving..." : "Save Test Suite & Rubric"}
+              <DownloadIcon className="mr-1.5 h-4 w-4" />
+              Download
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="h-[520px] rounded-lg border border-border overflow-hidden bg-card">
+        <CardContent className="px-4 py-0">
+          <div className="h-[420px] overflow-hidden rounded-lg border border-border bg-card">
             {loadingTestSuiteCode ? (
-              <div className="flex items-center justify-center h-full text-xs text-muted-foreground font-mono animate-pulse">
-                Fetching tests.py source code from server...
+              <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground animate-pulse">
+                Loading tests.py…
               </div>
             ) : (
               <MonacoEditor
@@ -478,6 +157,300 @@ export function ScoringRulesSection() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 2. Autograded criteria */}
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 py-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-base">Autograded criteria</CardTitle>
+            <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
+              {totalBasePoints} pts
+              {totalExtraCreditPoints > 0
+                ? ` · +${totalExtraCreditPoints} extra credit`
+                : ""}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleSyncFromCode}>
+              <RefreshCwIcon className="mr-1.5 h-4 w-4" />
+              Sync from tests
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => addScoringItem("pytest")}
+            >
+              <PlusIcon className="mr-1 h-4 w-4" />
+              Add
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2 px-4 py-0">
+          {(missingFromRubric.length > 0 || orphanInRubric.length > 0) && (
+            <div className="flex flex-wrap items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              <AlertCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-0.5">
+                {missingFromRubric.length > 0 && (
+                  <p>
+                    <span className="font-medium text-foreground">
+                      {missingFromRubric.length}
+                    </span>{" "}
+                    marker
+                    {missingFromRubric.length === 1 ? "" : "s"} in tests.py not
+                    in the rubric
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ({missingFromRubric.map((k) => pytestMarkerForKey(k)).join(", ")})
+                    </span>
+                    .
+                  </p>
+                )}
+                {orphanInRubric.length > 0 && (
+                  <p>
+                    <span className="font-medium text-foreground">
+                      {orphanInRubric.length}
+                    </span>{" "}
+                    rubric key
+                    {orphanInRubric.length === 1 ? "" : "s"} missing from
+                    tests.py
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ({orphanInRubric.map((k) => pytestMarkerForKey(k)).join(", ")})
+                    </span>
+                    .
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {pytestItems.length > 0 && (
+            <div className="hidden grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)_4.5rem_5.5rem_4rem_2rem] gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:grid">
+              <span>Marker</span>
+              <span>Description</span>
+              <span>Points</span>
+              <span className="text-center">Extra credit</span>
+              <span className="text-center">Private</span>
+              <span className="sr-only">Remove</span>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {pytestItems.map((item) => {
+              const rowId = item.id || item.key;
+              const isOrphan = Boolean(item.key) && orphanInRubric.includes(item.key);
+              return (
+                <div
+                  key={rowId}
+                  className={`rounded-lg border bg-card p-2 text-sm ${
+                    isOrphan
+                      ? "border-amber-500/40 bg-amber-500/5"
+                      : "border-border"
+                  }`}
+                >
+                  <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)_4.5rem_5.5rem_4rem_2rem]">
+                    <div className="relative flex items-center">
+                      <span className="pointer-events-none absolute left-2 select-none font-mono text-[10px] font-bold text-muted-foreground">
+                        ag_
+                      </span>
+                      <Input
+                        id={`scoring-key-${rowId}`}
+                        aria-label="Pytest marker key"
+                        value={item.key}
+                        onChange={(e) =>
+                          updateScoringItemField(rowId, "key", e.target.value)
+                        }
+                        className="h-8 pl-7 font-mono text-xs"
+                      />
+                    </div>
+                    <Input
+                      id={`scoring-label-${rowId}`}
+                      aria-label="Criterion description"
+                      value={item.label}
+                      onChange={(e) =>
+                        updateScoringItemField(rowId, "label", e.target.value)
+                      }
+                      placeholder="Description"
+                      className="h-8"
+                    />
+                    <Input
+                      id={`scoring-points-${rowId}`}
+                      aria-label="Points"
+                      type="number"
+                      min={0}
+                      value={item.points}
+                      onChange={(e) =>
+                        updateScoringItemField(
+                          rowId,
+                          "points",
+                          parseInt(e.target.value, 10) || 0,
+                        )
+                      }
+                      className="h-8 font-mono"
+                    />
+                    <div className="flex h-8 items-center justify-center">
+                      <input
+                        id={`scoring-ec-${rowId}`}
+                        type="checkbox"
+                        aria-label="Extra credit"
+                        checked={Boolean(item.extra_credit)}
+                        onChange={(e) =>
+                          updateScoringItemField(
+                            rowId,
+                            "extra_credit",
+                            e.target.checked,
+                          )
+                        }
+                        className="h-3.5 w-3.5 cursor-pointer rounded border-input text-primary focus:ring-ring"
+                      />
+                    </div>
+                    <div className="flex h-8 items-center justify-center">
+                      <input
+                        id={`scoring-private-${rowId}`}
+                        type="checkbox"
+                        aria-label="Private"
+                        checked={Boolean(item.is_private)}
+                        onChange={(e) =>
+                          updateScoringItemField(
+                            rowId,
+                            "is_private",
+                            e.target.checked,
+                          )
+                        }
+                        className="h-3.5 w-3.5 cursor-pointer rounded border-input text-primary focus:ring-ring"
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      aria-label="Remove criterion"
+                      onClick={() => removeScoringItem(rowId)}
+                    >
+                      <Trash2Icon className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+
+                  {((item.inputs && item.inputs.length > 0) ||
+                    (item.outputs && item.outputs.length > 0)) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 font-semibold text-foreground">
+                        <FileTextIcon className="h-3.5 w-3.5 text-primary" />
+                        I/O
+                      </span>
+                      {item.inputs && item.inputs.length > 0 && (
+                        <span className="rounded border border-info/30 bg-info/10 px-2 py-0.5 font-mono text-info">
+                          in: {item.inputs.join(", ")}
+                        </span>
+                      )}
+                      {item.outputs && item.outputs.length > 0 && (
+                        <span className="rounded border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-success">
+                          out: {item.outputs.join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {pytestItems.length === 0 && (
+              <p className="rounded-lg border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
+                None yet. Sync from tests or add.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. Manual criteria */}
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 py-0">
+          <CardTitle className="text-base">Manual criteria</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addScoringItem("manual")}
+          >
+            <PlusIcon className="mr-1 h-4 w-4" />
+            Add
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-2 px-4 py-0">
+          {manualItems.length > 0 && (
+            <>
+              <div className="hidden grid-cols-[minmax(0,1fr)_4.5rem_5.5rem_2rem] gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:grid">
+                <span>Label</span>
+                <span>Points</span>
+                <span className="text-center">Extra credit</span>
+                <span className="sr-only">Remove</span>
+              </div>
+              {manualItems.map((item) => {
+                const rowId = item.id || item.key;
+                return (
+                  <div
+                    key={rowId}
+                    className="grid grid-cols-1 items-center gap-2 rounded-lg border border-border bg-card p-2 md:grid-cols-[minmax(0,1fr)_4.5rem_5.5rem_2rem]"
+                  >
+                    <Input
+                      id={`manual-label-${rowId}`}
+                      aria-label="Manual criterion label"
+                      value={item.label}
+                      onChange={(e) =>
+                        updateScoringItemField(rowId, "label", e.target.value)
+                      }
+                      placeholder="e.g. Code style"
+                      className="h-8"
+                    />
+                    <Input
+                      id={`manual-points-${rowId}`}
+                      aria-label="Points"
+                      type="number"
+                      min={0}
+                      value={item.points}
+                      onChange={(e) =>
+                        updateScoringItemField(
+                          rowId,
+                          "points",
+                          parseInt(e.target.value, 10) || 0,
+                        )
+                      }
+                      className="h-8 font-mono"
+                    />
+                    <div className="flex h-8 items-center justify-center">
+                      <input
+                        id={`manual-ec-${rowId}`}
+                        type="checkbox"
+                        aria-label="Extra credit"
+                        checked={Boolean(item.extra_credit)}
+                        onChange={(e) =>
+                          updateScoringItemField(
+                            rowId,
+                            "extra_credit",
+                            e.target.checked,
+                          )
+                        }
+                        className="h-3.5 w-3.5 cursor-pointer rounded border-input text-primary focus:ring-ring"
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      aria-label="Remove manual criterion"
+                      onClick={() => removeScoringItem(rowId)}
+                    >
+                      <Trash2Icon className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <ConceptDenylistSection />
 
       <AITestAssistantDialog
         isOpen={isAiAssistantOpen}

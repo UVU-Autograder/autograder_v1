@@ -148,7 +148,7 @@ def validate_assignment_model_solution(
                 raise ValueError("Assignment config not found.")
             config = AssignmentConfigV1.model_validate(assignment.config.config)
             from app.domains.assignments.inventory import execution_fingerprint
-            from app.domains.grading.pipeline import preload_grading_artifacts
+            from app.domains.grading.pipeline import ArtifactLoadError, preload_grading_artifacts
             validation_fingerprint = execution_fingerprint(db, assignment)
             max_score = sum(
                 item.points
@@ -213,7 +213,18 @@ def validate_assignment_model_solution(
             from app.domains.assignments.service import effective_allowed_concepts
 
             allowed_concepts = effective_allowed_concepts(assignment)
-            validation_artifacts = preload_grading_artifacts(config, artifact_refs)
+            try:
+                validation_artifacts = preload_grading_artifacts(config, artifact_refs)
+            except ArtifactLoadError as exc:
+                err_payload = {
+                    "passed": False,
+                    "errors": [str(exc)],
+                    "score": 0,
+                    "max_score": max_score,
+                }
+                set_run_result(run_id, err_payload)
+                set_run_state(run_id, "failure")
+                return err_payload
 
         # 5. Run the grading engine asynchronously (with execution slot tracking)
         from uuid import uuid4

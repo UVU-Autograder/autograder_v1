@@ -17,11 +17,6 @@ export default function CoursesPage({
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             {mode === "staff" ? "Staff Course Management" : "Available Courses"}
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            {mode === "staff"
-              ? "Select an authorized course to review runs, manage settings, or configure assignments."
-              : "Select a course to view assignments and test your code in the sandbox."}
-          </p>
         </div>
 
         {data.courses.length === 0 ? (

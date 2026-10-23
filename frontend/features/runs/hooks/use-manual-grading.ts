@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { ApiError, apiClient } from '@/lib/api-client';
 import { staffRunManualGradesPath } from '@/features/staff/api';
 import type {
   RunDetailsResponse,
@@ -61,6 +61,7 @@ export function useManualGrading({
       const payload: Record<string, unknown> = {
         grades,
         overall_comment: overallComment,
+        details_revision: details.details_revision,
       };
       if (adjudicatedAutomatedScore !== undefined && adjudicatedAutomatedScore !== null) {
         payload.adjudicated_automated_score = adjudicatedAutomatedScore;
@@ -75,6 +76,7 @@ export function useManualGrading({
       setDetails({
         ...details,
         ...updatedStudent.manual_progress,
+        details_revision: updatedStudent.details_revision,
         students: updatedStudents,
       });
       setSuccess(
@@ -107,9 +109,23 @@ export function useManualGrading({
         }
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to save manual grades.'
-      );
+      if (err instanceof ApiError && err.status === 409) {
+        setError(
+          'This review was updated elsewhere. Reloading the latest grades…'
+        );
+        try {
+          const fresh = await apiClient.get<RunDetailsResponse>(
+            `/staff/courses/${courseId}/assignments/${assignmentId}/runs/${runId}/details`
+          );
+          setDetails(fresh);
+        } catch {
+          /* keep conflict message */
+        }
+      } else {
+        setError(
+          err instanceof Error ? err.message : 'Failed to save manual grades.'
+        );
+      }
       setTimeout(() => setError(null), 5000);
     } finally {
       setIsSavingGrades(false);

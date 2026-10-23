@@ -129,10 +129,8 @@ export default function RunsPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground font-medium animate-pulse">
-          Loading runs...
-        </p>
+      <div className="flex min-h-48 items-center justify-center p-6">
+        <p className="text-sm text-muted-foreground animate-pulse">Loading…</p>
       </div>
     );
   }
@@ -161,34 +159,22 @@ export default function RunsPage({ params }: PageProps) {
         )}
 
         <div className="mx-auto max-w-xl space-y-4">
-          {validation && (
-            <div
-              className={`rounded-lg border p-3 text-sm ${
-                validation.passed
-                  ? "border-success/30 bg-success/10 text-success"
-                  : "border-destructive/30 bg-destructive/10 text-destructive"
-              }`}
-            >
-              {validation.passed ? (
-                <p className="font-medium">Assignment ready to grade</p>
-              ) : (
-                <div className="space-y-1">
-                  <p className="font-medium">
-                    Assignment is not ready to grade
+          {validation && !validation.passed && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="space-y-1">
+                <p className="font-medium">Assignment is not ready to grade</p>
+                {validation.errors.slice(0, 2).map((msg) => (
+                  <p key={msg} className="text-xs opacity-90">
+                    {msg}
                   </p>
-                  {validation.errors.slice(0, 2).map((msg) => (
-                    <p key={msg} className="text-xs opacity-90">
-                      {msg}
-                    </p>
-                  ))}
-                  <Link
-                    href={`/staff/courses/${courseId}/assignments/${assignmentId}`}
-                    className="inline-block text-xs font-semibold underline underline-offset-2"
-                  >
-                    Open assignment setup
-                  </Link>
-                </div>
-              )}
+                ))}
+                <Link
+                  href={`/staff/courses/${courseId}/assignments/${assignmentId}`}
+                  className="inline-block text-xs font-semibold underline underline-offset-2"
+                >
+                  Open assignment setup
+                </Link>
+              </div>
             </div>
           )}
           <Card>
@@ -198,7 +184,7 @@ export default function RunsPage({ params }: PageProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="section" className="text-xs">
+                  <Label htmlFor="section" className="pl-0 text-xs">
                     Section
                   </Label>
                   <select
@@ -227,7 +213,7 @@ export default function RunsPage({ params }: PageProps) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="submissions-zip-input" className="text-xs">
+                  <Label htmlFor="submissions-zip-input" className="pl-0 text-xs">
                     Submissions ZIP
                   </Label>
                   <input
@@ -245,7 +231,7 @@ export default function RunsPage({ params }: PageProps) {
                   disabled={isUploading || !sectionId || validationBlocked}
                 >
                   <PlayIcon className="mr-2 size-4" />
-                  {isUploading ? "Uploading ZIP..." : "Launch grading run"}
+                  {isUploading ? "Uploading..." : "Launch run"}
                 </Button>
               </CardContent>
             </form>

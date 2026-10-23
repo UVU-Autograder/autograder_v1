@@ -12,6 +12,7 @@ from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.grading.executor import execute_pytest_in_judge0
 from app.domains.grading.pipeline import (
+    ArtifactLoadError,
     EvaluationReport,
     GradingPipeline,
     SubmissionPayload,
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 GradingResult = EvaluationReport
 
 __all__ = [
+    "ArtifactLoadError",
     "GradingResult",
     "GradingEngine",
     "preload_grading_artifacts",

@@ -160,9 +160,8 @@ export const MOCK_ASSIGNMENT_DETAILS_LAB1: Assignment = {
   accepted_bundle_types: ["zip", "py"],
   max_upload_bytes: 5242880,
   constraints: [
-    { label: "Memory Limit", value: "256 MB" },
-    { label: "Timeout", value: "30s" },
-    { label: "Execution Sandbox", value: "Kata microVM" },
+    { label: "Entrypoint", value: "image_processor.py" },
+    { label: "Required files", value: "image_processor.py" },
   ],
   allowed_concepts: ["variables", "conditionals", "functions", "lists"],
   rubric: [
@@ -270,9 +269,8 @@ export const MOCK_ASSIGNMENT_DETAILS_DS1: Assignment = {
   accepted_bundle_types: ["zip", "py"],
   max_upload_bytes: 5242880,
   constraints: [
-    { label: "Memory Limit", value: "256 MB" },
-    { label: "Timeout", value: "30s" },
-    { label: "Execution Sandbox", value: "Kata microVM" },
+    { label: "Entrypoint", value: "dessert.py" },
+    { label: "Required files", value: "dessert.py" },
   ],
   allowed_concepts: [
     "image-processing",
@@ -397,9 +395,19 @@ export function getMockAssignment(courseId: string, slug: string): Assignment {
     accepted_bundle_types: ["zip", "py"],
     max_upload_bytes: 5242880,
     constraints: [
-      { label: "Memory Limit", value: "256 MB" },
-      { label: "Timeout", value: "30s" },
-      { label: "Execution Sandbox", value: "Kata microVM" },
+      {
+        label: "Entrypoint",
+        value: found.config?.bundle.entrypoint || "main.py",
+      },
+      {
+        label: "Required files",
+        value:
+          found.config?.bundle.file_requirements
+            ?.flatMap((req) => req.paths)
+            .join(", ") ||
+          found.config?.bundle.entrypoint ||
+          "main.py",
+      },
     ],
     allowed_concepts:
       found.concepts && found.concepts.length > 0
@@ -720,6 +728,11 @@ export const MOCK_RUN_DETAILS: RunDetailsResponse = {
   requires_manual_grading: false,
   completed_students: 24,
   total_students: 24,
+  unmatched_files: [],
+  filename_collisions: [],
+  intake_acknowledged: true,
+  intake_pending: false,
+  details_revision: 1,
   exports_ready: true,
   students: [
     {

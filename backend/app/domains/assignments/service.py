@@ -177,9 +177,9 @@ def build_scoring_items(scoring_items: list[ScoringItemConfig]) -> list[ScoringI
             points=item.points,
             extra_credit=item.extra_credit,
             item_type=_coerce_scoring_item_type(item.item_type, item.label),
+            is_private=bool(item.is_private),
             pytest_marker=pytest_marker_for_key(item.key) if item.item_type == "pytest" else None,
             rubric_group_key=item.rubric_group_key,
-            hint=item.hint,
         )
         for item in scoring_items
     ]

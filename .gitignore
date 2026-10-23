@@ -36,6 +36,7 @@ frontend/out/
 .agents/
 .scratch/
 AGENTS.md
+.claude/
 
 # Accidental local tooling artifacts
 /uv.lock

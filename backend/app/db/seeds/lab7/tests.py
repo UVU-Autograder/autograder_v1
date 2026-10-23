@@ -77,9 +77,9 @@ def test_main_output() -> None:
     assert "True" in stdout or "False" in stdout or ("100" in stdout and "102" in stdout), (
         "main() output missing student comparison or sorting demonstration"
     )
-    if "100" in stdout and "102" in stdout and "sorted" in stdout.lower():
+    if "100" in stdout and "102" in stdout:
         idx_100 = stdout.lower().rfind("100")
         idx_102 = stdout.lower().rfind("102")
         assert idx_100 < idx_102, (
-            "main() sorted student output appears to be descending rather than ascending by ID"
+            "main() student output appears to list IDs descending rather than ascending"
         )

@@ -188,6 +188,11 @@
           "title": "Item Type",
           "type": "string"
         },
+        "is_private": {
+          "default": false,
+          "title": "Is Private",
+          "type": "boolean"
+        },
         "rubric_group_key": {
           "anyOf": [
             {
@@ -230,19 +235,6 @@
           ],
           "default": null,
           "title": "Outputs"
-        },
-        "hint": {
-          "anyOf": [
-            {
-              "maxLength": 2000,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Hint"
         }
       },
       "required": [

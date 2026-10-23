@@ -101,8 +101,8 @@ async def test_executor_uses_status_map_for_timeout(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_executor_runtime_error_is_timeout_per_map(tmp_path):
-    """Statuses 7–12 map to timeout (map is source of truth)."""
+async def test_executor_runtime_error_uses_status_map(tmp_path):
+    """NZEC (11) → runtime_exception; SIGSEGV (7) → resource_limit_exceeded."""
     client = _mock_judge0_client(
         submission_result={"status": {"id": 11}, "stdout": ""}
     )
@@ -118,7 +118,23 @@ async def test_executor_runtime_error_is_timeout_per_map(tmp_path):
             cpu_time_limit=10.0,
         )
 
-    assert outcome.failure_category == "timeout"
+    assert outcome.failure_category == "runtime_exception"
+
+    client_segv = _mock_judge0_client(
+        submission_result={"status": {"id": 7}, "stdout": ""}
+    )
+    with patch(
+        "app.domains.grading.executor.create_judge0_client", return_value=client_segv
+    ):
+        segv = await execute_pytest_in_judge0(
+            tmp_path,
+            test_filenames=["tests.py"],
+            test_cases={},
+            entrypoint_module="main",
+            language_id=71,
+            cpu_time_limit=10.0,
+        )
+    assert segv.failure_category == "resource_limit_exceeded"
 
 
 @pytest.mark.asyncio

@@ -15,7 +15,7 @@ export default function MarkdownRenderer({
 }: MarkdownRendererProps) {
   return (
     <div
-      className={`text-xs text-foreground font-sans leading-relaxed space-y-2.5 ${className}`}
+      className={`text-xs text-foreground font-sans leading-relaxed space-y-1.5 ${className}`}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
@@ -89,13 +89,19 @@ export default function MarkdownRenderer({
             </td>
           ),
           h1: ({ children }) => (
-            <h4 className="font-bold text-sm text-foreground mt-2 mb-1">{children}</h4>
+            <h4 className="mb-0.5 mt-2 font-bold text-sm text-foreground first:mt-0">
+              {children}
+            </h4>
           ),
           h2: ({ children }) => (
-            <h5 className="font-bold text-xs text-foreground mt-2 mb-1">{children}</h5>
+            <h5 className="mb-0.5 mt-2 font-bold text-xs text-foreground first:mt-0">
+              {children}
+            </h5>
           ),
           h3: ({ children }) => (
-            <h6 className="font-semibold text-xs text-foreground mt-1 mb-0.5">{children}</h6>
+            <h6 className="mb-0.5 mt-1.5 font-semibold text-xs text-foreground first:mt-0">
+              {children}
+            </h6>
           ),
         }}
       >

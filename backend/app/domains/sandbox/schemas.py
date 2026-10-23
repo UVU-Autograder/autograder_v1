@@ -120,7 +120,6 @@ class SandboxRunCreateResponse(BaseModel):
 
 
 class TestSummary(BaseModel):
-    hint: str | None = None
     output_truncated: bool = False
     label: str
     status: Literal["passed", "failed", "warning", "not_run"]

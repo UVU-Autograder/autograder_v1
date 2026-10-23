@@ -15,5 +15,5 @@ export function retentionMessage(run: RunSummary | null, now = Date.now()): stri
   if (run.retention_state === "cleanup_pending") return "Cleanup pending. Review is unavailable.";
   if (!reviewAvailable(run, now)) return "Review expired. Automatic cleanup is pending.";
   const expires = run.review_expires_at ?? new Date(Date.parse(run.created_at) + 23 * 60 * 60 * 1000).toISOString();
-  return `Review and downloads end ${new Date(expires).toLocaleString()}. Export your results before then.`;
+  return `All data from this run will be deleted by ${new Date(expires).toLocaleString()}.`;
 }

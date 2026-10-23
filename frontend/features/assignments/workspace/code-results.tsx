@@ -22,13 +22,12 @@ import { ApiError } from "@/lib/api-client";
 import type {
   SandboxRunResultResponse,
   AssignmentsDetails,
-  Assignment,
   RunStatusResponse,
   SandboxTestSummary,
 } from "@/features/assignments/types";
 import VisualDiffViewer from "@/components/visual-diff-viewer";
 import MarkdownRenderer from "@/components/markdown-renderer";
-import { Sparkles, Loader2, RefreshCw, Bot, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, RefreshCw, Bot, FilePlus } from "lucide-react";
 import { useAssignmentFile } from "./assignment-file-context";
 import { checkBundleRequirements, createSubmissionBundle } from "./file-utils";
 
@@ -80,7 +79,6 @@ type CodeResultsProps = {
   assignmentId: string;
   maxScore: number;
   initialQuota?: AssignmentsDetails["upload_quota"];
-  assignment?: Assignment;
 };
 
 type RunPhase = "idle" | "submitting" | "running" | "pending" | "complete" | "error";
@@ -170,7 +168,6 @@ export default function CodeResults({
     () => checkBundleRequirements(files, assignment),
     [files, assignment]
   );
-  const [showCheckCode] = useState(true);
   const [showFeedback, setShowFeedback] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -188,10 +185,6 @@ export default function CodeResults({
   const [runState, setRunState] = useState<string>("queue");
   const [runStatus, setRunStatus] = useState<RunStatusResponse | null>(null);
   const [onlyFailing, setOnlyFailing] = useState(false);
-  const [isStaff] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !!(localStorage.getItem("token") || sessionStorage.getItem("token"));
-  });
   const [stdinInput, setStdinInput] = useState("");
   const [waitInfo, setWaitInfo] = useState<WaitInfo | null>(null);
   const [aiWaitInfo, setAiWaitInfo] = useState<WaitInfo | null>(null);
@@ -510,12 +503,6 @@ export default function CodeResults({
           {test.points_possible}
         </p>
 
-        {test.status !== "passed" && test.hint && (
-          <div className="mt-2 rounded-md border border-border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
-            <Badge variant="secondary">Instructor Hint</Badge>
-            <p className="mt-1">{test.hint}</p>
-          </div>
-        )}
         {test.output_truncated && (
           <p role="alert" className="mt-2 rounded-md border border-amber-400 p-2 text-xs">
             Output exceeded 64 KiB. This test failed. Check for excessive printing or a loop.
@@ -565,17 +552,15 @@ export default function CodeResults({
             </p>
           )}
 
-        {isStaff &&
-          test.status !== "passed" &&
-          (result?.raw_output ||
-            (test.message &&
-              cleanTestMessage(test.message).includes("\n"))) && (
+        {test.status !== "passed" &&
+          test.message &&
+          cleanTestMessage(test.message).includes("\n") && (
             <details className="mt-2 text-xs text-muted-foreground">
               <summary className="cursor-pointer font-semibold text-primary hover:underline">
-                View Raw Terminal Output
+                More detail
               </summary>
-              <pre className="mt-1 bg-muted text-foreground p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60 border border-border">
-                {result?.raw_output || cleanTestMessage(test.message)}
+              <pre className="mt-1 max-h-60 overflow-x-auto whitespace-pre-wrap rounded-md border border-border bg-muted p-3 font-mono text-xs text-foreground">
+                {cleanTestMessage(test.message)}
               </pre>
             </details>
           )}
@@ -612,36 +597,16 @@ export default function CodeResults({
           />
         </div>
       </details>
-      {Object.values(files).every((f) => f.category !== "workspace") ? (
+      {Object.values(files).every((f) => f.category !== "workspace") &&
         bundleStatus.expectedEntrypoint && (
-          <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-primary/20 bg-primary/5 text-primary text-xs font-medium">
-            <Sparkles className="size-4 shrink-0 text-primary" />
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs font-medium text-primary">
+            <FilePlus className="size-4 shrink-0 text-primary" />
             <span>
-              To begin, create or upload <strong>{bundleStatus.expectedEntrypoint}</strong> in the sidebar.
+              Create or upload <strong>{bundleStatus.expectedEntrypoint}</strong>{" "}
+              in the sidebar to begin.
             </span>
           </div>
-        )
-      ) : (
-        <>
-          {!bundleStatus.hasRequiredEntrypoint && bundleStatus.expectedEntrypoint && (
-            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
-              <AlertTriangle className="size-4 shrink-0" />
-              <span>
-                Required entrypoint <strong>{bundleStatus.expectedEntrypoint}</strong> is missing from workspace files.
-              </span>
-            </div>
-          )}
-          {bundleStatus.missingRequiredFiles.length > 0 && (
-            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200 font-medium text-xs">
-              <AlertTriangle className="size-4 shrink-0" />
-              <span>
-                Missing required file(s):{" "}
-                <strong>{bundleStatus.missingRequiredFiles.join(", ")}</strong>
-              </span>
-            </div>
-          )}
-        </>
-      )}
+        )}
       <Button
         onClick={handleRunCode}
         disabled={isLoading || isQuotaExceeded}
@@ -741,24 +706,19 @@ export default function CodeResults({
           data-failure-category={result?.failure_category ?? undefined}
           className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive space-y-1"
         >
-          {result?.failure_category && (
-            <span className="block font-mono text-[10px] uppercase tracking-wider opacity-80">
-              {result.failure_category}
-            </span>
-          )}
           <p className="font-medium">{errorMessage}</p>
         </div>
       )}
 
-      <div className={`flex flex-1 flex-col ${showCheckCode ? "" : "hidden"}`}>
+      <div className="flex flex-1 flex-col">
         {result ? (
           <>
             <div className="mt-4">
-              <p className="font-bold text-lg mb-2">Score:</p>
-              <p className="text-foreground font-semibold">
+              <p className="mb-2 text-lg font-bold">Score:</p>
+              <p className="font-semibold text-foreground">
                 {score} / {totalScore}
               </p>
-              <div className="w-full bg-muted rounded-full h-2 mt-3 overflow-hidden">
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className={`h-2 rounded-lg transition-all ${percent >= 100 ? "bg-success" : "bg-primary"}`}
                   style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
@@ -766,16 +726,16 @@ export default function CodeResults({
               </div>
             </div>
 
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-3 mt-4">
-              <p className="font-bold text-lg">Test Cases:</p>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer select-none">
+            <div className="mb-3 mt-4 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-lg font-bold">Test Cases:</p>
+              <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={onlyFailing}
                   onChange={(e) => setOnlyFailing(e.target.checked)}
-                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                  className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
-                Only show failing tests
+                Failing only
               </label>
             </div>
 
@@ -829,38 +789,41 @@ export default function CodeResults({
                   })()}
             </div>
 
-            {result.warnings.length > 0 && (
-              <>
-                <p className="font-bold text-lg mt-4">Warnings:</p>
-                <div className="mt-2 space-y-3">
-                  {result.warnings.map((warning, index) => (
-                    <div
-                      key={`${warning.code}-${index}`}
-                      className="border-l-4 border-warning bg-warning/10 rounded-md p-3 text-foreground"
-                    >
-                      <p className="text-warning font-semibold text-sm">
-                        {warning.code}
-                      </p>
-                      <p className="text-sm text-foreground/90 mt-1">
-                        {warning.message}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+            {(() => {
+              const displayWarnings = result.warnings.filter(
+                (warning) =>
+                  warning.code !== result.failure_category &&
+                  warning.message !== errorMessage &&
+                  warning.message !== result.sanitized_feedback,
+              );
+              if (displayWarnings.length === 0) return null;
+              return (
+                <>
+                  <p className="font-bold text-lg mt-4">Warnings:</p>
+                  <div className="mt-2 space-y-3">
+                    {displayWarnings.map((warning, index) => (
+                      <div
+                        key={`${warning.code}-${index}`}
+                        className="border-l-4 border-warning bg-warning/10 rounded-md p-3 text-foreground"
+                      >
+                        <p className="text-warning font-semibold text-sm">
+                          {warning.code}
+                        </p>
+                        <p className="text-sm text-foreground/90 mt-1">
+                          {warning.message}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </>
-        ) : (
+        ) : !isLoading ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            {isLoading
-              ? runState === "queue"
-                ? "Your submission is queued. Your place in line updates as other submissions finish."
-                : runState === "run"
-                  ? "Your submission is running. Results will appear here when grading finishes."
-                  : "Waiting for sandbox results..."
-              : "Run tests to see your projected score and test summaries."}
+            Run tests to see your score and results.
           </p>
-        )}
+        ) : null}
       </div>
 
       <Button
@@ -876,7 +839,7 @@ export default function CodeResults({
         {isAiLoading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            <span>Consulting Local AI...</span>
+            <span>Getting feedback…</span>
           </>
         ) : showFeedback ? (
           <>
@@ -936,27 +899,13 @@ export default function CodeResults({
                 </button>
               </div>
             ) : isAiLoading ? (
-              <div className="space-y-3 py-2">
-                <div className="flex items-center gap-2 text-xs text-primary font-medium">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>
-                    Analyzing code and test outputs on local AI tutor...
-                  </span>
-                </div>
-                <div className="space-y-2 pt-1 opacity-70 animate-pulse">
-                  <div className="h-2.5 bg-primary/20 rounded w-4/5" />
-                  <div className="h-2.5 bg-primary/15 rounded w-full" />
-                  <div className="h-2.5 bg-primary/15 rounded w-2/3" />
-                </div>
+              <div className="flex items-center gap-2 py-2 text-xs font-medium text-primary">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Analyzing…</span>
               </div>
             ) : aiFeedback ? (
               <MarkdownRenderer content={aiFeedback} />
-            ) : (
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Click &quot;Request AI Feedback&quot; to receive Socratic
-                guidance and hints from your local model.
-              </p>
-            )}
+            ) : null}
           </div>
         </div>
       )}

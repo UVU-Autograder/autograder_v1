@@ -178,3 +178,37 @@ async def test_grading_engine_uses_preloaded_artifacts(base_config: AssignmentCo
 
     assert result.success
     mock_load.assert_not_called()
+
+
+def test_preload_grading_artifacts_fails_closed_on_missing_file(
+    base_config: AssignmentConfigV1,
+) -> None:
+    from app.domains.grading.engine import ArtifactLoadError, preload_grading_artifacts
+
+    with pytest.raises(ArtifactLoadError, match="assignment_tests"):
+        preload_grading_artifacts(
+            base_config,
+            {"assignment_tests": "file:///nonexistent/tests.py"},
+        )
+
+
+@pytest.mark.anyio
+async def test_grading_engine_fails_closed_when_artifact_missing(
+    base_config: AssignmentConfigV1,
+) -> None:
+    engine = GradingEngine(
+        config=base_config,
+        artifact_refs={"assignment_tests": "file:///nonexistent/tests.py"},
+        allowed_concepts=["functions"],
+    )
+    zip_bytes = create_zip_bytes({"main.py": b"def main(): pass\n"})
+
+    with patch(
+        "app.domains.grading.pipeline.load_artifact_content",
+        side_effect=FileNotFoundError("missing"),
+    ):
+        result = await engine.grade_submission(zip_bytes)
+
+    assert not result.success
+    assert result.failure_category == "preparation_error"
+    assert "assignment_tests" in (result.failure_message or "")

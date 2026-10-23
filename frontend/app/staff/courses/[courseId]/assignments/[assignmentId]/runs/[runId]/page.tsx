@@ -34,6 +34,7 @@ export default function RunDetailPage({ params }: PageProps) {
     handleCleanup,
     handleCsvExport,
     handleFeedbackExport,
+    handleAcknowledgeIntake,
   } = useRunStatusPolling({ courseId, assignmentId, runId });
 
   const {
@@ -134,9 +135,74 @@ export default function RunDetailPage({ params }: PageProps) {
         </p>
         {details && !details.exports_ready && (
           <p className="-mt-4 mb-6 text-right text-xs text-warning font-medium">
-            Exports unlock after every manual rubric item has a score.
+            {details.intake_pending
+              ? "Exports unlock after intake warnings are acknowledged and review is complete."
+              : "Exports unlock after every manual rubric item has a score."}
           </p>
         )}
+
+        {details &&
+          ((details.unmatched_files?.length ?? 0) > 0 ||
+            (details.filename_collisions?.length ?? 0) > 0) && (
+            <div className="mb-6 rounded-lg border border-warning/40 bg-warning/5 p-4 text-sm text-foreground">
+              <p className="font-semibold text-warning">
+                Intake ambiguities need review
+              </p>
+              {(details.unmatched_files?.length ?? 0) > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Unmatched archive files
+                  </p>
+                  <ul className="mt-1 list-inside list-disc text-xs">
+                    {details.unmatched_files!.map((name) => (
+                      <li key={name} className="font-mono">
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(details.filename_collisions?.length ?? 0) > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Filename collisions (larger file kept)
+                  </p>
+                  <ul className="mt-1 space-y-2 text-xs">
+                    {details.filename_collisions!.map((collision) => (
+                      <li
+                        key={`${collision.canvas_user_id}-${collision.clean_filename}`}
+                      >
+                        <span className="font-medium">
+                          {collision.student_name || collision.canvas_user_id}
+                        </span>
+                        {": "}
+                        <span className="font-mono">{collision.clean_filename}</span>
+                        {" — kept "}
+                        <span className="font-mono">{collision.kept}</span>
+                        {" from "}
+                        {collision.candidates.length} candidates
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {!details.intake_acknowledged && (
+                <Button
+                  className="mt-3"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleAcknowledgeIntake()}
+                >
+                  Acknowledge intake warnings
+                </Button>
+              )}
+              {details.intake_acknowledged && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Intake warnings acknowledged.
+                </p>
+              )}
+            </div>
+          )}
 
         {runStatus &&
           (runStatus.state === "queue" || runStatus.state === "run") &&

@@ -253,12 +253,21 @@ def test_status_map_covers_key_judge0_codes() -> None:
     assert JUDGE0_STATUS_MAP[13] == "internal_error"
     assert JUDGE0_STATUS_MAP[14] == "compile_error"
 
-    # All runtime-error codes (7-12) → "timeout"
-    for sid in range(7, 13):
-        assert JUDGE0_STATUS_MAP[sid] == "timeout", f"status {sid} should be 'timeout'"
+    # Signal-style runtime errors (7-10) → resource limit; NZEC/other (11-12) → runtime.
+    for sid in range(7, 11):
+        assert JUDGE0_STATUS_MAP[sid] == "resource_limit_exceeded", f"status {sid}"
+    assert JUDGE0_STATUS_MAP[11] == "runtime_exception"
+    assert JUDGE0_STATUS_MAP[12] == "runtime_exception"
 
-    # Every value must be one of the known categories.
-    valid_categories = {"accepted", "wrong_answer", "timeout", "compile_error", "internal_error"}
+    valid_categories = {
+        "accepted",
+        "wrong_answer",
+        "timeout",
+        "resource_limit_exceeded",
+        "runtime_exception",
+        "compile_error",
+        "internal_error",
+    }
     for sid, category in JUDGE0_STATUS_MAP.items():
         assert category in valid_categories, f"unknown category '{category}' for status {sid}"
 
@@ -272,9 +281,16 @@ def test_judge0_failure_for_status_parses_accepted_and_wrong_answer() -> None:
 def test_judge0_failure_for_status_returns_mapped_failures() -> None:
     assert judge0_failure_for_status(5) == ("timeout", "Execution timed out.")
     assert judge0_failure_for_status(6)[0] == "compile_error"
-    assert judge0_failure_for_status(11)[0] == "timeout"
+    assert judge0_failure_for_status(7)[0] == "resource_limit_exceeded"
+    assert judge0_failure_for_status(11)[0] == "runtime_exception"
     assert judge0_failure_for_status(13)[0] == "internal_error"
     assert judge0_failure_for_status(14)[0] == "compile_error"
+    # Runtime/resource categories must not be treated as infrastructure.
+    from app.domains.grading.schemas import is_infrastructure_failure
+
+    assert not is_infrastructure_failure("resource_limit_exceeded")
+    assert not is_infrastructure_failure("runtime_exception")
+    assert not is_infrastructure_failure("timeout")
 
 
 # ---------------------------------------------------------------------------

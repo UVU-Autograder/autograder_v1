@@ -55,10 +55,20 @@ export type StudentRunDetail = {
   automated_max_score: number;
 };
 
+export type FilenameCollision = {
+  canvas_user_id: string;
+  student_name: string;
+  clean_filename: string;
+  candidates: string[];
+  kept: string;
+  kept_size_bytes: number;
+};
+
 export type ManualProgress = {
   requires_manual_grading: boolean;
   completed_students: number;
   total_students: number;
+  intake_pending?: boolean;
   exports_ready: boolean;
 };
 
@@ -66,10 +76,15 @@ export type RunDetailsResponse = {
   run_id: number;
   status: string;
   students: StudentRunDetail[];
+  unmatched_files?: string[];
+  filename_collisions?: FilenameCollision[];
+  intake_acknowledged?: boolean;
+  details_revision: number;
 } & ManualProgress;
 
 export type ManualGradeSaveResponse = StudentRunDetail & {
   manual_progress: ManualProgress;
+  details_revision: number;
 };
 
 export type ScoreBucket = {

@@ -15,12 +15,12 @@ import {
   FileTextIcon,
   XIcon,
   PlayIcon,
+  RotateCcwIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { MetadataSection } from "./metadata-section";
 import { ScoringRulesSection } from "./scoring-rules-section";
-import { ConceptDenylistSection } from "./concept-denylist-section";
 import { ModelSolutionSection } from "./model-solution-section";
 
 export function AssignmentEditor() {
@@ -35,6 +35,7 @@ export function AssignmentEditor() {
     successMessage,
     title,
     handleSave,
+    handleDiscard,
     handleDelete,
     handleCopyStudentLink,
     copiedLink,
@@ -54,111 +55,131 @@ export function AssignmentEditor() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-muted-foreground font-mono text-sm animate-pulse">
-        Loading assignment setup configuration...
+      <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground animate-pulse">
+        Loading…
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border pb-4">
-        <div className="space-y-1">
+      <div className="space-y-3 border-b border-border pb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <BackLink href={`/staff/courses/${courseId}/assignments`}>
-            Back to course details
+            Back to assignments
           </BackLink>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {title || assignmentId}
-            </h1>
+
+          <div className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto sm:justify-end">
+            <span
+              className={`flex min-w-[9.5rem] items-center justify-end gap-1 text-xs font-medium whitespace-nowrap ${
+                saveSuccess
+                  ? "text-success"
+                  : dirty
+                    ? "text-warning"
+                    : "invisible"
+              }`}
+              aria-live="polite"
+            >
+              {saveSuccess ? (
+                <>
+                  <CheckCircle2Icon className="h-4 w-4" />
+                  Saved
+                </>
+              ) : (
+                "Unsaved changes"
+              )}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDiscard()}
+              disabled={!dirty || saving || loading}
+            >
+              <RotateCcwIcon className="h-4 w-4" />
+              Discard
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || !dirty}
+              className="min-w-[5.5rem]"
+            >
+              <SaveIcon className="h-4 w-4" />
+              {saving ? "Saving..." : "Save"}
+            </Button>
+
+            <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyStudentLink}
+              className="min-w-[8.25rem]"
+            >
+              {copiedLink ? (
+                <>
+                  <CheckIcon className="h-4 w-4 text-success" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <CopyIcon className="h-4 w-4" />
+                  Student link
+                </>
+              )}
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link
+                href={`/staff/courses/${courseId}/assignments/${assignmentId}/runs`}
+              >
+                <PlayIcon className="h-4 w-4" />
+                Grade
+              </Link>
+            </Button>
+
+            <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDelete}
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              <Trash2Icon className="h-4 w-4" />
+              Delete
+            </Button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {saveSuccess && (
-            <span className="flex items-center gap-1 text-xs text-success font-medium">
-              <CheckCircle2Icon className="w-4 h-4" /> Saved successfully
-            </span>
-          )}
-          {dirty && (
-            <span className="text-xs text-warning font-medium">
-              Unsaved changes
-            </span>
-          )}
-
-          <Button
-            variant="outline"
-            onClick={handleCopyStudentLink}
-            className="flex items-center gap-1.5 cursor-pointer"
-          >
-            {copiedLink ? (
-              <>
-                <CheckIcon className="w-4 h-4 text-success" />
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <CopyIcon className="w-4 h-4" />
-                <span>Copy Student Link</span>
-              </>
-            )}
-          </Button>
-
-          <Button variant="outline" asChild className="cursor-pointer">
-            <Link
-              href={`/staff/courses/${courseId}/assignments/${assignmentId}/runs`}
-              className="flex items-center gap-1.5"
-            >
-              <PlayIcon className="w-4 h-4" />
-              <span>Grade Now</span>
-            </Link>
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={handleDelete}
-            className="flex items-center gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 cursor-pointer"
-          >
-            <Trash2Icon className="w-4 h-4" />
-            <span>Delete Assignment</span>
-          </Button>
-
-          <Button variant="default" onClick={handleSave} disabled={saving}>
-            <SaveIcon className="w-4 h-4 mr-1.5" />
-            {saving ? "Saving..." : "Save Setup"}
-          </Button>
-        </div>
+        <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground">
+          {title || assignmentId}
+        </h1>
       </div>
 
-      {/* Alerts */}
       {errorMessage && (
-        <div className="flex items-start gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm border border-destructive/30 whitespace-pre-line">
-          <ShieldAlertIcon className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-          <div>
-            <div className="font-semibold">Setup Error</div>
-            <span>{errorMessage}</span>
-          </div>
+        <div className="flex items-start gap-2 whitespace-pre-line rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <ShieldAlertIcon className="mt-0.5 h-5 w-5 shrink-0" />
+          <span>{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="flex items-center gap-2 p-3 bg-success/10 text-success rounded-lg text-sm border border-success/30">
-          <CheckCircle2Icon className="w-5 h-5 text-success shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success">
+          <CheckCircle2Icon className="h-5 w-5 shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
-      {/* Main Tabs Navigation */}
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl bg-muted p-1 rounded-lg">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3 rounded-lg bg-muted p-1">
           <TabsTrigger value="metadata">General & Files</TabsTrigger>
           <TabsTrigger value="rubrics">Test Suite & Rubric</TabsTrigger>
-          <TabsTrigger value="concepts">Concepts</TabsTrigger>
           <TabsTrigger value="model_solution">Model Solution</TabsTrigger>
         </TabsList>
 
@@ -168,10 +189,6 @@ export function AssignmentEditor() {
 
         <TabsContent value="rubrics">
           <ScoringRulesSection />
-        </TabsContent>
-
-        <TabsContent value="concepts">
-          <ConceptDenylistSection />
         </TabsContent>
 
         <TabsContent value="model_solution">
@@ -231,7 +248,7 @@ export function AssignmentEditor() {
                 disabled={isSavingCode}
               >
                 <SaveIcon className="w-4 h-4 mr-1.5" />
-                {isSavingCode ? "Saving..." : "Save Changes"}
+                {isSavingCode ? "Saving..." : "Save"}
               </Button>
             </div>
           </div>

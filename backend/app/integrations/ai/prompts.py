@@ -173,17 +173,41 @@ def failures_from_test_results(
 
     Accepts ``grading.result_parser.calculate_scores`` details. Manual rubric
     items are skipped: staff grade them, so there is nothing for the model to
-    explain. When the submission produced no results at all, the execution
-    failure becomes a single ``execution_error`` item the model can cite.
+    explain. Private scoring items use opaque ordinal keys and strip labels,
+    assertion text, and diffs. When the submission produced no results at all,
+    the execution failure becomes a single ``execution_error`` item the model
+    can cite.
     """
+    from app.domains.grading.result_parser import PRIVATE_TEST_KEY, PRIVATE_TEST_LABEL
+
     failures: list[dict[str, Any]] = []
     passing: list[str] = []
+    private_ordinal = 0
     for result in test_results:
         if result.get("item_type") == "manual":
             continue
-        label = result.get("label") or result.get("name") or result.get("key") or "Test"
+        is_private = bool(result.get("is_private"))
+        if is_private:
+            private_ordinal += 1
+            opaque_key = f"{PRIVATE_TEST_KEY}_{private_ordinal}"
+            label = PRIVATE_TEST_LABEL
+        else:
+            opaque_key = None
+            label = result.get("label") or result.get("name") or result.get("key") or "Test"
         if not _item_failed(result):
             passing.append(label)
+            continue
+        if is_private:
+            failures.append(
+                {
+                    "key": opaque_key,
+                    "label": PRIVATE_TEST_LABEL,
+                    "message": None,
+                    "your_value": None,
+                    "expected_value": None,
+                    "expected_input": None,
+                }
+            )
             continue
         key = result.get("key") or str(label).strip().lower().replace(" ", "_")
         failing_sub: dict[str, Any] = next(
@@ -240,11 +264,14 @@ def requirements_from_config(
         summary_block = clean_desc
 
     items = (config or {}).get("scoring_items") or []
-    lines = [
-        f"- {item.get('label') or item.get('key')}"
-        for item in items
-        if item.get("item_type", "pytest") != "manual"
-    ]
+    lines = []
+    for item in items:
+        if item.get("item_type", "pytest") == "manual":
+            continue
+        if item.get("is_private"):
+            lines.append("- (hidden automated check)")
+        else:
+            lines.append(f"- {item.get('label') or item.get('key')}")
     checked_block = ("Automatically checked items:\n" + "\n".join(lines)) if lines else ""
 
     if summary_block and checked_block:

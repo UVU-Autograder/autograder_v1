@@ -284,6 +284,24 @@ export function useRunStatusPolling({
     }
   };
 
+  const handleAcknowledgeIntake = async () => {
+    setError(null);
+    try {
+      const updated = await apiClient.post<RunDetailsResponse>(
+        `${basePath}/intake/acknowledge`,
+        {}
+      );
+      setDetails({
+        ...updated,
+        students: sortStudentsByName(updated.students ?? []),
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to acknowledge intake warnings.'
+      );
+    }
+  };
+
   return {
     summary,
     runStatus,
@@ -298,5 +316,6 @@ export function useRunStatusPolling({
     handleCleanup,
     handleCsvExport,
     handleFeedbackExport,
+    handleAcknowledgeIntake,
   };
 }

@@ -4,7 +4,6 @@ import React from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -51,11 +50,11 @@ export function MetadataSection() {
   return (
     <div className="space-y-6">
       {/* Basic General Metadata Card */}
-      <Card>
-        <CardHeader>
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="px-4 py-0">
           <CardTitle>General Metadata</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 py-0">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label>Assignment Title *</Label>
@@ -116,9 +115,6 @@ export function MetadataSection() {
               <Label htmlFor="assignment-description">
                 Assignment Description / Instructions (Markdown)
               </Label>
-              <span className="text-xs text-muted-foreground">
-                Used for AI Feedback
-              </span>
             </div>
             <Textarea
               id="assignment-description"
@@ -144,7 +140,7 @@ export function MetadataSection() {
               }}
               className="w-4 h-4 rounded border-input text-primary focus:ring-ring"
             />
-            <Label htmlFor="sandbox" className="cursor-pointer">
+            <Label htmlFor="sandbox" className="cursor-pointer pl-0">
               Enable Student Sandbox Access
             </Label>
           </div>
@@ -152,15 +148,9 @@ export function MetadataSection() {
       </Card>
 
       {/* File Requirements Card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle>File Requirements</CardTitle>
-            <CardDescription className="mt-1">
-              Set up required files and select which file serves as the primary
-              execution entrypoint.
-            </CardDescription>
-          </div>
+      <Card size="sm" className="gap-1.5 py-3">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 px-4 py-0">
+          <CardTitle>File Requirements</CardTitle>
           <Button
             type="button"
             onClick={addFileRequirement}
@@ -170,7 +160,7 @@ export function MetadataSection() {
             <PlusCircleIcon className="w-4 h-4 mr-1.5" /> Add Required File
           </Button>
         </CardHeader>
-        <CardContent className="space-y-6 pt-4">
+        <CardContent className="space-y-4 px-4 py-0">
           <div className="space-y-4">
             {fileRequirements.map((req, idx) => {
               const isEntrypoint = Boolean(
@@ -251,20 +241,9 @@ export function MetadataSection() {
                               setEntrypoint(e.target.value);
                             }
                           }}
-                          placeholder="e.g. *.py"
-                          className="font-mono text-xs max-w-md"
+                          placeholder="e.g. *.py or **/*.py"
+                          className="max-w-md font-mono text-xs"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Evaluated using Python&apos;s{" "}
-                          <code className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">
-                            Path.glob()
-                          </code>{" "}
-                          syntax (use{" "}
-                          <code className="font-mono bg-muted px-1 py-0.5 rounded text-foreground">
-                            **/*.py
-                          </code>{" "}
-                          for recursive subfolders).
-                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -327,23 +306,9 @@ export function MetadataSection() {
             })}
 
             {fileRequirements.length === 0 && (
-              <div className="rounded-lg border border-dashed border-border p-8 text-center">
-                <p className="text-sm font-medium text-foreground">
-                  No file requirements configured.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1 mb-4">
-                  Add at least one required file to configure execution.
-                </p>
-                <Button
-                  type="button"
-                  onClick={addFileRequirement}
-                  variant="outline"
-                  size="sm"
-                >
-                  <PlusCircleIcon className="w-4 h-4 mr-1.5" /> Add Required
-                  File
-                </Button>
-              </div>
+              <p className="rounded-lg border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
+                No file requirements yet.
+              </p>
             )}
           </div>
         </CardContent>

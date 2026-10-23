@@ -263,6 +263,49 @@ def group_canvas_files(extract_dir: Path) -> tuple[dict[str, list[Path]], list[P
     return grouped_files, unmatched_files
 
 
+def detect_filename_collisions(
+    grouped_files: dict[str, list[Path]],
+) -> list[dict[str, object]]:
+    """Find multi-version Canvas files that normalize to the same student filename.
+
+    For each collision, records candidates and which file would be kept
+    (largest size wins, matching ``_copy_canvas_file``).
+    """
+    collisions: list[dict[str, object]] = []
+    for canvas_user_id, paths in grouped_files.items():
+        by_clean: dict[str, list[Path]] = {}
+        student_name = ""
+        for path in paths:
+            parsed = parse_canvas_filename(path.name)
+            if not parsed:
+                continue
+            name, _, _, original_filename = parsed
+            student_name = name or student_name
+            if original_filename.lower().endswith(".zip"):
+                continue
+            clean = normalize_canvas_original_filename(original_filename)
+            by_clean.setdefault(clean, []).append(path)
+        for clean_filename, candidates in by_clean.items():
+            if len(candidates) < 2:
+                continue
+            ranked = sorted(
+                candidates,
+                key=lambda p: (p.stat().st_size, p.name),
+                reverse=True,
+            )
+            collisions.append(
+                {
+                    "canvas_user_id": canvas_user_id,
+                    "student_name": student_name,
+                    "clean_filename": clean_filename,
+                    "candidates": [p.name for p in ranked],
+                    "kept": ranked[0].name,
+                    "kept_size_bytes": ranked[0].stat().st_size,
+                }
+            )
+    return collisions
+
+
 def _copy_canvas_file(source: Path, student_dir: Path, original_filename: str) -> None:
     normalized_filename = normalize_canvas_original_filename(original_filename)
     normalized_parts = Path(normalized_filename.replace("\\", "/")).parts

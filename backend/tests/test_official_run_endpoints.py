@@ -107,6 +107,10 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, admin_head
     assert body["completed_students"] == 1
     assert body["total_students"] == 1
     assert body["exports_ready"] is True
+    assert body["unmatched_files"] == []
+    assert body["filename_collisions"] == []
+    assert body["intake_acknowledged"] is True
+    assert body["intake_pending"] is False
     assert body["students"][0] == {
         "student_name": "studenta",
         "canvas_id": "11111",
@@ -228,6 +232,88 @@ def test_partial_run_details_while_running(client, db_session, temp_workspaces, 
     assert body["exports_ready"] is False
 
 
+def test_intake_acknowledge_gates_exports(client, db_session, temp_workspaces, admin_headers):
+    run = RunSummary(
+        workflow_type="official",
+        assignment_id=1,
+        status="complete",
+        total_submission_count=1,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
+    run_dir = workspaces_dir / f"official_{run.id}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "grades.csv").write_text("Student Identifier,Score\nstudenta,100")
+    with zipfile.ZipFile(run_dir / "feedback.zip", "w") as zf:
+        zf.writestr("feedback.html", "<html></html>")
+    (run_dir / "run_details.json").write_text(
+        json.dumps({
+            "unmatched_files": ["readme.txt"],
+            "filename_collisions": [{
+                "canvas_user_id": "11111",
+                "student_name": "studenta",
+                "clean_filename": "main.py",
+                "candidates": ["a_11111_1_main-1.py", "a_11111_2_main-2.py"],
+                "kept": "a_11111_2_main-2.py",
+                "kept_size_bytes": 100,
+            }],
+            "intake_acknowledged": False,
+            "student_results": {
+                "11111": {
+                    "student_identifier": "studenta",
+                    "submission_id": "1",
+                    "success": True,
+                    "score": 100,
+                    "max_score": 100,
+                    "test_results": [],
+                    "warnings": [],
+                    "failure_category": None,
+                    "failure_message": None,
+                    "feedback_html": "<html></html>",
+                    "manual_results": {},
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
+
+    details = client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/details",
+        headers=admin_headers,
+    )
+    assert details.status_code == 200
+    assert details.json()["intake_pending"] is True
+    assert details.json()["exports_ready"] is False
+
+    blocked = client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
+        headers=admin_headers,
+    )
+    assert blocked.status_code == 409
+
+    ack = client.post(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/intake/acknowledge",
+        headers=admin_headers,
+    )
+    assert ack.status_code == 200
+    assert ack.json()["intake_acknowledged"] is True
+    assert ack.json()["intake_pending"] is False
+    assert ack.json()["exports_ready"] is True
+    assert "readme.txt" in ack.json()["unmatched_files"]
+
+    allowed = client.get(
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv",
+        headers=admin_headers,
+    )
+    assert allowed.status_code == 200
+
+
 def test_official_run_status(client, db_session, admin_headers):
     run = RunSummary(
         workflow_type="official",
@@ -341,6 +427,7 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, admin
     run_dir.mkdir(parents=True, exist_ok=True)
 
     details_data = {
+        "details_revision": 0,
         "unmatched_files": [],
         "student_results": {
             "11111": {
@@ -366,15 +453,32 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, admin
         }
     }
     (run_dir / "run_details.json").write_text(json.dumps(details_data), encoding="utf-8")
+    grades_url = (
+        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}"
+        "/students/11111/manual-grades"
+    )
+    revision = 0
+
+    # Missing details_revision is rejected at the request boundary.
+    missing_rev = client.post(
+        grades_url,
+        json={"grades": {"style": {"score": None, "comments": "Pending review"}}},
+        headers=admin_headers,
+    )
+    assert missing_rev.status_code == 422
 
     # 0. Saving with null score preserves ungraded state
     response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
-        json={"grades": {"style": {"score": None, "comments": "Pending review"}}},
+        grades_url,
+        json={
+            "grades": {"style": {"score": None, "comments": "Pending review"}},
+            "details_revision": revision,
+        },
         headers=admin_headers,
     )
     assert response.status_code == 200
     body = response.json()
+    revision = body["details_revision"]
     assert body["score"] == 40
     assert body["manual_results"]["style"]["score"] is None
     assert body["manual_results"]["style"]["comments"] == "Pending review"
@@ -394,14 +498,12 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, admin
             }
         },
         "overall_comment": "Keep up the good work.",
+        "details_revision": revision,
     }
-    response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
-        json=payload,
-        headers=admin_headers
-    )
+    response = client.post(grades_url, json=payload, headers=admin_headers)
     assert response.status_code == 200
     body = response.json()
+    revision = body["details_revision"]
     assert body["score"] == 48 # 40 + 8
     assert body["manual_results"]["style"]["score"] == 8
     assert body["manual_results"]["style"]["comments"] == "Nicely styled!"
@@ -428,13 +530,10 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, admin
                 "score": 12, # max is 10
                 "comments": ""
             }
-        }
+        },
+        "details_revision": revision,
     }
-    response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
-        json=payload_invalid,
-        headers=admin_headers
-    )
+    response = client.post(grades_url, json=payload_invalid, headers=admin_headers)
     assert response.status_code == 400
     assert "exceeds maximum points" in response.json()["detail"]
 
@@ -445,31 +544,32 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, admin
                 "score": 5,
                 "comments": ""
             }
-        }
+        },
+        "details_revision": revision,
     }
-    response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
-        json=payload_bad_key,
-        headers=admin_headers
-    )
+    response = client.post(grades_url, json=payload_bad_key, headers=admin_headers)
     assert response.status_code == 400
     assert "Invalid manual rubric item key" in response.json()["detail"]
 
     # 4. Non-integer scores are rejected at the request boundary.
     response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
-        json={"grades": {"style": {"score": 8.5}}},
+        grades_url,
+        json={"grades": {"style": {"score": 8.5}}, "details_revision": revision},
         headers=admin_headers,
     )
     assert response.status_code == 422
 
     # 5. Clearing a score returns the student to ungraded and re-blocks export.
     response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
-        json={"grades": {"style": {"score": None, "comments": ""}}},
+        grades_url,
+        json={
+            "grades": {"style": {"score": None, "comments": ""}},
+            "details_revision": revision,
+        },
         headers=admin_headers,
     )
     assert response.status_code == 200
+    revision = response.json()["details_revision"]
     assert response.json()["manual_progress"]["exports_ready"] is False
     assert client.get(
         f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/feedback",
@@ -478,8 +578,12 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, admin
 
     # 6. Overall feedback can be saved without changing manual scores.
     response = client.post(
-        f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/students/11111/manual-grades",
-        json={"grades": {}, "overall_comment": "Standalone instructor note."},
+        grades_url,
+        json={
+            "grades": {},
+            "overall_comment": "Standalone instructor note.",
+            "details_revision": revision,
+        },
         headers=admin_headers,
     )
     assert response.status_code == 200
@@ -487,4 +591,28 @@ def test_update_student_manual_grades(client, db_session, temp_workspaces, admin
     assert body["overall_comment"] == "Standalone instructor note."
     assert "Standalone instructor note." in body["feedback_html"]
     assert body["manual_results"]["style"]["score"] is None
+    current_revision = body["details_revision"]
+
+    # 7. Stale details_revision is rejected with 409.
+    conflict = client.post(
+        grades_url,
+        json={
+            "grades": {"style": {"score": 5, "comments": ""}},
+            "details_revision": max(0, current_revision - 1),
+        },
+        headers=admin_headers,
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"]["code"] == "details_revision_conflict"
+
+    ok = client.post(
+        grades_url,
+        json={
+            "grades": {"style": {"score": 5, "comments": ""}},
+            "details_revision": current_revision,
+        },
+        headers=admin_headers,
+    )
+    assert ok.status_code == 200
+    assert ok.json()["details_revision"] == current_revision + 1
 

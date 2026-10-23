@@ -19,7 +19,7 @@ export default function StaffAssignmentPage({ params }: PageProps) {
       courseId={resolvedParams.courseId}
       assignmentId={resolvedParams.assignmentId}
     >
-      <div className="container mx-auto p-6 max-w-6xl space-y-6">
+      <div className="container mx-auto max-w-6xl p-6">
         <AssignmentEditor />
       </div>
     </AssignmentEditorProvider>

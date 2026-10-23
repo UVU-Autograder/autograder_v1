@@ -3,13 +3,18 @@ export type Constraint = {
     value: string;
 };
 
+/** Matches backend ``pytest_marker_for_key``. */
+export function pytestMarkerForKey(key: string): string {
+    return `ag_${key}`;
+}
+
 export type RubricItem = {
-    hint?: string | null;
     id?: string;
     key: string;
     label: string;
     points: number;
     extra_credit: boolean;
+    is_private?: boolean;
     pytest_marker: string | null;
     item_type: "pytest" | "manual";
     rubric_group_key: string | null;
@@ -146,7 +151,6 @@ export type SandboxRunCreateResponse = {
 };
 
 export type SandboxTestSummary = {
-    hint?: string | null;
     output_truncated?: boolean;
     label: string;
     status: "passed" | "failed" | "warning" | "not_run";

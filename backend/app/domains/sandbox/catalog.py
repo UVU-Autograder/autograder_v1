@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.settings import get_settings
 from app.domains.assignments.models import Assignment
-from app.domains.assignments.schemas import pytest_marker_for_key
+from app.domains.assignments.schemas import AssignmentConfigV1, pytest_marker_for_key
 from app.domains.assignments.service import (
     _coerce_scoring_item_type,
     effective_allowed_concepts,
@@ -21,6 +21,73 @@ from app.domains.sandbox.schemas import (
     SandboxRubricItem,
     UploadQuota,
 )
+
+
+def project_student_scoring(
+    config: AssignmentConfigV1,
+) -> tuple[list[SandboxRubricItem], list[SandboxRubricGroup], list[dict]]:
+    """Project staff scoring config into student-safe catalog rubric fields.
+
+    Private items get opaque keys/labels and no markers, I/O, or real labels.
+    Rubric-group and completion ``test_keys`` are remapped to those opaque keys.
+    """
+    from app.domains.grading.result_parser import PRIVATE_TEST_KEY, PRIVATE_TEST_LABEL
+
+    rubric: list[SandboxRubricItem] = []
+    public_key_by_config_key: dict[str, str] = {}
+    private_ordinal = 0
+    for item in config.scoring_items:
+        is_private = bool(getattr(item, "is_private", False))
+        if is_private:
+            private_ordinal += 1
+            public_key = f"{PRIVATE_TEST_KEY}_{private_ordinal}"
+        else:
+            public_key = item.key
+        public_key_by_config_key[item.key] = public_key
+        rubric.append(
+            SandboxRubricItem(
+                key=public_key,
+                label=PRIVATE_TEST_LABEL if is_private else item.label,
+                points=item.points,
+                extra_credit=item.extra_credit,
+                item_type=_coerce_scoring_item_type(
+                    item.item_type,
+                    PRIVATE_TEST_LABEL if is_private else item.label,
+                ),
+                pytest_marker=(
+                    None
+                    if is_private
+                    else (
+                        pytest_marker_for_key(item.key)
+                        if item.item_type == "pytest"
+                        else None
+                    )
+                ),
+                rubric_group_key=item.rubric_group_key,
+                inputs=None if is_private else item.inputs,
+                outputs=None if is_private else item.outputs,
+            )
+        )
+    rubric_groups = [
+        SandboxRubricGroup(
+            key=group.key,
+            label=group.label,
+            item_keys=[
+                public_key_by_config_key[item.key]
+                for item in config.scoring_items
+                if item.rubric_group_key == group.key
+            ],
+        )
+        for group in config.rubric_groups
+    ]
+    completion_requirements: list[dict] = []
+    for req in config.completion_requirements:
+        dump = req.model_dump()
+        test_keys = dump.get("test_keys")
+        if isinstance(test_keys, list):
+            dump["test_keys"] = [public_key_by_config_key.get(k, k) for k in test_keys]
+        completion_requirements.append(dump)
+    return rubric, rubric_groups, completion_requirements
 
 
 def list_sandbox_courses(db: Session) -> SandboxCourseListResponse:
@@ -102,29 +169,7 @@ def get_sandbox_assignment(
     if assignment.config is not None:
         config = validate_config(assignment.config.config)
         req_files = config.bundle.derived_required_files()
-        rubric = [
-            SandboxRubricItem(
-                key=item.key,
-                label=item.label,
-                points=item.points,
-                extra_credit=item.extra_credit,
-                item_type=_coerce_scoring_item_type(item.item_type, item.label),
-                pytest_marker=pytest_marker_for_key(item.key) if item.item_type == "pytest" else None,
-                rubric_group_key=item.rubric_group_key,
-                inputs=item.inputs,
-                outputs=item.outputs,
-            )
-            for item in config.scoring_items
-        ]
-        rubric_groups = [
-            SandboxRubricGroup(
-                key=group.key,
-                label=group.label,
-                item_keys=[item.key for item in config.scoring_items if item.rubric_group_key == group.key],
-            )
-            for group in config.rubric_groups
-        ]
-        completion_requirements = [item.model_dump() for item in config.completion_requirements]
+        rubric, rubric_groups, completion_requirements = project_student_scoring(config)
         constraints = [
             SandboxConstraint(label="Entrypoint", value=config.bundle.entrypoint),
             SandboxConstraint(label="Required files", value=", ".join(req_files)),
