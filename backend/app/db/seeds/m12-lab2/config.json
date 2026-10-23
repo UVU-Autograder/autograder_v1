@@ -1,0 +1,70 @@
+{
+  "bundle": {
+    "entrypoint": "uvunacci_optimized.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "uvunacci_optimized.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "uvunacci_optimized.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "baseline_recursive",
+      "label": "Defines uvunacci_recursive(n) as the baseline recursive function",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "memoized_version",
+      "label": "Implements uvunacci_memoized(n, memo_dict) using manual dictionary memoization",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "iterative_version",
+      "label": "Implements an efficient iterative version uvunacci_iterative(n)",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "execution_timer",
+      "label": "Uses time.time() or time.perf_counter() to measure execution time",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "printed_comparison",
+      "label": "Prints outputs comparing all approaches and provides a summary description",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "docstrings_comments",
+      "label": "Includes docstrings or comments explaining function logic",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

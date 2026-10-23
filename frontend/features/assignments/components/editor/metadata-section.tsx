@@ -117,7 +117,7 @@ export function MetadataSection() {
                 Assignment Description / Instructions (Markdown)
               </Label>
               <span className="text-xs text-muted-foreground">
-                Rendered in Student Workspace and used for AI Feedback
+                Used for AI Feedback
               </span>
             </div>
             <Textarea
@@ -207,6 +207,7 @@ export function MetadataSection() {
                     </label>
                     <button
                       type="button"
+                      aria-label="Remove file requirement"
                       onClick={() => removeFileRequirement(idx)}
                       className="text-muted-foreground hover:text-destructive transition-colors p-1 cursor-pointer"
                     >

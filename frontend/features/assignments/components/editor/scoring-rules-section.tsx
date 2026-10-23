@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import MonacoEditor from "@/components/monaco-editor";
 import {
@@ -163,6 +164,8 @@ export function ScoringRulesSection() {
                       ag_
                     </span>
                     <Input
+                      id={`scoring-key-${item.id || item.key}`}
+                      aria-label="Pytest Marker Key"
                       value={item.key}
                       onChange={(e) =>
                         updateScoringItemField(
@@ -178,10 +181,11 @@ export function ScoringRulesSection() {
 
                 {/* Label / Description Header */}
                 <div className="md:col-span-4 space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                  <Label htmlFor={`scoring-label-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
                     Description
-                  </span>
+                  </Label>
                   <Input
+                    id={`scoring-label-${item.id || item.key}`}
                     value={item.label}
                     onChange={(e) =>
                       updateScoringItemField(
@@ -195,20 +199,21 @@ export function ScoringRulesSection() {
                 </div>
 
                 <div className="md:col-span-12 space-y-1">
-                  <label htmlFor={`hint-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground">Instructor Hint / Guidance</label>
+                  <label htmlFor={`hint-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground">Instructor Hint</label>
                   <textarea id={`hint-${item.id || item.key}`} value={item.hint ?? ""} maxLength={2000}
                     onChange={(e) => updateScoringItemField(item.id || item.key, "hint", e.target.value)}
                     className="w-full rounded-md border border-input bg-background p-2 text-sm" rows={2} />
-                  <p className="text-xs text-muted-foreground">Explain the requirement or a debugging strategy without giving solution code. Shown when this criterion fails. Output is limited to 64 KiB per stream per test.</p>
                 </div>
 
                 {/* Points */}
                 <div className="md:col-span-2 space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                  <Label htmlFor={`scoring-points-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
                     Points
-                  </span>
+                  </Label>
                   <Input
+                    id={`scoring-points-${item.id || item.key}`}
                     type="number"
+                    min={0}
                     value={item.points}
                     onChange={(e) =>
                       updateScoringItemField(
@@ -334,10 +339,11 @@ export function ScoringRulesSection() {
               >
                 {/* Label / Description Header */}
                 <div className="md:col-span-7 space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                  <Label htmlFor={`manual-label-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
                     Criterion Label
-                  </span>
+                  </Label>
                   <Input
+                    id={`manual-label-${item.id || item.key}`}
                     value={item.label}
                     onChange={(e) =>
                       updateScoringItemField(
@@ -352,11 +358,13 @@ export function ScoringRulesSection() {
 
                 {/* Points */}
                 <div className="md:col-span-2 space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                  <Label htmlFor={`manual-points-${item.id || item.key}`} className="text-xs font-semibold text-muted-foreground uppercase">
                     Points
-                  </span>
+                  </Label>
                   <Input
+                    id={`manual-points-${item.id || item.key}`}
                     type="number"
+                    min={0}
                     value={item.points}
                     onChange={(e) =>
                       updateScoringItemField(

@@ -91,7 +91,7 @@ def test_full_queue_is_retryable_and_not_counted(client, monkeypatch):
     def full(*args, **kwargs):
         raise QueueFullError("full")
 
-    monkeypatch.setattr("app.domains.sandbox.service.reserve_execution_slots", full)
+    monkeypatch.setattr("app.domains.sandbox.intake.reserve_execution_slots", full)
     response = create_run(client, session=session)
     assert response.status_code == 503
     detail = response.json()["detail"]
@@ -259,7 +259,7 @@ def test_network_limit_counts_runs_per_address_and_refunds_unadmitted_ones(clien
 
     monkeypatch.setattr(get_settings(), "sandbox_ip_hourly_limit", 3)
     monkeypatch.setattr(
-        "app.domains.sandbox.service.reserve_execution_slots",
+        "app.domains.sandbox.intake.reserve_execution_slots",
         lambda *a, **k: (_ for _ in ()).throw(QueueFullError("full")),
     )
     assert from_network("tab-d").status_code == 503

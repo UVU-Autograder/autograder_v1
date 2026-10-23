@@ -1,0 +1,65 @@
+{
+  "bundle": {
+    "entrypoint": "greet_user_uvuid.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "greet_user_uvuid.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "greet_user_uvuid.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "no_syntax_errors",
+      "label": "Code runs without syntax errors",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "code_comment",
+      "label": "Script includes at least one comment explaining a section of the code",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "input_collected",
+      "label": "Uses input() to collect both name and UVU ID",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "variables_stored",
+      "label": "Values are stored in appropriately named variables",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "output_greeting",
+      "label": "Output is clearly formatted and uses both collected values",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

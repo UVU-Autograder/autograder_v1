@@ -1,0 +1,63 @@
+{
+  "bundle": {
+    "entrypoint": "sophie_biased_walk.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "sophie_biased_walk.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "sophie_biased_walk.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "random_choices_weighted",
+      "label": "Uses random.choices() with appropriate weights for biased movement",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "track_position_steps",
+      "label": "Tracks and updates (x, y) position across 200 simulation steps",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "direction_counts",
+      "label": "Maintains accurate counts of occurrences for each direction",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "display_final_stats",
+      "label": "Displays final position and direction counts in specified format",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comments_and_organization",
+      "label": "Clear code organization, docstrings or comments, and zero syntax errors",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

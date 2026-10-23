@@ -1,4 +1,13 @@
-import MonacoEditor from '@/components/monaco-editor';
+import dynamic from 'next/dynamic';
+
+const MonacoEditor = dynamic(() => import('@/components/monaco-editor'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-background text-xs text-muted-foreground font-mono">
+      Loading editor...
+    </div>
+  ),
+});
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { XIcon } from 'lucide-react';
 import Image from 'next/image';

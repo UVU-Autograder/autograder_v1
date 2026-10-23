@@ -1,0 +1,63 @@
+{
+  "bundle": {
+    "entrypoint": "student_oop_records.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "student_oop_records.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "student_oop_records.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "student_class_def",
+      "label": "Defines Student class with name, student_id, major, and gpa attributes",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "init_and_str",
+      "label": "Implements constructor __init__() and string formatter __str__()",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "instance_methods",
+      "label": "Implements update_gpa(), change_major(), and display_summary() methods",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "object_list_loop",
+      "label": "Creates multiple student objects, stores in list, and iterates with a loop",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comments_and_clean_run",
+      "label": "Includes comments/docstrings and executes cleanly without errors",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ]
+}

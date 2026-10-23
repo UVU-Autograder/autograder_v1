@@ -257,6 +257,7 @@ export function AssignmentSidebar({
                 type="button"
                 variant="ghost"
                 size="icon-xs"
+                aria-label="Cancel creating file"
                 onClick={() => {
                   setNewFileName("");
                   setCreateError(null);

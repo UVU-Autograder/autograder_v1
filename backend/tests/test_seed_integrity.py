@@ -87,7 +87,6 @@ def test_seed_directory_integrity(seed_dir: Path) -> None:
                 f"{seed_dir.name} is missing model solution artifact for file requirement (none of {req.paths} found)"
             )
 
-
     for art_name, art_config in artifacts.items():
         filename = art_config.get("display_filename")
         if not filename:
@@ -142,9 +141,7 @@ def test_student_module_import_restores_packaging_collision(
 ) -> None:
     system_packaging = packaging
     (tmp_path / "packaging.py").write_text("MARKER = 'student'\n")
-    (tmp_path / "dessert.py").write_text(
-        "import packaging\nMARKER = packaging.MARKER\n"
-    )
+    (tmp_path / "dessert.py").write_text("import packaging\nMARKER = packaging.MARKER\n")
     monkeypatch.chdir(tmp_path)
 
     student_packaging, dessert = import_student_modules("packaging", "dessert")
@@ -152,3 +149,45 @@ def test_student_module_import_restores_packaging_collision(
     assert student_packaging.MARKER == "student"
     assert dessert.MARKER == "student"
     assert sys.modules["packaging"] is system_packaging
+
+
+def test_cs1400_test_helpers_submission_isolation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.db.seeds.shared.cs1400_test_helpers import get_submission_path
+
+    empty_sub = tmp_path / "empty_submission"
+    empty_sub.mkdir()
+    monkeypatch.setenv("STUDENT_SUBMISSION_DIR", str(empty_sub))
+
+    resolved = get_submission_path("lore_vault.py")
+    assert not resolved.exists()
+    assert resolved.parent == empty_sub
+
+
+def test_cs1400_test_helpers_canvas_suffix_resolution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.db.seeds.shared.cs1400_test_helpers import get_submission_path
+
+    sub_dir = tmp_path / "student_sub"
+    sub_dir.mkdir()
+    (sub_dir / "lore_vault-1.py").write_text("# code\n")
+    monkeypatch.setenv("STUDENT_SUBMISSION_DIR", str(sub_dir))
+
+    resolved = get_submission_path("lore_vault.py")
+    assert resolved.exists()
+    assert resolved.name == "lore_vault-1.py"
+
+
+def test_python_autograder_helpers_canvas_suffix_resolution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sub_dir = tmp_path / "cs1410_sub"
+    sub_dir.mkdir()
+    (sub_dir / "dessert-1.py").write_text("MAGIC = 42\n")
+    monkeypatch.setenv("STUDENT_SUBMISSION_DIR", str(sub_dir))
+
+    modules = import_student_modules("dessert")
+    assert modules[0] is not None
+    assert getattr(modules[0], "MAGIC", None) == 42

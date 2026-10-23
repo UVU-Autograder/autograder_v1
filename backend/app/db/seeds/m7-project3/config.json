@@ -1,0 +1,100 @@
+{
+  "bundle": {
+    "entrypoint": "gaia_growth_simulator.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "gaia_growth_simulator.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "gaia_growth_simulator.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "code_file_name",
+      "label": "Code is in gaia_growth_simulator.py and runs without syntax errors",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "main_conditional",
+      "label": "Contains a main() function with conditional execution (if __name__ == '__main__':)",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "style_snake_case",
+      "label": "All variable and function names follow Python snake_case or camelCase",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "equation_function",
+      "label": "The logistic equation P_n = r * P_(n-1) * (1 - P_(n-1)) is implemented in its own function",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "cli_args_parsing",
+      "label": "Correctly parses the 4 command line arguments (p0, r, steps, output_file)",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "list_accumulator",
+      "label": "Uses a list to capture all population values over time via accumulator pattern",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "range_validation",
+      "label": "Validates that input values are within acceptable ranges (0 < p0 < 1, 0 < r < 4, steps > 0)",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "loops_and_functions",
+      "label": "Uses for or while loops, conditionals, and functions to structure code cleanly",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "output_to_file",
+      "label": "Writes simulation results to the specified file, formatted with 3 decimal places",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "unknown_input",
+      "label": "Works with unknown parameter combinations and diverse simulation steps",
+      "points": 15,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

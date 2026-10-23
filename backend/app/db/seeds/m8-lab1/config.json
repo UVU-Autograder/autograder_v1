@@ -1,0 +1,65 @@
+{
+  "bundle": {
+    "entrypoint": "analyze_student_grades.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "analyze_student_grades.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "analyze_student_grades.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "comment_or_docstring",
+      "label": "Code includes at least one comment or docstring; runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "store_tuples",
+      "label": "Stores student name and grade pairs as tuples in a list",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "analyze_grades_computation",
+      "label": "analyze_grades() correctly computes average, highest, and lowest grades with student names",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "return_unpack_tuple",
+      "label": "Properly returns a tuple from the function and unpacks it in main code",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "formatted_output",
+      "label": "Formatted summary statistics are printed clearly in the main script",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

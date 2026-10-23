@@ -1,0 +1,76 @@
+{
+  "bundle": {
+    "entrypoint": "count_vowels.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "count_vowels.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "count_vowels.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    },
+    "sample_data": {
+      "type": "support_file",
+      "display_filename": "randomText.txt"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "no_syntax_errors",
+      "label": "Code runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "comment_or_docstring",
+      "label": "Includes at least one comment or docstring explaining the logic",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "define_count_function",
+      "label": "Defines a function that reads randomText.txt and returns counts for a, e, i, o, u, y",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "count_vowels_accuracy",
+      "label": "Correctly counts all six vowels (a, e, i, o, u, y) case-insensitively",
+      "points": 3,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "format_summary_output",
+      "label": "Unpacks result and prints a clearly formatted summary of vowel counts",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "file_error_handling",
+      "label": "Handles missing file errors gracefully using try/except",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

@@ -1,0 +1,72 @@
+{
+  "bundle": {
+    "entrypoint": "course_enrollment.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "course_enrollment.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "course_enrollment.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "comment_or_docstring",
+      "label": "Code includes clear comments or docstrings; runs without syntax errors",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "nested_dict_init",
+      "label": "Initializes a nested dictionary (students) to model student records",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "print_student_info_fn",
+      "label": "Defines and uses print_student_info() with .get() to retrieve records safely",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "enroll_student_fn",
+      "label": "Defines enroll_student() to add courses without duplicates",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "drop_student_fn",
+      "label": "Defines drop_student() using .pop() to remove student records",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "display_methods",
+      "label": "Uses .keys(), .items(), or .values() to display student information and summaries",
+      "points": 1,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

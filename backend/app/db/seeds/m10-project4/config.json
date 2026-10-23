@@ -1,0 +1,69 @@
+{
+  "bundle": {
+    "entrypoint": "lore_vault.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "lore_vault.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "lore_vault.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    },
+    "sample_archive": {
+      "type": "support_file",
+      "display_filename": "TTL.txt"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "main_function_conditional",
+      "label": "The program contains a main function with conditional execution guard",
+      "points": 10,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "no_global_code",
+      "label": "There is no global code outside of function definitions",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "snake_or_camel_case",
+      "label": "All variable and function names follow Python snake_case or camelCase",
+      "points": 5,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "given_file_output",
+      "label": "Produces correctly reconstructed output file for given archive (TTL.txt -> TTL_book.txt)",
+      "points": 40,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "unknown_file_output",
+      "label": "Accurately sorts, breaks ties, and formats unknown archive files",
+      "points": 40,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

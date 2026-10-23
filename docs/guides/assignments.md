@@ -15,7 +15,7 @@ Official intake validates and copies the configured test/support assets before d
 
 ## Seed workflow
 
-The [CS1410 catalog](../../backend/app/db/seeds/cs1410_catalog.json) owns all 17 titles/module placements. [Packages](../../backend/app/db/seeds/) contain configs, markdown descriptions (`description.md`), explicit tests, standalone models and resources. CS1400 remains a placeholder.
+The [CS1410 catalog](../../backend/app/db/seeds/cs1410_catalog.json) owns all 17 titles/module placements, and the [CS1400 catalog](../../backend/app/db/seeds/cs1400_catalog.json) defines 44 course assignments across 14 modules. [Packages](../../backend/app/db/seeds/) contain configs, markdown descriptions (`description.md`), explicit tests, standalone models and resources.
 
 Use [AssignmentConfigV1](../../backend/app/domains/assignments/schemas.py) and an [actual config](../../backend/app/db/seeds/simple-python-functions/config.json). Use `scoring_items`, `completion_requirements` (for "pass at least X of Y" objectives), top-level dependencies and `pytest_file`/`model_solution`/`support_file` artifacts. Each scoring key maps to a pytest marker:
 

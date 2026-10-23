@@ -1,0 +1,65 @@
+{
+  "bundle": {
+    "entrypoint": "save_number_series.py",
+    "file_requirements": [
+      {
+        "paths": [
+          "save_number_series.py"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "assignment_tests": {
+      "type": "pytest_file",
+      "display_filename": "tests.py"
+    },
+    "model_solution": {
+      "type": "model_solution",
+      "display_filename": "save_number_series.py"
+    },
+    "cs1400_test_helpers": {
+      "type": "support_file",
+      "display_filename": "cs1400_test_helpers.py"
+    }
+  },
+  "scoring_items": [
+    {
+      "key": "print_message_and_clean_code",
+      "label": "Includes a final print message and comments; runs without syntax errors",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "collect_inputs",
+      "label": "Uses input() to collect starting, ending, and step values",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "for_loop_sequence",
+      "label": "Uses a for loop to generate the sequence correctly",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "stores_in_list",
+      "label": "Stores the generated numbers in a list before writing to disk",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    },
+    {
+      "key": "writes_to_file",
+      "label": "Writes all numbers to number_series.txt with one number per line",
+      "points": 2,
+      "extra_credit": false,
+      "item_type": "pytest"
+    }
+  ],
+  "dependencies": [],
+  "rubric_groups": []
+}

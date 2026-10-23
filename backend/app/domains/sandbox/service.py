@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 
 from app.core.settings import get_settings
 from app.domains.runs.queue_admission import (
-    QueueFullError,
     QueueSnapshot,
     backpressure_for,
     backpressure_snapshot,
@@ -15,7 +14,6 @@ from app.domains.runs.queue_admission import (
     eta_seconds_for,
     queue_snapshot,
     release_execution_slots,
-    reserve_execution_slots,
     waiting_count,
 )
 from app.domains.runs.schemas import (
@@ -29,7 +27,6 @@ from app.domains.sandbox.schemas import (
     RubricGroupResultResponse,
     SandboxAiFeedbackResponse,
     SandboxCancelResponse,
-    SandboxRunCreateResponse,
     SandboxRunRecord,
     SandboxRunResultResponse,
     SandboxWarning,
@@ -133,117 +130,6 @@ class SandboxService:
     def quota_for_session(self, session_id: str | None) -> UploadQuota:
         return self._store.get_quota(session_id, self._upload_limit, self._upload_window)
 
-    def create_run(
-        self,
-        course_id: str,
-        assignment_id: str,
-        session_id: str | None,
-        assignment_exists: bool | None = None,
-        max_score: int = 100,
-        zip_data: bytes | None = None,
-        config: dict | None = None,
-        artifact_refs: dict[str, str] | None = None,
-        allowed_concepts: list[str] | None = None,
-        stdin: str | None = None,
-        expected_manifest: dict | None = None,
-    ) -> tuple[SandboxRunCreateResponse | None, str, int | None]:
-        """Create a sandbox run record and optionally dispatch a Celery task with optional stdin."""
-        if not assignment_exists:
-            return None, session_id or self._new_session(), None
-
-        session = session_id or self._new_session()
-        quota = self.quota_for_session(session)
-        if quota.remaining <= 0:
-            return None, session, 429
-
-        now = datetime.now(UTC)
-        self._store.record_upload(session, now)
-
-        run_id = f"run_{token_urlsafe(16)}"
-        try:
-            waiting = reserve_execution_slots(1, owner=run_id)
-        except QueueFullError:
-            self._store.unrecord_upload(session)
-            return None, session, 503
-
-        record = SandboxRunRecord(
-            run_id=run_id,
-            session_id=session,
-            course_id=course_id,
-            assignment_id=assignment_id,
-            queue_position=max(1, waiting),
-            max_score=max_score,
-        )
-        try:
-            self._store.save_run(record)
-        except Exception:
-            release_execution_slots(owner=run_id)
-            self._store.unrecord_upload(session)
-            return None, session, 502
-
-        # Store execution payload on record
-        if zip_data is not None and config is not None:
-            import base64
-
-            zip_b64 = base64.b64encode(zip_data).decode("ascii")
-            record.zip_data_b64 = zip_b64
-            record.config = config
-            record.expected_manifest = expected_manifest
-            record.artifact_refs = artifact_refs or {}
-            record.allowed_concepts = allowed_concepts or []
-            record.stdin = stdin
-
-            if self._use_celery:
-                from app.domains.runs.tasks import grade_sandbox_run, set_run_state
-
-                try:
-                    set_run_state(
-                        run_id,
-                        "queue",
-                        {
-                            "queue_position": record.queue_position,
-                            "eta_band": eta_band_for_position(record.queue_position),
-                        },
-                    )
-                except Exception:
-                    pass
-                try:
-                    self._store.save_run(record)
-                    grade_result = grade_sandbox_run.delay(
-                        run_id=run_id,
-                        zip_data_b64=zip_b64,
-                        config=config,
-                        artifact_refs=artifact_refs or {},
-                        allowed_concepts=allowed_concepts or [],
-                        stdin=stdin,
-                        expected_manifest=expected_manifest,
-                    )
-                    record.celery_task_id = grade_result.id
-                    self._store.save_run(record)
-                except Exception:
-                    from app.domains.runs.queue_admission import cancel_waiting
-                    cancel_waiting(run_id)
-                    self._store.unrecord_upload(session)
-                    return None, session, 502
-
-        if self._use_celery:
-            status = self._build_status(run_id, "queue", None, None, queue_snapshot(run_id))
-        else:
-            status = self._status_for(record)
-        return (
-            SandboxRunCreateResponse(
-                run_id=run_id,
-                sandbox_session=session,
-                status_url=f"/runs/{run_id}/status",
-                result_url=f"/sandbox/runs/{run_id}/result",
-                upload_quota=self._quota_for(session),
-                initial_status=status,
-                file_preview=self._file_preview(),
-            ),
-            session,
-            None,
-        )
-
     def get_status(self, run_id: str) -> RunStatusResponse | None:
         self._expire_old_runs()
         if not self._use_celery:
@@ -278,6 +164,7 @@ class SandboxService:
             raw_message = redis_state.get("failure_message")
         else:
             # Redis unreachable: report the last known state instead of guessing.
+            assert record is not None
             state = "run" if snapshot is not None and snapshot.owner_state == "active" else record.state
             category, raw_message = None, None
         if state not in ("queue", "run", "complete", "failure"):
