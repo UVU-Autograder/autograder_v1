@@ -21,7 +21,8 @@ ai       Graded runs, then N students ask for AI feedback at once. First-attempt
 burst    An end-of-lab burst: M students submit, wait for results, think 10-60 s,
          then ask for AI feedback with UI-style retries.
 judge0   Raw Judge0 throughput (bypassing the backend) at rising concurrency, and
-         a zero-retention check: every submission is deleted and must then 404.
+         a zero-retention check: every submission is deleted and must then 404
+         (re-read for up to 2.5 s, since Judge0 caches a GET for about a second).
 
 Run it on the Dell in tmux, in a window agreed with the team: it loads the live
 stack (a full grading queue blocks real students and official grading). It uses
@@ -465,9 +466,17 @@ def judge0_one(base: str, token: str, language: int) -> dict:
             deleted = True
             break
         time.sleep(1)
-    gone_status, _ = judge0_request("GET", f"{base}/submissions/{sub}?fields=status", token)
+    # Judge0 serves a cached GET for about a second after DELETE; re-read like
+    # validate_grading_package_host.py before counting the submission as retained.
+    gone = False
+    for _ in range(5):
+        gone_status, _ = judge0_request("GET", f"{base}/submissions/{sub}?fields=status", token)
+        if gone_status == 404:
+            gone = True
+            break
+        time.sleep(0.5)
     return {"outcome": result_status or "timeout", "seconds": seconds, "deleted": deleted,
-            "delete_status": del_status, "gone_after_delete": gone_status == 404}
+            "delete_status": del_status, "gone_after_delete": gone}
 
 
 def judge0_level(base: str, token: str, language: int, level: int, rounds: int) -> dict:

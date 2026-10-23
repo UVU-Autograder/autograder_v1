@@ -65,3 +65,6 @@ backend/training/output/
 
 # Backup archives
 /backups/
+
+#Presentation artifacts
+/docs/presentation 
