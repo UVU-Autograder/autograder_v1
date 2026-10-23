@@ -5,6 +5,97 @@ import {
   AssignmentFileProvider,
   useAssignmentFile,
 } from "../assignment-file-context";
+import type { Assignment } from "@/features/assignments/types";
+
+const mockAssignment: Assignment = {
+  id: "1",
+  course_id: "1",
+  title: "Test Assignment",
+  sandbox_enabled: true,
+  language: "python",
+  max_score: 100,
+  upload_quota: {
+    limit: 10,
+    window_seconds: 3600,
+    remaining: 10,
+    reset_at: "2026-10-06T00:00:00Z",
+  },
+  description: "Test assignment description",
+  accepted_bundle_types: ["zip"],
+  max_upload_bytes: 1024 * 1024,
+  constraints: [],
+  rubric: [],
+  rubric_groups: [],
+  config: {
+    bundle: {
+      entrypoint: "main.py",
+      file_requirements: [],
+    },
+    scoring_items: [],
+  },
+};
+
+describe("AssignmentFileContext - initial layout and closing tabs", () => {
+  const withAssignment = ({ children }: { children: React.ReactNode }) => (
+    <AssignmentFileProvider assignment={mockAssignment}>{children}</AssignmentFileProvider>
+  );
+
+  it("opens the assignment details on load without marking the workspace dirty", () => {
+    const { result } = renderHook(() => useAssignmentFile(), { wrapper: withAssignment });
+
+    const pane = result.current.panes[result.current.activePaneId];
+    expect(pane.tabs).toEqual(["Problem Overview"]);
+    expect(pane.activeTab).toBe("Problem Overview");
+    expect(result.current.files["Problem Overview"].category).toBe("overview");
+    expect(result.current.vfs.isDirty()).toBe(false);
+  });
+
+  it("closes the last open tab and reopens the details from the empty pane", async () => {
+    const { result } = renderHook(() => useAssignmentFile(), { wrapper: withAssignment });
+    const paneId = result.current.activePaneId;
+
+    act(() => {
+      result.current.closeTab(paneId, "Problem Overview");
+    });
+
+    expect(result.current.panes[paneId]).toEqual({ id: paneId, tabs: [], activeTab: null });
+    expect(result.current.layout).toEqual({ type: "pane", paneId });
+
+    await act(async () => {
+      await result.current.openFileByName("Problem Overview", {
+        content: "",
+        language: "markdown",
+        category: "overview",
+      });
+    });
+
+    expect(result.current.panes[paneId].activeTab).toBe("Problem Overview");
+    expect(result.current.vfs.isDirty()).toBe(false);
+  });
+
+  it("removes the tab of a deleted file that was the only one open", async () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AssignmentFileProvider>{children}</AssignmentFileProvider>
+    );
+
+    const { result } = renderHook(() => useAssignmentFile(), { wrapper });
+
+    await act(async () => {
+      await result.current.openFileByName("main.py", {
+        content: "print('hello')",
+        category: "workspace",
+      });
+    });
+
+    act(() => {
+      result.current.deleteFile("main.py");
+    });
+
+    const pane = result.current.panes[result.current.activePaneId];
+    expect(pane.tabs).toEqual([]);
+    expect(pane.activeTab).toBeNull();
+  });
+});
 
 describe("AssignmentFileContext - renameFile", () => {
   it("renames a workspace file and updates layout tabs and active tab", async () => {

@@ -48,6 +48,28 @@ describe("ProblemOverview", () => {
     expect(screen.getByText(/Write a program to process images/)).toBeDefined();
   });
 
+  it("renders pipe tables in the description, but not ones inside fenced code", () => {
+    const tableAssignment: Assignment = {
+      ...baseAssignment,
+      description: [
+        "| Criteria | Points |",
+        "| --- | :---: |",
+        "| Correct output | 50 |",
+        "",
+        "```text",
+        "| not | a table |",
+        "```",
+      ].join("\n"),
+    };
+    render(<ProblemOverview assignment={tableAssignment} />);
+
+    expect(screen.getAllByRole("table")).toHaveLength(1);
+    expect(screen.getByRole("columnheader", { name: "Criteria" })).toBeDefined();
+    expect(screen.getByRole("cell", { name: "Correct output" })).toBeDefined();
+    expect(screen.getByRole("cell", { name: "50" }).style.textAlign).toBe("center");
+    expect(screen.getByText("| not | a table |")).toBeDefined();
+  });
+
   it("does not render description card when description is empty", () => {
     const noDescAssignment: Assignment = {
       ...baseAssignment,

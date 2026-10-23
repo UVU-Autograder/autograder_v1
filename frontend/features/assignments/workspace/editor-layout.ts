@@ -239,11 +239,17 @@ export function computeCloseTab(
     };
   }
 
+  const nextLayout = removePaneFromLayout(state.layout, paneId);
+  if (!nextLayout) {
+    // The only pane stays open, just empty, so its last tab can still close.
+    return {
+      ...state,
+      panes: { ...state.panes, [paneId]: { ...pane, tabs: [], activeTab: null } },
+    };
+  }
+
   const nextPanes = { ...state.panes };
   delete nextPanes[paneId];
-
-  const nextLayout = removePaneFromLayout(state.layout, paneId);
-  if (!nextLayout) return null;
 
   const nextActivePaneId =
     state.activePaneId !== paneId

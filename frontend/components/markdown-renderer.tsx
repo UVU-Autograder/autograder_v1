@@ -2,6 +2,7 @@
 
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MarkdownRendererProps {
   content: string;
@@ -17,6 +18,7 @@ export default function MarkdownRenderer({
       className={`text-xs text-foreground font-sans leading-relaxed space-y-2.5 ${className}`}
     >
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           p: ({ children }) => (
             <p className="leading-relaxed text-foreground">{children}</p>
@@ -64,6 +66,27 @@ export default function MarkdownRenderer({
             <blockquote className="border-l-2 border-primary/50 pl-3 italic text-muted-foreground my-2">
               {children}
             </blockquote>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto rounded-md border border-border my-2">
+              <table className="w-full border-collapse text-left text-xs">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-muted/60 border-b border-border">{children}</thead>
+          ),
+          tr: ({ children }) => (
+            <tr className="border-b border-border last:border-b-0">{children}</tr>
+          ),
+          th: ({ children, style }) => (
+            <th className="px-2.5 py-1.5 align-top font-semibold text-foreground" style={style}>
+              {children}
+            </th>
+          ),
+          td: ({ children, style }) => (
+            <td className="px-2.5 py-1.5 align-top text-foreground" style={style}>
+              {children}
+            </td>
           ),
           h1: ({ children }) => (
             <h4 className="font-bold text-sm text-foreground mt-2 mb-1">{children}</h4>

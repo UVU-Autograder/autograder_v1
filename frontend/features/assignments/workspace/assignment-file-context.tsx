@@ -48,6 +48,13 @@ const AssignmentFileContext = createContext<AssignmentFileContextType | null>(nu
 
 const INITIAL_PANE_ID = createPaneId();
 
+const OVERVIEW_FILE: OpenFile = {
+  filename: 'Problem Overview',
+  content: '',
+  language: 'markdown',
+  category: 'overview',
+};
+
 export function AssignmentFileProvider({
   children,
   assignment,
@@ -55,14 +62,25 @@ export function AssignmentFileProvider({
   children: ReactNode;
   assignment?: Assignment;
 }) {
-  const [vfs] = useState<WorkspaceVFS>(() => new WorkspaceVFS());
-  const [files, setFiles] = useState<Record<string, OpenFile>>({});
-  const [editorLayout, setEditorLayout] = useState<EditorLayoutState>({
-    panes: {
-      [INITIAL_PANE_ID]: { id: INITIAL_PANE_ID, tabs: [], activeTab: null },
-    },
-    layout: { type: 'pane', paneId: INITIAL_PANE_ID },
-    activePaneId: INITIAL_PANE_ID,
+  // The assignment's details open on load. Seeding the overview as a starter
+  // file keeps it from counting as an unsaved change.
+  const [vfs] = useState<WorkspaceVFS>(
+    () => new WorkspaceVFS(assignment ? [OVERVIEW_FILE] : undefined)
+  );
+  const [files, setFiles] = useState<Record<string, OpenFile>>(() => vfs.getAllFilesRecord());
+  const [editorLayout, setEditorLayout] = useState<EditorLayoutState>(() => {
+    const initialTabs = assignment ? [OVERVIEW_FILE.filename] : [];
+    return {
+      panes: {
+        [INITIAL_PANE_ID]: {
+          id: INITIAL_PANE_ID,
+          tabs: initialTabs,
+          activeTab: initialTabs[0] ?? null,
+        },
+      },
+      layout: { type: 'pane', paneId: INITIAL_PANE_ID },
+      activePaneId: INITIAL_PANE_ID,
+    };
   });
   const [dragTab, setDragTab] = useState<DragTabData | null>(null);
   const dragActionInProgressRef = useRef(false);
