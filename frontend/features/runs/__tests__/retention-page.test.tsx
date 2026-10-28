@@ -43,7 +43,7 @@ describe("review expiry in the run page", () => {
     expect(screen.getByText("Synthetic Student")).toBeTruthy();
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     expect(screen.queryByText("Synthetic Student")).toBeNull();
-    expect((screen.getByRole("button", { name: /Export Grades CSV/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Grades CSV/ }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole("status").textContent).toContain("Review expired");
   });
 

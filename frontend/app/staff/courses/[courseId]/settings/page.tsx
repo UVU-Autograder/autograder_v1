@@ -2,16 +2,10 @@
 
 import { use, useState, useEffect } from "react";
 import { SaveIcon } from "lucide-react";
-import { BackLink } from "@/components/back-link";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageLoading } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
 import { getConceptsMetadata } from "@/features/assignments/api";
@@ -33,6 +27,43 @@ type PageProps = {
   params: Promise<{ courseId: string }>;
 };
 
+function CompactConceptGrid({
+  idPrefix,
+  metadata,
+  selected,
+  onToggle,
+}: {
+  idPrefix: string;
+  metadata: Record<string, ConceptMetadata>;
+  selected: string[];
+  onToggle: (key: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+      {Object.values(metadata).map((item) => {
+        const id = `${idPrefix}-${item.key}`;
+        return (
+          <label
+            key={item.key}
+            htmlFor={id}
+            className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1.5 hover:bg-muted/40"
+            title={item.syntax_patterns?.join(", ") || undefined}
+          >
+            <input
+              type="checkbox"
+              id={id}
+              checked={selected.includes(item.key)}
+              onChange={() => onToggle(item.key)}
+              className="size-3.5 shrink-0 rounded border-input text-primary focus:ring-ring"
+            />
+            <span className="truncate text-sm text-foreground">{item.title}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CourseConceptsPage({ params }: PageProps) {
   const { courseId } = use(params);
   const [concepts, setConcepts] = useState<string[]>([]);
@@ -42,6 +73,7 @@ export default function CourseConceptsPage({ params }: PageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [openModuleIdx, setOpenModuleIdx] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -94,12 +126,10 @@ export default function CourseConceptsPage({ params }: PageProps) {
           modules: modules,
         },
       );
-      setSuccess(
-        "Course concepts and modules configuration saved successfully.",
-      );
+      setSuccess("Course settings saved.");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to save course concepts.",
+        err instanceof Error ? err.message : "Failed to save course settings.",
       );
     } finally {
       setIsSaving(false);
@@ -107,14 +137,24 @@ export default function CourseConceptsPage({ params }: PageProps) {
   };
 
   const handleAddModule = () => {
-    setModules((prev) => [
-      ...prev,
-      { id: null, name: `Module ${prev.length + 1}`, concepts: [] },
-    ]);
+    setModules((prev) => {
+      const next = [
+        ...prev,
+        { id: null, name: `Module ${prev.length + 1}`, concepts: [] },
+      ];
+      setOpenModuleIdx(next.length - 1);
+      return next;
+    });
   };
 
   const handleRemoveModule = (index: number) => {
     setModules((prev) => prev.filter((_, i) => i !== index));
+    setOpenModuleIdx((prev) => {
+      if (prev === null) return null;
+      if (prev === index) return null;
+      if (prev > index) return prev - 1;
+      return prev;
+    });
   };
 
   const handleModuleRename = (index: number, newName: string) => {
@@ -127,10 +167,10 @@ export default function CourseConceptsPage({ params }: PageProps) {
     setModules((prev) =>
       prev.map((m, i) => {
         if (i === index) {
-          const concepts = m.concepts.includes(conceptKey)
+          const next = m.concepts.includes(conceptKey)
             ? m.concepts.filter((c) => c !== conceptKey)
             : [...m.concepts, conceptKey];
-          return { ...m, concepts };
+          return { ...m, concepts: next };
         }
         return m;
       }),
@@ -146,160 +186,133 @@ export default function CourseConceptsPage({ params }: PageProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground font-medium animate-pulse">
-          Loading course concepts...
-        </p>
-      </div>
-    );
+    return <PageLoading className="h-screen">Loading course settings...</PageLoading>;
   }
 
+  const conceptCount = Object.keys(metadata).length;
+
   return (
-    <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6 space-y-1">
-          <BackLink
-            href={`/staff/courses/${courseId}/assignments`}
-            variant="compact"
-          >
-            Back to course details
-          </BackLink>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Course Default Concepts
-          </h1>
-          <p className="text-muted-foreground">
-            Configure default whitelisting rules that apply to all assignments
-            in {courseId}.
-          </p>
+    <div className="mx-auto w-full max-w-2xl px-4 pt-8 pb-16">
+      <Breadcrumbs
+        items={[
+          { label: "Courses", href: "/staff/courses" },
+          { label: "Assignments", href: `/staff/courses/${courseId}/assignments` },
+          { label: "Settings" },
+        ]}
+      />
+
+      <AdminPageHeader
+        title="Course settings"
+        description={`Default allowed concepts and modules for ${courseId.toUpperCase()}.`}
+        actions={
+          <Button onClick={handleSave} disabled={isSaving}>
+            <SaveIcon className="mr-1.5 size-4" />
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        }
+      />
+
+      {error && (
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
         </div>
+      )}
+      {success && (
+        <div className="mb-4 rounded-md border border-success/30 bg-success/10 p-3 text-sm text-success">
+          {success}
+        </div>
+      )}
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive font-medium">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success font-medium">
-            {success}
-          </div>
-        )}
-
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Base Concepts</CardTitle>
-            <CardDescription>
-              Select default allowed structures. Any other structures will flag
-              warnings during execution.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {Object.values(metadata).map((item) => (
-                <div
-                  key={item.key}
-                  className="flex items-start space-x-3 border border-border rounded-md p-3 bg-card hover:bg-muted/50 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    id={`concept-${item.key}`}
-                    checked={concepts.includes(item.key)}
-                    onChange={() => handleCheckboxChange(item.key)}
-                    className="size-4 rounded border-input text-primary focus:ring-ring mt-1"
-                  />
-                  <div className="space-y-0.5 flex-1">
-                    <label
-                      htmlFor={`concept-${item.key}`}
-                      className="text-sm font-semibold text-foreground uppercase cursor-pointer block"
-                    >
-                      {item.title}
-                    </label>
-                    <ul className="text-xs text-muted-foreground leading-relaxed list-disc pl-4 mt-1 space-y-0.5">
-                      {(item.syntax_patterns || []).map((p) => (
-                        <li key={p}>{p}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-end">
-            <Button onClick={handleSave} disabled={isSaving}>
-              <SaveIcon className="mr-2 size-4" /> Save Allowed Concepts
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <div className="mt-8 mb-6 space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            Course Modules & Concept Coverages
+      <section className="mb-8 space-y-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            Default concepts
           </h2>
-          <p className="text-muted-foreground">
-            Define which topics are available for each module.
+          <p className="text-xs text-muted-foreground">
+            {concepts.length} of {conceptCount} allowed
           </p>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Hover a name for syntax details. Unchecked concepts warn on student runs.
+        </p>
+        <CompactConceptGrid
+          idPrefix="default"
+          metadata={metadata}
+          selected={concepts}
+          onToggle={handleCheckboxChange}
+        />
+      </section>
 
-        {modules.map((mod, modIdx) => (
-          <Card key={modIdx} className="mb-4">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <div className="flex-1 mr-4">
-                <Input
-                  value={mod.name}
-                  onChange={(e) => handleModuleRename(modIdx, e.target.value)}
-                  placeholder="e.g. Module 1: Basics"
-                  className="font-semibold text-foreground text-sm"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:bg-destructive/10 cursor-pointer"
-                onClick={() => handleRemoveModule(modIdx)}
-              >
-                Delete Module
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">
-                Concepts covered in this module:
-              </p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {Object.values(metadata).map((item) => (
-                  <label
-                    key={item.key}
-                    className="flex items-center space-x-2 border border-border rounded-md p-2 bg-card hover:bg-muted/50 cursor-pointer text-xs text-card-foreground"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={mod.concepts.includes(item.key)}
-                      onChange={() =>
-                        handleModuleConceptToggle(modIdx, item.key)
-                      }
-                      className="size-3.5 rounded border-input text-primary focus:ring-ring"
-                    />
-                    <span className="font-semibold text-foreground uppercase">
-                      {item.title}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        <div className="mt-4 mb-8">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full border-dashed py-6 hover:bg-primary/10 hover:text-primary cursor-pointer"
-            onClick={handleAddModule}
-          >
-            + Add Course Module
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="space-y-1">
+            <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Modules
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Expand a module to set its concept coverage.
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={handleAddModule}>
+            Add module
           </Button>
         </div>
-      </div>
+
+        {modules.length === 0 ? (
+          <p className="py-3 text-sm text-muted-foreground">No modules yet.</p>
+        ) : (
+          <ul className="divide-y divide-border border-y border-border">
+            {modules.map((mod, modIdx) => {
+              const isOpen = openModuleIdx === modIdx;
+              return (
+                <li key={modIdx} className="py-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <button
+                      type="button"
+                      className="shrink-0 text-left text-xs font-medium text-primary hover:underline"
+                      onClick={() =>
+                        setOpenModuleIdx(isOpen ? null : modIdx)
+                      }
+                      aria-expanded={isOpen}
+                    >
+                      {isOpen ? "Hide concepts" : "Edit concepts"}
+                    </button>
+                    <Input
+                      value={mod.name}
+                      onChange={(e) => handleModuleRename(modIdx, e.target.value)}
+                      placeholder="e.g. Module 1: Basics"
+                      className="h-8 font-medium"
+                      aria-label={`Module ${modIdx + 1} name`}
+                    />
+                    <span className="shrink-0 text-xs text-muted-foreground sm:w-24 sm:text-right">
+                      {mod.concepts.length} selected
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-destructive hover:bg-destructive/10"
+                      onClick={() => handleRemoveModule(modIdx)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  {isOpen ? (
+                    <div className="mt-3 pl-1">
+                      <CompactConceptGrid
+                        idPrefix={`module-${modIdx}`}
+                        metadata={metadata}
+                        selected={mod.concepts}
+                        onToggle={(key) => handleModuleConceptToggle(modIdx, key)}
+                      />
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

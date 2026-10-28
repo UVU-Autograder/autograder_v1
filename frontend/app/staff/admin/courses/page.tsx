@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageLoading } from "@/components/page-status";
 import { getAdminCourses } from "@/features/courses/api";
 import AllCoursesPage from "@/features/courses/admin/all-courses-page";
 import { CourseAdminDetail } from "@/features/courses/types";
@@ -34,11 +35,7 @@ export default function AdminCoursesPage() {
   }
 
   if (!courses) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="animate-pulse font-medium text-muted-foreground">Loading courses...</p>
-      </div>
-    );
+    return <PageLoading className="h-screen">Loading courses...</PageLoading>;
   }
 
   return <AllCoursesPage initialCourses={courses} refreshCourses={loadCourses} />;

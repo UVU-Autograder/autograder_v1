@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BackLink } from "@/components/back-link";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageLoading } from "@/components/page-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -172,51 +168,71 @@ export default function AdminLogsPage() {
   };
 
   if (isLoading && !logs.length) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="font-medium text-muted-foreground">Loading audit records...</p>
-      </div>
-    );
+    return <PageLoading className="h-screen">Loading audit records...</PageLoading>;
   }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
-      <BackLink href="/staff/admin">Back to admin</BackLink>
+      <Breadcrumbs
+        items={[
+          { label: "Admin", href: "/staff/admin" },
+          { label: "Audit logs" },
+        ]}
+      />
 
-      {/* Header */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <AdminPageHeader
+        title="Audit logs"
+        description="Search staff and system events; verify FERPA redaction."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRunVerification}
+              disabled={isVerifying}
+            >
+              {isVerifying ? "Scanning..." : "Verify FERPA"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void fetchStats();
+                void fetchLogs(page);
+              }}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </Button>
+          </>
+        }
+      />
+
+      <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Audit Logs</h1>
+          Total{" "}
+          <span className="font-medium tabular-nums text-foreground">
+            {stats?.total_events ?? 0}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRunVerification}
-            disabled={isVerifying}
-          >
-            {isVerifying ? "Scanning..." : "Verify FERPA"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void fetchStats();
-              void fetchLogs(page);
-            }}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </Button>
+        <div>
+          Last 24h{" "}
+          <span className="font-medium tabular-nums text-foreground">
+            {stats?.events_24h ?? 0}
+          </span>
         </div>
-      </div>
-
-      {/* Compact Status Strip */}
-      <div className="mb-4 flex flex-wrap items-center gap-6 rounded-md border border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-        <div>Total: <span className="font-mono font-medium text-foreground">{stats?.total_events ?? 0}</span></div>
-        <div>Last 24h: <span className="font-mono font-medium text-foreground">{stats?.events_24h ?? 0}</span></div>
-        <div>Redacted PII: <span className="font-mono font-medium text-foreground">{stats?.pii_redacted_count ?? 0}</span></div>
-        <div>Access Denials: <span className="font-mono font-medium text-foreground">{stats?.access_denied_count ?? 0}</span></div>
+        <div>
+          Redacted PII{" "}
+          <span className="font-medium tabular-nums text-foreground">
+            {stats?.pii_redacted_count ?? 0}
+          </span>
+        </div>
+        <div>
+          Access denials{" "}
+          <span className="font-medium tabular-nums text-foreground">
+            {stats?.access_denied_count ?? 0}
+          </span>
+        </div>
       </div>
 
       {error && (
@@ -303,102 +319,94 @@ export default function AdminLogsPage() {
         )}
       </form>
 
-      {/* Main Records Table Card */}
-      <Card>
-        <CardHeader className="py-3 px-4 border-b">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {total} {total === 1 ? "Record" : "Records"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted/40 text-xs font-medium text-muted-foreground">
-                <tr className="border-b">
-                  <th className="px-4 py-2.5">Timestamp (UTC)</th>
-                  <th className="px-4 py-2.5">Event</th>
-                  <th className="px-4 py-2.5">Workflow</th>
-                  <th className="px-4 py-2.5">Subject</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5 text-right">Details</th>
+      <p className="mb-2 text-xs text-muted-foreground">
+        {total} {total === 1 ? "record" : "records"}
+      </p>
+      <div className="overflow-x-auto border-y border-border">
+        <table className="w-full text-left text-sm">
+          <thead className="text-xs text-muted-foreground">
+            <tr className="border-b border-border">
+              <th className="px-1 py-2 font-medium">Timestamp (UTC)</th>
+              <th className="px-1 py-2 font-medium">Event</th>
+              <th className="px-1 py-2 font-medium">Workflow</th>
+              <th className="px-1 py-2 font-medium">Subject</th>
+              <th className="px-1 py-2 font-medium">Status</th>
+              <th className="px-1 py-2 font-medium text-right">Details</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {logs.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-1 py-8 text-center text-xs text-muted-foreground">
+                  No audit records found.
+                </td>
+              </tr>
+            ) : (
+              logs.map((record) => (
+                <tr key={record.id} className="hover:bg-muted/30 transition-colors text-xs">
+                  <td className="px-1 py-2.5 tabular-nums text-muted-foreground whitespace-nowrap">
+                    {new Date(record.timestamp).toISOString()}
+                  </td>
+                  <td className="px-1 py-2.5 whitespace-nowrap">
+                    {getEventBadge(record.event)}
+                  </td>
+                  <td className="px-1 py-2.5 whitespace-nowrap text-muted-foreground">
+                    {record.workflow_type || "—"}
+                  </td>
+                  <td className="px-1 py-2.5 text-muted-foreground">
+                    {record.actor_user_id ? `Staff #${record.actor_user_id}` : ""}
+                    {record.course_id ? ` · ${record.course_id}` : ""}
+                    {record.run_id ? ` · Run #${record.run_id}` : ""}
+                    {!record.actor_user_id && !record.course_id && !record.run_id && "System"}
+                  </td>
+                  <td className="px-1 py-2.5 whitespace-nowrap tabular-nums">
+                    {record.status_code || "—"}
+                  </td>
+                  <td className="px-1 py-2.5 text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setInspectingRecord(record)}
+                    >
+                      Payload
+                    </Button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-xs text-muted-foreground">
-                      No audit records found.
-                    </td>
-                  </tr>
-                ) : (
-                  logs.map((record) => (
-                    <tr key={record.id} className="hover:bg-muted/20 transition-colors text-xs">
-                      <td className="px-4 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
-                        {new Date(record.timestamp).toISOString()}
-                      </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap">
-                        {getEventBadge(record.event)}
-                      </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground">
-                        {record.workflow_type || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {record.actor_user_id ? `Staff #${record.actor_user_id}` : ""}
-                        {record.course_id ? ` · ${record.course_id}` : ""}
-                        {record.run_id ? ` · Run #${record.run_id}` : ""}
-                        {!record.actor_user_id && !record.course_id && !record.run_id && "System"}
-                      </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap font-mono">
-                        {record.status_code || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => setInspectingRecord(record)}
-                        >
-                          Payload
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
-            <div>
-              Showing {logs.length} of {total} records
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => fetchLogs(page - 1)}
-                disabled={page <= 1 || isRefreshing}
-              >
-                Previous
-              </Button>
-              <span className="px-2">
-                {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => fetchLogs(page + 1)}
-                disabled={page >= totalPages || isRefreshing}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between py-2 text-xs text-muted-foreground">
+        <div>
+          Showing {logs.length} of {total} records
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => fetchLogs(page - 1)}
+            disabled={page <= 1 || isRefreshing}
+          >
+            Previous
+          </Button>
+          <span className="px-2">
+            {page} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => fetchLogs(page + 1)}
+            disabled={page >= totalPages || isRefreshing}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
 
       {/* Payload Modal */}
       <Dialog

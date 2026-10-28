@@ -4,14 +4,10 @@ import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PlayIcon } from "lucide-react";
-import { BackLink } from "@/components/back-link";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageLoading } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api-client";
 
@@ -128,116 +124,97 @@ export default function RunsPage({ params }: PageProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-48 items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading…</p>
-      </div>
-    );
+    return <PageLoading>Loading…</PageLoading>;
   }
 
   const validationBlocked = validation !== null && !validation.passed;
 
   return (
-    <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 space-y-1">
-          <BackLink
+    <div className="mx-auto w-full max-w-lg px-4 pt-8 pb-12">
+      <Breadcrumbs
+        items={[
+          { label: "Courses", href: "/staff/courses" },
+          { label: "Assignments", href: `/staff/courses/${courseId}/assignments` },
+          {
+            label: assignmentId,
+            href: `/staff/courses/${courseId}/assignments/${assignmentId}`,
+          },
+          { label: "Grade" },
+        ]}
+      />
+
+      <AdminPageHeader
+        title="Start grading"
+        description="Choose a section and upload a Canvas submissions ZIP."
+      />
+
+      {error && (
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {validation && !validation.passed && (
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <p className="font-medium">Assignment is not ready to grade</p>
+          {validation.errors.slice(0, 2).map((msg) => (
+            <p key={msg} className="mt-1 text-xs opacity-90">
+              {msg}
+            </p>
+          ))}
+          <Link
             href={`/staff/courses/${courseId}/assignments/${assignmentId}`}
-            variant="compact"
+            className="mt-2 inline-block text-xs font-medium underline underline-offset-2"
           >
-            Back to assignment
-          </BackLink>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Grading Runs
-          </h1>
+            Open assignment setup
+          </Link>
         </div>
+      )}
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive font-medium">
-            {error}
-          </div>
-        )}
-
-        <div className="mx-auto max-w-xl space-y-4">
-          {validation && !validation.passed && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              <div className="space-y-1">
-                <p className="font-medium">Assignment is not ready to grade</p>
-                {validation.errors.slice(0, 2).map((msg) => (
-                  <p key={msg} className="text-xs opacity-90">
-                    {msg}
-                  </p>
-                ))}
-                <Link
-                  href={`/staff/courses/${courseId}/assignments/${assignmentId}`}
-                  className="inline-block text-xs font-semibold underline underline-offset-2"
-                >
-                  Open assignment setup
-                </Link>
-              </div>
-            </div>
-          )}
-          <Card>
-            <form onSubmit={handleIngest}>
-              <CardHeader>
-                <CardTitle className="text-lg">Launch New Run</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="section" className="pl-0 text-xs">
-                    Section
-                  </Label>
-                  <select
-                    id="section"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-                    value={sectionId}
-                    required
-                    onChange={(e) => setSectionId(e.target.value)}
-                  >
-                    <option
-                      value=""
-                      disabled
-                      className="bg-background text-foreground"
-                    >
-                      Select a section
-                    </option>
-                    {sections.map((section) => (
-                      <option
-                        key={section.id}
-                        value={section.id}
-                        className="bg-background text-foreground"
-                      >
-                        CRN {section.crn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="submissions-zip-input" className="pl-0 text-xs">
-                    Submissions ZIP
-                  </Label>
-                  <input
-                    id="submissions-zip-input"
-                    type="file"
-                    accept=".zip"
-                    className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground hover:file:bg-muted/80"
-                    required
-                    onChange={(e) => setZipFile(e.target.files?.[0] || null)}
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isUploading || !sectionId || validationBlocked}
-                >
-                  <PlayIcon className="mr-2 size-4" />
-                  {isUploading ? "Uploading..." : "Launch run"}
-                </Button>
-              </CardContent>
-            </form>
-          </Card>
+      <form onSubmit={handleIngest} className="space-y-4">
+        <div className="space-y-1">
+          <Label htmlFor="section" className="pl-0 text-xs">
+            Section
+          </Label>
+          <select
+            id="section"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+            value={sectionId}
+            required
+            onChange={(e) => setSectionId(e.target.value)}
+          >
+            <option value="" disabled>
+              Select a section
+            </option>
+            {sections.map((section) => (
+              <option key={section.id} value={section.id}>
+                CRN {section.crn}
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
+        <div className="space-y-1">
+          <Label htmlFor="submissions-zip-input" className="pl-0 text-xs">
+            Submissions ZIP
+          </Label>
+          <input
+            id="submissions-zip-input"
+            type="file"
+            accept=".zip"
+            className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground hover:file:bg-muted/80"
+            required
+            onChange={(e) => setZipFile(e.target.files?.[0] || null)}
+          />
+        </div>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isUploading || !sectionId || validationBlocked}
+        >
+          <PlayIcon className="mr-2 size-4" />
+          {isUploading ? "Uploading..." : "Launch run"}
+        </Button>
+      </form>
     </div>
   );
 }

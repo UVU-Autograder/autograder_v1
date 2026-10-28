@@ -185,9 +185,9 @@ export default function Navbar() {
   const homeHref = isStaffArea ? "/staff/courses" : "/sandbox";
 
   return (
-    <div className="sticky top-0 z-50 flex h-18 w-full items-center justify-between border-b border-header-border bg-header text-header-foreground px-6 shadow-xs">
-      <div className="flex items-center gap-6">
-        <Link href={homeHref} className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+    <div className="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-header-border bg-header text-header-foreground px-4 shadow-xs sm:px-6">
+      <div className="flex items-center gap-4">
+        <Link href={homeHref} className="flex items-center gap-3 hover:opacity-90 transition-opacity">
           <Image
             src="/uvu-logo-green.png"
             alt="UVU Logo"
@@ -195,7 +195,7 @@ export default function Navbar() {
             height={256}
             priority
             unoptimized
-            className="h-16 w-16 shrink-0 rounded-md object-contain dark:hidden"
+            className="h-14 w-14 shrink-0 object-contain dark:hidden"
           />
           <Image
             src="/uvu-logo-white.png"
@@ -204,9 +204,9 @@ export default function Navbar() {
             height={256}
             priority
             unoptimized
-            className="hidden h-16 w-16 shrink-0 rounded-md object-contain dark:block"
+            className="hidden h-14 w-14 shrink-0 object-contain dark:block"
           />
-          <span className="font-bold text-xl text-primary dark:text-white tracking-tight">
+          <span className="font-semibold text-xl text-primary dark:text-white tracking-tight">
             Autograder
           </span>
         </Link>
@@ -246,7 +246,7 @@ export default function Navbar() {
             Sign out
           </Button>
         )}
-        {oppositePath && (
+        {hasStaffToken && oppositePath && (
           <Button
             size="sm"
             asChild

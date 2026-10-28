@@ -26,9 +26,9 @@ const mockStudents: StudentRunDetail[] = [
 describe("GradeHistogram Component", () => {
   it("renders empty state message when no students provided", () => {
     render(<GradeHistogram students={[]} />);
-    expect(screen.getByText(/Grade Distribution/i)).toBeDefined();
+    expect(screen.getByText(/Summary/i)).toBeDefined();
     expect(
-      screen.getByText(/Score distribution appears as student results load/i),
+      screen.getByText(/Appears as student results load/i),
     ).toBeDefined();
   });
 

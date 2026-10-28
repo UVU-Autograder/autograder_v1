@@ -1,18 +1,12 @@
 "use client";
- 
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { BackLink } from "@/components/back-link";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -24,7 +18,6 @@ import {
 import { ApiError, apiClient } from "@/lib/api-client";
 import { AssignmentCreatePayload } from "./types";
 import { createStaffAssignment } from "./api";
-
 import { slugifySlug } from "@/lib/slugify";
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -56,7 +49,8 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
   const [isSlugCustomized, setIsSlugCustomized] = useState(false);
 
   useEffect(() => {
-    apiClient.get<CourseConceptsResponse>(`/staff/courses/${courseId}/concepts`)
+    apiClient
+      .get<CourseConceptsResponse>(`/staff/courses/${courseId}/concepts`)
       .then((data) => {
         setCourseModules(data.modules || []);
       })
@@ -111,7 +105,9 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
 
     try {
       const created = await createStaffAssignment(courseId, payload);
-      router.push(`/staff/courses/${courseId}/assignments/${created.assignment_id}`);
+      router.push(
+        `/staff/courses/${courseId}/assignments/${created.assignment_id}`,
+      );
     } catch (error) {
       if (error instanceof ApiError) {
         setSubmitError(error.message);
@@ -122,173 +118,186 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
   };
 
   return (
-    <div className="w-full px-4 pt-8">
-      <div className="mx-auto max-w-lg">
-        <div className="mb-6">
-          <BackLink href={`/staff/courses/${courseId}/assignments`}>
-            Back to assignments
-          </BackLink>
-          <h1 className="text-2xl font-semibold tracking-tight">New Assignment</h1>
-          <p className="text-muted-foreground mt-1">{courseId}</p>
+    <div className="mx-auto w-full max-w-lg px-4 pt-8 pb-12">
+      <Breadcrumbs
+        items={[
+          { label: "Courses", href: "/staff/courses" },
+          { label: "Assignments", href: `/staff/courses/${courseId}/assignments` },
+          { label: "New assignment" },
+        ]}
+      />
+
+      <AdminPageHeader
+        title="New assignment"
+        description={`Create an assignment in ${courseId.toUpperCase()}.`}
+      />
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {submitError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            {submitError}
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <label
+            htmlFor="title"
+            className="text-xs font-semibold text-muted-foreground uppercase"
+          >
+            Title
+          </label>
+          <Input
+            id="title"
+            placeholder="e.g., Lab 2: Loops"
+            aria-invalid={errors.title ? true : undefined}
+            {...register("title", {
+              required: "Title is required.",
+              validate: (value) =>
+                value.trim().length > 0 || "Title is required.",
+            })}
+          />
+          {errors.title && (
+            <p className="text-sm text-destructive">{errors.title.message}</p>
+          )}
         </div>
 
-        <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Assignment details</CardTitle>
-        </CardHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
-            {submitError && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive font-medium">
-                {submitError}
-              </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="slug"
+              className="text-xs font-semibold text-muted-foreground uppercase"
+            >
+              Slug
+            </label>
+            {isSlugCustomized && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSlugCustomized(false);
+                  if (titleValue) {
+                    setValue("slug", slugifySlug(titleValue), {
+                      shouldValidate: true,
+                    });
+                  }
+                }}
+                className="cursor-pointer text-xs font-medium text-primary hover:underline"
+              >
+                Reset to auto-slug
+              </button>
             )}
+          </div>
+          <Input
+            id="slug"
+            placeholder="e.g., lab-2-loops"
+            aria-invalid={errors.slug ? true : undefined}
+            {...register("slug", {
+              required: "Slug is required.",
+              pattern: {
+                value: SLUG_PATTERN,
+                message: "Use lowercase letters, numbers, and hyphens only.",
+              },
+              onChange: () => setIsSlugCustomized(true),
+            })}
+          />
+          {errors.slug && (
+            <p className="text-sm text-destructive">{errors.slug.message}</p>
+          )}
+        </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label htmlFor="slug" className="text-xs font-semibold text-muted-foreground uppercase">
-                  Slug
-                </label>
-                {isSlugCustomized && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSlugCustomized(false);
-                      if (titleValue) {
-                        setValue("slug", slugifySlug(titleValue), { shouldValidate: true });
-                      }
-                    }}
-                    className="text-xs text-primary font-semibold hover:underline cursor-pointer"
-                  >
-                    Reset to auto-slug
-                  </button>
-                )}
-              </div>
-              <Input
-                id="slug"
-                placeholder="e.g., lab-2-loops"
-                aria-invalid={errors.slug ? true : undefined}
-                {...register("slug", {
-                  required: "Slug is required.",
-                  pattern: {
-                    value: SLUG_PATTERN,
-                    message: "Use lowercase letters, numbers, and hyphens only.",
-                  },
-                  onChange: () => setIsSlugCustomized(true),
-                })}
-              />
-              {errors.slug && (
-                <p className="text-sm text-destructive">{errors.slug.message}</p>
-              )}
-            </div>
+        <div className="space-y-1">
+          <label
+            htmlFor="language"
+            className="text-xs font-semibold text-muted-foreground uppercase"
+          >
+            Language
+          </label>
+          <Controller
+            name="language"
+            control={control}
+            rules={{ required: "Language is required." }}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  id="language"
+                  className="w-full"
+                  aria-invalid={errors.language ? true : undefined}
+                >
+                  <SelectValue placeholder="Select a language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="python">Python</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.language && (
+            <p className="text-sm text-destructive">{errors.language.message}</p>
+          )}
+        </div>
 
-            <div className="space-y-1">
-              <label htmlFor="title" className="text-xs font-semibold text-muted-foreground uppercase">
-                Title
-              </label>
-              <Input
-                id="title"
-                placeholder="e.g., Lab 2: Loops"
-                aria-invalid={errors.title ? true : undefined}
-                {...register("title", {
-                  required: "Title is required.",
-                  validate: (value) => value.trim().length > 0 || "Title is required.",
-                })}
-              />
-              {errors.title && (
-                <p className="text-sm text-destructive">{errors.title.message}</p>
-              )}
-            </div>
+        <div className="space-y-1">
+          <label
+            htmlFor="canvas_ref"
+            className="text-xs font-semibold text-muted-foreground uppercase"
+          >
+            Canvas reference (optional)
+          </label>
+          <Input
+            id="canvas_ref"
+            placeholder="e.g., canvas:lab-2"
+            {...register("canvas_ref")}
+          />
+        </div>
 
-            <div className="space-y-1">
-              <label htmlFor="language" className="text-xs font-semibold text-muted-foreground uppercase">
-                Language
-              </label>
-              <Controller
-                name="language"
-                control={control}
-                rules={{ required: "Language is required." }}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger
-                      id="language"
-                      className="w-full"
-                      aria-invalid={errors.language ? true : undefined}
-                    >
-                      <SelectValue placeholder="Select a language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="python">Python</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.language && (
-                <p className="text-sm text-destructive">{errors.language.message}</p>
-              )}
-            </div>
+        <div className="space-y-1">
+          <label
+            htmlFor="module_id"
+            className="text-xs font-semibold text-muted-foreground uppercase"
+          >
+            Module (optional)
+          </label>
+          <Controller
+            name="module_id"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="module_id" className="w-full">
+                  <SelectValue placeholder="No module" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No module</SelectItem>
+                  {courseModules.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
 
-            <div className="space-y-1">
-              <label htmlFor="canvas_ref" className="text-xs font-semibold text-muted-foreground uppercase">
-                Canvas reference (optional)
-              </label>
-              <Input
-                id="canvas_ref"
-                placeholder="e.g., canvas:lab-2"
-                {...register("canvas_ref")}
-              />
-            </div>
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            id="sandbox_enabled"
+            type="checkbox"
+            className="size-4 rounded border border-input"
+            {...register("sandbox_enabled")}
+          />
+          <label htmlFor="sandbox_enabled" className="text-sm">
+            Enable sandbox for students
+          </label>
+        </div>
 
-            <div className="space-y-1">
-              <label htmlFor="module_id" className="text-xs font-semibold text-muted-foreground uppercase">
-                Module Assignment (optional)
-              </label>
-              <Controller
-                name="module_id"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="module_id" className="w-full">
-                      <SelectValue placeholder="No Module" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Module</SelectItem>
-                      {courseModules.map((m) => (
-                        <SelectItem key={m.id} value={String(m.id)}>
-                          {m.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            <div className="mb-3 flex items-center gap-2 pt-2">
-              <input
-                id="sandbox_enabled"
-                type="checkbox"
-                className="size-4 rounded border border-input"
-                {...register("sandbox_enabled")}
-              />
-              <label htmlFor="sandbox_enabled" className="text-sm">
-                Enable sandbox for students
-              </label>
-            </div>
-          </CardContent>
-
-          <CardFooter className="justify-end gap-2">
-            <Button type="button" variant="outline" asChild>
-              <Link href={`/staff/courses/${courseId}/assignments`}>Cancel</Link>
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create assignment and move to grading setup"}
-            </Button>
-          </CardFooter>
-        </form>
-        </Card>
-      </div>
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" asChild>
+            <Link href={`/staff/courses/${courseId}/assignments`}>Cancel</Link>
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create assignment"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

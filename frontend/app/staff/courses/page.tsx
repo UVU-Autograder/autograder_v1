@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageLoading } from "@/components/page-status";
 import { getStaffCourses } from "@/features/courses/api";
 import CoursesPage from "@/features/courses/courses-page";
 import { StaffCoursesResponse } from "@/features/courses/types";
@@ -30,11 +31,7 @@ export default function Page() {
   }
 
   if (!data) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground font-medium animate-pulse">Loading courses...</p>
-      </div>
-    );
+    return <PageLoading className="h-screen">Loading courses...</PageLoading>;
   }
 
   return <CoursesPage data={data} mode="staff" />;

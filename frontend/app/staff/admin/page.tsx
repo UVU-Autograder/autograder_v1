@@ -1,51 +1,74 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
+import { AdminPageHeader } from "@/components/admin-page-header";
 
-const adminLinks = [
+const setupLinks = [
   {
     href: "/staff/admin/courses",
     title: "Courses",
-    description: "Manage courses, terms, assignments, and roles",
+    description: "Create courses, terms, and default concepts",
   },
   {
     href: "/staff/admin/access",
     title: "Access",
-    description: "Manage instructors and IAs access control grants",
-  },
-  {
-    href: "/staff/admin/monitoring",
-    title: "Monitoring",
-    description: "View active runs, queue size, and token usage statistics",
-  },
-  {
-    href: "/staff/admin/logs",
-    title: "Logs & FERPA Audit",
-    description: "Search logs to see the system in action and audit FERPA compliance",
+    description: "Grant instructor, IA, and admin roles",
   },
 ];
 
+const operationsLinks = [
+  {
+    href: "/staff/admin/monitoring",
+    title: "Monitoring",
+    description: "Queues, cleanup health, and token usage",
+  },
+  {
+    href: "/staff/admin/logs",
+    title: "Audit logs",
+    description: "Search events and check FERPA redaction",
+  },
+];
+
+function AdminLinkList({
+  links,
+}: {
+  links: { href: string; title: string; description: string }[];
+}) {
+  return (
+    <ul className="divide-y divide-border border-y border-border">
+      {links.map((link) => (
+        <li key={link.href}>
+          <Link
+            href={link.href}
+            className="block py-3 px-1 transition-colors hover:bg-muted/40"
+          >
+            <div className="font-medium text-foreground">{link.title}</div>
+            <p className="text-sm text-muted-foreground">{link.description}</p>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function AdminPage() {
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 pt-8">
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Admin</h1>
+    <div className="mx-auto w-full max-w-2xl px-4 pt-8 pb-12">
+      <AdminPageHeader
+        title="Admin"
+      />
 
-      <div className="flex w-full flex-col gap-2">
-        {adminLinks.map((link) => (
-          <Link key={link.href} href={link.href} className="block">
-            <Card className="cursor-pointer py-3 transition-shadow hover:shadow-md">
-              <CardContent className="py-0">
-                <CardTitle className="text-base">{link.title}</CardTitle>
-                <CardDescription>{link.description}</CardDescription>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <section className="mb-8 space-y-2">
+        <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          Setup
+        </h2>
+        <AdminLinkList links={setupLinks} />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          Operations
+        </h2>
+        <AdminLinkList links={operationsLinks} />
+      </section>
     </div>
   );
 }

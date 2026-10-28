@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -23,7 +22,6 @@ export default function AssignmentCard({
   courseId: string;
   mode: ViewMode;
 }) {
-  const router = useRouter();
   const linkHref =
     mode === "sandbox"
       ? `/sandbox/${courseId}/assignments/${assignment.id}`
@@ -33,15 +31,6 @@ export default function AssignmentCard({
     <Card className="py-3 transition-shadow hover:shadow-md hover:bg-muted/50">
       <CardContent className="flex items-center justify-between py-0 gap-3">
         <Link href={linkHref} className="min-w-0 flex-1 flex items-center gap-3 group">
-          <div className="flex w-2.5 shrink-0 justify-center">
-            {assignment.sandbox_enabled && (
-              <span
-                className="size-2.5 rounded-full bg-success"
-                title="Sandbox enabled"
-              />
-            )}
-          </div>
-
           <div className="min-w-0 space-y-0.5">
             <CardTitle className="truncate text-base group-hover:text-primary transition-colors">
               {assignment.title}
@@ -53,18 +42,17 @@ export default function AssignmentCard({
               <span className="text-muted-foreground">
                 {assignment.max_score} pts
               </span>
+              {mode === "staff" && assignment.sandbox_enabled && (
+                <span className="text-muted-foreground">Sandbox on</span>
+              )}
             </CardDescription>
           </div>
         </Link>
 
         {mode === "staff" && (
-          <Button
-            asChild
-            size="sm"
-            className="shrink-0"
-          >
+          <Button asChild size="sm" className="shrink-0">
             <Link href={`/staff/courses/${courseId}/assignments/${assignment.id}/runs`}>
-              <PlayIcon className="mr-1.5 size-3.5" /> Grade
+              <PlayIcon className="mr-1.5 size-3.5" /> Grade Now
             </Link>
           </Button>
         )}

@@ -1,17 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShieldAlertIcon, PlusIcon } from "lucide-react";
-import { BackLink } from "@/components/back-link";
+import { PlusIcon } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageEmpty, PageLoading } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -151,98 +146,84 @@ export default function AccessPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="animate-pulse font-medium text-muted-foreground">Loading staff access data...</p>
-      </div>
-    );
+    return <PageLoading className="h-screen">Loading staff access data...</PageLoading>;
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 pt-8">
-      <BackLink href="/staff/admin">Back to admin</BackLink>
+    <div className="mx-auto w-full max-w-4xl px-4 pt-8 pb-12">
+      <Breadcrumbs
+        items={[
+          { label: "Admin", href: "/staff/admin" },
+          { label: "Access" },
+        ]}
+      />
 
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Staff Access Management</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage administrative, instructor, and IA access roles</p>
-        </div>
-        <Button onClick={openGrantDialog}>
-          <PlusIcon className="mr-1 size-4" /> Grant Access
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Access"
+        description="Grant and revoke instructor, IA, and admin roles."
+        actions={
+          <Button onClick={openGrantDialog}>
+            <PlusIcon className="mr-1 size-4" /> Grant access
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-start gap-2">
-          <ShieldAlertIcon className="size-4 shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div className="mb-6 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
         </div>
       )}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Staff Access Control List</CardTitle>
-          <CardDescription>Active role grants scoped to courses and sections</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {accessList.length === 0 ? (
-            <p className="text-muted-foreground text-center py-6 text-sm">No staff access permissions found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground font-semibold">
-                    <th className="py-2.5">User</th>
-                    <th className="py-2.5">Role</th>
-                    <th className="py-2.5">Course</th>
-                    <th className="py-2.5">Section</th>
-                    <th className="py-2.5">Status</th>
-                    <th className="py-2.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {accessList.map((access) => (
-                    <tr key={access.id} className={!access.is_active ? "opacity-50" : ""}>
-                      <td className="py-3 font-medium text-foreground">
-                        <div>{access.user_name || "Guest"}</div>
-                        <div className="text-xs text-muted-foreground font-normal">{access.user_email}</div>
-                      </td>
-                      <td className="py-3">
-                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-primary/10 text-primary border border-primary/20">
-                          {access.role_name}
-                        </span>
-                      </td>
-                      <td className="py-3 uppercase font-semibold text-foreground">
-                        {access.course_code || "All"}
-                      </td>
-                      <td className="py-3 text-muted-foreground font-mono text-xs">
-                        {access.section_crn || "All"}
-                      </td>
-                      <td className="py-3">
-                        <span className={`text-xs ${access.is_active ? 'text-success font-semibold' : 'text-muted-foreground'}`}>
-                          {access.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        {access.is_active && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10 h-8"
-                            onClick={() => handleRevoke(access.id)}
-                          >
-                            Revoke
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {accessList.length === 0 ? (
+        <PageEmpty>No staff access grants yet.</PageEmpty>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-border text-xs text-muted-foreground">
+                <th className="py-2 font-medium">User</th>
+                <th className="py-2 font-medium">Role</th>
+                <th className="py-2 font-medium">Course</th>
+                <th className="py-2 font-medium">Section</th>
+                <th className="py-2 font-medium">Status</th>
+                <th className="py-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {accessList.map((access) => (
+                <tr key={access.id} className={!access.is_active ? "opacity-50" : ""}>
+                  <td className="py-3 text-foreground">
+                    <div className="font-medium">{access.user_name || "Guest"}</div>
+                    <div className="text-xs text-muted-foreground">{access.user_email}</div>
+                  </td>
+                  <td className="py-3 text-foreground capitalize">{access.role_name}</td>
+                  <td className="py-3 text-xs font-semibold uppercase tracking-wider text-primary">
+                    {access.course_code || "All"}
+                  </td>
+                  <td className="py-3 text-muted-foreground text-xs">
+                    {access.section_crn || "All"}
+                  </td>
+                  <td className="py-3 text-xs text-muted-foreground">
+                    {access.is_active ? "Active" : "Inactive"}
+                  </td>
+                  <td className="py-3 text-right">
+                    {access.is_active && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleRevoke(access.id)}
+                      >
+                        Revoke
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* --- GRANT ACCESS DIALOG --- */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

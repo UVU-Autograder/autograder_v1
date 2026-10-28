@@ -347,9 +347,6 @@ export function AssignmentEditorProvider({
 
   const handleDiscard = useCallback(async () => {
     if (!dirty) return;
-    if (!confirm("Discard unsaved changes and reload the last saved setup?")) {
-      return;
-    }
     await loadSetup();
   }, [dirty, loadSetup]);
 

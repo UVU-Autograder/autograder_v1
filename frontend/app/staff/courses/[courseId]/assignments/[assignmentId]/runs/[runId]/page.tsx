@@ -2,9 +2,10 @@
 
 import { use } from "react";
 import { DownloadIcon } from "lucide-react";
-import { BackLink } from "@/components/back-link";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageLoading } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { retentionMessage } from "@/features/runs/lib/retention";
 import { runProcessedCount } from "@/features/assignments/types";
 import { GradeHistogram } from "@/features/runs/components/grade-histogram";
@@ -66,71 +67,75 @@ export default function RunDetailPage({ params }: PageProps) {
   const error = pollingError || manualError;
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground font-medium animate-pulse">
-          Loading run details...
-        </p>
-      </div>
-    );
+    return <PageLoading className="h-screen">Loading run details...</PageLoading>;
   }
 
   return (
-    <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <BackLink
-              href={`/staff/courses/${courseId}/assignments`}
-              variant="compact"
-            >
-              Back to course details
-            </BackLink>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              Run #{runId} Details
-            </h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCleanup}
-              disabled={
-                isCleaning ||
-                !summary ||
-                summary.status === "queue" ||
-                summary.status === "run" ||
-                summary.retention_state === "deleted"
-              }
-            >
-              {isCleaning ? "Cleaning…" : "Delete review data"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleCsvExport}
-              disabled={reviewUnavailable || !details?.exports_ready}
-              title={
-                details?.exports_ready
-                  ? undefined
-                  : "Complete all manual scores before exporting."
-              }
-            >
-              <DownloadIcon className="mr-2 size-4" /> Export Grades CSV
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleFeedbackExport}
-              disabled={reviewUnavailable || !details?.exports_ready}
-              title={
-                details?.exports_ready
-                  ? undefined
-                  : "Complete all manual scores before exporting."
-              }
-            >
-              <DownloadIcon className="mr-2 size-4" /> Export Feedback ZIP
-            </Button>
-          </div>
-        </div>
-        <p role="status" className="mb-6 text-sm text-muted-foreground">
+    <div className="mx-auto w-full max-w-5xl px-4 pt-8 pb-12">
+        <Breadcrumbs
+          items={[
+            { label: "Courses", href: "/staff/courses" },
+            { label: "Assignments", href: `/staff/courses/${courseId}/assignments` },
+            {
+              label: assignmentId,
+              href: `/staff/courses/${courseId}/assignments/${assignmentId}`,
+            },
+            {
+              label: "Grade",
+              href: `/staff/courses/${courseId}/assignments/${assignmentId}/runs`,
+            },
+            { label: `Run #${runId}` },
+          ]}
+        />
+
+        <AdminPageHeader
+          title={`Run #${runId}`}
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCleanup}
+                disabled={
+                  isCleaning ||
+                  !summary ||
+                  summary.status === "queue" ||
+                  summary.status === "run" ||
+                  summary.retention_state === "deleted"
+                }
+              >
+                {isCleaning ? "Cleaning…" : "Delete review data"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCsvExport}
+                disabled={reviewUnavailable || !details?.exports_ready}
+                title={
+                  details?.exports_ready
+                    ? undefined
+                    : "Complete all manual scores before exporting."
+                }
+              >
+                <DownloadIcon className="mr-1.5 size-4" /> Grades CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFeedbackExport}
+                disabled={reviewUnavailable || !details?.exports_ready}
+                title={
+                  details?.exports_ready
+                    ? undefined
+                    : "Complete all manual scores before exporting."
+                }
+              >
+                <DownloadIcon className="mr-1.5 size-4" /> Feedback ZIP
+              </Button>
+            </>
+          }
+        />
+        <p role="status" className="-mt-4 mb-6 text-sm text-muted-foreground">
           {retentionMessage(summary)}
         </p>
         {details && !details.exports_ready && (
@@ -235,8 +240,8 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-          <div className="space-y-4 md:col-span-1">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+          <div className="md:col-span-1">
             <GradeHistogram
               students={details?.students ?? []}
               totalSubmissionCount={summary?.total_submission_count}
@@ -246,8 +251,10 @@ export default function RunDetailPage({ params }: PageProps) {
             />
           </div>
 
-          {/* Student list */}
-          <div className="space-y-4 md:col-span-3">
+          <div className="space-y-3 md:col-span-3">
+            <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Students
+            </h2>
             <StudentFilterToolbar
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -256,34 +263,28 @@ export default function RunDetailPage({ params }: PageProps) {
               counts={filterCounts}
             />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Graded Students</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!details || details.students.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    {summary?.status === "queue" || summary?.status === "run"
-                      ? "Grading in progress… student results will appear here as they finish."
-                      : "No student details returned."}
-                  </p>
-                ) : filteredStudents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No students match the current filter or search query.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {filteredStudents.map((student) => (
-                      <StudentReviewCard
-                        key={student.canvas_id}
-                        student={student}
-                        onInspect={handleInspectStudent}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {!details || details.students.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {summary?.status === "queue" || summary?.status === "run"
+                  ? "Grading in progress… results appear as students finish."
+                  : "No student details returned."}
+              </p>
+            ) : filteredStudents.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No students match the current filter or search.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border border-y border-border">
+                {filteredStudents.map((student) => (
+                  <li key={student.canvas_id}>
+                    <StudentReviewCard
+                      student={student}
+                      onInspect={handleInspectStudent}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
@@ -299,7 +300,6 @@ export default function RunDetailPage({ params }: PageProps) {
             isSavingGrades={isSavingGrades}
           />
         )}
-      </div>
     </div>
   );
 }

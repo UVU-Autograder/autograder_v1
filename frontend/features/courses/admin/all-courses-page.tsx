@@ -1,13 +1,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { BackLink } from "@/components/back-link";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageEmpty } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -284,69 +280,80 @@ export default function AllCoursesPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 pt-8">
-      <BackLink href="/staff/admin">Back to admin</BackLink>
+    <div className="mx-auto w-full max-w-4xl px-4 pt-8 pb-12">
+      <Breadcrumbs
+        items={[
+          { label: "Admin", href: "/staff/admin" },
+          { label: "Courses" },
+        ]}
+      />
 
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">All Courses</h1>
-        <Button onClick={openAddDialog}>Add course</Button>
-      </div>
+      <AdminPageHeader
+        title="Courses"
+        description="Register courses and manage sections."
+        actions={<Button onClick={openAddDialog}>Add course</Button>}
+      />
 
       {courses.length === 0 ? (
-        <p className="text-muted-foreground">No courses available yet.</p>
+        <PageEmpty>No courses available yet.</PageEmpty>
       ) : (
-        <div className="flex w-full flex-col gap-2">
+        <ul className="divide-y divide-border border-y border-border">
           {courses.map((course) => (
-            <Card key={course.id} className={`py-3 transition-shadow hover:shadow-md ${!course.is_active ? 'opacity-60 bg-muted/40' : ''}`}>
-              <CardContent className="flex items-center gap-3 py-0">
-                <Link
-                  href={`/staff/courses/${(course.code || String(course.id)).toLowerCase().replace(/\s+/g, '')}`}
-                  className="min-w-0 flex-1"
-                >
-                  <div className="space-y-0.5">
-                    <CardTitle className="truncate text-base flex items-center gap-2">
-                      {course.title}
-                      {!course.is_active && (
-                        <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground uppercase">
-                          Inactive
-                        </span>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                      <span className="font-semibold uppercase text-foreground">{course.code}</span>
-                      <span>•</span>
-                      <span>{course.term}</span>
-                      <span>•</span>
-                      <span>
-                        {course.assignment_count}{" "}
-                        {course.assignment_count === 1 ? "assignment" : "assignments"}
+            <li
+              key={course.id}
+              className={`flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-4 ${
+                !course.is_active ? "opacity-60" : ""
+              }`}
+            >
+              <Link
+                href={`/staff/courses/${(course.code || String(course.id)).toLowerCase().replace(/\s+/g, "")}`}
+                className="min-w-0 flex-1 px-1 hover:bg-muted/40 rounded-sm transition-colors"
+              >
+                <div className="space-y-0.5">
+                  <div className="truncate text-base font-medium text-foreground">
+                    {course.title}
+                    {!course.is_active ? (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        Inactive
                       </span>
-                      {course.instructor_email && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">Instructor: {course.instructor_email}</span>
-                        </>
-                      )}
-                    </CardDescription>
+                    ) : null}
                   </div>
-                </Link>
-                <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => openSectionsDialog(course)}>
-                    Sections
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
-                    Edit
-                  </Button>
-                  {course.is_active && (
-                    <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(course)}>
-                      Deactivate
-                    </Button>
-                  )}
+                  <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="font-semibold uppercase tracking-wider text-primary">
+                      {course.code}
+                    </span>
+                    <span>{course.term}</span>
+                    <span>
+                      {course.assignment_count}{" "}
+                      {course.assignment_count === 1 ? "assignment" : "assignments"}
+                    </span>
+                    {course.instructor_email ? (
+                      <span className="truncate">{course.instructor_email}</span>
+                    ) : null}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </Link>
+              <div className="flex shrink-0 gap-2 px-1">
+                <Button variant="outline" size="sm" onClick={() => openSectionsDialog(course)}>
+                  Sections
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
+                  Edit
+                </Button>
+                {course.is_active && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => openDeleteDialog(course)}
+                  >
+                    Deactivate
+                  </Button>
+                )}
+              </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {/* --- ADD COURSE DIALOG --- */}

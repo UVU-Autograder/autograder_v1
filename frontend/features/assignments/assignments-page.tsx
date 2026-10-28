@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BackLink } from "@/components/back-link";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageEmpty } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
 import { AssignmentsResponse } from "@/features/assignments/types";
 import AssignmentCard from "@/features/assignments/assignment-card";
@@ -13,7 +14,7 @@ export default function AssignmentsPage({
   data: AssignmentsResponse;
   mode: ViewMode;
 }) {
-  const backHref = mode === "sandbox" ? "/sandbox" : "/staff/courses";
+  const coursesHref = mode === "sandbox" ? "/sandbox" : "/staff/courses";
 
   // Group assignments by module_name
   const grouped = data.assignments.reduce<Record<string, typeof data.assignments>>((acc, assignment) => {
@@ -36,11 +37,18 @@ export default function AssignmentsPage({
   return (
     <div className="w-full px-4 pt-8">
       <div className="mb-6">
-        <BackLink href={backHref}>Back to courses</BackLink>
+        <Breadcrumbs
+          items={[
+            { label: "Courses", href: coursesHref },
+            { label: "Assignments" },
+          ]}
+        />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
-            <p className="text-muted-foreground mt-1 uppercase font-mono">{data.course_id}</p>
+            <p className="mt-1 text-xs font-semibold text-primary tracking-wider uppercase">
+              {data.course_id}
+            </p>
           </div>
           {mode === "staff" && (
             <div className="flex gap-2">
@@ -60,7 +68,7 @@ export default function AssignmentsPage({
       </div>
 
       {data.assignments.length === 0 ? (
-        <p className="text-muted-foreground">No assignments available yet.</p>
+        <PageEmpty>No assignments available yet.</PageEmpty>
       ) : hasModules ? (
         <div className="space-y-8">
           {sortedGroupKeys.map((groupKey) => (

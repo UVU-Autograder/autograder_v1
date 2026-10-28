@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { BackLink } from "@/components/back-link";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageLoading } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MonacoEditor from "@/components/monaco-editor";
@@ -54,20 +55,21 @@ export function AssignmentEditor() {
   const [activeTab, setActiveTab] = useState("metadata");
 
   if (loading) {
-    return (
-      <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground animate-pulse">
-        Loading…
-      </div>
-    );
+    return <PageLoading>Loading assignment…</PageLoading>;
   }
 
   return (
     <div className="space-y-6">
       <div className="space-y-3 border-b border-border pb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <BackLink href={`/staff/courses/${courseId}/assignments`}>
-            Back to assignments
-          </BackLink>
+          <Breadcrumbs
+            className="mb-0"
+            items={[
+              { label: "Courses", href: "/staff/courses" },
+              { label: "Assignments", href: `/staff/courses/${courseId}/assignments` },
+              { label: title || assignmentId },
+            ]}
+          />
 
           <div className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto sm:justify-end">
             <span
