@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from app.core.dependencies import DbSession, require_role
+from app.domains.runs.activity_schemas import SystemActivityResponse
 from app.domains.auth.service import (
     create_admin_course,
     create_admin_section,
@@ -295,3 +296,11 @@ def revoke_access_admin(access_id: int, db: DbSession):
 def get_monitoring_admin(db: DbSession):
     metrics = get_admin_monitoring_metrics(db)
     return MonitoringResponse(**metrics)
+
+
+@router.get("/activity", response_model=SystemActivityResponse)
+def get_activity_admin(db: DbSession, window_hours: int = 168):
+    from app.domains.runs.activity import get_system_activity_summary
+
+    return get_system_activity_summary(db, window_hours=window_hours)
+

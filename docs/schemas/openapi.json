@@ -675,6 +675,54 @@
         ]
       }
     },
+    "/staff/admin/activity": {
+      "get": {
+        "tags": [
+          "staff-admin"
+        ],
+        "summary": "Get Activity Admin",
+        "operationId": "get_activity_admin_staff_admin_activity_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "window_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 168,
+              "title": "Window Hours"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/admin/logs": {
       "get": {
         "tags": [
@@ -2420,6 +2468,63 @@
         }
       }
     },
+    "/staff/courses/{course_id}/activity": {
+      "get": {
+        "tags": [
+          "staff-courses"
+        ],
+        "summary": "Get Course Activity",
+        "operationId": "get_course_activity_staff_courses__course_id__activity_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "window_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 168,
+              "title": "Window Hours"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses/{course_id}/assignments/{assignment_id}": {
       "delete": {
         "tags": [
@@ -3180,6 +3285,45 @@
         ],
         "title": "AITestAuthoringResponse"
       },
+      "ActivityTimeseriesPoint": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO 8601 interval start timestamp"
+          },
+          "run_count": {
+            "type": "integer",
+            "title": "Run Count",
+            "description": "Total sandbox submissions in interval",
+            "default": 0
+          },
+          "active_sessions": {
+            "type": "integer",
+            "title": "Active Sessions",
+            "description": "Unique student sessions active in interval",
+            "default": 0
+          },
+          "success_count": {
+            "type": "integer",
+            "title": "Success Count",
+            "description": "Passing runs",
+            "default": 0
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count",
+            "description": "Failing runs",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp"
+        ],
+        "title": "ActivityTimeseriesPoint",
+        "description": "Aggregate activity telemetry bucket over an hourly or daily interval."
+      },
       "ArtifactConfig": {
         "properties": {
           "type": {
@@ -3286,6 +3430,63 @@
           "display_filename"
         ],
         "title": "ArtifactMetadata"
+      },
+      "AssignmentActivitySummary": {
+        "properties": {
+          "assignment_id": {
+            "type": "integer",
+            "title": "Assignment Id",
+            "description": "Relational assignment ID"
+          },
+          "assignment_code": {
+            "type": "string",
+            "title": "Assignment Code",
+            "description": "Assignment key (e.g. 'lab1', 'ds1')"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Assignment title"
+          },
+          "total_runs": {
+            "type": "integer",
+            "title": "Total Runs",
+            "description": "Total student runs",
+            "default": 0
+          },
+          "active_students": {
+            "type": "integer",
+            "title": "Active Students",
+            "description": "Unique student sessions",
+            "default": 0
+          },
+          "pass_rate": {
+            "type": "number",
+            "title": "Pass Rate",
+            "description": "Percentage of runs with passing outcome (0-100)",
+            "default": 0.0
+          },
+          "top_bottleneck": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Bottleneck",
+            "description": "Most frequent failure key or category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assignment_id",
+          "assignment_code",
+          "title"
+        ],
+        "title": "AssignmentActivitySummary",
+        "description": "Activity and engagement summary for a single course assignment."
       },
       "AssignmentConfigV1": {
         "properties": {
@@ -3414,6 +3615,33 @@
           "title"
         ],
         "title": "AssignmentCreate"
+      },
+      "AttemptBucket": {
+        "properties": {
+          "bucket_label": {
+            "type": "string",
+            "title": "Bucket Label",
+            "description": "Display label (e.g. '1 attempt', '2-3 attempts')"
+          },
+          "session_count": {
+            "type": "integer",
+            "title": "Session Count",
+            "description": "Number of distinct student sessions in this bucket",
+            "default": 0
+          },
+          "percentage": {
+            "type": "number",
+            "title": "Percentage",
+            "description": "Percentage of total active sessions",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "bucket_label"
+        ],
+        "title": "AttemptBucket",
+        "description": "Distribution bucket for student attempt counts prior to passing or stopping."
       },
       "AuditLogListResponse": {
         "properties": {
@@ -3724,6 +3952,45 @@
         ],
         "title": "Body_upload_assignment_artifact_staff_courses__course_id__assignments__assignment_id__artifacts_post"
       },
+      "BottleneckItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Identifier or test marker name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "Error category (e.g. 'assertion', 'syntax', 'concept', 'timeout')"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Frequency of occurrence",
+            "default": 0
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Human-readable description or hint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "category"
+        ],
+        "title": "BottleneckItem",
+        "description": "Frequent test failure marker, syntax error, or concept violation."
+      },
       "BundleConfig": {
         "properties": {
           "entrypoint": {
@@ -3863,6 +4130,101 @@
         },
         "type": "object",
         "title": "ConceptsConfig"
+      },
+      "CourseActivityResponse": {
+        "properties": {
+          "course_id": {
+            "type": "integer",
+            "title": "Course Id",
+            "description": "Relational course ID"
+          },
+          "course_code": {
+            "type": "string",
+            "title": "Course Code",
+            "description": "Course code (e.g. 'cs1410')"
+          },
+          "course_title": {
+            "type": "string",
+            "title": "Course Title",
+            "description": "Course title"
+          },
+          "window_hours": {
+            "type": "integer",
+            "title": "Window Hours",
+            "description": "Analysis time window in hours"
+          },
+          "total_sandbox_runs": {
+            "type": "integer",
+            "title": "Total Sandbox Runs",
+            "description": "Total sandbox executions for course",
+            "default": 0
+          },
+          "active_student_sessions": {
+            "type": "integer",
+            "title": "Active Student Sessions",
+            "description": "Unique hashed student sessions for course",
+            "default": 0
+          },
+          "overall_pass_rate": {
+            "type": "number",
+            "title": "Overall Pass Rate",
+            "description": "Course sandbox pass percentage (0-100)",
+            "default": 0.0
+          },
+          "total_ai_tokens": {
+            "type": "integer",
+            "title": "Total Ai Tokens",
+            "description": "Total AI tokens consumed for course assignments",
+            "default": 0
+          },
+          "total_ai_requests": {
+            "type": "integer",
+            "title": "Total Ai Requests",
+            "description": "Total AI coaching prompts for course assignments",
+            "default": 0
+          },
+          "velocity": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityTimeseriesPoint"
+            },
+            "type": "array",
+            "title": "Velocity",
+            "description": "Hourly activity velocity"
+          },
+          "attempt_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptBucket"
+            },
+            "type": "array",
+            "title": "Attempt Distribution",
+            "description": "Student attempt histogram"
+          },
+          "top_bottlenecks": {
+            "items": {
+              "$ref": "#/components/schemas/BottleneckItem"
+            },
+            "type": "array",
+            "title": "Top Bottlenecks",
+            "description": "Top failure bottlenecks"
+          },
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentActivitySummary"
+            },
+            "type": "array",
+            "title": "Assignments",
+            "description": "Breakdown by assignment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course_id",
+          "course_code",
+          "course_title",
+          "window_hours"
+        ],
+        "title": "CourseActivityResponse",
+        "description": "Course-scoped student engagement telemetry for instructors and teaching assistants."
       },
       "CourseAdminDetail": {
         "properties": {
@@ -6291,6 +6653,83 @@
           "is_active"
         ],
         "title": "StaffSectionSummary"
+      },
+      "SystemActivityResponse": {
+        "properties": {
+          "window_hours": {
+            "type": "integer",
+            "title": "Window Hours",
+            "description": "Analysis time window in hours"
+          },
+          "total_sandbox_runs": {
+            "type": "integer",
+            "title": "Total Sandbox Runs",
+            "description": "Total sandbox executions in window",
+            "default": 0
+          },
+          "active_student_sessions": {
+            "type": "integer",
+            "title": "Active Student Sessions",
+            "description": "Unique hashed student sessions in window",
+            "default": 0
+          },
+          "overall_pass_rate": {
+            "type": "number",
+            "title": "Overall Pass Rate",
+            "description": "Overall sandbox pass percentage (0-100)",
+            "default": 0.0
+          },
+          "total_ai_tokens": {
+            "type": "integer",
+            "title": "Total Ai Tokens",
+            "description": "Total AI tokens consumed by sandbox requests",
+            "default": 0
+          },
+          "total_ai_requests": {
+            "type": "integer",
+            "title": "Total Ai Requests",
+            "description": "Total AI coaching prompts requested",
+            "default": 0
+          },
+          "velocity": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityTimeseriesPoint"
+            },
+            "type": "array",
+            "title": "Velocity",
+            "description": "Hourly activity velocity"
+          },
+          "attempt_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptBucket"
+            },
+            "type": "array",
+            "title": "Attempt Distribution",
+            "description": "Student attempt histogram"
+          },
+          "top_bottlenecks": {
+            "items": {
+              "$ref": "#/components/schemas/BottleneckItem"
+            },
+            "type": "array",
+            "title": "Top Bottlenecks",
+            "description": "Top failure bottlenecks"
+          },
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentActivitySummary"
+            },
+            "type": "array",
+            "title": "Assignments",
+            "description": "Breakdown by assignment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "window_hours"
+        ],
+        "title": "SystemActivityResponse",
+        "description": "System-wide operational and pedagogical activity telemetry for staff administrators."
       },
       "TestSummary": {
         "properties": {

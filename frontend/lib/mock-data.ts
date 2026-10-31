@@ -978,3 +978,56 @@ export const MOCK_AUDIT_VERIFICATION: AuditVerificationResponse = {
   disclaimer:
     "Pattern verification verifies absence of known log PII patterns (Canvas filenames, student paths, emails, UUIDs, U-numbers) in allowlisted audit fields. It does not verify student names or grades in unredacted student code.",
 };
+
+export const MOCK_SYSTEM_ACTIVITY = {
+  window_hours: 168,
+  total_sandbox_runs: 142,
+  active_student_sessions: 38,
+  overall_pass_rate: 76.8,
+  total_ai_tokens: 28450,
+  total_ai_requests: 64,
+  velocity: [
+    { timestamp: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString(), run_count: 8, active_sessions: 4, success_count: 5, failure_count: 3 },
+    { timestamp: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(), run_count: 14, active_sessions: 7, success_count: 10, failure_count: 4 },
+    { timestamp: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString(), run_count: 22, active_sessions: 12, success_count: 16, failure_count: 6 },
+    { timestamp: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(), run_count: 31, active_sessions: 18, success_count: 24, failure_count: 7 },
+    { timestamp: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(), run_count: 45, active_sessions: 26, success_count: 36, failure_count: 9 },
+    { timestamp: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(), run_count: 22, active_sessions: 14, success_count: 18, failure_count: 4 },
+  ],
+  attempt_distribution: [
+    { bucket_label: "1 attempt", session_count: 6, percentage: 15.8 },
+    { bucket_label: "2-3 attempts", session_count: 14, percentage: 36.8 },
+    { bucket_label: "4-6 attempts", session_count: 11, percentage: 28.9 },
+    { bucket_label: "7-10 attempts", session_count: 5, percentage: 13.2 },
+    { bucket_label: ">10 attempts", session_count: 2, percentage: 5.3 },
+  ],
+  top_bottlenecks: [
+    { key: "ag_calculate_cost", category: "assertion", count: 18, description: "Total cost calculation mismatch on candy weights" },
+    { key: "SyntaxError", category: "syntax_error", count: 9, description: "Syntax or parse error before test execution" },
+    { key: "ag_packaging_protocol", category: "assertion", count: 7, description: "Missing runtime checkable packaging protocol method" },
+    { key: "forbid_sorting", category: "concept_blocked", count: 4, description: "Disallowed construct: .sort() or sorted() called" },
+  ],
+  assignments: [
+    { assignment_id: 1, assignment_code: "lab1", title: "Image Processing", total_runs: 88, active_students: 32, pass_rate: 81.8, top_bottleneck: "ag_grayscale" },
+    { assignment_id: 2, assignment_code: "ds1", title: "Packaging Tracker", total_runs: 54, active_students: 24, pass_rate: 68.5, top_bottleneck: "ag_calculate_cost" },
+  ],
+};
+
+export function getMockCourseActivity(courseId: string, windowHours = 168) {
+  return {
+    course_id: courseId === "cs1400" ? 2 : 1,
+    course_code: courseId,
+    course_title: courseId === "cs1400" ? "CS 1400: Fundamentals of Programming" : "CS 1410: Object-Oriented Programming",
+    window_hours: windowHours,
+    total_sandbox_runs: MOCK_SYSTEM_ACTIVITY.total_sandbox_runs,
+    active_student_sessions: MOCK_SYSTEM_ACTIVITY.active_student_sessions,
+    overall_pass_rate: MOCK_SYSTEM_ACTIVITY.overall_pass_rate,
+    total_ai_tokens: MOCK_SYSTEM_ACTIVITY.total_ai_tokens,
+    total_ai_requests: MOCK_SYSTEM_ACTIVITY.total_ai_requests,
+    velocity: MOCK_SYSTEM_ACTIVITY.velocity,
+    attempt_distribution: MOCK_SYSTEM_ACTIVITY.attempt_distribution,
+    top_bottlenecks: MOCK_SYSTEM_ACTIVITY.top_bottlenecks,
+    assignments: MOCK_SYSTEM_ACTIVITY.assignments,
+  };
+}
+

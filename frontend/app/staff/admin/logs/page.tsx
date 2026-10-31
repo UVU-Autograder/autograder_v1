@@ -175,6 +175,7 @@ export default function AdminLogsPage() {
     <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16">
       <Breadcrumbs
         items={[
+          { label: "Courses", href: "/staff/courses" },
           { label: "Admin", href: "/staff/admin" },
           { label: "Audit logs" },
         ]}

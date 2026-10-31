@@ -278,7 +278,6 @@ def execute_sandbox_run(
 
         result_dict = grading_result.to_dict(run_id=run_id)
 
-
         set_run_result(run_id, result_dict)
         record_grade_seconds(time.monotonic() - started)
         if grading_result.success:
@@ -292,6 +291,28 @@ def execute_sandbox_run(
                     "failure_message": grading_result.failure_message or "Execution failed.",
                 },
             )
+
+        try:
+            from app.domains.runs.activity import record_sandbox_telemetry
+
+            failed_keys = [
+                tr.get("marker") or tr.get("key") or tr.get("label")
+                for tr in result_dict.get("test_results", [])
+                if tr.get("outcome") != "passed"
+            ]
+            record_sandbox_telemetry(
+                assignment_id=config.get("_relational_assignment_id") if isinstance(config, dict) else None,
+                session_id=config.get("_session_id") if isinstance(config, dict) else None,
+                status="complete" if grading_result.success else "failure",
+                failure_category=grading_result.failure_category,
+                failure_summary={
+                    "failure_category": grading_result.failure_category,
+                    "failed_keys": [k for k in failed_keys if k],
+                },
+                grade_seconds=time.monotonic() - started,
+            )
+        except Exception as tel_exc:
+            logger.debug("Failed to record sandbox run telemetry: %s", tel_exc)
 
         return result_dict
 
@@ -316,6 +337,19 @@ def execute_sandbox_run(
                 "failure_message": str(exc),
             },
         )
+        try:
+            from app.domains.runs.activity import record_sandbox_telemetry
+
+            record_sandbox_telemetry(
+                assignment_id=config.get("_relational_assignment_id") if isinstance(config, dict) else None,
+                session_id=config.get("_session_id") if isinstance(config, dict) else None,
+                status="failure",
+                failure_category="internal_error",
+                failure_summary={"failure_category": "internal_error", "error": str(exc)},
+                grade_seconds=time.monotonic() - started,
+            )
+        except Exception:
+            pass
         return failure_dict
     finally:
         if not is_run_cancelled(run_id):

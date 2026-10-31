@@ -17,6 +17,8 @@ import {
   MOCK_AUDIT_RECORDS,
   MOCK_AUDIT_STATS,
   MOCK_AUDIT_VERIFICATION,
+  MOCK_SYSTEM_ACTIVITY,
+  getMockCourseActivity,
   getMockAssignment,
   getMockStaffAssignmentSetup,
   mockCatalog,
@@ -213,6 +215,12 @@ export async function handleMockRequest<T>(
       modules,
     };
     return makeMockResponse(conceptsPayload) as { data: T; response: Response };
+  }
+
+  const courseActivityMatch = normalizedPath.match(/^\/staff\/courses\/([^/]+)\/activity$/);
+  if (courseActivityMatch && method === "GET") {
+    const courseId = courseActivityMatch[1];
+    return makeMockResponse(getMockCourseActivity(courseId)) as { data: T; response: Response };
   }
 
   // 5. Staff assignment CRUD, setup & artifacts
@@ -490,6 +498,10 @@ def invert_pixels(pixels):
 
   if (normalizedPath === "/staff/admin/monitoring" && method === "GET") {
     return makeMockResponse(MOCK_MONITORING) as { data: T; response: Response };
+  }
+
+  if (normalizedPath === "/staff/admin/activity" && method === "GET") {
+    return makeMockResponse(MOCK_SYSTEM_ACTIVITY) as { data: T; response: Response };
   }
 
   if (normalizedPath === "/staff/admin/logs" && method === "GET") {

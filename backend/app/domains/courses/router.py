@@ -24,6 +24,7 @@ from app.domains.courses.service import (
     list_staff_courses,
     update_course_concepts,
 )
+from app.domains.runs.activity_schemas import CourseActivityResponse
 
 router = APIRouter(
     prefix="/staff/courses",
@@ -109,3 +110,20 @@ def update_concepts(
     if concepts is None:
         raise HTTPException(status_code=404, detail="Course not found.")
     return concepts
+
+
+@router.get("/{course_id}/activity", response_model=CourseActivityResponse)
+def get_course_activity(
+    course_id: str,
+    db: DbSession,
+    window_hours: int = 168,
+    current_user: User = Depends(require_staff),
+) -> CourseActivityResponse:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=True, write_access=False)
+    from app.domains.runs.activity import get_course_activity_summary
+
+    summary = get_course_activity_summary(db, course_id, window_hours=window_hours)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="Course not found.")
+    return summary
+

@@ -94,6 +94,7 @@ export default function MonitoringPage() {
     <div className="mx-auto w-full max-w-2xl px-4 pt-8 pb-12">
       <Breadcrumbs
         items={[
+          { label: "Courses", href: "/staff/courses" },
           { label: "Admin", href: "/staff/admin" },
           { label: "Monitoring" },
         ]}

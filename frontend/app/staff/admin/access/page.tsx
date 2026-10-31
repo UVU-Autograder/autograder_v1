@@ -153,6 +153,7 @@ export default function AccessPage() {
     <div className="mx-auto w-full max-w-4xl px-4 pt-8 pb-12">
       <Breadcrumbs
         items={[
+          { label: "Courses", href: "/staff/courses" },
           { label: "Admin", href: "/staff/admin" },
           { label: "Access" },
         ]}

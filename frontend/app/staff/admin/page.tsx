@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { ArrowLeftIcon } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { Button } from "@/components/ui/button";
 
 const setupLinks = [
   {
@@ -15,6 +18,11 @@ const setupLinks = [
 ];
 
 const operationsLinks = [
+  {
+    href: "/staff/admin/activity",
+    title: "Activity Monitor",
+    description: "Student practice velocity, attempt distributions, and error bottlenecks",
+  },
   {
     href: "/staff/admin/monitoring",
     title: "Monitoring",
@@ -52,8 +60,22 @@ function AdminLinkList({
 export default function AdminPage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pt-8 pb-12">
+      <Breadcrumbs
+        items={[
+          { label: "Courses", href: "/staff/courses" },
+          { label: "Admin" },
+        ]}
+      />
       <AdminPageHeader
         title="Admin"
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/staff/courses">
+              <ArrowLeftIcon className="mr-1.5 h-4 w-4" />
+              Back to courses
+            </Link>
+          </Button>
+        }
       />
 
       <section className="mb-8 space-y-2">
