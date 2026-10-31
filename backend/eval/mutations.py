@@ -764,7 +764,7 @@ TRAIN_MUTATIONS = [
     {"case_id": "p2_ds5_menu_int_choice", "seed": "ds5", "category": "single_failure",
      "notes": "menu uses int(choice) so Enter/abc crashes",
      "edits": [{"file": "dessertshop.py", "find": '        choice = input(prompt)\n        match choice.strip():',
-                "replace": '        choice = str(int(input(prompt)))\n        match choice:'}]}
+                "replace": '        choice = str(int(input(prompt)))\n        match choice:'}]},
     {"case_id": "p2_ds5_receipt_header_item", "seed": "ds5", "category": "single_failure",
      "notes": "receipt header uses Item instead of Name",
      "edits": [{"file": "dessertshop.py", "find": 'headers=["Name", "Cost", "Tax"]',

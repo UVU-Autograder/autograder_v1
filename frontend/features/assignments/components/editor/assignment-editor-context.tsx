@@ -31,7 +31,7 @@ type CourseConceptsResponse = {
   modules: CourseModule[];
 };
 
-type AssignmentEditorContextType = {
+export type AssignmentEditorContextType = {
   courseId: string;
   assignmentId: string;
   loading: boolean;
@@ -116,7 +116,7 @@ type AssignmentEditorContextType = {
   copiedLink: boolean;
 };
 
-const AssignmentEditorContext = createContext<AssignmentEditorContextType | null>(null);
+export const AssignmentEditorContext = createContext<AssignmentEditorContextType | null>(null);
 
 export function AssignmentEditorProvider({
   courseId,
@@ -228,7 +228,11 @@ export function AssignmentEditorProvider({
       language,
       entrypoint,
       fileRequirements,
-      scoringItems: scoringItems.map(({ id: _id, ...rest }) => rest),
+      scoringItems: scoringItems.map((item) => {
+        const copy = { ...item };
+        delete copy.id;
+        return copy;
+      }),
       rubricGroups,
       conceptDenylist,
       dependencies,

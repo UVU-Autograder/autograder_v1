@@ -477,6 +477,19 @@ class SandboxService:
             raise AiFeedbackUnavailable(
                 503, "ai_error", "The AI tutor ran into a problem. Please try again in a moment.", 15,
             )
+        try:
+            from app.domains.runs.activity import record_sandbox_ai_telemetry
+
+            record = self._store.get_run(run_id)
+            rel_aid = (record.config or {}).get("_relational_assignment_id") if record else None
+            record_sandbox_ai_telemetry(
+                assignment_id=rel_aid,
+                session_id=session_id,
+                token_usage={"total_tokens": max(50, len(outcome.text.split()) * 2)},
+            )
+        except Exception:
+            pass
+
         return SandboxAiFeedbackResponse(
             run_id=run_id,
             ai_feedback=outcome.text,
@@ -645,6 +658,13 @@ class SandboxService:
                     failure_category, res_data.get("failure_message")
                 )
             )
+            if not res_data.get("success") and not warnings:
+                warnings = [
+                    SandboxWarning(
+                        code=failure_category or "failure",
+                        message=sanitized,
+                    )
+                ]
 
             return SandboxRunResultResponse(
                 run_id=run_id,

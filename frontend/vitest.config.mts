@@ -14,6 +14,17 @@ export default defineConfig({
     pool: "threads",
     setupFiles: [],
     exclude: ["**/node_modules/**", "**/e2e/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      include: ["features/**", "lib/**", "components/**"],
+      exclude: [
+        "**/__tests__/**",
+        "**/*.d.ts",
+        "**/mock-data.ts",
+        "**/mock-handlers.ts",
+      ],
+    },
     alias: {
       "@": path.resolve(__dirname, "./"),
     },

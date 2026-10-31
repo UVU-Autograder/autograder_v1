@@ -2,7 +2,7 @@ import fnmatch
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 TEST_KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 DEPENDENCY_RE = re.compile(r"^[A-Za-z0-9_.-]+$")

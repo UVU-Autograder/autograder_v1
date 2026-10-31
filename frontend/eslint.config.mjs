@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
     // Monaco's prebuilt bundle, copied from node_modules by scripts/copy-monaco.mjs.
     "public/monaco/**",

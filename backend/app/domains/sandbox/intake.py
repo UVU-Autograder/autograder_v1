@@ -176,6 +176,10 @@ class SandboxIntakeEngine:
         )
         if db_assignment.description and not run_config.get("description"):
             run_config["description"] = db_assignment.description
+        run_config["_relational_assignment_id"] = db_assignment.id
+        run_config["_session_id"] = session
+        run_config["_assignment_code"] = db_assignment.slug
+        run_config["_course_code"] = course_id
 
         expected_manifest = (
             db_assignment.config.validated_test_manifest

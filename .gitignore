@@ -12,6 +12,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .pytest-tmp/
+.coverage*
+htmlcov/
+backend/.coverage*
+backend/htmlcov/
 backend/data/
 .ruff_cache/
 
@@ -30,6 +34,8 @@ node_modules/
 frontend/.next/
 frontend/tsconfig.tsbuildinfo
 frontend/out/
+coverage/
+frontend/coverage/
 .vscode/
 
 # Agentic / local agent memory

@@ -15,6 +15,8 @@ from app.db.seeds.shared.python_autograder_helpers import import_student_modules
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.assignments.service import resolve_seed_description
 
+pytestmark = pytest.mark.seeds
+
 TYPED_ASSIGNMENTS = frozenset(
     {"ds1", "ds2", "ds3", "ds4", "ds5", "ds6", "ds7", "ds8", "ds9", "ds10", "lab6"}
 )

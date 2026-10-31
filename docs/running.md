@@ -50,6 +50,7 @@ These are real shared-host requests: uploads consume quotas and staff edits chan
 | --- | --- |
 | Frontend production build | `npm --prefix frontend run build` |
 | Backend test suite | `pytest backend/tests -q` (with `backend/venv` active) |
+| Test coverage (full stack) | `npm run test:coverage` (runs backend pytest-cov and frontend Vitest v8 coverage) |
 | Browser regression suite | `npm run test:e2e`; first install Chromium with `npx playwright install chromium` from `frontend/` |
 | Full repository gate | `npm install`, `npm run setup:backend`, then `npm run check` |
 | Static deployment audit | `npm run check:deployment` with backend Python environment active |

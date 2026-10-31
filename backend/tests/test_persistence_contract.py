@@ -174,6 +174,7 @@ def test_metadata_backup_script_matches_persistent_schema_contract():
     )
 
 
+@pytest.mark.seeds
 @pytest.mark.parametrize(
     "seed_dir",
     [

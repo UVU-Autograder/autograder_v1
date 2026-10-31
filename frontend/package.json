@@ -12,6 +12,7 @@
     "lint:fix": "eslint --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "postinstall": "node scripts/copy-monaco.mjs",
     "prebuild": "node scripts/copy-monaco.mjs",
@@ -51,7 +52,8 @@
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.10"
   },
   "overrides": {
     "dompurify": "^3.4.16"

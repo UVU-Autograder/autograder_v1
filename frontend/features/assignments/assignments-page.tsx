@@ -53,6 +53,11 @@ export default function AssignmentsPage({
           {mode === "staff" && (
             <div className="flex gap-2">
               <Button variant="outline" asChild>
+                <Link href={`/staff/courses/${data.course_id}/activity`}>
+                  Activity Monitor
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link href={`/staff/courses/${data.course_id}/settings`}>
                   Course Settings
                 </Link>

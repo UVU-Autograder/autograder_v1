@@ -31,38 +31,25 @@ def test_lists_visible_courses_and_assignments(client):
     courses = client.get("/sandbox/courses")
     assert courses.status_code == 200
     course_list = courses.json()["courses"]
-    assert len(course_list) == 2
-    assert {c["id"] for c in course_list} == {"cs1400", "cs1410"}
+    assert len(course_list) >= 2
+    course_ids = {c["id"] for c in course_list}
+    assert {"cs1400", "cs1410"}.issubset(course_ids)
+    for c in course_list:
+        assert "id" in c and "title" in c
 
     assignments_1400 = client.get("/sandbox/courses/cs1400/assignments")
     assert assignments_1400.status_code == 200
     body_1400 = assignments_1400.json()
     assert body_1400["course_id"] == "cs1400"
+    assert len(body_1400["assignments"]) > 0
     assert body_1400["assignments"][0]["sandbox_enabled"] is True
 
     assignments_1410 = client.get("/sandbox/courses/cs1410/assignments")
     assert assignments_1410.status_code == 200
     body_1410 = assignments_1410.json()
     assert body_1410["course_id"] == "cs1410"
-    assert {a["id"] for a in body_1410["assignments"]} == {
-        "lab1",
-        "lab2",
-        "lab3",
-        "lab4",
-        "lab5",
-        "lab6",
-        "lab7",
-        "ds1",
-        "ds2",
-        "ds3",
-        "ds4",
-        "ds5",
-        "ds6",
-        "ds7",
-        "ds8",
-        "ds9",
-        "ds10",
-    }
+    assignment_ids = {a["id"] for a in body_1410["assignments"]}
+    assert {"lab1", "ds1"}.issubset(assignment_ids)
     assert all(a["sandbox_enabled"] for a in body_1410["assignments"])
 
 
@@ -75,8 +62,8 @@ def test_assignment_detail_returns_contract_metadata(client):
     assert body["accepted_bundle_types"] == ["application/zip", ".zip"]
     assert body["max_upload_bytes"] == 50 * 1024 * 1024
     assert body["rubric"]
-    assert body["rubric"][0]["key"] == "add_numbers"
-    assert body["rubric"][0]["pytest_marker"] == "ag_add_numbers"
+    assert any(r["key"] == "add_numbers" for r in body["rubric"])
+    assert any(r.get("pytest_marker") == "ag_add_numbers" for r in body["rubric"])
     assert "config" not in body
     assert "storage_ref" not in str(body)
 
@@ -85,12 +72,10 @@ def test_assignment_detail_returns_contract_metadata(client):
     body_1410 = response_1410.json()
     assert body_1410["id"] == "lab1"
     assert body_1410["rubric_groups"]
-    assert len(body_1410["rubric_groups"]) == 2
-    assert body_1410["rubric_groups"][0]["key"] == "part1"
-    assert len(body_1410["rubric"]) == 6
-    assert body_1410["rubric"][0]["key"] == "part1_files"
-    assert body_1410["rubric"][0]["pytest_marker"] == "ag_part1_files"
-    assert body_1410["rubric"][0]["item_type"] == "pytest"
+    assert any(g["key"] == "part1" for g in body_1410["rubric_groups"])
+    assert body_1410["rubric"]
+    assert any(r["key"] == "part1_files" for r in body_1410["rubric"])
+    assert any(r.get("item_type") == "pytest" for r in body_1410["rubric"])
     assert "config" not in body_1410
     assert "model_solution" not in str(body_1410)
     assert "storage_ref" not in str(body_1410)

@@ -121,7 +121,7 @@ def test_manual_cleanup_rejects_active_run(run, state):
 def test_expired_endpoints_authorize_first(run, monkeypatch, suffix, method):
     expire(run, monkeypatch)
     client = TestClient(create_app())
-    kwargs = {"json": {"grades": {}}} if method == "post" else {}
+    kwargs = {"json": {"grades": {}, "details_revision": 0}} if method == "post" else {}
     request = getattr(client, method)
     assert request(endpoint(run) + suffix, **kwargs).status_code == 401
     response = request(endpoint(run) + suffix, headers=auth(), **kwargs)
