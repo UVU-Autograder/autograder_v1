@@ -819,10 +819,6 @@ export default function CodeResults({
               );
             })()}
           </>
-        ) : !isLoading ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Run tests to see your score and results.
-          </p>
         ) : null}
       </div>
 

@@ -185,7 +185,7 @@ export default function Navbar() {
   const homeHref = isStaffArea ? "/staff/courses" : "/sandbox";
 
   return (
-    <div className="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-header-border bg-header text-header-foreground px-4 shadow-xs sm:px-6">
+    <div className="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-header-border dark:border-[#13301d] bg-header text-header-foreground px-4 shadow-xs sm:px-6">
       <div className="flex items-center gap-4">
         <Link href={homeHref} className="flex items-center gap-3 hover:opacity-90 transition-opacity">
           <Image
@@ -219,6 +219,22 @@ export default function Navbar() {
           </span>
         )}
         <ThemeToggle className="text-foreground/70 hover:text-foreground hover:bg-black/5 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/15" />
+        {isStaffArea && isStaffLoggedIn && (
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={
+              pathname.startsWith("/staff/courses")
+                ? "bg-black/10 text-foreground dark:bg-white/20 dark:text-white"
+                : "text-foreground/70 hover:bg-black/5 hover:text-foreground dark:text-white/80 dark:hover:bg-white/15 dark:hover:text-white"
+            }
+          >
+            <Link href="/staff/courses">
+              Courses
+            </Link>
+          </Button>
+        )}
         {isStaffArea && isAdmin && (
           <Button
             variant="ghost"
@@ -246,7 +262,7 @@ export default function Navbar() {
             Sign out
           </Button>
         )}
-        {hasStaffToken && oppositePath && (
+        {oppositePath && (
           <Button
             size="sm"
             asChild

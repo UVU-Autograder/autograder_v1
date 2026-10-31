@@ -1,4 +1,3 @@
-import { PageEmpty } from "@/components/page-status";
 import {
   SandboxCoursesResponse,
   StaffCoursesResponse,
@@ -15,29 +14,26 @@ export default function CoursesPage({
   mode: ViewMode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pt-8 pb-12">
-      <div className="mb-6 space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Courses
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {mode === "staff"
-            ? "Courses you can set up and grade."
-            : "Practice assignments without signing in. Scores are estimates, not Canvas grades."}
-        </p>
-      </div>
+    <div className="w-full flex justify-center pt-8">
+      <div className="w-full max-w-7xl px-4 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {mode === "staff" ? "Staff Course Management" : "Available Courses"}
+          </h1>
+        </div>
 
-      {data.courses.length === 0 ? (
-        <PageEmpty>No courses available yet.</PageEmpty>
-      ) : (
-        <ul className="divide-y divide-border border-y border-border">
-          {data.courses.map((course) => (
-            <li key={course.id} className="group">
-              <CourseCard course={course} mode={mode} />
-            </li>
-          ))}
-        </ul>
-      )}
+        {data.courses.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">
+            No courses available yet.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {data.courses.map((course) => (
+              <CourseCard key={course.id} course={course} mode={mode} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

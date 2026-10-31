@@ -135,6 +135,11 @@
   --header-foreground: var(--foreground);
   --header-border: oklch(0.89 0.005 88.6);
 
+  /* Scrollbars & Controls */
+  color-scheme: light;
+  --scrollbar-thumb: oklch(0.72 0 0);
+  --scrollbar-track: transparent;
+
   --radius: 0.625rem;
 }
 
@@ -191,20 +196,43 @@
   --chart-4: var(--destructive);
   --chart-5: var(--valley-rise);
 
-  /* Header Navigation (Approved UVU Grey Treatment) */
+  /* Header Navigation */
   --header: var(--uvu-green);
   --header-foreground: var(--uvu-white);
-  --header-border: var(--wolverine-green);
+  --header-border: oklch(0.28 0.05 152.7);
+
+  /* Scrollbars & Controls */
+  color-scheme: dark;
+  --scrollbar-thumb: oklch(0.38 0 0);
+  --scrollbar-track: transparent;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Legacy fallback for WebKit/Blink browsers */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
   }
 }
