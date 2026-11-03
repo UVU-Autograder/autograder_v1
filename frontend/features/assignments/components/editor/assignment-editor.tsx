@@ -181,7 +181,7 @@ export function AssignmentEditor() {
       >
         <TabsList className="grid w-full max-w-2xl grid-cols-3 rounded-lg bg-muted p-1">
           <TabsTrigger value="metadata">General & Files</TabsTrigger>
-          <TabsTrigger value="rubrics">Test Suite & Rubric</TabsTrigger>
+          <TabsTrigger value="rubrics">Tests & Rubric</TabsTrigger>
           <TabsTrigger value="model_solution">Model Solution</TabsTrigger>
         </TabsList>
 
