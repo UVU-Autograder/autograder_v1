@@ -110,14 +110,14 @@ To do this, you will make updates to your Dessert Shop system as described below
 Example of using `tabulate`:
 
 from tabulate import tabulate  
-​  
+  
 data = [  
     ["Will", 15],  
     ["Hope", 19],  
     ["Jill", 20],  
 ]  
-​  
-​  
+  
+  
 print(tabulate(data, headers=["Character", "Age"], tablefmt="fsql"))
 
 # Test Cases

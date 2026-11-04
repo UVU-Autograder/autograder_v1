@@ -9,10 +9,44 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
+/**
+ * Defensively cleans and normalizes raw markdown input to recover from common
+ * scrape/export formatting anomalies (e.g. Canvas artifacts, glued code fences,
+ * invisible zero-width spaces).
+ */
+export function normalizeMarkdownContent(content: string): string {
+  if (!content) return "";
+
+  let text = content
+    // 1. Strip zero-width space characters and BOM
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    // 2. Strip Canvas download scrape artifacts (e.g. "Download filename.pyDownload Download filename.py")
+    .replace(/(?:Download\s+[^\s\n]+\.[a-z0-9]+Download\s+Download\s+[^\s\n]+\.[a-z0-9]+|Download\s+[^\s\n]+\.[a-z0-9]+(?:Download)+)/gi, "")
+
+  // 3. Fix glued opening code fence where code is on the fence delimiter line
+  // e.g. "```def main():" -> "```python\ndef main():"
+  text = text.replace(/^```([^\n`]+)$/gm, (match, info) => {
+    const trimmed = info.trim();
+    // Valid standard fence info string (single word language identifier)
+    if (/^[a-z0-9_#+-]+$/i.test(trimmed)) {
+      return match;
+    }
+    return "```python\n" + trimmed;
+  });
+
+  // 4. Fix glued closing code fence where ``` is attached to the end of a code line
+  // e.g. "    main()```" -> "    main()\n```"
+  text = text.replace(/^([^\n`]+)```$/gm, "$1\n```");
+
+  return text;
+}
+
 export default function MarkdownRenderer({
   content,
   className = "",
 }: MarkdownRendererProps) {
+  const normalized = normalizeMarkdownContent(content);
+
   return (
     <div
       className={`text-xs text-foreground font-sans leading-relaxed space-y-1.5 ${className}`}
@@ -20,6 +54,7 @@ export default function MarkdownRenderer({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          pre: ({ children }) => <>{children}</>,
           p: ({ children }) => (
             <p className="leading-relaxed text-foreground">{children}</p>
           ),
@@ -105,7 +140,7 @@ export default function MarkdownRenderer({
           ),
         }}
       >
-        {content}
+        {normalized}
       </ReactMarkdown>
     </div>
   );

@@ -29,29 +29,31 @@ In this lab, we will represent money using integers by separating dollars and ce
 
 ## Starter Code
 
-class Money:  
-    def __init__(self, dollars, cents):  
-        self.dollars = dollars  
-        self.cents = cents  
-        self.normalize()  
-​  
-    def normalize(self):  
-        if self.cents >= 100:  
-            self.dollars += self.cents // 100  
-            self.cents = self.cents % 100  
-​  
-    def __str__(self):  
-        return f"${self.dollars}.{self.cents:02d}"  
-​  
-def main():  
-    m1 = Money(3, 50)  
-    m2 = Money(2, 75)  
-​  
-    print("m1:", m1)  
-    print("m2:", m2)  
-​  
-if __name__ == "__main__":  
-    main()
+```python
+class Money:
+    def __init__(self, dollars, cents):
+        self.dollars = dollars
+        self.cents = cents
+        self.normalize()
+
+    def normalize(self):
+        if self.cents >= 100:
+            self.dollars += self.cents // 100
+            self.cents = self.cents % 100
+
+    def __str__(self):
+        return f"${self.dollars}.{self.cents:02d}"
+
+def main():
+    m1 = Money(3, 50)
+    m2 = Money(2, 75)
+
+    print("m1:", m1)
+    print("m2:", m2)
+
+if __name__ == "__main__":
+    main()
+```
 
 ## Part 1 – Overload `+` Operator (30 points)
 

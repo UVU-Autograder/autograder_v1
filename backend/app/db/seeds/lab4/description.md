@@ -15,23 +15,25 @@ In this lab, you will:
 - Raise exceptions to validate input values
     
 
-Starter Code
+## Starter Code
 
-You are provided with a `Book` class that includes two private attributes: `_title` and `_author`.
+You are provided with a `Book` class that includes two private attributes: `_title` and `_author`.
 
-class Book:  
-    def __init__(self, title, author):  
-        self._title = title  
-        self._author = author  
-​  
-    def __str__(self):  
-        return f"{self._title} by {self._author}"  
-​  
-def main():  
-    my_book = Book("Book", "Author")  
-​  
-if __name__ == "__main__":  
-    main()
+```python
+class Book:
+    def __init__(self, title, author):
+        self._title = title
+        self._author = author
+
+    def __str__(self):
+        return f"{self._title} by {self._author}"
+
+def main():
+    my_book = Book("Book", "Author")
+
+if __name__ == "__main__":
+    main()
+```
 
 
 ## Part 1 – `title` Property (35 points)

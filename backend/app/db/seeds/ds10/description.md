@@ -248,29 +248,29 @@ In this scenario, we show an abbreviated interaction with the menu because that 
 3: Ice Cream  
 4: Sunday  
 What would you like to add to the order? (1-4, Enter for done): 2  
-​  
+  
 Enter the type of cookie: Chocolate Chip Macadamia  
 Enter the quantity purchased: 5  
 Enter the price per dozen: 4.99  
-​  
+  
 1: Candy  
 2: Cookie  
 3: Ice Cream  
 4: Sunday  
 What would you like to add to the order? (1-4, Enter for done):4  
-​  
+  
 Enter the type of ice cream: Mint Chocolate Chip  
 Enter the number of scoops: 4  
 Enter the price per scoop: 0.89  
 Enter the kind of topping used: Sprinkles  
 Enter the price for the topping: 0.79  
-​  
+  
 1: Candy  
 2: Cookie  
 3: Ice Cream  
 4: Sunday  
 What would you like to add to the order? (1-4, Enter for done):  
-​  
+  
 1:CASH  
 2:CARD  
 3:PHONE  

@@ -92,6 +92,7 @@ def _seed_cs1400(
             title="Fundamentals of Programming",
             term="Fall 2026",
             default_concepts=["variables", "conditionals"],
+            use_allowed_concepts=True,
             instructor=staff_user,
         )
         db.add(course)
@@ -185,55 +186,79 @@ def _seed_cs1410(
     admin_role: Role,
 ) -> None:
     catalog = load_cs1410_catalog()
-    course = Course(
-        code="cs1410",
-        title="Object-Oriented Programming",
-        term="Fall 2026",
-        default_concepts=["variables", "conditionals", "loops", "functions"],
-        instructor=staff_user,
-    )
-    db.add(course)
-    db.flush()
+    course = db.scalar(select(Course).where(Course.code == "cs1410"))
+    if course is None:
+        course = Course(
+            code="cs1410",
+            title="Object-Oriented Programming",
+            term="Fall 2026",
+            default_concepts=["variables", "conditionals", "loops", "functions"],
+            use_allowed_concepts=True,
+            instructor=staff_user,
+        )
+        db.add(course)
+        db.flush()
 
-    modules = {}
+    modules = {m.name: m for m in course.modules}
     accumulated_concepts: set[str] = set(course.default_concepts or [])
     for code, module_data in catalog["modules"].items():
         for c in module_data.get("concepts", []):
             accumulated_concepts.add(c)
-        module = Module(
-            course=course,
-            name=module_data["name"],
-            concepts=list(accumulated_concepts),
-        )
-        db.add(module)
-        modules[code] = module
+        if module_data["name"] not in modules:
+            module = Module(
+                course=course,
+                name=module_data["name"],
+                concepts=list(accumulated_concepts),
+            )
+            db.add(module)
+            modules[module_data["name"]] = module
+        modules[code] = modules[module_data["name"]]
     db.flush()
 
-    section = Section(course=course, crn="67890")
-    db.add(section)
-    db.add(
-        StaffAccess(
-            user=staff_user,
-            role=admin_role,
-            course=course,
-            section=section,
+    section = db.scalar(select(Section).where(Section.course_id == course.id, Section.crn == "67890"))
+    if section is None:
+        section = Section(course=course, crn="67890")
+        db.add(section)
+        db.flush()
+
+    existing_staff_access = db.scalar(
+        select(StaffAccess).where(
+            StaffAccess.user_id == staff_user.id,
+            StaffAccess.course_id == course.id,
+            StaffAccess.section_id == section.id,
         )
     )
+    if existing_staff_access is None:
+        db.add(
+            StaffAccess(
+                user=staff_user,
+                role=admin_role,
+                course=course,
+                section=section,
+            )
+        )
 
+    existing_assignments = {a.slug: a for a in course.assignments}
     for assignment_data in catalog["assignments"]:
         slug = assignment_data["slug"]
-        assignment = Assignment(
-            course=course,
-            slug=slug,
-            title=assignment_data["title"],
-            language="python",
-            canvas_ref=f"canvas:synthetic:{slug}",
-            sandbox_enabled=True,
-            module=modules[assignment_data["module"]],
-            is_active=True,
-        )
-        db.add(assignment)
-        db.flush()
+        if slug in existing_assignments:
+            assignment = existing_assignments[slug]
+            assignment.title = assignment_data["title"]
+            assignment.module = modules[assignment_data["module"]]
+            assignment.sandbox_enabled = True
+        else:
+            assignment = Assignment(
+                course=course,
+                slug=slug,
+                title=assignment_data["title"],
+                language="python",
+                canvas_ref=f"canvas:synthetic:{slug}",
+                sandbox_enabled=True,
+                module=modules[assignment_data["module"]],
+                is_active=True,
+            )
+            db.add(assignment)
+            db.flush()
         seed_assignment_artifacts(db, assignment, slug)
 
 
@@ -257,9 +282,7 @@ def seed_development_data(db: Session) -> None:
         db.flush()
 
     _seed_cs1400(db, staff_user=staff_user, admin_role=roles["admin"])
-
-    if db.scalar(select(Course).where(Course.code == "cs1410")) is None:
-        _seed_cs1410(db, staff_user=staff_user, admin_role=roles["admin"])
+    _seed_cs1410(db, staff_user=staff_user, admin_role=roles["admin"])
 
     db.commit()
 

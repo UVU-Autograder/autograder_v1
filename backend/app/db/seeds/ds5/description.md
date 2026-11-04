@@ -140,7 +140,7 @@ Only `dessertshop.py` should have changed in Part 5 unless you needed to corre
 3: Ice Cream  
 4: Sundae  
 What would you like to add to the order? (1-4, Enter for done): 1  
-​Enter name of candy: Candy Corn  
+Enter name of candy: Candy Corn  
 Enter weight (lbs): 5  
 Enter price per pound: 4.99  
   
@@ -150,7 +150,7 @@ Enter price per pound: 4.99
 4: Sundae  
   
 What would you like to add to the order? (1-4, Enter for done): 3  
-​Enter the type of ice cream: Pistachio  
+Enter the type of ice cream: Pistachio  
 Enter the number of scoops: 2  
 Enter the price per scoop: 0.79  
   
@@ -159,7 +159,7 @@ Enter the price per scoop: 0.79
 3: Ice Cream  
 4: Sundae  
   
-​What would you like to add to the order? (1-4, Enter for done): 4  
+What would you like to add to the order? (1-4, Enter for done): 4  
 Enter the type of ice cream: Vanilla  
 Enter the number of scoops: 3  
 Enter the price per scoop: 0.69  
