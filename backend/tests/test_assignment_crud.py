@@ -1,9 +1,12 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.domains.assignments.models import Assignment
+from app.domains.courses.models import Course, Module
 from sqlalchemy import select
 
 
@@ -77,32 +80,82 @@ def test_create_assignment_success(client, instructor_token, db_session):
 
 def test_create_assignment_duplicate_slug_blocked(client, instructor_token):
     headers = {"Authorization": f"Bearer {instructor_token}"}
-
-    # Try to create using an existing slug "simple-python-functions"
+    url = "/staff/courses/cs1400/assignments/simple-python-functions/setup"
+    before = client.get(url, headers=headers).json()
     payload = {
         "slug": "simple-python-functions",
         "title": "Duplicate assignment",
+        "canvas_ref": "canvas:replacement",
+        "sandbox_enabled": False,
+        "module_id": None,
     }
     response = client.post(
         "/staff/courses/cs1400/assignments",
         json=payload,
         headers=headers,
     )
-    # The database already seeds "simple-python-functions" under "cs1400", so this will try to reactivate it.
-    # Wait! In seed.py, "simple-python-functions" is already active.
-    # Our reactivate logic check:
-    #   If it already exists in the course: reactivate is run.
-    #   Wait! If it is already active, reactivate is still run (which just updates its fields and sets is_active=True).
-    #   Is that desired? Or should we block duplicate active assignments?
-    #   Let's check: our service.py implementation:
-    #     if existing is not None:
-    #         # Reactivate and update metadata
-    #         existing.title = payload.title ...
-    #         return existing
-    #   So if it already exists, active or inactive, it updates it.
-    #   Let's check if the response status is 201.
+    assert response.status_code == 409
+    assert client.get(url, headers=headers).json() == before
+
+
+@pytest.mark.parametrize("module_source", ["other_course", "missing"])
+def test_create_assignment_rejects_invalid_module_without_creating_assignment(
+    client, instructor_token, db_session, module_source,
+):
+    headers = {"Authorization": f"Bearer {instructor_token}"}
+    module_id = 999999
+    if module_source == "other_course":
+        module_id = db_session.scalar(select(Module.id).join(Module.course).where(Course.code == "cs1410"))
+        assert module_id is not None
+    response = client.post(
+        "/staff/courses/cs1400/assignments",
+        json={"slug": "invalid-module", "title": "Invalid module", "module_id": module_id},
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert "module" in response.json()["detail"].lower()
+    assert db_session.scalar(select(Assignment).where(Assignment.slug == "invalid-module")) is None
+
+
+@pytest.mark.parametrize("module_source", ["other_course", "missing"])
+def test_update_assignment_rejects_invalid_module_before_changing_setup(
+    client, instructor_token, db_session, module_source,
+):
+    headers = {"Authorization": f"Bearer {instructor_token}"}
+    url = "/staff/courses/cs1400/assignments/simple-python-functions/setup"
+    before = client.get(url, headers=headers).json()
+    module_id = 999999
+    if module_source == "other_course":
+        module_id = db_session.scalar(select(Module.id).join(Module.course).where(Course.code == "cs1410"))
+        assert module_id is not None
+    response = client.put(
+        url,
+        json={"title": "Should not save", "config": before["config"], "module_id": module_id},
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert "module" in response.json()["detail"].lower()
+    assert client.get(url, headers=headers).json() == before
+
+
+def test_assignment_accepts_course_owned_module_and_can_clear_it(client, instructor_token, db_session):
+    headers = {"Authorization": f"Bearer {instructor_token}"}
+    module_id = db_session.scalar(select(Module.id).join(Module.course).where(Course.code == "cs1400"))
+    assert module_id is not None
+    response = client.post(
+        "/staff/courses/cs1400/assignments",
+        json={"slug": "owned-module", "title": "Owned module", "module_id": module_id},
+        headers=headers,
+    )
     assert response.status_code == 201
-    assert response.json()["title"] == "Duplicate assignment"
+    assert response.json()["module_id"] == module_id
+    response = client.put(
+        "/staff/courses/cs1400/assignments/owned-module/setup",
+        json={"config": response.json()["config"], "module_id": None},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["module_id"] is None
 
 
 def test_create_assignment_invalid_slug(client, instructor_token):

@@ -33,6 +33,8 @@ import {
   ConceptMetadata,
   StaffAssignmentSetup,
   AssignmentCreatePayload,
+  AssignmentListItem,
+  AssignmentListResponse,
 } from "@/features/assignments/types";
 
 
@@ -74,7 +76,7 @@ export function sleep(ms: number) {
 
 const inFlightAssignments = new Map<string, Promise<AssignmentsResponse>>();
 
-/** Staff assignment lists reuse the sandbox endpoint for a student-parity view. */
+/** Student discovery includes only sandbox-enabled assignments. */
 export function getAssignments(courseId: string) {
   const existing = inFlightAssignments.get(courseId);
   if (existing) {
@@ -87,6 +89,23 @@ export function getAssignments(courseId: string) {
     });
   inFlightAssignments.set(courseId, promise);
   return promise;
+}
+
+/** Teacher catalogs include sandbox-disabled assignments and use staff point fields. */
+export async function getStaffAssignments(courseId: string): Promise<AssignmentListResponse> {
+  const response = await apiClient.get<{
+    course_id: string;
+    assignments: (Omit<AssignmentListItem, "max_score"> & {
+      base_points: number; extra_credit_points: number;
+    })[];
+  }>(`/staff/courses/${courseId}/assignments`);
+  return {
+    ...response,
+    assignments: response.assignments.map((assignment) => ({
+      ...assignment,
+      max_score: assignment.base_points,
+    })),
+  };
 }
 
 export function getAssignment(courseId: string, assignmentId: string) {

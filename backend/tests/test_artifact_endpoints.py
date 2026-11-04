@@ -1,7 +1,14 @@
+import io
+import zipfile
 from unittest.mock import patch
 
 import pytest
 import app.domains.runs.tasks as runs_tasks
+
+from app.domains.assignments.engine import AssignmentSpecificationEngine
+
+
+ASSIGNMENT_URL = "/staff/courses/cs1400/assignments/simple-python-functions"
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +68,10 @@ def test_artifact_lifecycle(client, admin_headers):
     assert meta["artifact_key"] == "pytest_markers"
     assert meta["artifact_type"] == "support_file"
     assert meta["display_filename"] == "pytest.ini"
+    setup = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    assert setup["config"]["artifacts"]["pytest_markers"] == {
+        "type": "support_file", "display_filename": "pytest.ini",
+    }
 
     # 3. Download/Retrieve file content
     download_response = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=admin_headers)
@@ -72,6 +83,8 @@ def test_artifact_lifecycle(client, admin_headers):
     delete_response = client.delete("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=admin_headers)
     assert delete_response.status_code == 200
     assert delete_response.json()["status"] == "success"
+    setup = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    assert "pytest_markers" not in setup["config"]["artifacts"]
 
     # Try downloading deleted file - should return 404
     download_deleted = client.get("/staff/courses/cs1400/assignments/simple-python-functions/artifacts/pytest_markers", headers=admin_headers)
@@ -169,4 +182,140 @@ def test_artifact_physical_file_deletion(client, admin_headers, temp_artifact_st
     for file_path in files_after:
         if file_path.is_file():
             assert b"temporary test file content" not in file_path.read_bytes(), "Physical file was not unlinked on delete"
+
+
+def test_new_model_is_configured_and_used_for_validation_without_setup_save(
+    client, admin_headers, db_session,
+):
+    before = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    # Replace the seed model using the same create/save API as the browser editor.
+    assert client.delete(
+        f"{ASSIGNMENT_URL}/artifacts/model_solution", headers=admin_headers,
+    ).status_code == 200
+    for source in (b"def example(): return 1\n", b"def example(): return 2\n"):
+        response = client.post(
+            f"{ASSIGNMENT_URL}/artifacts",
+            data={"artifact_key": "solution_new", "artifact_type": "model_solution"},
+            files={"file": ("student_functions.py", source, "text/plain")},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        setup = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+        assert setup["config"]["artifacts"]["solution_new"] == {
+            "type": "model_solution", "display_filename": "student_functions.py",
+        }
+        assert "model_solution" not in setup["config"]["artifacts"]
+        assert setup["inventory_status"] == "stale"
+        assert {k: v for k, v in setup["config"].items() if k != "artifacts"} == {
+            k: v for k, v in before["config"].items() if k != "artifacts"
+        }
+        db_session.expire_all()
+        bundle = AssignmentSpecificationEngine().prepare_model_solution_bundle(
+            db_session, "cs1400", "simple-python-functions",
+        )
+        with zipfile.ZipFile(io.BytesIO(bundle["zip_data"])) as archive:
+            assert archive.read("student_functions.py") == source
+        with patch("app.domains.runs.tasks.validate_assignment_model_solution.delay") as queue:
+            response = client.post(f"{ASSIGNMENT_URL}/validate-model-solution", headers=admin_headers)
+            assert response.status_code == 200
+            queue.assert_called_once_with("cs1400", "simple-python-functions")
+
+
+def test_delete_removes_grading_reference_without_setup_save(client, admin_headers):
+    response = client.delete(f"{ASSIGNMENT_URL}/artifacts/model_solution", headers=admin_headers)
+    assert response.status_code == 200
+    setup = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    assert "model_solution" not in setup["config"]["artifacts"]
+    assert all(artifact["artifact_key"] != "model_solution" for artifact in setup["artifacts"])
+    with patch("app.domains.runs.tasks.validate_assignment_model_solution.delay") as queue:
+        response = client.post(f"{ASSIGNMENT_URL}/validate-model-solution", headers=admin_headers)
+        assert response.status_code == 400
+        queue.assert_not_called()
+
+
+@pytest.mark.parametrize("filename, zipped", [("solution.ZIP", False), ("main.py", True)])
+def test_model_zip_upload_is_rejected_without_writing_anything(
+    client, admin_headers, temp_artifact_storage, filename, zipped,
+):
+    content = b"not a usable model"
+    if zipped:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("student_functions.py", b"pass\n")
+        content = buffer.getvalue()
+    before = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    files_before = set(temp_artifact_storage.iterdir())
+    response = client.post(
+        f"{ASSIGNMENT_URL}/artifacts",
+        data={"artifact_key": "solution_zip", "artifact_type": "model_solution"},
+        files={"file": (filename, content, "application/octet-stream")},
+        headers=admin_headers,
+    )
+    assert response.status_code == 400
+    assert "individual" in response.json()["detail"]
+    after = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    assert after["artifacts"] == before["artifacts"]
+    assert after["config"] == before["config"]
+    assert set(temp_artifact_storage.iterdir()) == files_before
+
+
+@pytest.mark.parametrize("artifact_type", ["support_file", "model_solution"])
+def test_artifact_key_cannot_overwrite_another_type(
+    client, admin_headers, temp_artifact_storage, artifact_type,
+):
+    before = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    original = client.get(f"{ASSIGNMENT_URL}/artifacts/assignment_tests", headers=admin_headers).content
+    files_before = set(temp_artifact_storage.iterdir())
+    response = client.post(
+        f"{ASSIGNMENT_URL}/artifacts",
+        data={"artifact_key": "assignment_tests", "artifact_type": artifact_type},
+        files={"file": ("replacement.py", b"not the test suite\n", "text/plain")},
+        headers=admin_headers,
+    )
+    assert response.status_code == 409
+    assert "different type" in response.json()["detail"]
+    after = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers)
+    assert after.status_code == 200
+    assert after.json()["config"] == before["config"]
+    assert after.json()["artifacts"] == before["artifacts"]
+    assert client.get(f"{ASSIGNMENT_URL}/artifacts/assignment_tests", headers=admin_headers).content == original
+    assert set(temp_artifact_storage.iterdir()) == files_before
+
+
+def test_deleted_required_test_slot_cannot_be_replaced_by_another_type(
+    client, admin_headers, temp_artifact_storage,
+):
+    assert client.delete(f"{ASSIGNMENT_URL}/artifacts/assignment_tests", headers=admin_headers).status_code == 200
+    before = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    files_before = set(temp_artifact_storage.iterdir())
+    response = client.post(
+        f"{ASSIGNMENT_URL}/artifacts",
+        data={"artifact_key": "assignment_tests", "artifact_type": "support_file"},
+        files={"file": ("helper.py", b"pass\n", "text/plain")},
+        headers=admin_headers,
+    )
+    assert response.status_code == 409
+    after = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers)
+    assert after.status_code == 200
+    assert after.json()["config"] == before["config"]
+    assert set(temp_artifact_storage.iterdir()) == files_before
+
+
+def test_deleting_only_configured_artifact_keeps_setup_readable(client, admin_headers, db_session):
+    from app.domains.assignments.service import get_assignment_for_course, upsert_assignment_config
+
+    assignment = get_assignment_for_course(db_session, "cs1400", "simple-python-functions")
+    config = dict(assignment.config.config)
+    config["bundle"] = {**config["bundle"], "language": "cpp"}
+    config["artifacts"] = {"model_solution": config["artifacts"]["model_solution"]}
+    assignment.language = "cpp"
+    upsert_assignment_config(db_session, assignment, config)
+    db_session.commit()
+    before = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers).json()
+    response = client.delete(f"{ASSIGNMENT_URL}/artifacts/model_solution", headers=admin_headers)
+    assert response.status_code == 409
+    after = client.get(f"{ASSIGNMENT_URL}/setup", headers=admin_headers)
+    assert after.status_code == 200
+    assert after.json()["config"] == before["config"]
+    assert after.json()["artifacts"] == before["artifacts"]
 

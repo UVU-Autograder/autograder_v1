@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlayIcon } from "lucide-react";
-import { AssignmentsDetails } from "@/features/assignments/types";
+import { AssignmentListItem } from "@/features/assignments/types";
 
 type ViewMode = "sandbox" | "staff";
 
@@ -18,7 +18,7 @@ export default function AssignmentCard({
   courseId,
   mode,
 }: {
-  assignment: AssignmentsDetails;
+  assignment: AssignmentListItem;
   courseId: string;
   mode: ViewMode;
 }) {

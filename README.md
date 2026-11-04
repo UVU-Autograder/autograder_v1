@@ -15,7 +15,7 @@ The UVU Autograder is a powerful interface for both students and teachers workin
 
 ### For instructors and assistants
 
-- **Build assignments:** Set instructions, required files, tests, point values, manual criteria, and extra credit. Setup checks flag missing files and mismatched tests. Run your reference solution to verify your test cases and catch problems.
+- **Build assignments:** Set instructions, required files, tests, point values, manual criteria, and extra credit. Instructors can create and edit reference solution files in the browser or upload existing files. Setup checks flag missing files and mismatched tests. Run your reference solution to verify your test cases and catch problems.
 - **Organize course material:** Group assignments into modules and set the concepts students should use at each stage.
 - **Grade Canvas submissions:** Upload a Canvas ZIP for your section. The platform groups student files, flags unrecognized entries, and queues the batch.
 - **Review the results:** View class score summaries, filter submissions, inspect code and file previews, and add comments and manual scores for subjective requirements.

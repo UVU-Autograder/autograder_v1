@@ -1,7 +1,7 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AssignmentEditorProvider } from "../assignment-editor-context";
+import { AssignmentEditorProvider, useAssignmentEditor } from "../assignment-editor-context";
 import { AssignmentEditor } from "../assignment-editor";
 import { apiClient } from "@/lib/api-client";
 import type { StaffArtifact } from "@/features/assignments/types";
@@ -12,7 +12,7 @@ vi.mock("@/features/assignments/api", () => ({
   deleteStaffAssignment: vi.fn(),
 }));
 vi.mock("@/lib/api-client", () => ({
-  apiClient: { get: vi.fn(), getText: vi.fn(), postForm: vi.fn() },
+  apiClient: { get: vi.fn(), getText: vi.fn(), postForm: vi.fn(), post: vi.fn() },
 }));
 vi.mock("../metadata-section", () => ({ MetadataSection: () => null }));
 vi.mock("../scoring-rules-section", () => ({ ScoringRulesSection: () => null }));
@@ -28,10 +28,16 @@ vi.mock("@/components/monaco-editor", () => ({
 const artifactsUrl = "/staff/courses/cs1410/assignments/lab1/artifacts";
 let artifacts: StaffArtifact[];
 
+function UnsavedChangeControl() {
+  const { setTitle } = useAssignmentEditor();
+  return <button onClick={() => setTitle("Unsaved title")}>Change assignment title</button>;
+}
+
 async function openPage() {
   render(
     <AssignmentEditorProvider courseId="cs1410" assignmentId="lab1">
       <AssignmentEditor />
+      <UnsavedChangeControl />
     </AssignmentEditorProvider>,
   );
   const tab = await screen.findByRole("tab", { name: "Model Solution" });
@@ -52,6 +58,7 @@ beforeEach(() => {
     return { title: "Lab 1", artifacts, config: { bundle: { entrypoint: "main.py" } } };
   });
   vi.mocked(apiClient.getText).mockResolvedValue("# existing source\n");
+  vi.mocked(apiClient.post).mockResolvedValue({});
   vi.mocked(apiClient.postForm).mockImplementation(async (_path, form) => {
     const file = form.get("file") as File;
     const key = String(form.get("artifact_key"));
@@ -61,7 +68,7 @@ beforeEach(() => {
     return { data: {}, response: new Response() };
   });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("model solution authoring", () => {
   it("creates, saves, and reopens a solution without fetching a nonexistent file", async () => {
@@ -95,6 +102,63 @@ describe("model solution authoring", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(apiClient.postForm).not.toHaveBeenCalled();
+  });
+
+  it("rejects ZIP uploads before sending them to the server", async () => {
+    await openPage();
+    const input = document.querySelector('input[type="file"]')!;
+    fireEvent.change(input, {
+      target: { files: [new File(["archive"], "solution.ZIP", { type: "application/zip" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload File" }));
+    await screen.findByText(/ZIP.*individual/);
+    expect(apiClient.postForm).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite another file with the same basename and a different extension", async () => {
+    artifacts = [{ artifact_key: "solution_main", artifact_type: "model_solution", display_filename: "main.py", size_bytes: 10 }];
+    await openPage();
+    fireEvent.change(screen.getByLabelText("Upload Solution File"), {
+      target: { files: [new File(["notes"], "main.txt")] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload File" }));
+    await waitFor(() => expect(apiClient.postForm).toHaveBeenCalled());
+    expect(vi.mocked(apiClient.postForm).mock.calls[0][1].get("artifact_key")).not.toBe("solution_main");
+    await screen.findByText("main.txt");
+    expect(screen.getByText("main.py")).toBeTruthy();
+  });
+
+  it("reuses the key and type when replacing an existing file by filename", async () => {
+    artifacts = [{ artifact_key: "seed_support", artifact_type: "support_file", display_filename: "data.txt", size_bytes: 10 }];
+    await openPage();
+    fireEvent.change(screen.getByLabelText("Upload Solution File"), {
+      target: { files: [new File(["updated"], "data.txt")] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload File" }));
+    await waitFor(() => expect(apiClient.postForm).toHaveBeenCalled());
+    const form = vi.mocked(apiClient.postForm).mock.calls[0][1];
+    expect(form.get("artifact_key")).toBe("seed_support");
+    expect(form.get("artifact_type")).toBe("support_file");
+  });
+
+  it("reports a validation polling failure and enables retry instead of staying stuck", async () => {
+    await openPage();
+    vi.useFakeTimers();
+    vi.mocked(apiClient.get).mockRejectedValueOnce(new Error("Connection lost"));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Test Model Solution" })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(screen.getByText(/Could not check model solution status/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Test Model Solution" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("requires saving setup changes before validating the reference solution", async () => {
+    await openPage();
+    fireEvent.click(screen.getByRole("button", { name: "Change assignment title" }));
+    await screen.findByText("Save assignment changes before testing the model solution.");
+    const button = screen.getByRole("button", { name: "Test Model Solution" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(apiClient.post).not.toHaveBeenCalled();
   });
 
   it.each(["", "../main.py", "photo.png", "conftest.py"])("rejects invalid or non-text filenames: %s", async (filename) => {

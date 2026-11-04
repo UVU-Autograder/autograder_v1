@@ -16,6 +16,7 @@ from app.domains.assignments.models import (
     file_storage_ref_to_path,
 )
 from app.domains.assignments.schemas import (
+    ArtifactConfig,
     ArtifactMetadata,
     AssignmentConfigV1,
     AssignmentCreate,
@@ -27,7 +28,23 @@ from app.domains.assignments.schemas import (
     StaffAssignmentSetupUpdate,
     pytest_marker_for_key,
 )
-from app.domains.courses.models import Course
+from app.domains.courses.models import Course, Module
+
+
+class ArtifactConflictError(ValueError):
+    """A file mutation would replace an artifact's role or invalidate setup."""
+
+
+class AssignmentConflictError(ValueError):
+    """An active assignment already owns the requested course slug."""
+
+
+def _validate_assignment_module(db: Session, course_id: int, module_id: int | None) -> None:
+    if module_id is None:
+        return
+    module = db.scalar(select(Module).where(Module.id == module_id, Module.course_id == course_id))
+    if module is None:
+        raise ValueError("Module not found in this course.")
 
 
 def validate_config(config: dict) -> AssignmentConfigV1:
@@ -134,6 +151,9 @@ def update_staff_setup(
     assignment = get_assignment_for_course(db, course_code, assignment_slug)
     if assignment is None:
         return None
+
+    if "module_id" in payload.model_fields_set:
+        _validate_assignment_module(db, assignment.course_id, payload.module_id)
 
     if payload.title is not None:
         assignment.title = payload.title
@@ -260,6 +280,23 @@ def list_artifacts(
     ]
 
 
+def _sync_artifact_reference(
+    assignment: Assignment, key: str, reference: ArtifactConfig | None,
+) -> None:
+    """Persist file references with the file mutation, preserving other setup fields."""
+    if assignment.config is None:
+        return
+    config = assignment.config.config
+    references = dict(config.get("artifacts") or {})
+    if reference is None:
+        references.pop(key, None)
+    else:
+        references[key] = reference.model_dump(mode="json")
+    # Assign a new JSON object so SQLAlchemy tracks the change.
+    assignment.config.config = {**config, "artifacts": references}
+    assignment.config.version += 1
+
+
 def save_artifact(
     db: Session,
     course_code: str,
@@ -278,6 +315,20 @@ def save_artifact(
     if assignment is None:
         return None
 
+    artifact = db.scalar(
+        select(AssignmentArtifact).where(
+            AssignmentArtifact.assignment_id == assignment.id,
+            AssignmentArtifact.artifact_key == artifact_key,
+        )
+    )
+    configured = (assignment.config.config.get("artifacts") or {}).get(artifact_key) if assignment.config else None
+    existing_type = artifact.artifact_type if artifact else (configured or {}).get("type")
+    if existing_type is not None and existing_type != artifact_type:
+        raise ArtifactConflictError(
+            "This artifact key already belongs to a different type. Use a new artifact key."
+        )
+
+    reference = ArtifactConfig.model_validate({"type": artifact_type, "display_filename": display_filename})
     settings = get_settings()
     storage_dir = settings.artifact_storage_path
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -293,14 +344,7 @@ def save_artifact(
     # Write file content
     file_path.write_bytes(file_content)
 
-    # Find existing or create new artifact metadata
-    artifact = db.scalar(
-        select(AssignmentArtifact).where(
-            AssignmentArtifact.assignment_id == assignment.id,
-            AssignmentArtifact.artifact_key == artifact_key,
-        )
-    )
-
+    # Update existing or create new artifact metadata.
     old_ref = None
     if artifact is None:
         artifact = AssignmentArtifact(
@@ -323,6 +367,7 @@ def save_artifact(
         artifact.size_bytes = size_bytes
         artifact.sha256 = sha256
 
+    _sync_artifact_reference(assignment, artifact_key, reference)
     db.commit()
     db.refresh(artifact)
 
@@ -366,6 +411,19 @@ def delete_artifact(
     if artifact is None:
         return False
 
+    references = (assignment.config.config.get("artifacts") or {}) if assignment.config else {}
+    if artifact.artifact_type != "pytest_file" and set(references) == {artifact_key}:
+        raise ArtifactConflictError(
+            "Cannot delete the only configured artifact. Add a replacement file first."
+        )
+
+    # The primary pytest slot remains configured when its file is missing, so
+    # setup stays editable and preflight can report the required missing suite.
+    if artifact.artifact_type != "pytest_file":
+        _sync_artifact_reference(assignment, artifact_key, None)
+    db.delete(artifact)
+    db.commit()
+
     if artifact.storage_ref and artifact.storage_ref.startswith("file://"):
         try:
             path = resolve_storage_ref(artifact.storage_ref)
@@ -378,8 +436,6 @@ def delete_artifact(
                 exc,
             )
 
-    db.delete(artifact)
-    db.commit()
     return True
 
 
@@ -559,6 +615,10 @@ def create_assignment(
             Assignment.slug == payload.slug,
         )
     )
+
+    if existing is not None and existing.is_active:
+        raise AssignmentConflictError("An active assignment already uses this slug. Choose a different slug.")
+    _validate_assignment_module(db, course.id, payload.module_id)
 
     if existing is not None:
         # Reactivate and update metadata

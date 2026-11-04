@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { PageEmpty } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
-import { AssignmentsResponse } from "@/features/assignments/types";
+import { AssignmentListResponse } from "@/features/assignments/types";
 import AssignmentCard from "@/features/assignments/assignment-card";
 
 type ViewMode = "sandbox" | "staff";
@@ -11,7 +11,7 @@ export default function AssignmentsPage({
   data,
   mode,
 }: {
-  data: AssignmentsResponse;
+  data: AssignmentListResponse;
   mode: ViewMode;
 }) {
   const coursesHref = mode === "sandbox" ? "/sandbox" : "/staff/courses";

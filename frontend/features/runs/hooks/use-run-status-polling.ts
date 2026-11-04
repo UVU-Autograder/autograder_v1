@@ -84,13 +84,13 @@ export function useRunStatusPolling({
           const detailsData = await apiClient.get<RunDetailsResponse>(
             `${basePath}/details`
           );
-          if (!active) return;
+          if (!active || summaryRef.current?.status !== summaryData.status) return;
           setDetails({
             ...detailsData,
             students: sortStudentsByName(detailsData.students),
           });
         } catch {
-          if (!active) return;
+          if (!active || summaryRef.current?.status !== summaryData.status) return;
           if (summaryData.status === 'queue' || summaryData.status === 'run') {
             setDetails(null);
           }
@@ -119,7 +119,27 @@ export function useRunStatusPolling({
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
         const value = await apiClient.get<RunSummary>(basePath);
-        if (active) acceptSummary(value);
+        const needsFinalDetails =
+          (value.status === 'complete' || value.status === 'failure') &&
+          reviewAvailable(value) && details?.status !== value.status;
+        let finalDetails: RunDetailsResponse | null = null;
+        if (needsFinalDetails) {
+          try {
+            finalDetails = await apiClient.get<RunDetailsResponse>(
+              `${basePath}/details`
+            );
+          } catch {
+            // Summary still advances; a later poll retries details.
+          }
+        }
+        if (!active) return;
+        acceptSummary(value);
+        if (finalDetails) {
+          setDetails({
+            ...finalDetails,
+            students: sortStudentsByName(finalDetails.students),
+          });
+        }
       } catch {
         /* Handled gracefully */
       }
@@ -171,7 +191,7 @@ export function useRunStatusPolling({
       }
       window.removeEventListener('official-review-expired', expired);
     };
-  }, [basePath, summary, acceptSummary, clearReview]);
+  }, [basePath, summary, details?.status, acceptSummary, clearReview, setDetails]);
 
   // Adaptive run polling when in queue or run
   useEffect(() => {
@@ -183,13 +203,21 @@ export function useRunStatusPolling({
     let cancelled = false;
 
     const refreshFinished = async (state: string) => {
-      const [summaryData, detailsData] = await Promise.all([
-        apiClient.get<RunSummary>(basePath),
-        state === 'complete'
-          ? apiClient.get<RunDetailsResponse>(`${basePath}/details`)
-          : Promise.resolve(null),
-      ]);
-      if (cancelled) return;
+      // Fetch terminal details before flipping summary off queue/run so effect
+      // cleanup cannot discard an already-completed details response.
+      const summaryData = await apiClient.get<RunSummary>(basePath);
+      let detailsData: RunDetailsResponse | null = null;
+      if (state === 'complete' || state === 'failure') {
+        try {
+          detailsData = await apiClient.get<RunDetailsResponse>(
+            `${basePath}/details`
+          );
+        } catch {
+          // Periodic polling retries terminal details if this first fetch races.
+        }
+      }
+      // Apply after fetches complete. Skipping on cancelled can drop a successful
+      // terminal details response when another poll advances summary first.
       acceptSummary(summaryData);
       if (detailsData) {
         setDetails({
@@ -210,7 +238,6 @@ export function useRunStatusPolling({
             statusData.state === 'complete' ||
             statusData.state === 'failure'
           ) {
-            cancelled = true;
             await refreshFinished(statusData.state);
             return;
           }

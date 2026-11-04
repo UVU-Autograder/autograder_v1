@@ -51,6 +51,7 @@ export type FileRequirementConfig = {
 export type BundleConfig = {
     entrypoint: string;
     file_requirements?: FileRequirementConfig[];
+    language?: string;
 };
 
 export type ArtifactConfig = {
@@ -106,6 +107,15 @@ export type Assignment = AssignmentsDetails & {
 export type AssignmentsResponse = {
     course_id: string;
     assignments: AssignmentsDetails[];
+};
+
+export type AssignmentListItem = Pick<AssignmentsDetails,
+    "id" | "course_id" | "title" | "language" | "sandbox_enabled" | "max_score" | "module_name"
+>;
+
+export type AssignmentListResponse = {
+    course_id: string;
+    assignments: AssignmentListItem[];
 };
 
 export type RunState = "queue" | "run" | "complete" | "failure";

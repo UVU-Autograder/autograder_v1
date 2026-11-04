@@ -45,6 +45,8 @@ export function ModelSolutionSection() {
     setErrorMessage,
     setSuccessMessage,
     entrypoint,
+    dirty,
+    saving,
   } = useAssignmentEditor();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -105,8 +107,14 @@ export function ModelSolutionSection() {
         if (data.status !== "queue" && data.status !== "run") {
           clearInterval(timer);
         }
-      } catch {
+      } catch (error) {
         clearInterval(timer);
+        setValidation({
+          status: "failure",
+          errors: [`Could not check model solution status. ${error instanceof Error ? error.message : "Try testing again."}`],
+          score: 0,
+          max_score: 0,
+        });
       }
     };
 
@@ -115,6 +123,7 @@ export function ModelSolutionSection() {
   }, [validation.status, courseId, assignmentId]);
 
   const triggerValidation = async () => {
+    if (dirty || saving) return;
     setValidation({
       status: "queue",
       errors: [],
@@ -142,7 +151,11 @@ export function ModelSolutionSection() {
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
-      setErrorMessage("Please select a file or ZIP archive to upload.");
+      setErrorMessage("Please select a solution file to upload.");
+      return;
+    }
+    if (selectedFile.name.toLowerCase().endsWith(".zip")) {
+      setErrorMessage("ZIP model solution uploads are not supported. Upload individual solution files instead.");
       return;
     }
 
@@ -150,17 +163,19 @@ export function ModelSolutionSection() {
     setErrorMessage(null);
     try {
       const filename = selectedFile.name;
-      const baseKey = filename
-        .replace(/\.[^/.]+$/, "")
-        .replace(/[^a-zA-Z0-9_]/g, "_");
-      const artifactKey = filename.endsWith(".zip")
-        ? `solution_archive_${baseKey}`
-        : `solution_${baseKey}`;
+      const existing = artifacts.find((artifact) => artifact.display_filename === filename);
+      if (existing?.artifact_type === "pytest_file") {
+        throw new Error("Edit the test suite on Tests & Rubric.");
+      }
+      const artifactKey = existing?.artifact_key || makeUniqueKey(
+        `solution_${slugifyKey(filename)}`,
+        artifacts.map((artifact) => artifact.artifact_key),
+      );
 
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append("artifact_key", artifactKey);
-      formData.append("artifact_type", "model_solution");
+      formData.append("artifact_type", existing?.artifact_type || "model_solution");
 
       await apiClient.postForm(
         `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
@@ -252,10 +267,11 @@ export function ModelSolutionSection() {
             className="flex flex-col sm:flex-row gap-3 items-end"
           >
             <div className="space-y-1 grow">
-              <Label className="pl-0 text-xs">
-                Upload Solution File or ZIP Archive
+              <Label htmlFor="solution-upload" className="pl-0 text-xs">
+                Upload Solution File
               </Label>
               <Input
+                id="solution-upload"
                 type="file"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                 className="text-xs cursor-pointer"
@@ -266,6 +282,9 @@ export function ModelSolutionSection() {
               {uploading ? "Uploading..." : "Upload File"}
             </Button>
           </form>
+          <p className="text-xs text-muted-foreground">
+            Upload files individually. ZIP archives are not supported.
+          </p>
 
           {/* Solution Files List */}
           <div className="space-y-3 pt-2">
@@ -349,7 +368,7 @@ export function ModelSolutionSection() {
           <Button
             onClick={triggerValidation}
             disabled={
-              validation.status === "queue" || validation.status === "run"
+              dirty || saving || validation.status === "queue" || validation.status === "run"
             }
             size="sm"
           >
@@ -360,6 +379,11 @@ export function ModelSolutionSection() {
           </Button>
         </CardHeader>
         <CardContent className="px-4 py-0">
+          {(dirty || saving) && (
+            <p className="text-xs text-muted-foreground">
+              Save assignment changes before testing the model solution.
+            </p>
+          )}
           {validation.status !== "idle" && (
             <div className="space-y-3 rounded-lg border border-border bg-card p-3 text-card-foreground">
               <div className="flex items-center justify-end">

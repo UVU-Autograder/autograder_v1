@@ -218,6 +218,7 @@ export function AssignmentEditorProvider({
   // Snapshot of last loaded/saved setup so reverting clears "Unsaved changes".
   const savedSnapshotRef = useRef<string | null>(null);
   const pendingBaselineRef = useRef(true);
+  const loadedConfigRef = useRef<AssignmentConfigV1 | null>(null);
 
   const buildSnapshot = useCallback(() => {
     return JSON.stringify({
@@ -315,7 +316,7 @@ export function AssignmentEditorProvider({
         setTestSuiteCode(text);
       } catch {
         setTestSuiteCode(
-          `import pytest\n\n@pytest.mark.ag_main\ndef test_main_function():\n    assert True\n`
+          `import pytest\n\n# Prefer ordinary imports of student modules, e.g. \`import main\`.\n# Use View Python helpers only for collisions, import-time input(), or long CLI mocks.\n\n\n@pytest.mark.ag_main\ndef test_main_function():\n    import main\n\n    assert hasattr(main, "__name__"), "Expected the submission module to import cleanly."\n`
         );
       } finally {
         setLoadingTestSuiteCode(false);
@@ -323,6 +324,7 @@ export function AssignmentEditorProvider({
       setTestSuiteDirty(false);
 
       const cfg = setupData.config || ({} as AssignmentConfigV1);
+      loadedConfigRef.current = cfg;
       const bundle = cfg.bundle || { entrypoint: "main.py" };
       setEntrypoint(bundle.entrypoint || "main.py");
 
@@ -655,7 +657,8 @@ export function AssignmentEditorProvider({
           (a) => a.artifact_type === "pytest_file" || a.artifact_key === "assignment_tests"
         );
         const artifactKey = pytestArtifact?.artifact_key || "assignment_tests";
-        const file = new File([testSuiteCode], "tests.py", { type: "text/plain" });
+        const filename = pytestArtifact?.display_filename || "tests.py";
+        const file = new File([testSuiteCode], filename, { type: "text/plain" });
         const formData = new FormData();
         formData.append("file", file);
         formData.append("artifact_key", artifactKey);
@@ -679,8 +682,8 @@ export function AssignmentEditorProvider({
         };
       });
 
-      if (!artifactsDict["assignment_tests"]) {
-        artifactsDict["assignment_tests"] = { type: "pytest_file", display_filename: "test_assignment.py" };
+      if (language === "python" && !Object.values(artifactsDict).some((artifact) => artifact.type === "pytest_file")) {
+        artifactsDict["assignment_tests"] = { type: "pytest_file", display_filename: "tests.py" };
       }
 
 
@@ -692,16 +695,20 @@ export function AssignmentEditorProvider({
       const finalDescription = trimmedDescription === "" ? null : trimmedDescription;
 
       const config: AssignmentConfigV1 = {
+        ...loadedConfigRef.current,
         description: finalDescription,
         bundle: {
+          ...loadedConfigRef.current?.bundle,
           entrypoint,
           file_requirements: fileRequirements,
+          language,
         },
         artifacts: artifactsDict,
         scoring_items: scoringItems,
         rubric_groups: derivedRubricGroups,
         dependencies,
         concepts: {
+          ...loadedConfigRef.current?.concepts,
           denylist: conceptDenylist,
         },
       };

@@ -36,13 +36,15 @@ INTERNAL_BACKEND_URL=http://10.115.20.200/api
 NEXT_PUBLIC_AUTH_PROVIDER=microsoft
 ```
 
-Then run `npm --prefix frontend run dev` and open `http://localhost:3000`. Restart after env edits; rebuild when using a production build.
+Then run `npm --prefix frontend run dev:live` and open `http://localhost:3000`. Restart after env edits; rebuild when using a production build. The normal `dev` command defaults to simulated responses even when an on-prem API URL is configured. A stored browser `mock_api` override can also select mock mode; confirm the **Mock API** badge is absent when demonstrating the live backend.
 
 Both your browser and Next.js server must reach the backend. Confirm CORS allows your exact local origin.
 
 Staff SSO needs approved frontend `AZURE_AD_CLIENT_ID`, `AZURE_AD_TENANT_ID` and applicable `AZURE_AD_CLIENT_SECRET` settings, plus a registered `http://localhost:3000/api/auth/microsoft/callback` matching [Entra's redirect rules](https://learn.microsoft.com/en-us/entra/identity-platform/reply-url). Match the backend's approved auth mode; keep secrets out of `NEXT_PUBLIC_*` and Git. Public sandbox access does not need staff SSO.
 
 These are real shared-host requests: uploads consume quotas and staff edits change shared setup. Use a designated synthetic test course/section.
+
+For a live presentation, check `/api/health` and `/sandbox` through the host's Nginx URL first. Successful HTTP responses establish web/API reachability; they do not verify Judge0 execution, queue workers, AI availability, or staff sign-in. Use a designated synthetic assignment for a reference validation and sandbox submission before presenting. Assignment file or test edits require reference revalidation before intake becomes ready again. Local test results and checkout changes do not establish what is running on the host; follow [deployment and rollout guidance](guides/workstation.md) to update services and verify the deployed revision.
 
 ## Additional checks
 
