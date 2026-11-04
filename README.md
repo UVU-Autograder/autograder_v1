@@ -25,7 +25,7 @@ The UVU Autograder is a powerful interface for both students and teachers workin
 
 - **Manage access:** Create or update courses and sections, add staff, and control their access.
 - **University sign-in:** Microsoft sign-in identifies staff, while assigned roles determine access.
-- **Manage workload:** Monitor usage, queues, and errors. Background workers limit simultaneous grading, recover interrupted jobs, and handle repeated requests. Batches support up to 200 submissions per upload.
+- **Manage workload:** Monitor queues, errors, and sandbox activity dashboards. Background workers limit simultaneous grading, recover interrupted jobs, and handle repeated requests. Batches support up to 200 submissions per upload.
 
 ## Privacy and security
 
@@ -61,5 +61,4 @@ Start with the [running guide](docs/running.md) for access, setup, and testing. 
 - [Privacy requirements](docs/considerations.md)
 - [Hosting and maintenance](docs/guides/workstation.md)
 - [AI development](docs/guides/ai.md)
-- [Autograding platform research](docs/research/autograding-platforms.md)
 - [Open issues](https://github.com/UVU-Autograder/autograder_v1/issues)

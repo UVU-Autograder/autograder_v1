@@ -28,6 +28,8 @@ export function createAdminCourse(payload: {
     title: string;
     term: string;
     default_concepts?: string[];
+    use_allowed_concepts?: boolean;
+    visibility?: string;
     instructor_email?: string | null;
     instructor_name?: string | null;
     ia_email?: string | null;
@@ -43,6 +45,8 @@ export function updateAdminCourse(
         title?: string;
         term?: string;
         default_concepts?: string[];
+        use_allowed_concepts?: boolean;
+        visibility?: string;
         is_active?: boolean;
         instructor_id?: number | null;
         ia_id?: number | null;

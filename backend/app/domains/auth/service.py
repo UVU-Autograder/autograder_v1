@@ -198,6 +198,17 @@ def revoke_staff_access(db: Session, access_id: int) -> None:
 
 # --- Course & Section Admin Service ---
 
+def _normalize_course_visibility(val: str | None) -> str:
+    if not val:
+        return "everyone"
+    clean = val.strip().lower()
+    if clean in ("everyone", "public", "all"):
+        return "everyone"
+    if clean in ("teachers_admins", "staff_only", "teachers_only", "admins_only", "private"):
+        return "teachers_admins"
+    return clean
+
+
 def list_admin_courses(db: Session) -> list[dict]:
     """Retrieve course administrative summaries."""
     courses = db.scalars(select(Course).order_by(Course.code)).all()
@@ -221,6 +232,8 @@ def list_admin_courses(db: Session) -> list[dict]:
             "ia_id": c.ia_id,
             "ia_email": c.ia.email if c.ia else None,
             "default_concepts": c.default_concepts or [],
+            "use_allowed_concepts": getattr(c, "use_allowed_concepts", True),
+            "visibility": getattr(c, "visibility", "everyone"),
             "section_count": section_count,
             "assignment_count": assignment_count,
         })
@@ -233,6 +246,8 @@ def create_admin_course(
     title: str,
     term: str,
     default_concepts: list[str],
+    use_allowed_concepts: bool = True,
+    visibility: str = "everyone",
     instructor_email: str | None = None,
     instructor_name: str | None = None,
     ia_email: str | None = None,
@@ -252,6 +267,8 @@ def create_admin_course(
         title=title.strip(),
         term=term.strip(),
         default_concepts=default_concepts,
+        use_allowed_concepts=use_allowed_concepts,
+        visibility=_normalize_course_visibility(visibility),
         is_active=True,
     )
     db.add(course)
@@ -283,6 +300,8 @@ def create_admin_course(
         "ia_id": course.ia_id,
         "ia_email": course.ia.email if course.ia else None,
         "default_concepts": course.default_concepts or [],
+        "use_allowed_concepts": getattr(course, "use_allowed_concepts", True),
+        "visibility": getattr(course, "visibility", "everyone"),
         "section_count": 0,
         "assignment_count": 0,
     }
@@ -311,6 +330,14 @@ def update_admin_course(db: Session, course_id: int, payload_dict: dict) -> dict
         course.term = payload_dict["term"].strip()
     if payload_dict.get("default_concepts") is not None:
         course.default_concepts = payload_dict["default_concepts"]
+    if payload_dict.get("use_allowed_concepts") is not None:
+        course.use_allowed_concepts = payload_dict["use_allowed_concepts"]
+    if "visibility" in payload_dict or "viewable_by" in payload_dict:
+        raw_visibility = payload_dict.get("visibility")
+        if raw_visibility is None:
+            raw_visibility = payload_dict.get("viewable_by")
+        if raw_visibility is not None:
+            course.visibility = _normalize_course_visibility(raw_visibility)
     if payload_dict.get("is_active") is not None:
         course.is_active = payload_dict["is_active"]
 
@@ -369,6 +396,8 @@ def update_admin_course(db: Session, course_id: int, payload_dict: dict) -> dict
         "ia_id": course.ia_id,
         "ia_email": course.ia.email if course.ia else None,
         "default_concepts": course.default_concepts or [],
+        "use_allowed_concepts": getattr(course, "use_allowed_concepts", True),
+        "visibility": getattr(course, "visibility", "everyone"),
         "section_count": section_count,
         "assignment_count": assignment_count,
     }

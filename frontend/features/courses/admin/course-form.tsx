@@ -85,6 +85,10 @@ export interface CourseFormProps {
   setTitle: (val: string) => void;
   term: string;
   setTerm: (val: string) => void;
+  useAllowedConcepts?: boolean;
+  setUseAllowedConcepts?: (val: boolean) => void;
+  visibility?: string;
+  setVisibility?: (val: string) => void;
   concepts: string[];
   toggleConcept: (id: string) => void;
   conceptMetadata: Record<string, ConceptMetadata>;
@@ -122,6 +126,10 @@ export function CourseForm({
   setTitle,
   term,
   setTerm,
+  useAllowedConcepts = true,
+  setUseAllowedConcepts,
+  visibility = "everyone",
+  setVisibility,
   concepts,
   toggleConcept,
   conceptMetadata,
@@ -189,23 +197,115 @@ export function CourseForm({
         />
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-baseline justify-between gap-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase">
-            Default Concepts
+      <div className="space-y-3 rounded-md border border-border bg-card p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <label className="text-xs font-semibold text-foreground uppercase block">
+              Allowed Concepts
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Optionally check student submissions against allowed concepts for this course.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={useAllowedConcepts}
+              onChange={(e) => setUseAllowedConcepts?.(e.target.checked)}
+              className="size-4 rounded border-input text-primary focus:ring-ring"
+            />
+            <span className="text-xs font-medium text-foreground">
+              {useAllowedConcepts ? "Enabled" : "Disabled"}
+            </span>
           </label>
-          <span className="text-[10px] text-muted-foreground">
-            {concepts.length} selected
-          </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Select default allowed structures for assignments in this course.
-        </p>
-        <DefaultConceptsPicker
-          metadata={conceptMetadata}
-          selected={concepts}
-          onToggle={toggleConcept}
-        />
+
+        {useAllowedConcepts ? (
+          <div className="space-y-2 pt-2 border-t border-border">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase">
+                Default Concepts
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {concepts.length} selected
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Select default allowed structures for assignments in this course.
+            </p>
+            <DefaultConceptsPicker
+              metadata={conceptMetadata}
+              selected={concepts}
+              onToggle={toggleConcept}
+            />
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground italic border-t border-border pt-2">
+            Allowed concepts are turned off for this course. Student submissions will not be warned for untaught concepts.
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-3 rounded-md border border-border bg-card p-3">
+        <div>
+          <label className="text-xs font-semibold text-foreground uppercase block">
+            Course Visibility
+          </label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Choose who can view this course and its sandbox assignments.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label
+            className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-2.5 text-left transition-colors ${
+              visibility === "everyone"
+                ? "border-primary bg-primary/5"
+                : "border-border bg-background hover:bg-muted/40"
+            }`}
+          >
+            <input
+              type="radio"
+              name="course-visibility"
+              value="everyone"
+              checked={visibility === "everyone"}
+              onChange={() => setVisibility?.("everyone")}
+              className="mt-0.5 size-4 border-input text-primary focus:ring-ring"
+            />
+            <span className="space-y-0.5">
+              <span className="block text-xs font-semibold text-foreground">
+                Everyone (Public)
+              </span>
+              <span className="block text-[11px] text-muted-foreground leading-normal">
+                Viewable by all students and guests in the sandbox catalog.
+              </span>
+            </span>
+          </label>
+
+          <label
+            className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-2.5 text-left transition-colors ${
+              visibility === "teachers_admins"
+                ? "border-primary bg-primary/5"
+                : "border-border bg-background hover:bg-muted/40"
+            }`}
+          >
+            <input
+              type="radio"
+              name="course-visibility"
+              value="teachers_admins"
+              checked={visibility === "teachers_admins"}
+              onChange={() => setVisibility?.("teachers_admins")}
+              className="mt-0.5 size-4 border-input text-primary focus:ring-ring"
+            />
+            <span className="space-y-0.5">
+              <span className="block text-xs font-semibold text-foreground">
+                Teachers & Admins Only
+              </span>
+              <span className="block text-[11px] text-muted-foreground leading-normal">
+                Restricted to staff. Hidden from students and public sandbox.
+              </span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <div className="space-y-1">

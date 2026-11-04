@@ -104,6 +104,8 @@ def get_course_concepts(db: Session, course_code: str) -> CourseConceptsResponse
         course_id=course.code,
         default_concepts=course.default_concepts or [],
         modules=_build_cumulative_module_configs(course.default_concepts or [], course.modules),
+        use_allowed_concepts=getattr(course, "use_allowed_concepts", True),
+        visibility=getattr(course, "visibility", "everyone"),
     )
 
 
@@ -112,6 +114,8 @@ def update_course_concepts(
     course_code: str,
     default_concepts: list[str],
     modules_payload: list[ModuleConfig],
+    use_allowed_concepts: bool | None = None,
+    visibility: str | None = None,
 ) -> CourseConceptsResponse | None:
     course = db.scalar(
         select(Course)
@@ -122,6 +126,16 @@ def update_course_concepts(
         return None
 
     course.default_concepts = default_concepts
+    if use_allowed_concepts is not None:
+        course.use_allowed_concepts = use_allowed_concepts
+    if visibility is not None:
+        clean_vis = visibility.strip().lower()
+        if clean_vis in ("everyone", "public", "all"):
+            course.visibility = "everyone"
+        elif clean_vis in ("teachers_admins", "staff_only", "teachers_only", "admins_only", "private"):
+            course.visibility = "teachers_admins"
+        else:
+            course.visibility = clean_vis
 
     # Sync modules
     existing_modules = {m.id: m for m in course.modules}
@@ -155,5 +169,7 @@ def update_course_concepts(
         course_id=course.code,
         default_concepts=course.default_concepts or [],
         modules=_build_cumulative_module_configs(course.default_concepts or [], course.modules),
+        use_allowed_concepts=getattr(course, "use_allowed_concepts", True),
+        visibility=getattr(course, "visibility", "everyone"),
     )
 

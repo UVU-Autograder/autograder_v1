@@ -60,6 +60,8 @@ export default function AllCoursesPage({
   const [title, setTitle] = useState("");
   const [term, setTerm] = useState("");
   const [concepts, setConcepts] = useState<string[]>([]);
+  const [useAllowedConcepts, setUseAllowedConcepts] = useState(true);
+  const [visibility, setVisibility] = useState<string>("everyone");
   const [isActive, setIsActive] = useState(true);
   const [instructorId, setInstructorId] = useState<string>("none");
   const [iaId, setIaId] = useState<string>("none");
@@ -93,6 +95,8 @@ export default function AllCoursesPage({
     setTitle("");
     setTerm("");
     setConcepts([]);
+    setUseAllowedConcepts(true);
+    setVisibility("everyone");
     setInstructorId("none");
     setIaId("none");
     setInstructorEmail("");
@@ -109,6 +113,8 @@ export default function AllCoursesPage({
     setTitle(course.title);
     setTerm(course.term);
     setConcepts([...(course.default_concepts ?? [])]);
+    setUseAllowedConcepts(course.use_allowed_concepts ?? true);
+    setVisibility(course.visibility ?? "everyone");
     setIsActive(course.is_active);
     setInstructorId(course.instructor_id ? String(course.instructor_id) : "none");
     setIaId(course.ia_id ? String(course.ia_id) : "none");
@@ -154,6 +160,8 @@ export default function AllCoursesPage({
         title: string;
         term: string;
         default_concepts: string[];
+        use_allowed_concepts: boolean;
+        visibility: string;
         instructor_email?: string | null;
         instructor_name?: string | null;
         ia_email?: string | null;
@@ -163,6 +171,8 @@ export default function AllCoursesPage({
         title: title.trim(),
         term: term.trim(),
         default_concepts: concepts,
+        use_allowed_concepts: useAllowedConcepts,
+        visibility: visibility,
       };
 
       if (instructorId === "custom" && instructorEmail.trim()) {
@@ -221,6 +231,8 @@ export default function AllCoursesPage({
         title: string;
         term: string;
         default_concepts: string[];
+        use_allowed_concepts: boolean;
+        visibility: string;
         is_active: boolean;
         instructor_email?: string | null;
         instructor_name?: string | null;
@@ -233,6 +245,8 @@ export default function AllCoursesPage({
         title: title.trim(),
         term: term.trim(),
         default_concepts: concepts,
+        use_allowed_concepts: useAllowedConcepts,
+        visibility: visibility,
         is_active: isActive,
       };
 
@@ -311,10 +325,15 @@ export default function AllCoursesPage({
                 className="min-w-0 flex-1 px-1 hover:bg-muted/40 rounded-sm transition-colors"
               >
                 <div className="space-y-0.5">
-                  <div className="truncate text-base font-medium text-foreground">
-                    {course.title}
+                  <div className="flex items-center gap-2 truncate text-base font-medium text-foreground">
+                    <span className="truncate">{course.title}</span>
+                    {course.visibility === "teachers_admins" ? (
+                      <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                        Staff only
+                      </span>
+                    ) : null}
                     {!course.is_active ? (
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      <span className="text-xs font-normal text-muted-foreground shrink-0">
                         Inactive
                       </span>
                     ) : null}
@@ -373,6 +392,10 @@ export default function AllCoursesPage({
             setTitle={setTitle}
             term={term}
             setTerm={setTerm}
+            useAllowedConcepts={useAllowedConcepts}
+            setUseAllowedConcepts={setUseAllowedConcepts}
+            visibility={visibility}
+            setVisibility={setVisibility}
             concepts={concepts}
             toggleConcept={toggleConcept}
             conceptMetadata={conceptMetadata}
@@ -418,6 +441,10 @@ export default function AllCoursesPage({
             setTitle={setTitle}
             term={term}
             setTerm={setTerm}
+            useAllowedConcepts={useAllowedConcepts}
+            setUseAllowedConcepts={setUseAllowedConcepts}
+            visibility={visibility}
+            setVisibility={setVisibility}
             concepts={concepts}
             toggleConcept={toggleConcept}
             conceptMetadata={conceptMetadata}

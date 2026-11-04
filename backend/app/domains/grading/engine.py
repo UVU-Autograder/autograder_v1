@@ -46,7 +46,7 @@ class GradingEngine:
         self,
         config: AssignmentConfigV1,
         artifact_refs: dict[str, str],
-        allowed_concepts: list[str],
+        allowed_concepts: list[str] | None = None,
         preloaded_artifacts: PreloadedArtifacts | None = None,
         execution_parameters: ExecutionParameters | None = None,
         runner_source: str | None = None,

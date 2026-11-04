@@ -18,10 +18,13 @@ import {
   CheckCircle2Icon,
   ShieldAlertIcon,
   FileTextIcon,
+  FilePlusIcon,
 } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { apiClient } from "@/lib/api-client";
 import { staffArtifactPath } from "@/features/staff/api";
+import { makeUniqueKey, slugifyKey } from "@/lib/slugify";
+import { isTextFilename, validateFilename } from "@/features/assignments/workspace/file-utils";
 
 type ValidationStatus = {
   status: "idle" | "queue" | "run" | "success" | "failure";
@@ -41,10 +44,37 @@ export function ModelSolutionSection() {
     openCodeEditor,
     setErrorMessage,
     setSuccessMessage,
+    entrypoint,
   } = useAssignmentEditor();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [newFilename, setNewFilename] = useState("");
+  const [filenameError, setFilenameError] = useState<string | null>(null);
+
+  const handleCreate = (event: React.FormEvent) => {
+    event.preventDefault();
+    const filename = newFilename.trim();
+    const result = validateFilename(
+      filename,
+      artifacts.map((artifact) => artifact.display_filename || artifact.artifact_key),
+    );
+    if (!result.valid) {
+      setFilenameError(result.error || "Invalid filename.");
+      return;
+    }
+    if (!isTextFilename(filename)) {
+      setFilenameError("Use a source or text file extension, such as .py, .cpp, .h, or .txt. Other file types can be uploaded.");
+      return;
+    }
+    const key = makeUniqueKey(
+      `solution_${slugifyKey(filename)}`,
+      artifacts.map((artifact) => artifact.artifact_key),
+    );
+    setFilenameError(null);
+    // A new file stays in the editor until Save; canceling creates no artifact.
+    void openCodeEditor(key, "model_solution", filename, "");
+  };
 
   // Preflight validation state
   const [validation, setValidation] = useState<ValidationStatus>({
@@ -186,6 +216,37 @@ export function ModelSolutionSection() {
           <CardTitle>Model Solution Files</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 px-4 py-0">
+          <form onSubmit={handleCreate} className="space-y-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="grow space-y-1">
+                <Label htmlFor="new-solution-filename" className="pl-0 text-xs">
+                  New File Name
+                </Label>
+                <Input
+                  id="new-solution-filename"
+                  value={newFilename}
+                  placeholder={entrypoint || "main.py"}
+                  onChange={(event) => {
+                    setNewFilename(event.target.value);
+                    setFilenameError(null);
+                  }}
+                  aria-invalid={Boolean(filenameError)}
+                  aria-describedby={filenameError ? "solution-filename-error" : undefined}
+                />
+              </div>
+              <Button type="submit">
+                <FilePlusIcon className="mr-1.5 h-4 w-4" /> Create File
+              </Button>
+            </div>
+            {filenameError && (
+              <p id="solution-filename-error" role="alert" className="text-xs text-destructive">
+                {filenameError}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Create a file to write your solution here, or upload existing files below. Save in the editor to keep your changes.
+            </p>
+          </form>
           <form
             onSubmit={handleUpload}
             className="flex flex-col sm:flex-row gap-3 items-end"
@@ -210,11 +271,7 @@ export function ModelSolutionSection() {
           <div className="space-y-3 pt-2">
             {solutionArtifacts.map((art) => {
               const displayFilename = art.display_filename || art.artifact_key;
-              const isTextFile =
-                displayFilename.endsWith(".py") ||
-                displayFilename.endsWith(".json") ||
-                displayFilename.endsWith(".txt") ||
-                displayFilename.endsWith(".md");
+              const isTextFile = isTextFilename(displayFilename);
 
               return (
                 <div
@@ -244,7 +301,7 @@ export function ModelSolutionSection() {
                         onClick={() =>
                           openCodeEditor(
                             art.artifact_key,
-                            "model_solution",
+                            art.artifact_type,
                             displayFilename,
                           )
                         }

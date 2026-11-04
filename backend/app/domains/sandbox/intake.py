@@ -132,6 +132,7 @@ class SandboxIntakeEngine:
         zip_data: bytes,
         stdin: str | None = None,
         client_ip: str | None = None,
+        user: Any | None = None,
     ) -> SandboxIntakeResult:
         """Validate an assignment, enforce quota/IP limits, register the run, and dispatch."""
         session = session_id or self._service._new_session()
@@ -145,6 +146,7 @@ class SandboxIntakeEngine:
             course_id,
             assignment_id,
             self._service.quota_for_session(session),
+            user=user,
         )
         if sandbox_assignment is None:
             raise AssignmentNotFoundError(course_id, assignment_id, session_id=session)

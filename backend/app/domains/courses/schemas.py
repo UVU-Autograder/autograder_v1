@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class StaffCourseSummary(BaseModel):
@@ -35,14 +35,24 @@ class ModuleConfig(BaseModel):
 
 
 class CourseConceptsUpdate(BaseModel):
-    default_concepts: list[str]
+    default_concepts: list[str] = Field(default_factory=list)
     modules: list[ModuleConfig] = Field(default_factory=list)
+    use_allowed_concepts: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("use_allowed_concepts", "allowed_concepts_enabled"),
+    )
+    visibility: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("visibility", "viewable_by"),
+    )
 
 
 class CourseConceptsResponse(BaseModel):
     course_id: str
     default_concepts: list[str]
     modules: list[ModuleConfig] = Field(default_factory=list)
+    use_allowed_concepts: bool = True
+    visibility: str = "everyone"
 
 
 class StaffSectionSummary(BaseModel):

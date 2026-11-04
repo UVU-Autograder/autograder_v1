@@ -91,7 +91,7 @@ class LanguageRunner(Protocol):
         self,
         exec_dir: Path,
         config: AssignmentConfigV1,
-        allowed_concepts: list[str],
+        allowed_concepts: list[str] | None,
     ) -> StaticAnalysisOutcome:
         """Perform static analysis, syntax verification, and concept constraints."""
         ...

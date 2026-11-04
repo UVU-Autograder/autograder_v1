@@ -106,7 +106,7 @@ export type AssignmentEditorContextType = {
   setEditCodeText: (text: string) => void;
   isLoadingCode: boolean;
   isSavingCode: boolean;
-  openCodeEditor: (key: string, type: string, filename: string) => Promise<void>;
+  openCodeEditor: (key: string, type: string, filename: string, initialText?: string) => Promise<void>;
   saveCodeChanges: () => Promise<void>;
 
   // Actions
@@ -591,13 +591,18 @@ export function AssignmentEditorProvider({
   };
 
   // Code editor modal mutators
-  const openCodeEditor = async (key: string, type: string, filename: string) => {
+  const openCodeEditor = async (key: string, type: string, filename: string, initialText?: string) => {
     setErrorMessage(null);
     setEditArtifactKey(key);
     setEditArtifactType(type);
     setEditArtifactFilename(filename);
     setEditCodeText("");
     setIsCodeModalOpen(true);
+    if (initialText !== undefined) {
+      setEditCodeText(initialText);
+      setIsLoadingCode(false);
+      return;
+    }
     setIsLoadingCode(true);
 
     try {
@@ -606,6 +611,7 @@ export function AssignmentEditorProvider({
       );
       setEditCodeText(text);
     } catch (err: unknown) {
+      setIsCodeModalOpen(false);
       setErrorMessage(err instanceof Error ? err.message : "Failed to fetch artifact code.");
     } finally {
       setIsLoadingCode(false);
@@ -615,6 +621,7 @@ export function AssignmentEditorProvider({
   const saveCodeChanges = async () => {
     if (!editArtifactKey) return;
     setIsSavingCode(true);
+    setErrorMessage(null);
     try {
       const file = new File([editCodeText], editArtifactFilename, { type: "text/plain" });
       const formData = new FormData();

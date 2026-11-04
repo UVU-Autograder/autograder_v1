@@ -47,7 +47,7 @@ class CppStrategy(LanguageStrategy):
         self,
         exec_dir: Path,
         config: AssignmentConfigV1,
-        allowed_concepts: list[str],
+        allowed_concepts: list[str] | None,
     ) -> StaticAnalysisOutcome:
         """Validate C/C++ file presence and header completeness."""
         # Verify entrypoint file exists

@@ -106,7 +106,14 @@ def update_concepts(
     current_user: User = Depends(require_staff),
 ) -> CourseConceptsResponse:
     assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
-    concepts = update_course_concepts(db, course_id, payload.default_concepts, payload.modules)
+    concepts = update_course_concepts(
+        db,
+        course_id,
+        payload.default_concepts,
+        payload.modules,
+        use_allowed_concepts=payload.use_allowed_concepts,
+        visibility=payload.visibility,
+    )
     if concepts is None:
         raise HTTPException(status_code=404, detail="Course not found.")
     return concepts

@@ -13,7 +13,7 @@ Use synthetic or completely anonymized validation data; mapped pseudonyms are no
 | Data | Boundary |
 | --- | --- |
 | Staff/grants, course/assignment setup, instructor assets | Persistent approved database/artifact storage |
-| Operational records | Aggregate counts, scheduling metadata and sanitized usage/errors only |
+| Operational records | Aggregate counts, scheduling metadata, sanitized usage/errors, and zero-PII sandbox activity telemetry (`run_summaries` with `sandbox_session_hash`) only |
 | Student execution files and Judge0 payloads/results/tokens | Delete immediately after result handling; verify non-retrievability |
 | Sandbox bundle/files | Clean after results/failure/cancellation; session results remain transient |
 | Official ZIP, review detail, names/identifiers and exports | Review ends 23h after intake; physical deletion by 24h or earlier staff cleanup |
@@ -67,12 +67,14 @@ All structured audit entries are emitted as single-line JSON records containing 
    * `python scripts/inspect_logs.py --file <path> --verify-pii`: Scans records against canonical FERPA regex rules, reporting zero residual Canvas filename, email, U-number, workspace-segment, or token patterns. Pattern scanning validates automated scrubbers; it does not detect unpatterned student names or grades.
 4. **Automated Verification**: Non-retention, sanitization, and context tagging guarantees are continuously verified by [`backend/tests/test_audit_log.py`](../backend/tests/test_audit_log.py) and [`backend/tests/test_audit_access_denial.py`](../backend/tests/test_audit_access_denial.py).
 
-Back up only approved persistent metadata and instructor assets, excluding student detail, workspaces, and broker/results (FERPA contract). [Recovery](guides/workstation.md#back-up-and-restore) describes verified metadata dump and container artifact extraction procedures; institutional offsite schedule and retention cadence remain open.
+Back up only approved persistent metadata and instructor assets, excluding student detail, workspaces, and broker/results (FERPA contract). [Recovery](guides/workstation.md#2-database-failure-and-ferpa-compliant-metadata-restore) describes verified metadata dump and container artifact extraction procedures; institutional offsite schedule and retention cadence remain open.
 
 ## AI data and future changes
 
 AI is sandbox-only, explanation-only and university-local, with sanitization and unavailable-feedback fallback. Training uses reviewed synthetic seed mutations; preserve provenance, held-out separation and prompt/eval/serving parity. Student corpora require separate data/retention approval; model weights are not deletable review workspaces. Keep data/training on university-controlled hardware.
 
-The pilot stays on the workstation with Judge0/Kata VM isolation, restricted listeners and TLS/Entra for live operation. Cloud/external AI, persistent histories, Canvas integration or altered isolation require an explicit approved scope. Open-source ownership/licensing and funding remain tracked in GitHub Issues ([#48](https://github.com/UVU-Autograder/autograder_v1/issues/48), [#49](https://github.com/UVU-Autograder/autograder_v1/issues/49)).
+The pilot stays on the workstation with Judge0/Kata VM isolation, restricted listeners and TLS/Entra for live operation. Cloud/external AI, persistent student histories, Canvas write-back, Git/IDE intake, notebook grading, additional language runtimes, altered isolation, or whole-platform replacements each need an explicit approved scope and operating owner ([integrity boundaries](system.md#integrity-and-trust-boundaries)). Package importers are justified only for a named instructor package with an explicit preserved/transformed/rejected conversion report.
+
+Active expansion work stays in [GitHub Issues](https://github.com/UVU-Autograder/autograder_v1/issues). The open-source release readiness audit is closed ([#48](https://github.com/UVU-Autograder/autograder_v1/issues/48)); funding and purchasing remain tracked in [#49](https://github.com/UVU-Autograder/autograder_v1/issues/49).
 
 Institutional references: [UVU FERPA](https://www.uvu.edu/registration/ferpa/index.html), [system procurement](https://www.uvu.edu/biservices/system-procurement-implementation.html), [ATSC](https://www.uvu.edu/biservices/governance.html), [policy manual](https://www.uvu.edu/policies/manual/). Confirm current requirements with UVU.

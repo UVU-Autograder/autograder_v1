@@ -71,7 +71,7 @@ class OfficialGradingPackage(BaseModel):
     assignment_id: int = Field(ge=1)
     config_version: int = Field(ge=1)
     config: AssignmentConfigV1
-    concepts: list[str]
+    concepts: list[str] | None = None
     description: str | None
     files: dict[str, PackageFile]
     pytest_filenames: list[str] = Field(min_length=1)

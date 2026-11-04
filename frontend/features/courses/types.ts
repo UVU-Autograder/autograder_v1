@@ -26,6 +26,8 @@ export type CourseAdminDetail = {
     title: string;
     term: string;
     is_active: boolean;
+    use_allowed_concepts?: boolean;
+    visibility?: string;
     instructor_id: number | null;
     instructor_email: string | null;
     ia_id: number | null;

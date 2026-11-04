@@ -1011,7 +1011,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/sandbox/courses/{course_id}/assignments": {
@@ -1021,6 +1026,11 @@
         ],
         "summary": "List Assignments",
         "operationId": "list_assignments_sandbox_courses__course_id__assignments_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "course_id",
@@ -1079,6 +1089,11 @@
         ],
         "summary": "Get Assignment",
         "operationId": "get_assignment_sandbox_courses__course_id__assignments__assignment_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "course_id",
@@ -1147,6 +1162,11 @@
         "summary": "Create Run",
         "description": "Create a new sandbox run for a submission bundle, with optional stdin input.",
         "operationId": "create_run_sandbox_courses__course_id__assignments__assignment_id__runs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "course_id",
@@ -4248,6 +4268,16 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "use_allowed_concepts": {
+            "type": "boolean",
+            "title": "Use Allowed Concepts",
+            "default": true
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility",
+            "default": "everyone"
+          },
           "instructor_id": {
             "anyOf": [
               {
@@ -4340,6 +4370,16 @@
             },
             "type": "array",
             "title": "Modules"
+          },
+          "use_allowed_concepts": {
+            "type": "boolean",
+            "title": "Use Allowed Concepts",
+            "default": true
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility",
+            "default": "everyone"
           }
         },
         "type": "object",
@@ -4364,12 +4404,31 @@
             },
             "type": "array",
             "title": "Modules"
+          },
+          "use_allowed_concepts": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Allowed Concepts"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
           }
         },
         "type": "object",
-        "required": [
-          "default_concepts"
-        ],
         "title": "CourseConceptsUpdate"
       },
       "CourseCreate": {
@@ -4393,6 +4452,16 @@
             "type": "array",
             "title": "Default Concepts",
             "default": []
+          },
+          "use_allowed_concepts": {
+            "type": "boolean",
+            "title": "Use Allowed Concepts",
+            "default": true
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility",
+            "default": "everyone"
           },
           "instructor_email": {
             "anyOf": [
@@ -4495,6 +4564,28 @@
               }
             ],
             "title": "Default Concepts"
+          },
+          "use_allowed_concepts": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Allowed Concepts"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
           },
           "is_active": {
             "anyOf": [
@@ -5401,10 +5492,17 @@
             "title": "Constraints"
           },
           "allowed_concepts": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Allowed Concepts"
           },
           "rubric": {
@@ -6396,10 +6494,17 @@
             "title": "Module Id"
           },
           "effective_allowed_concepts": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Effective Allowed Concepts"
           },
           "description": {

@@ -151,6 +151,11 @@ export function languageFromFilename(filename: string) {
   return EXTENSION_LANGUAGE_MAP[extension] ?? 'plaintext';
 }
 
+export function isTextFilename(filename: string): boolean {
+  const extension = basename(filename).split('.').pop()?.toLowerCase();
+  return Boolean(extension && Object.hasOwn(EXTENSION_LANGUAGE_MAP, extension));
+}
+
 export function isImageFilename(filename: string) {
   const extension = basename(filename).split('.').pop()?.toLowerCase();
   return Boolean(extension && IMAGE_EXTENSIONS.has(extension));

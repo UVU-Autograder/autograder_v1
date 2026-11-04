@@ -6,6 +6,7 @@ import { PageLoading } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MonacoEditor from "@/components/monaco-editor";
+import { languageFromFilename } from "@/features/assignments/workspace/file-utils";
 import {
   SaveIcon,
   Trash2Icon,
@@ -200,7 +201,7 @@ export function AssignmentEditor() {
 
       {/* Code Editor Modal Overlay */}
       {isCodeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in" role="dialog" aria-modal="true" aria-label={`Edit ${editArtifactFilename}`}>
           <div className="bg-card rounded-lg border border-border shadow-xl w-full max-w-5xl h-[85vh] flex flex-col text-card-foreground">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
               <div className="flex items-center gap-2">
@@ -212,6 +213,7 @@ export function AssignmentEditor() {
               <button
                 type="button"
                 aria-label="Close code modal"
+                disabled={isSavingCode}
                 onClick={() => setIsCodeModalOpen(false)}
                 className="text-muted-foreground hover:text-foreground p-1 cursor-pointer"
               >
@@ -228,7 +230,7 @@ export function AssignmentEditor() {
                 <MonacoEditor
                   height="100%"
                   width="100%"
-                  defaultLanguage="python"
+                  language={languageFromFilename(editArtifactFilename)}
                   value={editCodeText}
                   onChange={(val) => setEditCodeText(val || "")}
                 />
@@ -247,7 +249,7 @@ export function AssignmentEditor() {
               <Button
                 size="sm"
                 onClick={saveCodeChanges}
-                disabled={isSavingCode}
+                disabled={isSavingCode || isLoadingCode}
               >
                 <SaveIcon className="w-4 h-4 mr-1.5" />
                 {isSavingCode ? "Saving..." : "Save"}

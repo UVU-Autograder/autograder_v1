@@ -1,4 +1,6 @@
-from sqlalchemy import func, select
+from typing import Any
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.settings import get_settings
@@ -90,8 +92,20 @@ def project_student_scoring(
     return rubric, rubric_groups, completion_requirements
 
 
-def list_sandbox_courses(db: Session) -> SandboxCourseListResponse:
-    rows = db.execute(
+def is_course_visible_to_user(course: Course, user: Any | None, db: Session) -> bool:
+    if course.is_viewable_by_everyone:
+        return True
+    if user is None:
+        return False
+    from app.core.dependencies import accessible_course_ids, user_is_admin
+    if user_is_admin(user):
+        return True
+    allowed = accessible_course_ids(db, user)
+    return allowed is None or course.id in allowed
+
+
+def list_sandbox_courses(db: Session, user: Any | None = None) -> SandboxCourseListResponse:
+    query = (
         select(Course, func.count(Assignment.id))
         .join(Course.assignments)
         .where(
@@ -99,8 +113,25 @@ def list_sandbox_courses(db: Session) -> SandboxCourseListResponse:
             Assignment.is_active.is_(True),
             Assignment.sandbox_enabled.is_(True),
         )
-        .group_by(Course.id)
-        .order_by(Course.code)
+    )
+    if user is None:
+        query = query.where(Course.visibility.in_(["everyone", "public"]))
+    else:
+        from app.core.dependencies import accessible_course_ids, user_is_admin
+        if not user_is_admin(user):
+            allowed = accessible_course_ids(db, user)
+            if allowed:
+                query = query.where(
+                    or_(
+                        Course.visibility.in_(["everyone", "public"]),
+                        Course.id.in_(allowed),
+                    )
+                )
+            else:
+                query = query.where(Course.visibility.in_(["everyone", "public"]))
+
+    rows = db.execute(
+        query.group_by(Course.id).order_by(Course.code)
     ).all()
     return SandboxCourseListResponse(
         courses=[
@@ -119,6 +150,7 @@ def list_sandbox_assignments(
     db: Session,
     course_code: str,
     quota: UploadQuota,
+    user: Any | None = None,
 ) -> SandboxAssignmentListResponse | None:
     course = db.scalar(
         select(Course)
@@ -128,7 +160,7 @@ def list_sandbox_assignments(
             selectinload(Course.assignments).selectinload(Assignment.module),
         )
     )
-    if course is None:
+    if course is None or not is_course_visible_to_user(course, user, db):
         return None
 
     assignments = [
@@ -144,6 +176,7 @@ def get_sandbox_assignment(
     course_code: str,
     assignment_slug: str,
     quota: UploadQuota,
+    user: Any | None = None,
 ) -> SandboxAssignmentDetail | None:
     assignment = db.scalar(
         select(Assignment)
@@ -161,7 +194,7 @@ def get_sandbox_assignment(
             selectinload(Assignment.module),
         )
     )
-    if assignment is None:
+    if assignment is None or not is_course_visible_to_user(assignment.course, user, db):
         return None
 
     settings = get_settings()

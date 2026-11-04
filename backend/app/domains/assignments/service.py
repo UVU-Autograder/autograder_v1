@@ -76,8 +76,14 @@ def get_assignment_for_course(
     )
 
 
-def effective_allowed_concepts(assignment: Assignment) -> list[str]:
-    """Course defaults ∪ cumulative module concepts up to assignment.module in sequence order, de-duped."""
+def effective_allowed_concepts(assignment: Assignment) -> list[str] | None:
+    """Course defaults ∪ cumulative module concepts up to assignment.module in sequence order, de-duped.
+
+    Returns None if the course has disabled allowed concepts.
+    """
+    if assignment.course and not getattr(assignment.course, "use_allowed_concepts", True):
+        return None
+
     seen: set[str] = set()
     out: list[str] = []
     for concept in assignment.course.default_concepts or []:

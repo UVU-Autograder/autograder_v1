@@ -212,6 +212,8 @@ export async function handleMockRequest<T>(
       course_id: courseConceptsMatch[1],
       default_concepts: allConcepts.slice(0, 3),
       effective_allowed_concepts: allConcepts,
+      use_allowed_concepts: true,
+      visibility: "everyone",
       modules,
     };
     return makeMockResponse(conceptsPayload) as { data: T; response: Response };

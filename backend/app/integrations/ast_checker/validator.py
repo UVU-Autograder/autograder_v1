@@ -425,14 +425,15 @@ def _walk(tree: ast.AST) -> tuple[set[str], list[ASTFinding], list[ASTFinding]]:
 
 def check_student_code(
     source_code: str,
-    allowed_concepts: list[str],
+    allowed_concepts: list[str] | None = None,
 ) -> ASTCheckResult:
     """Parse *source_code* and validate against *allowed_concepts*.
 
     Parameters:
         source_code: The raw Python source text submitted by the student.
         allowed_concepts: Concept keys (e.g. ``["variables", "loops"]``)
-            that the student is permitted to use.  Any detected concept
+            that the student is permitted to use. If None, concept checking is
+            disabled and no concept warnings are produced. Any detected concept
             **not** on this list will produce a ``concept_warning`` finding.
 
     Returns:
@@ -458,15 +459,16 @@ def check_student_code(
     detected, _, blocked = _walk(tree)
 
     # ----- 3. Build warnings for concepts not in the whitelist ------------
-    allowed_set = set(allowed_concepts)
     warnings: list[ASTFinding] = []
-    for concept in sorted(detected - allowed_set):
-        warnings.append(
-            ASTFinding(
-                code="concept_warning",
-                message=f"Concept '{concept}' is not in the allowed list",
+    if allowed_concepts is not None:
+        allowed_set = set(allowed_concepts)
+        for concept in sorted(detected - allowed_set):
+            warnings.append(
+                ASTFinding(
+                    code="concept_warning",
+                    message=f"Concept '{concept}' is not in the allowed list",
+                )
             )
-        )
 
     return ASTCheckResult(
         detected_concepts=detected,
@@ -492,7 +494,7 @@ class ASTCodeInspector:
     """Audits student Python source code or whole project directories for concept whitelist compliance."""
 
     def __init__(self, allowed_concepts: list[str] | None = None):
-        self.allowed_concepts = allowed_concepts or []
+        self.allowed_concepts = allowed_concepts
 
     def inspect_source(self, source_code: str, file_label: str = "") -> ASTCheckResult:
         res = check_student_code(source_code, self.allowed_concepts)

@@ -50,7 +50,7 @@ class PythonPytestStrategy(LanguageStrategy):
         self,
         exec_dir: Path,
         config: AssignmentConfigV1,
-        allowed_concepts: list[str],
+        allowed_concepts: list[str] | None,
     ) -> StaticAnalysisOutcome:
         """Validate Python bundle files and verify AST concept boundaries."""
         try:

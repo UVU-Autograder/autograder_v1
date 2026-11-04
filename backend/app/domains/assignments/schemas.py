@@ -246,7 +246,7 @@ class StaffAssignmentSetup(BaseModel):
     artifacts: list[ArtifactMetadata]
     config: AssignmentConfigV1
     module_id: int | None = None
-    effective_allowed_concepts: list[str] = Field(default_factory=list)
+    effective_allowed_concepts: list[str] | None = Field(default_factory=list)
     description: str | None = None
 
 

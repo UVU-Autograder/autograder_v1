@@ -5,13 +5,13 @@
 ## Staff workflow
 
 1. Open/create a course assignment as an authorized instructor/admin. Configure title, language (`python` or `cpp`), markdown description/instructions, required files, stable scoring keys/points, rubric groups, completion requirements ("Pass at least X of Y" objectives), manual items and concept denylists. `assignments.description` serves as the authoritative relational storage for student workspace instructions and AI feedback prompts, while `assignment_configs.config["description"]` retains a synchronized snapshot for frozen grading packages and sandbox run records.
-2. Upload/edit test, model, and support artifacts; Edit pytest handles the primary test suite, while Artifacts handles additional assets. Instructors can use the AI Test Authoring Assistant dialog to interactively generate draft pytest test suites from assignment requirements or reference code.
-3. Save, preflight and validate real reference files through Judge0.
+2. Upload/edit test, model, and support artifacts. On Model Solution, enter a filename and choose Create File to write a solution in the browser, or upload existing files/ZIPs. Use Edit Code to change source/text files and Save in the editor to persist them; canceling a new file creates no artifact. Edit pytest handles the primary test suite. Instructors can use the AI Test Authoring Assistant dialog to interactively generate draft pytest test suites from assignment requirements or reference code.
+3. Save, preflight and validate real reference files through Judge0 so `inventory_status` becomes `ready` ([system scoring](../system.md#assignment-setup-and-scoring)).
 4. Exercise synthetic sandbox/official submissions, manual completion and exports; obtain instructor calibration for correct, incorrect and partial-credit work.
 
 IAs read setup without editing it. Student workspace editing is separate from instructor grading assets.
 
-Official intake validates and copies the configured test/support assets before dispatch. Missing files, stored-hash mismatches, type mismatches, conflicting basenames and the reserved runner destinations reject intake. The admitted configuration, rubric, concepts and grading bytes remain fixed for the entire batch; corrections apply to a new upload, not a queued or partly graded batch. Models are checked for readiness but their bytes are excluded from the execution package. Helper precedence remains configured instructor helper, existing student helper, then captured built-in fallback.
+Official intake validates and copies the configured test/support assets before dispatch. Missing files, stored-hash mismatches, type mismatches, conflicting basenames, non-ready inventory and the reserved runner destinations reject intake. The admitted configuration, rubric, concepts and grading bytes remain fixed for the entire batch; corrections apply to a new upload, not a queued or partly graded batch. Models are checked for readiness but their bytes are excluded from the execution package. Helper precedence remains configured instructor helper, existing student helper, then captured built-in fallback.
 
 ## Seed workflow
 
@@ -27,7 +27,13 @@ def test_calculate_cost():
 
 Add catalog/package references, required model/resources and marked tests; declare helpers as support artifacts. Keep progressive Dessert Shop models assignment-local and expected assertions visible. Verify the intended package resolved: missing packages can fall back to `simple-python-functions`.
 
-Run [seed integrity](../../backend/tests/test_seed_integrity.py)/[model validation](../../backend/tests/test_assignment_validation.py) checks in an isolated database, then real synthetic grading. The [mutation catalog](../../backend/eval/mutations.py) and [known grader gaps](../../backend/eval/README.md) support calibration.
+Run [seed integrity](../../backend/tests/test_seed_integrity.py)/[model validation](../../backend/tests/test_assignment_validation.py) checks in an isolated database, then real synthetic grading.
+
+## Calibration
+
+A green model solution proves the reference passes current tests; it does not prove incorrect solutions fail the intended keys. Calibrate with canonical and alternate valid models, known mistakes, empty/boundary inputs, wrong interfaces, concept-policy violations, and—when required—student-authored pytest paths (passing, failing, none discovered, import shadowing). Keep failing mutations visible as unresolved gaps rather than dropping them from reports. The [mutation catalog](../../backend/eval/mutations.py) and [eval README](../../backend/eval/README.md) help, but AI case generation often uses a local subprocess instead of Judge0—treat those results as candidates, not runtime-parity proof. Course-owner acceptance remains separate from automated seed checks.
+
+Default I/O helpers normalize whitespace/blank lines. Mark secret regression checks with `is_private` (visibility control, not same-process secrecy). Deferred hints, comparison modes and related follow-ups live under [system integrity](../system.md#integrity-and-trust-boundaries).
 
 ## Essential test pitfalls
 

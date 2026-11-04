@@ -1,9 +1,10 @@
-from fastapi import APIRouter, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
-from app.core.dependencies import DbSession
+from app.core.dependencies import DbSession, get_optional_user
 from app.core.settings import get_settings
+from app.domains.auth.models import User
 from app.domains.sandbox.catalog import (
     get_sandbox_assignment,
     list_sandbox_assignments,
@@ -40,8 +41,11 @@ router = APIRouter(prefix="/sandbox", tags=["sandbox"])
 
 
 @router.get("/courses", response_model=SandboxCourseListResponse)
-def list_courses(db: DbSession) -> SandboxCourseListResponse:
-    return list_sandbox_courses(db)
+def list_courses(
+    db: DbSession,
+    current_user: User | None = Depends(get_optional_user),
+) -> SandboxCourseListResponse:
+    return list_sandbox_courses(db, user=current_user)
 
 
 @router.get(
@@ -52,11 +56,13 @@ def list_assignments(
     db: DbSession,
     course_id: str,
     x_sandbox_session: str | None = Header(default=None),
+    current_user: User | None = Depends(get_optional_user),
 ) -> SandboxAssignmentListResponse:
     assignments = list_sandbox_assignments(
         db,
         course_id,
         sandbox_service.quota_for_session(x_sandbox_session),
+        user=current_user,
     )
     if assignments is None:
         raise HTTPException(status_code=404, detail="Course not found.")
@@ -72,12 +78,14 @@ def get_assignment(
     course_id: str,
     assignment_id: str,
     x_sandbox_session: str | None = Header(default=None),
+    current_user: User | None = Depends(get_optional_user),
 ) -> SandboxAssignmentDetail:
     assignment = get_sandbox_assignment(
         db,
         course_id,
         assignment_id,
         sandbox_service.quota_for_session(x_sandbox_session),
+        user=current_user,
     )
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
@@ -98,6 +106,7 @@ async def create_run(
     bundle: UploadFile = File(...),
     stdin: str | None = Form(default=None),
     x_sandbox_session: str | None = Header(default=None),
+    current_user: User | None = Depends(get_optional_user),
 ) -> SandboxRunCreateResponse:
     """Create a new sandbox run for a submission bundle, with optional stdin input."""
     settings = get_settings()
@@ -110,7 +119,7 @@ async def create_run(
     # burst of uploads cannot stall status polls and AI requests.
     ip = ip_limit.client_ip(request.client.host if request.client else None, request.headers.get("x-real-ip"))
     return await run_in_threadpool(
-        _create_run_sync, db, response, course_id, assignment_id, zip_data, stdin, x_sandbox_session, ip,
+        _create_run_sync, db, response, course_id, assignment_id, zip_data, stdin, x_sandbox_session, ip, current_user,
     )
 
 
@@ -123,6 +132,7 @@ def _create_run_sync(
     stdin: str | None,
     x_sandbox_session: str | None,
     ip: str | None = None,
+    user: User | None = None,
 ) -> SandboxRunCreateResponse:
     try:
         result = sandbox_intake_engine.intake_submission(
@@ -133,6 +143,7 @@ def _create_run_sync(
             zip_data=zip_data,
             stdin=stdin,
             client_ip=ip,
+            user=user,
         )
         response.headers["X-Sandbox-Session"] = result.session_id
         return result.response

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 from app.core.dependencies import DbSession, require_role
 from app.domains.runs.activity_schemas import SystemActivityResponse
@@ -32,6 +32,14 @@ class CourseCreate(BaseModel):
     title: str
     term: str
     default_concepts: list[str] = []
+    use_allowed_concepts: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("use_allowed_concepts", "allowed_concepts_enabled"),
+    )
+    visibility: str = Field(
+        default="everyone",
+        validation_alias=AliasChoices("visibility", "viewable_by"),
+    )
     instructor_email: str | None = None
     instructor_name: str | None = None
     ia_email: str | None = None
@@ -43,6 +51,14 @@ class CourseUpdate(BaseModel):
     title: str | None = None
     term: str | None = None
     default_concepts: list[str] | None = None
+    use_allowed_concepts: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("use_allowed_concepts", "allowed_concepts_enabled"),
+    )
+    visibility: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("visibility", "viewable_by"),
+    )
     is_active: bool | None = None
     instructor_id: int | None = None
     ia_id: int | None = None
@@ -58,6 +74,8 @@ class CourseAdminDetail(BaseModel):
     title: str
     term: str
     is_active: bool
+    use_allowed_concepts: bool = True
+    visibility: str = "everyone"
     instructor_id: int | None = None
     instructor_email: str | None = None
     ia_id: int | None = None
@@ -144,6 +162,8 @@ def create_course_admin(payload: CourseCreate, db: DbSession):
         title=payload.title,
         term=payload.term,
         default_concepts=payload.default_concepts,
+        use_allowed_concepts=payload.use_allowed_concepts,
+        visibility=payload.visibility,
         instructor_email=payload.instructor_email,
         instructor_name=payload.instructor_name,
         ia_email=payload.ia_email,

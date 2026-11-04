@@ -21,6 +21,8 @@ type CourseConceptsResponse = {
   course_id: string;
   default_concepts: string[];
   modules: ModuleConfig[];
+  use_allowed_concepts?: boolean;
+  visibility?: string;
 };
 
 type PageProps = {
@@ -68,6 +70,8 @@ export default function CourseConceptsPage({ params }: PageProps) {
   const { courseId } = use(params);
   const [concepts, setConcepts] = useState<string[]>([]);
   const [modules, setModules] = useState<ModuleConfig[]>([]);
+  const [useAllowedConcepts, setUseAllowedConcepts] = useState(true);
+  const [visibility, setVisibility] = useState<string>("everyone");
   const [metadata, setMetadata] = useState<Record<string, ConceptMetadata>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -94,6 +98,8 @@ export default function CourseConceptsPage({ params }: PageProps) {
         if (active) {
           setConcepts(courseData.default_concepts);
           setModules(courseData.modules || []);
+          setUseAllowedConcepts(courseData.use_allowed_concepts ?? true);
+          setVisibility(courseData.visibility ?? "everyone");
           setMetadata(metaData);
           setIsLoading(false);
         }
@@ -124,6 +130,8 @@ export default function CourseConceptsPage({ params }: PageProps) {
         {
           default_concepts: concepts,
           modules: modules,
+          use_allowed_concepts: useAllowedConcepts,
+          visibility: visibility,
         },
       );
       setSuccess("Course settings saved.");
@@ -223,7 +231,98 @@ export default function CourseConceptsPage({ params }: PageProps) {
         </div>
       )}
 
-      <section className="mb-8 space-y-2">
+      <section className="mb-6 rounded-lg border border-border bg-card p-4 space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">
+            Course Visibility
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Choose whether this course and its sandbox assignments are visible to everyone or restricted to teachers and administrators.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
+          <label
+            className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-3 text-left transition-colors ${
+              visibility === "everyone"
+                ? "border-primary bg-primary/5"
+                : "border-border bg-background hover:bg-muted/40"
+            }`}
+          >
+            <input
+              type="radio"
+              name="course-visibility"
+              value="everyone"
+              checked={visibility === "everyone"}
+              onChange={() => setVisibility("everyone")}
+              className="mt-0.5 size-4 border-input text-primary focus:ring-ring"
+            />
+            <div className="space-y-0.5">
+              <span className="block text-sm font-semibold text-foreground">
+                Everyone (Public)
+              </span>
+              <span className="block text-xs text-muted-foreground leading-normal">
+                Visible to all students and guests in the public sandbox catalog.
+              </span>
+            </div>
+          </label>
+
+          <label
+            className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-3 text-left transition-colors ${
+              visibility === "teachers_admins"
+                ? "border-primary bg-primary/5"
+                : "border-border bg-background hover:bg-muted/40"
+            }`}
+          >
+            <input
+              type="radio"
+              name="course-visibility"
+              value="teachers_admins"
+              checked={visibility === "teachers_admins"}
+              onChange={() => setVisibility("teachers_admins")}
+              className="mt-0.5 size-4 border-input text-primary focus:ring-ring"
+            />
+            <div className="space-y-0.5">
+              <span className="block text-sm font-semibold text-foreground">
+                Teachers & Admins Only
+              </span>
+              <span className="block text-xs text-muted-foreground leading-normal">
+                Hidden from students and the public catalog. Accessible only to course staff and admins.
+              </span>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-lg border border-border bg-card p-4 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">
+              Allowed Concepts Policy
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Control whether allowed concepts and syntax whitelist checks are enforced for assignments in this course.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={useAllowedConcepts}
+              onChange={(e) => setUseAllowedConcepts(e.target.checked)}
+              className="size-4 rounded border-input text-primary focus:ring-ring"
+            />
+            <span className="text-sm font-medium text-foreground">
+              {useAllowedConcepts ? "Enabled" : "Disabled"}
+            </span>
+          </label>
+        </div>
+        {!useAllowedConcepts && (
+          <div className="rounded-md border border-warning/30 bg-warning/10 p-2.5 text-xs text-warning">
+            Allowed concepts are turned off for this course. Student submissions will not be warned for untaught concepts.
+          </div>
+        )}
+      </section>
+
+      <section className={`mb-8 space-y-2 ${!useAllowedConcepts ? "opacity-60" : ""}`}>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             Default concepts

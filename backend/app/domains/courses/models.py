@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,6 +26,8 @@ class Course(Base):
     title: Mapped[str] = mapped_column(String(255))
     term: Mapped[str] = mapped_column(String(80))
     default_concepts: Mapped[list[str]] = mapped_column(MutableList.as_mutable(JSON), default=list)
+    use_allowed_concepts: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    visibility: Mapped[str] = mapped_column(String(40), default="everyone", server_default="everyone")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     instructor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     ia_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -36,6 +39,18 @@ class Course(Base):
     staff_access: Mapped[list["StaffAccess"]] = relationship(back_populates="course")
     instructor: Mapped["User | None"] = relationship(foreign_keys=[instructor_id], back_populates="instructed_courses")
     ia: Mapped["User | None"] = relationship(foreign_keys=[ia_id], back_populates="ia_courses")
+
+    @property
+    def allowed_concepts_enabled(self) -> bool:
+        return self.use_allowed_concepts
+
+    @allowed_concepts_enabled.setter
+    def allowed_concepts_enabled(self, val: bool) -> None:
+        self.use_allowed_concepts = val
+
+    @property
+    def is_viewable_by_everyone(self) -> bool:
+        return (self.visibility or "everyone").lower() in ("everyone", "public")
 
 
 class Section(Base):
