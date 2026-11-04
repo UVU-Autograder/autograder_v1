@@ -4,7 +4,85 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.integrations.ai.test_authoring import _validate_generated_pytest_code
+from app.integrations.ai.test_authoring import (
+    INSTRUCTOR_AUTHORING_SYSTEM_PROMPT,
+    AITestAuthoringRequest,
+    _extract_reference_symbols,
+    _format_user_prompt,
+    _validate_generated_pytest_code,
+)
+
+
+def test_system_prompt_includes_best_practices():
+    assert "getattr" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
+    assert "inspect" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
+    assert "@pytest.mark.ag_" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
+    assert "Utah Valley University" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
+
+
+def test_extract_reference_symbols():
+    code = (
+        "def fizz_buzz(n: int) -> list[str]:\n"
+        "    return []\n\n"
+        "class Solution:\n"
+        "    pass\n\n"
+        "def _helper():\n"
+        "    pass\n"
+    )
+    symbols = _extract_reference_symbols(code)
+    assert symbols["functions"] == ["fizz_buzz"]
+    assert symbols["classes"] == ["Solution"]
+
+    assert _extract_reference_symbols("") == {"functions": [], "classes": []}
+    assert _extract_reference_symbols("def invalid_syntax(") == {"functions": [], "classes": []}
+
+
+def test_format_user_prompt_structure_and_no_duplication():
+    req = AITestAuthoringRequest(instruction="", current_test_code="")
+    model_code = "def fizz_buzz(n):\n    pass\n"
+    scoring = [{"key": "fizz_buzz", "label": "FizzBuzz Logic", "points": 10, "item_type": "pytest"}]
+
+    prompt = _format_user_prompt(
+        course_id="cs1400",
+        assignment_title="FizzBuzz",
+        description="Return FizzBuzz array up to n.",
+        entrypoint="fizzbuzz.py",
+        scoring_items=scoring,
+        allowed_concepts=["loops", "conditionals"],
+        model_solution_code=model_code,
+        request=req,
+    )
+
+    assert "### Assignment Context" in prompt
+    assert "- Course: CS1400" in prompt
+    assert "- Entrypoint Python Module: `fizzbuzz` (e.g. `import fizzbuzz`)" in prompt
+    assert "- Functions: `fizz_buzz`" in prompt
+    assert "- `ag_fizz_buzz`: FizzBuzz Logic (10 pts)" in prompt
+    assert "### Assignment Description\nReturn FizzBuzz array up to n." in prompt
+    # No duplicate instructor instructions section when instruction is empty
+    assert "### Instructor Instructions" not in prompt
+
+
+def test_format_user_prompt_with_instructions_and_tests():
+    req = AITestAuthoringRequest(
+        instruction="Focus on boundary n=15.",
+        current_test_code="def test_sample(): pass",
+    )
+    prompt = _format_user_prompt(
+        course_id=None,
+        assignment_title="FizzBuzz",
+        description="Desc",
+        entrypoint="fizzbuzz.py",
+        scoring_items=[],
+        allowed_concepts=None,
+        model_solution_code=None,
+        request=req,
+    )
+    assert "- Course: UVU Computer Science" in prompt
+    assert "### Instructor Instructions\nFocus on boundary n=15." in prompt
+    assert "### Current tests.py\n```python\ndef test_sample(): pass\n```" in prompt
+    assert "### Target Symbols Detected" not in prompt
+
 
 
 def test_validate_generated_pytest_code_requires_ag_marker():

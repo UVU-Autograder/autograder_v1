@@ -6,6 +6,7 @@ import ast
 import json
 import logging
 import re
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -38,18 +39,140 @@ class AITestAuthoringResponse(BaseModel):
 
 
 INSTRUCTOR_AUTHORING_SYSTEM_PROMPT = """\
-You are an expert Python & pytest curriculum assistant for CS 1410 at Utah Valley University.
-Your job is to help course instructors author and revise automated pytest test suites from an assignment specification.
+You are an expert Python and pytest curriculum assistant for Utah Valley University Computer Science courses.
+Your task is to author or revise automated pytest test suites for student code based on assignment specifications and scoring rubrics.
 
-RULES:
-1. Every generated test function MUST be decorated with `@pytest.mark.ag_<key>` where `<key>` is a lowercase snake_case scoring key (e.g. `@pytest.mark.ag_basic_ops`).
-2. Every `assert` statement MUST include a descriptive failure message explaining the expected behavior without leaking full reference code.
-3. Include edge cases appropriate to the specification (e.g. empty collections, boundary numbers, zero/negative inputs, type or attribute checks).
-4. Generated code MUST be valid, standalone Python 3.11 syntax using `import pytest`.
-5. When CURRENT TESTS.PY is non-empty, treat the instructor specification as a revision request: keep unmarked structure that still fits, apply the requested changes, and return the full updated suite (not a fragment).
-6. Respond with a single JSON object matching this schema:
+CRITICAL RULES:
+1. Marker Mapping: Every `def test_*` function MUST be decorated with `@pytest.mark.ag_<key>` matching one of the rubric scoring keys provided in the prompt.
+2. Assertions with Informative Feedback: Every `assert` statement MUST include an educational failure message explaining what went wrong (e.g., `assert actual == expected, f"fizz_buzz({n}) returned {actual!r}, expected {expected!r}"`). Never leak hidden solutions or dump raw internal exceptions.
+3. Resilient Function Resolution: Student submissions often have slight naming variations or casing differences. Use defensive symbol resolution:
+   - Example 1 (Direct import & alias fallback):
+     ```python
+     import importlib
+     import math_ops  # entrypoint module
+
+     # Check exact name or common variants
+     func = getattr(math_ops, "add_numbers", getattr(math_ops, "addNumbers", None))
+     assert func is not None, "Function 'add_numbers' not found in submission."
+     ```
+   - Example 2 (Heuristic discovery for single-function assignments):
+     ```python
+     import inspect
+     # If primary name is missing, locate student's primary function
+     if func is None:
+         candidates = [
+             fn for name, fn in inspect.getmembers(math_ops, inspect.isfunction)
+             if not name.startswith("_") and name != "main"
+         ]
+         assert candidates, "No callable functions found in submission."
+         func = candidates[0]
+     ```
+4. Test Quality: Cover standard cases, boundary/edge conditions (e.g. empty inputs, zero, negative numbers, large values), and type/attribute requirements. Keep tests concise and independent.
+5. Revision Mode: When CURRENT TESTS.PY is provided, treat the request as an incremental revision—retain existing good tests, apply the requested updates, and return the complete suite.
+6. Valid Standalone Python: Generated code MUST be syntactically valid Python 3.11 with `import pytest`. Do not wrap the JSON output in markdown blocks outside the JSON.
+7. Output Schema: Respond ONLY with a single valid JSON object:
 {"generated_code": string, "explanation": string}
 """
+
+
+def _extract_reference_symbols(code: str | None) -> dict[str, list[str]]:
+    """Extract top-level functions and classes from reference solution code via AST."""
+    if not code or not code.strip():
+        return {"functions": [], "classes": []}
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return {"functions": [], "classes": []}
+
+    functions: list[str] = []
+    classes: list[str] = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not node.name.startswith("_"):
+                functions.append(node.name)
+        elif isinstance(node, ast.ClassDef):
+            if not node.name.startswith("_"):
+                classes.append(node.name)
+    return {"functions": functions, "classes": classes}
+
+
+def _format_user_prompt(
+    *,
+    course_id: str | None,
+    assignment_title: str,
+    description: str | None,
+    entrypoint: str,
+    scoring_items: list[dict[str, Any]],
+    allowed_concepts: list[str] | None,
+    model_solution_code: str | None,
+    request: AITestAuthoringRequest,
+) -> str:
+    """Format structured user prompt for test generation."""
+    clean_desc = sanitize_code_and_text((description or "").strip()[:4000])
+    clean_instr = sanitize_code_and_text((request.instruction or "").strip()[:3000])
+    clean_tests = sanitize_code_and_text((request.current_test_code or "").strip()[:8000])
+    clean_model = sanitize_code_and_text((model_solution_code or "").strip()[:8000])
+
+    module_stem = Path(entrypoint).stem if entrypoint else "solution"
+
+    sections: list[str] = []
+
+    # 1. Assignment Context
+    course_display = course_id.upper() if course_id else "UVU Computer Science"
+    overview_lines = [
+        "### Assignment Context",
+        f"- Course: {course_display}",
+        f"- Title: {sanitize_code_and_text(assignment_title)}",
+        f"- Entrypoint File: `{sanitize_code_and_text(entrypoint)}`",
+        f"- Entrypoint Python Module: `{module_stem}` (e.g. `import {module_stem}`)",
+    ]
+    if allowed_concepts:
+        overview_lines.append(f"- Allowed Concepts: {', '.join(allowed_concepts)}")
+    sections.append("\n".join(overview_lines))
+
+    # 2. Detected Reference Symbols (if reference code provided)
+    symbols = _extract_reference_symbols(clean_model)
+    if symbols["functions"] or symbols["classes"]:
+        sym_lines = ["### Target Symbols Detected in Reference Solution"]
+        if symbols["functions"]:
+            sym_lines.append(f"- Functions: {', '.join(f'`{fn}`' for fn in symbols['functions'])}")
+        if symbols["classes"]:
+            sym_lines.append(f"- Classes: {', '.join(f'`{cls}`' for cls in symbols['classes'])}")
+        sections.append("\n".join(sym_lines))
+
+    # 3. Rubric Scoring Keys
+    rubric_lines = ["### Rubric Scoring Keys (use @pytest.mark.ag_<key>)"]
+    pytest_items = [
+        item for item in scoring_items
+        if item.get("item_type", "pytest") == "pytest"
+    ]
+    if pytest_items:
+        for item in pytest_items:
+            key = item.get("key", "").strip()
+            label = item.get("label", "")
+            pts = item.get("points", 0)
+            rubric_lines.append(f"- `ag_{key}`: {label} ({pts} pts)")
+    else:
+        rubric_lines.append("- (No scoring keys configured; define descriptive `ag_<key>` markers)")
+    sections.append("\n".join(rubric_lines))
+
+    # 4. Assignment Description
+    if clean_desc:
+        sections.append(f"### Assignment Description\n{clean_desc}")
+
+    # 5. Instructor Instructions (only if provided)
+    if clean_instr:
+        sections.append(f"### Instructor Instructions\n{clean_instr}")
+
+    # 6. Current Tests (if revising)
+    if clean_tests:
+        sections.append(f"### Current tests.py\n```python\n{clean_tests}\n```")
+
+    # 7. Reference Solution Code (if available)
+    if clean_model:
+        sections.append(f"### Reference Solution Code\n```python\n{clean_model}\n```")
+
+    return "\n\n".join(sections)
 
 
 def _validate_generated_pytest_code(code: str) -> tuple[bool, str]:
@@ -84,31 +207,21 @@ def generate_instructor_tests(
     allowed_concepts: list[str] | None,
     model_solution_code: str | None,
     request: AITestAuthoringRequest,
+    course_id: str | None = None,
     llm_client: LocalLLMClient | None = None,
 ) -> AITestAuthoringResponse:
     """Generate instructor pytest cases via local vLLM."""
     client = llm_client or LocalLLMClient(timeout_seconds=15.0)
 
-    clean_desc = sanitize_code_and_text((description or "").strip()[:1500])
-    clean_instr = sanitize_code_and_text((request.instruction or "").strip()[:2000])
-    clean_tests = sanitize_code_and_text((request.current_test_code or "").strip()[:6000])
-    clean_model = sanitize_code_and_text((model_solution_code or "").strip()[:6000])
-
-    rubric_summary = "\n".join(
-        f"- ag_{item.get('key')}: {item.get('label')} ({item.get('points', 0)} pts)"
-        for item in scoring_items
-        if item.get("item_type", "pytest") == "pytest"
-    )
-
-    user_prompt = (
-        f"ASSIGNMENT: {sanitize_code_and_text(assignment_title)}\n"
-        f"ENTRYPOINT: {sanitize_code_and_text(entrypoint)}\n"
-        f"ALLOWED CONCEPTS: {', '.join(allowed_concepts or []) or '(unrestricted)'}\n\n"
-        f"RUBRIC SCORING KEYS:\n{rubric_summary or '(none configured yet)'}\n\n"
-        f"ASSIGNMENT DESCRIPTION:\n{clean_desc or '(none)'}\n\n"
-        f"INSTRUCTOR SPECIFICATION:\n{clean_instr or clean_desc or '(generate pytest cases with @pytest.mark.ag_* markers)'}\n\n"
-        f"CURRENT TESTS.PY:\n{clean_tests or '(empty)'}\n\n"
-        f"REFERENCE SOLUTION:\n{clean_model or '(not provided)'}\n"
+    user_prompt = _format_user_prompt(
+        course_id=course_id,
+        assignment_title=assignment_title,
+        description=description,
+        entrypoint=entrypoint,
+        scoring_items=scoring_items,
+        allowed_concepts=allowed_concepts,
+        model_solution_code=model_solution_code,
+        request=request,
     )
 
     messages = [
@@ -126,7 +239,7 @@ def generate_instructor_tests(
             "model": client.model,
             "messages": messages,
             "temperature": 0.2,
-            "max_tokens": 1200,
+            "max_tokens": 1500,
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {

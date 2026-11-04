@@ -317,6 +317,7 @@ def ai_generate_assignment_tests(
     scoring_dicts = [item.model_dump() for item in setup.scoring_items]
     try:
         return generate_instructor_tests(
+            course_id=course_id,
             assignment_title=setup.title,
             description=setup.description,
             entrypoint=setup.entrypoint_path,
