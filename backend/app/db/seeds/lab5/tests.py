@@ -1,14 +1,14 @@
 """Autograding test suite for Lab 5: Operator Overloading."""
 
 import pytest
-from python_autograder_helpers import import_student_modules
 
 
 @pytest.mark.ag_normalize
 def test_normalize() -> None:
     """Verify normalize method carries cents >= 100 to dollars."""
-    (money_mod,) = import_student_modules("money")
-    Money = money_mod.Money
+    import money
+
+    Money = money.Money
 
     m = Money(1, 150)
     assert m.dollars == 2
@@ -30,8 +30,9 @@ def test_normalize() -> None:
 @pytest.mark.ag_str
 def test_str() -> None:
     """Verify __str__ string formatting $dollars.cents."""
-    (money_mod,) = import_student_modules("money")
-    Money = money_mod.Money
+    import money
+
+    Money = money.Money
 
     m1 = Money(3, 50)
     assert str(m1) == "$3.50"
@@ -43,8 +44,9 @@ def test_str() -> None:
 @pytest.mark.ag_add
 def test_add() -> None:
     """Verify __add__ operator overload for Money addition."""
-    (money_mod,) = import_student_modules("money")
-    Money = money_mod.Money
+    import money
+
+    Money = money.Money
 
     m1 = Money(3, 50)
     m2 = Money(2, 75)
@@ -58,8 +60,9 @@ def test_add() -> None:
 @pytest.mark.ag_mul
 def test_mul() -> None:
     """Verify __mul__ and __rmul__ operator overloads for scalar multiplication."""
-    (money_mod,) = import_student_modules("money")
-    Money = money_mod.Money
+    import money
+
+    Money = money.Money
 
     m1 = Money(3, 50)
     m2 = Money(2, 75)
@@ -78,8 +81,9 @@ def test_mul() -> None:
 @pytest.mark.ag_eq
 def test_eq() -> None:
     """Verify __eq__ operator overload comparing normalized dollar and cent values."""
-    (money_mod,) = import_student_modules("money")
-    Money = money_mod.Money
+    import money
+
+    Money = money.Money
 
     m1 = Money(3, 50)
     m2 = Money(2, 150)

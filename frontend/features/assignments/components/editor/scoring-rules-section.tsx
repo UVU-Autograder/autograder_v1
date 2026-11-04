@@ -11,6 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import MonacoEditor from "@/components/monaco-editor";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   PlusIcon,
   Trash2Icon,
   FileTextIcon,
@@ -18,11 +25,19 @@ import {
   RefreshCwIcon,
   SparklesIcon,
   AlertCircleIcon,
+  Code2Icon,
 } from "lucide-react";
 import { pytestMarkerForKey } from "@/features/assignments/types";
+import { apiClient } from "@/lib/api-client";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { AITestAssistantDialog } from "./ai-test-assistant-dialog";
 import { ConceptDenylistSection } from "./concept-denylist-section";
+
+interface PythonHelpersPayload {
+  filename: string;
+  source: string;
+  usage_notes: string;
+}
 
 const MARKER_RE = /@(?:pytest\.)?(?:mark\.)?ag_([a-zA-Z0-9_]+)/g;
 
@@ -76,6 +91,29 @@ export function ScoringRulesSection() {
   }, [testSuiteCode, pytestItems]);
 
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [isHelpersOpen, setIsHelpersOpen] = useState(false);
+  const [helpersPayload, setHelpersPayload] = useState<PythonHelpersPayload | null>(null);
+  const [helpersError, setHelpersError] = useState<string | null>(null);
+  const [helpersLoading, setHelpersLoading] = useState(false);
+
+  const handleViewPythonHelpers = async () => {
+    setIsHelpersOpen(true);
+    setHelpersError(null);
+    if (helpersPayload) return;
+    setHelpersLoading(true);
+    try {
+      const payload = await apiClient.get<PythonHelpersPayload>(
+        `/staff/courses/${courseId}/assignments/${assignmentId}/python-helpers`,
+      );
+      setHelpersPayload(payload);
+    } catch (err) {
+      setHelpersError(
+        err instanceof Error ? err.message : "Could not load Python helpers.",
+      );
+    } finally {
+      setHelpersLoading(false);
+    }
+  };
 
   const handleSyncFromCode = () => {
     const addedCount = syncMarkersFromTestSuite(testSuiteCode);
@@ -128,6 +166,14 @@ export function ScoringRulesSection() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => void handleViewPythonHelpers()}
+            >
+              <Code2Icon className="mr-1.5 h-4 w-4" />
+              View Python helpers
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setIsAiAssistantOpen(true)}
             >
               <SparklesIcon className="mr-1.5 h-4 w-4 text-primary" />
@@ -157,6 +203,39 @@ export function ScoringRulesSection() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isHelpersOpen} onOpenChange={setIsHelpersOpen}>
+        <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col gap-3 overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>
+              {helpersPayload?.filename ?? "python_autograder_helpers.py"}
+            </DialogTitle>
+            <DialogDescription className="whitespace-pre-wrap text-left text-xs leading-relaxed">
+              {helpersPayload?.usage_notes
+                ?? "Prefer ordinary pytest. Import symbols from this injected helper only when required for collisions, import-time input(), or long CLI mocks."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border">
+            {helpersLoading ? (
+              <div className="flex h-72 items-center justify-center font-mono text-xs text-muted-foreground animate-pulse">
+                Loading helper source…
+              </div>
+            ) : helpersError ? (
+              <div className="flex h-72 items-center justify-center px-4 text-sm text-destructive">
+                {helpersError}
+              </div>
+            ) : (
+              <MonacoEditor
+                height="420px"
+                width="100%"
+                defaultLanguage="python"
+                value={helpersPayload?.source ?? ""}
+                options={{ readOnly: true }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 2. Autograded criteria */}
       <Card size="sm" className="gap-1.5 py-3">

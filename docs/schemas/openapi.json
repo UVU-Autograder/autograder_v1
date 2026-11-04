@@ -3120,6 +3120,63 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/python-helpers": {
+      "get": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Get Assignment Python Helpers",
+        "description": "Return the platform helper module injected into Python grading sandboxes.",
+        "operationId": "get_assignment_python_helpers_staff_courses__course_id__assignments__assignment_id__python_helpers_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PythonHelpersPayload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses/{course_id}/assignments/{assignment_id}/ai-generate-tests": {
       "post": {
         "tags": [
@@ -4944,6 +5001,33 @@
           "created_at"
         ],
         "title": "OfficialRunResponse"
+      },
+      "PythonHelpersPayload": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename",
+            "description": "Sandbox filename for the injected helper module"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Exact helper source copied into the execution directory"
+          },
+          "usage_notes": {
+            "type": "string",
+            "title": "Usage Notes",
+            "description": "When to prefer standard pytest vs these helpers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "source",
+          "usage_notes"
+        ],
+        "title": "PythonHelpersPayload",
+        "description": "Read-only view of the helper module injected into the grading sandbox."
       },
       "QueueBackpressure": {
         "properties": {

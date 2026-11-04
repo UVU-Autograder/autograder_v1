@@ -23,7 +23,7 @@ import {
   getMockStaffAssignmentSetup,
   mockCatalog,
 } from "./mock-data";
-import type { StaffAssignmentSetup } from "@/features/assignments/types";
+import type { ArtifactConfig, StaffAssignmentSetup } from "@/features/assignments/types";
 
 function makeMockResponse<T>(
   data: T,
@@ -43,6 +43,16 @@ function makeMockResponse<T>(
 
 // In-memory editable assignment setups to mirror UI saves
 const assignmentSetups = new Map<string, StaffAssignmentSetup>();
+const artifactFiles = new Map<string, File | null>();
+
+function readArtifactText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
 
 export async function handleMockRequest<T>(
   path: string,
@@ -60,8 +70,24 @@ export async function handleMockRequest<T>(
   const assignmentsListMatch = normalizedPath.match(/^\/(?:sandbox|staff)\/courses\/([^/]+)\/assignments$/);
   if (assignmentsListMatch && method === "GET") {
     const courseId = assignmentsListMatch[1].toLowerCase();
+    const isStaff = normalizedPath.startsWith("/staff/");
     const is1400 = courseId === "cs1400" || courseId === "2";
     const data = is1400 ? MOCK_ASSIGNMENTS_CS1400 : MOCK_ASSIGNMENTS_CS1410;
+    if (isStaff) {
+      return makeMockResponse({
+        course_id: data.course_id,
+        assignments: data.assignments.map((assignment) => ({
+          id: assignment.id,
+          course_id: assignment.course_id,
+          title: assignment.title,
+          language: assignment.language,
+          sandbox_enabled: assignment.sandbox_enabled,
+          base_points: assignment.max_score,
+          extra_credit_points: 0,
+          module_name: assignment.module_name,
+        })),
+      }) as { data: T; response: Response };
+    }
     return makeMockResponse(data) as { data: T; response: Response };
   }
 
@@ -231,20 +257,32 @@ export async function handleMockRequest<T>(
     const courseId = createAssignmentMatch[1];
     let slug = "new-assignment";
     let title = "New Assignment";
+    let moduleId: number | null | undefined;
     if (init?.body) {
       try {
         const bodyObj = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
         if (bodyObj?.slug) slug = String(bodyObj.slug);
         if (bodyObj?.title) title = String(bodyObj.title);
+        if ("module_id" in (bodyObj ?? {})) moduleId = bodyObj.module_id;
       } catch {
         // ignore unparseable body
       }
+    }
+    const catalog = courseId.toLowerCase() === "cs1400" || courseId === "2"
+      ? MOCK_ASSIGNMENTS_CS1400
+      : MOCK_ASSIGNMENTS_CS1410;
+    if (catalog.assignments.some((assignment) => assignment.id === slug)) {
+      throw new Error("An active assignment already uses this slug. Choose a different slug.");
+    }
+    if (moduleId != null && moduleId !== 1 && moduleId !== 2) {
+      throw new Error("Module not found in this course.");
     }
     const createdSetup = {
       ...getMockStaffAssignmentSetup(courseId, slug),
       course_id: courseId,
       assignment_id: slug,
       title,
+      module_id: moduleId ?? null,
     };
     assignmentSetups.set(`${courseId}:${slug}`, createdSetup);
     return makeMockResponse(createdSetup) as { data: T; response: Response };
@@ -277,7 +315,59 @@ export async function handleMockRequest<T>(
     return makeMockResponse(setup) as { data: T; response: Response };
   }
 
-  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^/]+\/artifacts\/[^/]+$/) && method === "GET") {
+  const artifactMatch = normalizedPath.match(/^\/staff\/courses\/([^/]+)\/assignments\/([^/]+)\/artifacts(?:\/([^/]+))?$/);
+  if (artifactMatch) {
+    const [, courseId, slug, artifactKey] = artifactMatch;
+    const setupKey = `${courseId}:${slug}`;
+    const setup = assignmentSetups.get(setupKey) || getMockStaffAssignmentSetup(courseId, slug);
+    const fileKey = `${setupKey}:${artifactKey}`;
+    if (method === "GET" && artifactKey && artifactFiles.has(fileKey)) {
+      const file = artifactFiles.get(fileKey);
+      if (!file) throw new Error("Artifact not found.");
+      return makeMockResponse(await readArtifactText(file), 200, "text/plain") as { data: T; response: Response };
+    }
+    if (method === "POST" && !artifactKey && init?.body instanceof FormData) {
+      const file = init.body.get("file");
+      const key = String(init.body.get("artifact_key"));
+      const type = String(init.body.get("artifact_type"));
+      if (!(file instanceof File)) throw new Error("Please select a file.");
+      if (!["pytest_file", "model_solution", "support_file"].includes(type)) throw new Error("Unsupported artifact type.");
+      if (type === "model_solution" && file.name.toLowerCase().endsWith(".zip")) {
+        throw new Error("ZIP model solution uploads are not supported. Upload individual solution files instead.");
+      }
+      const existingType = setup.artifacts.find((artifact) => artifact.artifact_key === key)?.artifact_type
+        || setup.config.artifacts?.[key]?.type;
+      if (existingType && existingType !== type) {
+        throw new Error("This artifact key already belongs to a different type. Use a new artifact key.");
+      }
+      const metadata = { artifact_key: key, artifact_type: type, display_filename: file.name, size_bytes: file.size };
+      assignmentSetups.set(setupKey, {
+        ...setup,
+        artifacts: [...setup.artifacts.filter((artifact) => artifact.artifact_key !== key), metadata],
+        config: { ...setup.config, artifacts: { ...setup.config.artifacts, [key]: {
+          type: type as ArtifactConfig["type"], display_filename: file.name,
+        } } },
+      });
+      artifactFiles.set(`${setupKey}:${key}`, file);
+      return makeMockResponse(metadata) as { data: T; response: Response };
+    }
+    if (method === "DELETE" && artifactKey) {
+      const references = { ...setup.config.artifacts };
+      if (references[artifactKey]?.type !== "pytest_file" && Object.keys(references).length === 1 && references[artifactKey]) {
+        throw new Error("Cannot delete the only configured artifact. Add a replacement file first.");
+      }
+      if (references[artifactKey]?.type !== "pytest_file") delete references[artifactKey];
+      assignmentSetups.set(setupKey, {
+        ...setup,
+        artifacts: setup.artifacts.filter((artifact) => artifact.artifact_key !== artifactKey),
+        config: { ...setup.config, artifacts: references },
+      });
+      artifactFiles.set(fileKey, null);
+      return makeMockResponse({ status: "deleted" }) as { data: T; response: Response };
+    }
+  }
+
+  if (artifactMatch?.[3] && method === "GET") {
     const sampleCode = `# Mock instructor test artifact
 import pytest
 
@@ -286,14 +376,6 @@ def test_invert():
     assert True
 `;
     return makeMockResponse(sampleCode, 200, "text/plain") as { data: T; response: Response };
-  }
-
-  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^/]+\/artifacts\/[^/]+$/) && method === "DELETE") {
-    return makeMockResponse({ status: "deleted" }) as { data: T; response: Response };
-  }
-
-  if (normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^/]+\/artifacts$/) && method === "POST") {
-    return makeMockResponse({ status: "uploaded" }) as { data: T; response: Response };
   }
 
   if (
@@ -311,6 +393,18 @@ def test_invert():
       data: T;
       response: Response;
     };
+  }
+
+  if (
+    normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^/]+\/python-helpers$/) &&
+    method === "GET"
+  ) {
+    return makeMockResponse({
+      filename: "python_autograder_helpers.py",
+      source: `def import_student_modules(*module_names):\n    """Import local student modules while temporarily shadowing name collisions."""\n    raise NotImplementedError("Mock helper body for offline authoring")\n`,
+      usage_notes:
+        "Prefer ordinary pytest in tests.py. Import symbols from this file only for stdlib/pip filename collisions, import-time input(), or long multi-prompt CLI sequences.",
+    }) as { data: T; response: Response };
   }
 
   if (
@@ -558,6 +652,17 @@ def invert_pixels(pixels):
 
 export async function handleMockDownload(path: string): Promise<Blob | null> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  const artifactMatch = normalizedPath.match(/^\/staff\/courses\/([^/]+)\/assignments\/([^/]+)\/artifacts\/([^/]+)$/);
+  if (artifactMatch) {
+    const [, courseId, slug, key] = artifactMatch;
+    const fileKey = `${courseId}:${slug}:${key}`;
+    if (artifactFiles.has(fileKey)) {
+      const file = artifactFiles.get(fileKey);
+      if (!file) throw new Error("Artifact not found.");
+      return file;
+    }
+  }
 
   if (normalizedPath.includes("/export/grades.csv") || normalizedPath.includes("/export/csv")) {
     const csvContent = "Student,Canvas ID,Score,Max Score,Status\nJohn Doe,1001,100,100,success\nJane Smith,1002,80,100,warning\n";

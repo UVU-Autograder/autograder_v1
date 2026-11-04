@@ -1,12 +1,8 @@
 import inspect
-from autograder_capture import BoundedOutput
 import runpy
-import sys
 
 import pytest
-from python_autograder_helpers import import_student_modules
-
-(des_mod,) = import_student_modules("dessert")
+import dessert as des_mod
 DessertItem = getattr(des_mod, "DessertItem", None)
 Candy = getattr(des_mod, "Candy", None)
 Cookie = getattr(des_mod, "Cookie", None)
@@ -100,18 +96,13 @@ def test_order_class():
 
 
 @pytest.mark.ag_main_output
-def test_main_output():
-    stdout_buf = BoundedOutput()
-    old_stdout = sys.stdout
-    sys.stdout = stdout_buf
+def test_main_output(capsys):
     try:
         runpy.run_path("dessertshop.py", run_name="__main__")
     except Exception as exc:
         raise AssertionError(f"dessertshop.py execution failed: {exc}") from exc
-    finally:
-        sys.stdout = old_stdout
 
-    lines = [line.strip() for line in stdout_buf.getvalue().strip().splitlines() if line.strip()]
+    lines = [line.strip() for line in capsys.readouterr().out.strip().splitlines() if line.strip()]
     assert len(lines) >= 7, f"Expected output to contain at least 7 lines, got {len(lines)}"
     expected_names = ["candy corn", "gummy bears", "chocolate chip", "pistachio", "vanilla", "oatmeal"]
     for name in expected_names:

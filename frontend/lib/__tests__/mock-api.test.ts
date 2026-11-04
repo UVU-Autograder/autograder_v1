@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { apiClient, isMockApiEnabled } from "../api-client";
 import { streamSandboxAiFeedback } from "../../features/assignments/api";
+import type { StaffAssignmentSetup } from "@/features/assignments/types";
 import {
   MOCK_ASSIGNMENT_DETAILS_LAB1,
   MOCK_ASSIGNMENTS_CS1400,
@@ -173,6 +174,26 @@ describe("Frontend Mock API & Interception Layer", () => {
       expect(fetched.title).toBe("Lab 1 - Modified Title");
     });
 
+    it("persists model file contents and grading references across save, edit and delete", async () => {
+      const base = "/staff/courses/cs1410/assignments/artifact-lifecycle";
+      for (const source of ["print(1)\n", "print(2)\n"]) {
+        const form = new FormData();
+        form.append("file", new File([source], "main.py", { type: "text/plain" }));
+        form.append("artifact_key", "solution_main");
+        form.append("artifact_type", "model_solution");
+        await apiClient.postForm(`${base}/artifacts`, form);
+        const setup = await apiClient.get<StaffAssignmentSetup>(`${base}/setup`);
+        expect(setup.artifacts.find((artifact) => artifact.artifact_key === "solution_main")?.display_filename).toBe("main.py");
+        expect(setup.config.artifacts?.solution_main).toEqual({ type: "model_solution", display_filename: "main.py" });
+        expect(await apiClient.getText(`${base}/artifacts/solution_main`)).toBe(source);
+      }
+      await apiClient.delete(`${base}/artifacts/solution_main`);
+      const setup = await apiClient.get<StaffAssignmentSetup>(`${base}/setup`);
+      expect(setup.artifacts.some((artifact) => artifact.artifact_key === "solution_main")).toBe(false);
+      expect(setup.config.artifacts?.solution_main).toBeUndefined();
+      await expect(apiClient.getText(`${base}/artifacts/solution_main`)).rejects.toThrow();
+    });
+
     it("handles mock file download without throwing", async () => {
       const revokeMock = vi.fn();
       const createObjectURLMock = vi.fn().mockReturnValue("blob:mock-url");
@@ -238,13 +259,40 @@ describe("Frontend Mock API & Interception Layer", () => {
       expect(cs1400Sandbox.assignments.length).toBe(44);
       expect(cs1400Sandbox.assignments[0].id).toBe("m1-lab1");
 
-      const cs1400Staff = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1400>("/staff/courses/cs1400/assignments");
+      const cs1400Staff = await apiClient.get<{
+        course_id: string;
+        assignments: Array<{ id: string; base_points: number; extra_credit_points: number; max_score?: number }>;
+      }>("/staff/courses/cs1400/assignments");
       expect(cs1400Staff.course_id).toBe("cs1400");
       expect(cs1400Staff.assignments.length).toBe(44);
+      expect(cs1400Staff.assignments[0].base_points).toBe(MOCK_ASSIGNMENTS_CS1400.assignments[0].max_score);
+      expect(cs1400Staff.assignments[0].extra_credit_points).toBe(0);
+      expect(cs1400Staff.assignments[0].max_score).toBeUndefined();
 
-      const cs1410Staff = await apiClient.get<typeof MOCK_ASSIGNMENTS_CS1410>("/staff/courses/cs1410/assignments");
+      const cs1410Staff = await apiClient.get<{
+        course_id: string;
+        assignments: Array<{ id: string; base_points: number }>;
+      }>("/staff/courses/cs1410/assignments");
       expect(cs1410Staff.course_id).toBe("cs1410");
       expect(cs1410Staff.assignments.length).toBe(17);
+      expect(cs1410Staff.assignments[0].base_points).toBe(MOCK_ASSIGNMENTS_CS1410.assignments[0].max_score);
+    });
+
+    it("rejects duplicate active assignment slugs and unknown modules on create", async () => {
+      await expect(
+        apiClient.post("/staff/courses/cs1400/assignments", {
+          slug: "m1-lab1",
+          title: "Duplicate",
+        })
+      ).rejects.toThrow(/already uses this slug/i);
+
+      await expect(
+        apiClient.post("/staff/courses/cs1400/assignments", {
+          slug: "brand-new-lab",
+          title: "Brand New Lab",
+          module_id: 999,
+        })
+      ).rejects.toThrow(/Module not found/i);
     });
 
     it("fetches dynamic assignment details across both courses using real catalogs", async () => {

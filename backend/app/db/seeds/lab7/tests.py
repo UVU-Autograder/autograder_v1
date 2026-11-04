@@ -1,17 +1,14 @@
 """Autograding test suite for Lab 7: Data Classes."""
 
-import contextlib
-from autograder_capture import BoundedOutput
-
 import pytest
-from python_autograder_helpers import import_student_modules
 
 
 @pytest.mark.ag_dataclass
 def test_dataclass() -> None:
     """Verify @dataclass(order=True) with correct typed fields and default_factory list."""
-    (student_mod,) = import_student_modules("student")
-    Student = student_mod.Student
+    import student
+
+    Student = student.Student
 
     s1 = Student(101, "Alice", "CS")
     assert s1.id == 101
@@ -27,8 +24,9 @@ def test_dataclass() -> None:
 @pytest.mark.ag_methods
 def test_methods() -> None:
     """Verify enroll() and total_courses() methods on Student."""
-    (student_mod,) = import_student_modules("student")
-    Student = student_mod.Student
+    import student
+
+    Student = student.Student
 
     s = Student(101, "Alice", "CS")
     assert s.total_courses() == 0
@@ -43,8 +41,9 @@ def test_methods() -> None:
 @pytest.mark.ag_ordering
 def test_ordering() -> None:
     """Verify comparison operators and ID sorting on Student dataclass."""
-    (student_mod,) = import_student_modules("student")
-    Student = student_mod.Student
+    import student
+
+    Student = student.Student
 
     s1 = Student(101, "Alice", "CS")
     s2 = Student(102, "Bob", "SE")
@@ -58,16 +57,15 @@ def test_ordering() -> None:
 
 
 @pytest.mark.ag_main_output
-def test_main_output() -> None:
+def test_main_output(capsys) -> None:
     """Verify main() function executes and outputs Student test details."""
-    (student_mod,) = import_student_modules("student")
-    assert hasattr(student_mod, "main"), "student.py missing main function"
+    import student
 
-    f = BoundedOutput()
-    with contextlib.redirect_stdout(f):
-        student_mod.main()
+    assert hasattr(student, "main"), "student.py missing main function"
 
-    stdout = f.getvalue()
+    student.main()
+
+    stdout = capsys.readouterr().out
     assert "Student(" in stdout or "Alice" in stdout, (
         "main() output missing expected Student print statements"
     )

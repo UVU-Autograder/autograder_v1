@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, Field
 
+from app.domains.grading.python_helpers import load_python_helpers_payload
 from app.integrations.ai.sanitize import sanitize_code_and_text
 from app.integrations.llm.client import LocalLLMClient
 
@@ -45,10 +46,10 @@ Your task is to author or revise automated pytest test suites for student code b
 CRITICAL RULES:
 1. Marker Mapping: Every `def test_*` function MUST be decorated with `@pytest.mark.ag_<key>` matching one of the rubric scoring keys provided in the prompt.
 2. Assertions with Informative Feedback: Every `assert` statement MUST include an educational failure message explaining what went wrong (e.g., `assert actual == expected, f"fizz_buzz({n}) returned {actual!r}, expected {expected!r}"`). Never leak hidden solutions or dump raw internal exceptions.
-3. Resilient Function Resolution: Student submissions often have slight naming variations or casing differences. Use defensive symbol resolution:
+3. Prefer Standard Pytest: Default to ordinary Python imports (`import account`), pytest's `capsys` fixture (or `bounded_output`) for stdout, and `monkeypatch` for `input()`. Do NOT generate `from autograder_capture import BoundedOutput` for new suites. Import from `python_autograder_helpers` ONLY when the AVAILABLE_RUNTIME_HELPERS notes require it (stdlib/pip filename collisions, import-time input(), or long multi-prompt CLI mocks).
+4. Resilient Function Resolution: Student submissions often have slight naming variations or casing differences. Use defensive symbol resolution:
    - Example 1 (Direct import & alias fallback):
      ```python
-     import importlib
      import math_ops  # entrypoint module
 
      # Check exact name or common variants
@@ -67,13 +68,12 @@ CRITICAL RULES:
          assert candidates, "No callable functions found in submission."
          func = candidates[0]
      ```
-4. Test Quality: Cover standard cases, boundary/edge conditions (e.g. empty inputs, zero, negative numbers, large values), and type/attribute requirements. Keep tests concise and independent.
-5. Revision Mode: When CURRENT TESTS.PY is provided, treat the request as an incremental revision—retain existing good tests, apply the requested updates, and return the complete suite.
-6. Valid Standalone Python: Generated code MUST be syntactically valid Python 3.11 with `import pytest`. Do not wrap the JSON output in markdown blocks outside the JSON.
-7. Output Schema: Respond ONLY with a single valid JSON object:
+5. Test Quality: Cover standard cases, boundary/edge conditions (e.g. empty inputs, zero, negative numbers, large values), and type/attribute requirements. Keep tests concise and independent.
+6. Revision Mode: When CURRENT TESTS.PY is provided, treat the request as an incremental revision—retain existing good tests, apply the requested updates, and return the complete suite. You may keep existing helper imports when revising code that already depends on them.
+7. Valid Standalone Python: Generated code MUST be syntactically valid Python 3.11 with `import pytest`. Do not wrap the JSON output in markdown blocks outside the JSON.
+8. Output Schema: Respond ONLY with a single valid JSON object:
 {"generated_code": string, "explanation": string}
 """
-
 
 def _extract_reference_symbols(code: str | None) -> dict[str, list[str]]:
     """Extract top-level functions and classes from reference solution code via AST."""
@@ -171,6 +171,15 @@ def _format_user_prompt(
     # 7. Reference Solution Code (if available)
     if clean_model:
         sections.append(f"### Reference Solution Code\n```python\n{clean_model}\n```")
+
+    # 8. Platform helpers available in the sandbox (same file instructors can view)
+    helpers = load_python_helpers_payload()
+    sections.append(
+        "### AVAILABLE_RUNTIME_HELPERS\n"
+        f"{helpers.usage_notes}\n\n"
+        f"Injected sandbox file `{helpers.filename}`:\n"
+        f"```python\n{helpers.source}\n```"
+    )
 
     return "\n\n".join(sections)
 

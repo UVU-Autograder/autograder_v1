@@ -1,13 +1,12 @@
 import inspect
 
 import pytest
-from python_autograder_helpers import import_student_modules
 from student_test_helpers import (
     assert_student_pytest_passes,
     assert_test_function_count,
 )
 
-(des_mod,) = import_student_modules("dessert")
+import dessert as des_mod
 DessertItem = getattr(des_mod, "DessertItem", None)
 Candy = getattr(des_mod, "Candy", None)
 Cookie = getattr(des_mod, "Cookie", None)

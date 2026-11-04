@@ -3,14 +3,14 @@
 import inspect
 
 import pytest
-from python_autograder_helpers import import_student_modules
 
 
 @pytest.mark.ag_encapsulation
 def test_encapsulation() -> None:
     """Verify _name protected attribute and __video_count private attribute encapsulation."""
-    (yt_mod,) = import_student_modules("youtube_channel")
-    YouTubeChannel = yt_mod.YouTubeChannel
+    import youtube_channel
+
+    YouTubeChannel = youtube_channel.YouTubeChannel
     ch = YouTubeChannel("Test", 10)
 
     assert hasattr(ch, "_name"), "YouTubeChannel must have _name attribute"
@@ -25,8 +25,9 @@ def test_encapsulation() -> None:
 @pytest.mark.ag_getters_setters
 def test_getters_setters() -> None:
     """Verify getter and setter methods and negative guard for video count."""
-    (yt_mod,) = import_student_modules("youtube_channel")
-    YouTubeChannel = yt_mod.YouTubeChannel
+    import youtube_channel
+
+    YouTubeChannel = youtube_channel.YouTubeChannel
     ch = YouTubeChannel("Initial", 5)
 
     assert hasattr(ch, "get_name"), "Missing get_name method"
@@ -54,8 +55,9 @@ def test_getters_setters() -> None:
 @pytest.mark.ag_type_hints
 def test_type_hints() -> None:
     """Verify type hint annotations on constructor and __str__ method."""
-    (yt_mod,) = import_student_modules("youtube_channel")
-    YouTubeChannel = yt_mod.YouTubeChannel
+    import youtube_channel
+
+    YouTubeChannel = youtube_channel.YouTubeChannel
 
     sig_init = inspect.signature(YouTubeChannel.__init__)
     params = sig_init.parameters

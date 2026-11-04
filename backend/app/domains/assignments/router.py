@@ -1,4 +1,5 @@
 import io
+import zipfile
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -18,6 +19,8 @@ from app.domains.assignments.schemas import (
     StaffAssignmentSetupUpdate,
 )
 from app.domains.assignments.service import (
+    ArtifactConflictError,
+    AssignmentConflictError,
     build_staff_setup,
     create_assignment,
     deactivate_assignment,
@@ -28,6 +31,7 @@ from app.domains.assignments.service import (
     save_artifact,
     update_staff_setup,
 )
+from app.domains.grading.python_helpers import PythonHelpersPayload, load_python_helpers_payload
 from app.integrations.ai.test_authoring import (
     AITestAuthoringRequest,
     AITestAuthoringResponse,
@@ -58,6 +62,8 @@ def create_new_assignment(
     try:
         assignment = create_assignment(db, course_id, payload)
         return build_staff_setup(assignment)
+    except AssignmentConflictError as err:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(err)) from err
     except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -112,7 +118,10 @@ def write_assignment_setup(
     current_user: User = Depends(require_staff),
 ) -> StaffAssignmentSetup:
     assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
-    setup = update_staff_setup(db, course_id, assignment_id, payload)
+    try:
+        setup = update_staff_setup(db, course_id, assignment_id, payload)
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)) from err
     if setup is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
     return setup
@@ -229,16 +238,29 @@ async def upload_assignment_artifact(
     current_user: User = Depends(require_staff),
 ) -> ArtifactMetadata:
     assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
+    if artifact_type not in {"pytest_file", "model_solution", "support_file"}:
+        raise HTTPException(status_code=400, detail="Unsupported artifact type.")
     content = await file.read()
-    artifact = save_artifact(
-        db=db,
-        course_code=course_id,
-        assignment_slug=assignment_id,
-        artifact_key=artifact_key,
-        artifact_type=artifact_type,
-        display_filename=file.filename or artifact_key,
-        file_content=content,
-    )
+    if artifact_type == "model_solution" and (
+        (file.filename or "").lower().endswith(".zip")
+        or zipfile.is_zipfile(io.BytesIO(content))
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="ZIP model solution uploads are not supported. Upload individual solution files instead.",
+        )
+    try:
+        artifact = save_artifact(
+            db=db,
+            course_code=course_id,
+            assignment_slug=assignment_id,
+            artifact_key=artifact_key,
+            artifact_type=artifact_type,
+            display_filename=file.filename or artifact_key,
+            file_content=content,
+        )
+    except ArtifactConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if artifact is None:
         raise HTTPException(status_code=404, detail="Assignment not found.")
     return artifact
@@ -256,7 +278,10 @@ def delete_assignment_artifact(
     current_user: User = Depends(require_staff),
 ):
     assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
-    success = delete_artifact(db, course_id, assignment_id, artifact_key)
+    try:
+        success = delete_artifact(db, course_id, assignment_id, artifact_key)
+    except ArtifactConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not success:
         raise HTTPException(status_code=404, detail="Artifact or Assignment not found.")
     return {"status": "success", "message": f"Artifact '{artifact_key}' deleted."}
@@ -281,6 +306,24 @@ def download_assignment_artifact(
         media_type="application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.get(
+    "/{assignment_id}/python-helpers",
+    response_model=PythonHelpersPayload,
+)
+def get_assignment_python_helpers(
+    course_id: str,
+    assignment_id: str,
+    db: DbSession,
+    current_user: User = Depends(require_staff),
+) -> PythonHelpersPayload:
+    """Return the platform helper module injected into Python grading sandboxes."""
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=True, write_access=False)
+    setup = get_staff_setup(db, course_id, assignment_id)
+    if setup is None:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+    return load_python_helpers_payload()
 
 
 @router.post(

@@ -1,13 +1,12 @@
 import typing
 
 import pytest
-from python_autograder_helpers import import_student_modules
 from student_test_helpers import assert_student_pytest_passes, assert_test_function_count
 
 
 @pytest.mark.ag_ds7_regression
 def test_ds7_regression():
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Candy = des_mod.Candy
     Cookie = des_mod.Cookie
     IceCream = des_mod.IceCream
@@ -24,7 +23,7 @@ def test_ds7_regression():
 
 @pytest.mark.ag_payment_protocol
 def test_payment_protocol():
-    (pay_mod,) = import_student_modules("payment")
+    import payment as pay_mod
     Payable = getattr(pay_mod, "Payable", None)
     assert Payable is not None, "Payable Protocol missing in payment.py"
     assert typing.Protocol in getattr(Payable, "__mro__", ()) or getattr(Payable, "_is_protocol", False), (
@@ -45,7 +44,7 @@ def test_payment_protocol():
 
 @pytest.mark.ag_order_payable
 def test_order_payable():
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Order = des_mod.Order
     order = Order()
     assert order.get_pay_type() == "CASH"

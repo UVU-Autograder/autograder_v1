@@ -1,11 +1,10 @@
 import pytest
-from python_autograder_helpers import import_student_modules
 from student_test_helpers import assert_student_pytest_passes, assert_test_function_count
 
 
 @pytest.mark.ag_ds8_regression
 def test_ds8_regression() -> None:
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Order = des_mod.Order
     order = Order()
     assert order.get_pay_type() == "CASH"
@@ -20,7 +19,7 @@ def test_ds8_regression() -> None:
 
 @pytest.mark.ag_relational_ops
 def test_relational_ops() -> None:
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Candy = des_mod.Candy
     c1 = Candy("Cheap Candy", 1.0, 2.0)  # cost 2.0
     c2 = Candy("Expensive Candy", 2.0, 2.0)  # cost 4.0
@@ -42,7 +41,7 @@ def test_relational_ops() -> None:
 
 @pytest.mark.ag_order_sort
 def test_order_sort() -> None:
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Candy = des_mod.Candy
     Order = des_mod.Order
     order = Order()

@@ -18,6 +18,9 @@ def test_system_prompt_includes_best_practices():
     assert "inspect" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
     assert "@pytest.mark.ag_" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
     assert "Utah Valley University" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
+    assert "Prefer Standard Pytest" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
+    assert "autograder_capture" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
+    assert "python_autograder_helpers" in INSTRUCTOR_AUTHORING_SYSTEM_PROMPT
 
 
 def test_extract_reference_symbols():
@@ -61,6 +64,9 @@ def test_format_user_prompt_structure_and_no_duplication():
     assert "### Assignment Description\nReturn FizzBuzz array up to n." in prompt
     # No duplicate instructor instructions section when instruction is empty
     assert "### Instructor Instructions" not in prompt
+    assert "### AVAILABLE_RUNTIME_HELPERS" in prompt
+    assert "def import_student_modules" in prompt
+    assert "Prefer ordinary pytest" in prompt
 
 
 def test_format_user_prompt_with_instructions_and_tests():

@@ -1,9 +1,7 @@
 import abc
 
 import pytest
-from python_autograder_helpers import import_student_modules
-
-(des_mod,) = import_student_modules("dessert")
+import dessert as des_mod
 DessertItem = getattr(des_mod, "DessertItem", None)
 Candy = getattr(des_mod, "Candy", None)
 Cookie = getattr(des_mod, "Cookie", None)

@@ -1,17 +1,14 @@
 """Autograding test suite for Lab 2: Bank Account Class."""
 
-import contextlib
-from autograder_capture import BoundedOutput
-
 import pytest
-from python_autograder_helpers import import_student_modules
 
 
 @pytest.mark.ag_account_init
 def test_account_init() -> None:
     """Verify Account initialization with default and custom arguments."""
-    (account_mod,) = import_student_modules("account")
-    Account = account_mod.Account
+    import account
+
+    Account = account.Account
 
     default_acc = Account()
     assert getattr(default_acc, "owner", None) == ""
@@ -25,8 +22,9 @@ def test_account_init() -> None:
 @pytest.mark.ag_account_str
 def test_account_str() -> None:
     """Verify Account __str__ formatting."""
-    (account_mod,) = import_student_modules("account")
-    Account = account_mod.Account
+    import account
+
+    Account = account.Account
 
     acc = Account("Alice", 100.0)
     output = str(acc)
@@ -42,15 +40,14 @@ def test_account_str() -> None:
 
 
 @pytest.mark.ag_demo_output
-def test_demo_output() -> None:
+def test_demo_output(capsys) -> None:
     """Verify demo.py executes and produces expected stdout output."""
-    f = BoundedOutput()
-    with contextlib.redirect_stdout(f):
-        (demo_mod,) = import_student_modules("demo")
-        if hasattr(demo_mod, "main"):
-            demo_mod.main()
+    import demo
 
-    stdout = f.getvalue()
+    if hasattr(demo, "main"):
+        demo.main()
+
+    stdout = capsys.readouterr().out
     assert "Owner:" in stdout and "Balance:" in stdout, (
         "demo.py output missing expected Account print statements"
     )

@@ -1,10 +1,7 @@
 import pytest
-from python_autograder_helpers import import_student_modules
-
-
 @pytest.mark.ag_ds9_regression
 def test_ds9_regression():
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Candy = des_mod.Candy
     Order = des_mod.Order
     c1 = Candy("Cheap Candy", 1.0, 2.0)
@@ -20,7 +17,7 @@ def test_ds9_regression():
 
 @pytest.mark.ag_combinable_protocol
 def test_combinable_protocol():
-    (cmb_mod,) = import_student_modules("combine")
+    import combine as cmb_mod
     Combinable = getattr(cmb_mod, "Combinable", None)
     assert Combinable is not None, "Combinable Protocol missing in combine.py"
     assert hasattr(Combinable, "can_combine"), "Combinable missing can_combine"
@@ -29,7 +26,7 @@ def test_combinable_protocol():
 
 @pytest.mark.ag_candy_combinable
 def test_candy_combinable():
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Candy = des_mod.Candy
     c1 = Candy("Fudge", 1.0, 2.0)
     c2 = Candy("Fudge", 2.0, 2.0)
@@ -47,7 +44,7 @@ def test_candy_combinable():
 
 @pytest.mark.ag_cookie_combinable
 def test_cookie_combinable():
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Cookie = des_mod.Cookie
     co1 = Cookie("Choc Chip", 12, 5.0)
     co2 = Cookie("Choc Chip", 6, 5.0)
@@ -65,7 +62,7 @@ def test_cookie_combinable():
 
 @pytest.mark.ag_order_combine
 def test_order_combine():
-    (des_mod,) = import_student_modules("dessert")
+    import dessert as des_mod
     Candy = des_mod.Candy
     Cookie = des_mod.Cookie
     Order = des_mod.Order
