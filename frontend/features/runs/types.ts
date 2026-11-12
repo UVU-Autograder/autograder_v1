@@ -40,7 +40,13 @@ export type StudentRunDetail = {
   feedback_html: string;
   manual_results: Record<
     string,
-    { label: string; points: number; score: number | null; comments: string }
+    {
+      label: string;
+      points: number;
+      score: number | null;
+      comments: string;
+      comment_templates?: string[];
+    }
   >;
   overall_comment: string;
   automated_results: {

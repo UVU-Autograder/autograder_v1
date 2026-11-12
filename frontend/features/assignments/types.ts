@@ -24,6 +24,7 @@ export type RubricItem = {
     outputs?: string[] | null;
     comparison_mode?: ComparisonMode;
     tolerance?: number | null;
+    comment_templates?: string[];
 };
 
 export type RubricGroup = {

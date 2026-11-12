@@ -1,6 +1,6 @@
 import fnmatch
 import re
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -99,6 +99,20 @@ class ScoringItemConfig(BaseModel):
     outputs: list[str] | None = Field(default=None)
     comparison_mode: Literal["normalized", "exact", "numeric_tolerance", "regex"] = "normalized"
     tolerance: float | None = Field(default=None, ge=0.0)
+    comment_templates: list[str] = Field(default_factory=list)
+
+    @field_validator("comment_templates", mode="before")
+    @classmethod
+    def clean_comment_templates(cls, v: Any) -> list[str]:
+        if not v:
+            return []
+        if isinstance(v, list):
+            cleaned = []
+            for item in v:
+                if isinstance(item, str) and item.strip():
+                    cleaned.append(item.strip())
+            return cleaned
+        return []
 
     @model_validator(mode="after")
     def validate_inputs_outputs(self) -> "ScoringItemConfig":
@@ -230,6 +244,7 @@ class ScoringItem(BaseModel):
     rubric_group_key: str | None = None
     comparison_mode: Literal["normalized", "exact", "numeric_tolerance", "regex"] = "normalized"
     tolerance: float | None = None
+    comment_templates: list[str] = Field(default_factory=list)
 
 
 class RubricGroup(BaseModel):

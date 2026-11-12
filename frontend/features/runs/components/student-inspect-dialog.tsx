@@ -604,6 +604,41 @@ function StudentInspectDialogSession({
                           rows={2}
                           className="placeholder-muted-foreground w-full rounded border border-input bg-background p-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
                         />
+
+                        {item.comment_templates && item.comment_templates.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <span className="text-[11px] font-medium text-muted-foreground">
+                              Quick comments:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {item.comment_templates.map((template, idx) => (
+                                <button
+                                  key={`${template}-${idx}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setManualGradesDraft((prev) => {
+                                      const current = prev[key]?.comments || "";
+                                      const newComment = current.trim()
+                                        ? `${current}\n${template}`
+                                        : template;
+                                      return {
+                                        ...prev,
+                                        [key]: {
+                                          ...prev[key],
+                                          comments: newComment,
+                                        },
+                                      };
+                                    });
+                                  }}
+                                  className="inline-flex items-center rounded-md border border-border bg-muted/60 px-2 py-1 text-[11px] text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-1 focus:ring-primary text-left"
+                                  title={`Click to insert: "${template}"`}
+                                >
+                                  + {template}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   },

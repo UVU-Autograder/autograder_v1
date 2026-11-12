@@ -95,6 +95,7 @@ def init_manual_results(scoring_items) -> dict:
             "points": item.points,
             "score": None,
             "comments": "",
+            "comment_templates": list(getattr(item, "comment_templates", []) or []),
         }
         for item in scoring_items
         if getattr(item, "item_type", None) == "manual"

@@ -517,58 +517,68 @@ export function ScoringRulesSection() {
                 return (
                   <div
                     key={rowId}
-                    className="grid grid-cols-1 items-center gap-2 rounded-lg border border-border bg-card p-2 md:grid-cols-[minmax(0,1fr)_4.5rem_5.5rem_2rem]"
+                    className="space-y-2 rounded-lg border border-border bg-card p-2.5"
                   >
-                    <Input
-                      id={`manual-label-${rowId}`}
-                      aria-label="Manual criterion label"
-                      value={item.label}
-                      onChange={(e) =>
-                        updateScoringItemField(rowId, "label", e.target.value)
-                      }
-                      placeholder="e.g. Code style"
-                      className="h-8"
-                    />
-                    <Input
-                      id={`manual-points-${rowId}`}
-                      aria-label="Points"
-                      type="number"
-                      min={0}
-                      value={item.points}
-                      onChange={(e) =>
-                        updateScoringItemField(
-                          rowId,
-                          "points",
-                          parseInt(e.target.value, 10) || 0,
-                        )
-                      }
-                      className="h-8 font-mono"
-                    />
-                    <div className="flex h-8 items-center justify-center">
-                      <input
-                        id={`manual-ec-${rowId}`}
-                        type="checkbox"
-                        aria-label="Extra credit"
-                        checked={Boolean(item.extra_credit)}
+                    <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,1fr)_4.5rem_5.5rem_2rem]">
+                      <Input
+                        id={`manual-label-${rowId}`}
+                        aria-label="Manual criterion label"
+                        value={item.label}
+                        onChange={(e) =>
+                          updateScoringItemField(rowId, "label", e.target.value)
+                        }
+                        placeholder="e.g. Code style"
+                        className="h-8"
+                      />
+                      <Input
+                        id={`manual-points-${rowId}`}
+                        aria-label="Points"
+                        type="number"
+                        min={0}
+                        value={item.points}
                         onChange={(e) =>
                           updateScoringItemField(
                             rowId,
-                            "extra_credit",
-                            e.target.checked,
+                            "points",
+                            parseInt(e.target.value, 10) || 0,
                           )
                         }
-                        className="h-3.5 w-3.5 cursor-pointer rounded border-input text-primary focus:ring-ring"
+                        className="h-8 font-mono"
                       />
+                      <div className="flex h-8 items-center justify-center">
+                        <input
+                          id={`manual-ec-${rowId}`}
+                          type="checkbox"
+                          aria-label="Extra credit"
+                          checked={Boolean(item.extra_credit)}
+                          onChange={(e) =>
+                            updateScoringItemField(
+                              rowId,
+                              "extra_credit",
+                              e.target.checked,
+                            )
+                          }
+                          className="h-3.5 w-3.5 cursor-pointer rounded border-input text-primary focus:ring-ring"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        aria-label="Remove manual criterion"
+                        onClick={() => removeScoringItem(rowId)}
+                      >
+                        <Trash2Icon className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      aria-label="Remove manual criterion"
-                      onClick={() => removeScoringItem(rowId)}
-                    >
-                      <Trash2Icon className="h-4 w-4 text-destructive" />
-                    </Button>
+
+                    <ManualCommentTemplatesManager
+                      templates={item.comment_templates || []}
+                      criterionLabel={item.label}
+                      onChange={(templates) =>
+                        updateScoringItemField(rowId, "comment_templates", templates)
+                      }
+                    />
                   </div>
                 );
               })}
@@ -588,6 +598,89 @@ export function ScoringRulesSection() {
         currentTestCode={testSuiteCode}
         onInsertTests={handleInsertAiTests}
       />
+    </div>
+  );
+}
+
+interface ManualCommentTemplatesManagerProps {
+  templates: string[];
+  onChange: (templates: string[]) => void;
+  criterionLabel: string;
+}
+
+function ManualCommentTemplatesManager({
+  templates,
+  onChange,
+  criterionLabel,
+}: ManualCommentTemplatesManagerProps) {
+  const [newText, setNewText] = useState("");
+
+  const handleAdd = () => {
+    const trimmed = newText.trim();
+    if (!trimmed) return;
+    if (templates.includes(trimmed)) {
+      setNewText("");
+      return;
+    }
+    onChange([...templates, trimmed]);
+    setNewText("");
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(templates.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="border-t border-border/50 pt-2 text-xs space-y-1.5">
+      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+        <span>Reusable comment snippets ({templates.length})</span>
+      </div>
+      {templates.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {templates.map((tpl, i) => (
+            <span
+              key={`${tpl}-${i}`}
+              className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
+            >
+              <span className="truncate max-w-[20rem]">{tpl}</span>
+              <button
+                type="button"
+                aria-label={`Remove snippet "${tpl}"`}
+                onClick={() => handleRemove(i)}
+                className="ml-0.5 text-muted-foreground hover:text-destructive cursor-pointer"
+              >
+                &times;
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-1.5 pt-0.5">
+        <Input
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder={`Add snippet for ${criterionLabel || "criterion"} (e.g. Missing docstrings)...`}
+          className="h-7 text-xs"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={handleAdd}
+          disabled={!newText.trim()}
+          aria-label="Add snippet"
+          className="h-7 px-2.5 text-xs shrink-0"
+        >
+          <PlusIcon className="mr-1 h-3 w-3" />
+          Add
+        </Button>
+      </div>
     </div>
   );
 }

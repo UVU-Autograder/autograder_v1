@@ -208,6 +208,7 @@ def build_scoring_items(scoring_items: list[ScoringItemConfig]) -> list[ScoringI
             rubric_group_key=item.rubric_group_key,
             comparison_mode=item.comparison_mode,
             tolerance=item.tolerance,
+            comment_templates=list(getattr(item, "comment_templates", []) or []),
         )
         for item in scoring_items
     ]

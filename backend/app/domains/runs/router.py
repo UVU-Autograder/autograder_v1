@@ -315,10 +315,22 @@ def get_official_run_details(
     )
     with retention.access(run_id, db):
         data = _load_official_run_details(run_id)
+        template_map: dict[str, list[str]] = {}
+        if run.assignment and run.assignment.config and isinstance(run.assignment.config.config, dict):
+            for s_item in run.assignment.config.config.get("scoring_items", []):
+                if isinstance(s_item, dict) and s_item.get("key") and s_item.get("comment_templates"):
+                    template_map[s_item["key"]] = list(s_item["comment_templates"])
+
         students = [
             student_detail_from_result(canvas_id, res)
             for canvas_id, res in data.get("student_results", {}).items()
         ]
+        if template_map:
+            for student in students:
+                for k, v in student.get("manual_results", {}).items():
+                    if isinstance(v, dict) and not v.get("comment_templates") and k in template_map:
+                        v["comment_templates"] = template_map[k]
+
         students.sort(key=lambda student: student["student_name"].casefold())
         intake = intake_summary_from_details(data)
         progress = _progress_for_details(data, run_status=run.status)

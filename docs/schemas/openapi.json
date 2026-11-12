@@ -6190,6 +6190,13 @@
               }
             ],
             "title": "Tolerance"
+          },
+          "comment_templates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Comment Templates"
           }
         },
         "type": "object",
@@ -6298,6 +6305,13 @@
               }
             ],
             "title": "Tolerance"
+          },
+          "comment_templates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Comment Templates"
           }
         },
         "type": "object",

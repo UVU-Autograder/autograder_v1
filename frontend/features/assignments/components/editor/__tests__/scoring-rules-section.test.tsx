@@ -288,4 +288,51 @@ def test_files():
       0.0005
     );
   });
+
+  it("renders comment snippets and triggers updateScoringItemField on add and remove", () => {
+    const mockCtx = createMockContext({
+      scoringItems: [
+        {
+          key: "code_style",
+          label: "Code Style",
+          points: 10,
+          extra_credit: false,
+          item_type: "manual",
+          pytest_marker: null,
+          rubric_group_key: null,
+          comment_templates: ["Missing docstrings", "PEP 8 naming"],
+        },
+      ],
+    });
+
+    render(
+      <AssignmentEditorContext.Provider value={mockCtx}>
+        <ScoringRulesSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    expect(screen.getByText("Missing docstrings")).toBeDefined();
+    expect(screen.getByText("PEP 8 naming")).toBeDefined();
+
+    // Remove first snippet
+    const removeBtn = screen.getByLabelText(/remove snippet "missing docstrings"/i);
+    fireEvent.click(removeBtn);
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith(
+      "code_style",
+      "comment_templates",
+      ["PEP 8 naming"]
+    );
+
+    // Add a new snippet
+    const addInput = screen.getByPlaceholderText(/add snippet for Code Style/i);
+    fireEvent.change(addInput, { target: { value: "Refactor nested loops" } });
+    const addBtn = screen.getByRole("button", { name: /add snippet/i });
+    fireEvent.click(addBtn);
+
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith(
+      "code_style",
+      "comment_templates",
+      ["Missing docstrings", "PEP 8 naming", "Refactor nested loops"]
+    );
+  });
 });

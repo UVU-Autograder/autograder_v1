@@ -259,6 +259,13 @@
           ],
           "default": null,
           "title": "Tolerance"
+        },
+        "comment_templates": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Comment Templates",
+          "type": "array"
         }
       },
       "required": [
