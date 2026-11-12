@@ -143,3 +143,63 @@ def test_run_preflight_validation_ds1_passes(db_session: Session) -> None:
     errors = run_preflight_validation(db_session, "cs1410", "ds1")
     assert errors == []
 
+
+def test_assignment_config_comparison_mode_defaults_and_overrides():
+    from app.domains.assignments.schemas import AssignmentConfigV1
+    from pydantic import ValidationError
+
+    raw_config = {
+        "bundle": {"entrypoint": "main.py"},
+        "artifacts": {"tests": {"type": "pytest_file"}},
+        "comparison_mode": "exact",
+        "tolerance": 0.005,
+        "scoring_items": [
+            {
+                "key": "test_inherited",
+                "label": "Inherited Exact",
+                "points": 10,
+                "extra_credit": False,
+            },
+            {
+                "key": "test_override",
+                "label": "Overridden Regex",
+                "points": 10,
+                "extra_credit": False,
+                "comparison_mode": "regex",
+            },
+            {
+                "key": "test_custom_tol",
+                "label": "Custom Tolerance",
+                "points": 10,
+                "extra_credit": False,
+                "comparison_mode": "numeric_tolerance",
+                "tolerance": 1e-6,
+            },
+        ],
+    }
+
+    config = AssignmentConfigV1.model_validate(raw_config)
+    assert config.comparison_mode == "exact"
+    assert config.tolerance == 0.005
+
+    # Inherited item gets assignment defaults
+    assert config.scoring_items[0].comparison_mode == "exact"
+    assert config.scoring_items[0].tolerance == 0.005
+
+    # Overridden item preserves explicit comparison_mode
+    assert config.scoring_items[1].comparison_mode == "regex"
+    assert config.scoring_items[1].tolerance == 0.005
+
+    # Custom tolerance item preserves explicit tolerance
+    assert config.scoring_items[2].comparison_mode == "numeric_tolerance"
+    assert config.scoring_items[2].tolerance == 1e-6
+
+    # Invalid mode raises ValidationError
+    with pytest.raises(ValidationError):
+        AssignmentConfigV1.model_validate({**raw_config, "comparison_mode": "invalid_mode"})
+
+    # Negative tolerance raises ValidationError
+    with pytest.raises(ValidationError):
+        AssignmentConfigV1.model_validate({**raw_config, "tolerance": -0.5})
+
+

@@ -410,25 +410,73 @@ export function ScoringRulesSection() {
                     </Button>
                   </div>
 
-                  {((item.inputs && item.inputs.length > 0) ||
-                    (item.outputs && item.outputs.length > 0)) && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 font-semibold text-foreground">
-                        <FileTextIcon className="h-3.5 w-3.5 text-primary" />
-                        I/O
-                      </span>
-                      {item.inputs && item.inputs.length > 0 && (
-                        <span className="rounded border border-info/30 bg-info/10 px-2 py-0.5 font-mono text-info">
-                          in: {item.inputs.join(", ")}
-                        </span>
-                      )}
-                      {item.outputs && item.outputs.length > 0 && (
-                        <span className="rounded border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-success">
-                          out: {item.outputs.join(", ")}
-                        </span>
-                      )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2.5 border-t border-border pt-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-foreground text-[11px]">Mode:</span>
+                      <select
+                        id={`scoring-mode-${rowId}`}
+                        aria-label="Comparison mode"
+                        value={item.comparison_mode || "normalized"}
+                        onChange={(e) =>
+                          updateScoringItemField(
+                            rowId,
+                            "comparison_mode",
+                            e.target.value,
+                          )
+                        }
+                        className="h-7 rounded border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="normalized">Normalized (default)</option>
+                        <option value="exact">Exact string</option>
+                        <option value="numeric_tolerance">Numeric (±ε)</option>
+                        <option value="regex">Regex pattern</option>
+                      </select>
                     </div>
-                  )}
+
+                    {item.comparison_mode === "numeric_tolerance" && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-muted-foreground">Tolerance (ε):</span>
+                        <Input
+                          id={`scoring-tol-${rowId}`}
+                          aria-label="Tolerance"
+                          type="number"
+                          step="any"
+                          min="0"
+                          placeholder="0.0001"
+                          value={item.tolerance !== null && item.tolerance !== undefined ? item.tolerance : ""}
+                          onChange={(e) => {
+                            const val = e.target.value.trim() === "" ? null : parseFloat(e.target.value);
+                            updateScoringItemField(
+                              rowId,
+                              "tolerance",
+                              val !== null && !isNaN(val) ? val : null,
+                            );
+                          }}
+                          className="h-7 w-24 font-mono text-xs"
+                        />
+                      </div>
+                    )}
+
+                    {((item.inputs && item.inputs.length > 0) ||
+                      (item.outputs && item.outputs.length > 0)) && (
+                      <div className="flex flex-wrap items-center gap-2 pl-2 border-l border-border">
+                        <span className="flex items-center gap-1 font-semibold text-foreground">
+                          <FileTextIcon className="h-3.5 w-3.5 text-primary" />
+                          I/O
+                        </span>
+                        {item.inputs && item.inputs.length > 0 && (
+                          <span className="rounded border border-info/30 bg-info/10 px-2 py-0.5 font-mono text-info">
+                            in: {item.inputs.join(", ")}
+                          </span>
+                        )}
+                        {item.outputs && item.outputs.length > 0 && (
+                          <span className="rounded border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-success">
+                            out: {item.outputs.join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}

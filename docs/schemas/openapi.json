@@ -3620,6 +3620,29 @@
               }
             ],
             "title": "Description"
+          },
+          "comparison_mode": {
+            "type": "string",
+            "enum": [
+              "normalized",
+              "exact",
+              "numeric_tolerance",
+              "regex"
+            ],
+            "title": "Comparison Mode",
+            "default": "normalized"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
           }
         },
         "type": "object",
@@ -6145,6 +6168,28 @@
               }
             ],
             "title": "Rubric Group Key"
+          },
+          "comparison_mode": {
+            "type": "string",
+            "enum": [
+              "normalized",
+              "exact",
+              "numeric_tolerance",
+              "regex"
+            ],
+            "title": "Comparison Mode",
+            "default": "normalized"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
           }
         },
         "type": "object",
@@ -6230,6 +6275,29 @@
               }
             ],
             "title": "Outputs"
+          },
+          "comparison_mode": {
+            "type": "string",
+            "enum": [
+              "normalized",
+              "exact",
+              "numeric_tolerance",
+              "regex"
+            ],
+            "title": "Comparison Mode",
+            "default": "normalized"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
           }
         },
         "type": "object",

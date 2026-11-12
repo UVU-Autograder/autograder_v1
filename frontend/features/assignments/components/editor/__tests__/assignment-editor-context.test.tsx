@@ -21,7 +21,26 @@ function Controls() {
   return <>
     <button onClick={() => editor.setTitle("Updated title")}>Change title</button>
     <button onClick={() => editor.updateTestSuiteCode("# updated tests\n")}>Change tests</button>
+    <button onClick={() => editor.syncMarkersFromTestSuite(`
+COMPARISON_MODE: str = "exact"
+TOLERANCE: float = 0.005
+
+@pytest.mark.ag_annotated
+def test_annotated():
+    pass
+
+@pytest.mark.ag_override
+def test_override():
+    COMPARISON_MODE = "numeric_tolerance"
+    TOLERANCE = 0.001
+`)}>Sync annotated tests</button>
     <button onClick={editor.handleSave}>Save setup</button>
+    <span data-testid="scoring-items-count">{editor.scoringItems.length}</span>
+    {editor.scoringItems.map((item) => (
+      <span key={item.key} data-testid={`item-${item.key}`}>
+        {item.comparison_mode}:{String(item.tolerance)}
+      </span>
+    ))}
   </>;
 }
 
@@ -85,5 +104,27 @@ describe("assignment setup saves", () => {
     const form = vi.mocked(apiClient.postForm).mock.calls[0][1];
     expect((form.get("file") as File).name).toBe("test_main.py");
     expect(form.get("artifact_key")).toBe("suite_primary");
+  });
+
+  it("syncs module-level and type-annotated comparison mode and tolerance", async () => {
+    await openEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Sync annotated tests" }));
+
+    await waitFor(() => expect(screen.getByTestId("item-annotated")).toBeDefined());
+    expect(screen.getByTestId("item-annotated").textContent).toBe("exact:0.005");
+    expect(screen.getByTestId("item-override").textContent).toBe("numeric_tolerance:0.001");
+  });
+
+  it("inherits assignment-level comparison_mode and tolerance on initial load", async () => {
+    setup.config = {
+      ...setup.config,
+      comparison_mode: "exact",
+      tolerance: 0.02,
+      scoring_items: [
+        { key: "inherited_item", label: "Inherited Item", points: 10, extra_credit: false, item_type: "pytest", pytest_marker: "ag_inherited_item", rubric_group_key: null },
+      ],
+    };
+    await openEditor();
+    expect(screen.getByTestId("item-inherited_item").textContent).toBe("exact:0.02");
   });
 });

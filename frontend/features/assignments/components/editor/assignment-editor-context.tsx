@@ -16,6 +16,7 @@ import {
   FileRequirementConfig,
   AssignmentConfigV1,
   ConceptMetadata,
+  ComparisonMode,
   pytestMarkerForKey,
 } from "@/features/assignments/types";
 
@@ -335,8 +336,12 @@ export function AssignmentEditorProvider({
       }
 
       const rawItems = cfg.scoring_items || setupData.scoring_items || [];
+      const defaultMode = cfg.comparison_mode || "normalized";
+      const defaultTol = cfg.tolerance !== undefined ? cfg.tolerance : null;
       const loadedItems = rawItems.map((item: RubricItem, idx: number) => ({
         ...item,
+        comparison_mode: item.comparison_mode || defaultMode,
+        tolerance: item.tolerance !== undefined ? item.tolerance : defaultTol,
         id: item.id || `item_${item.key || idx}_${Math.random().toString(36).slice(2, 9)}`,
       }));
       setScoringItems(loadedItems);
@@ -469,6 +474,8 @@ export function AssignmentEditorProvider({
       item_type: itemType,
       pytest_marker: itemType === "pytest" ? pytestMarkerForKey(uniqueKey) : null,
       rubric_group_key: null,
+      comparison_mode: "normalized",
+      tolerance: null,
     };
     setScoringItems((prev) => [...prev, newItem]);
     markDirty();
@@ -518,7 +525,7 @@ export function AssignmentEditorProvider({
     const outputs: string[] = [];
 
     // Match block following marker up to next marker or end of code
-    const markerRegex = new RegExp(`@(?:pytest\\.)?(?:mark\\.)?ag_${key}\\b([\\s\\S]*?)(?=(?:@(?:pytest\\.)?(?:mark\\.)?ag_|\\Z))`, "i");
+    const markerRegex = new RegExp(`@(?:pytest\\.)?(?:mark\\.)?ag_${key}\\b([\\s\\S]*?)(?=(?:@(?:pytest\\.)?(?:mark\\.)?ag_|$))`, "i");
     const match = sourceCode.match(markerRegex);
     const block = match ? match[1] : sourceCode;
 
@@ -534,9 +541,28 @@ export function AssignmentEditorProvider({
       if (val && !outputs.includes(val.trim())) outputs.push(val.trim());
     }
 
+    let comparison_mode: ComparisonMode | undefined = undefined;
+    const modePattern = /(?:COMPARISON_MODE|COMPARE_MODE|MODE)(?:\s*:\s*[^=\r\n]+)?\s*=\s*["'](normalized|exact|numeric_tolerance|regex)["']/i;
+    const modeMatch = block.match(modePattern) || sourceCode.match(modePattern);
+    if (modeMatch) {
+      comparison_mode = modeMatch[1].toLowerCase() as ComparisonMode;
+    }
+
+    let tolerance: number | null | undefined = undefined;
+    const tolPattern = /(?:TOLERANCE|TOL|EPSILON|ATOL|RTOL)(?:\s*:\s*[^=\r\n]+)?\s*=\s*([0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?)/i;
+    const tolMatch = block.match(tolPattern) || sourceCode.match(tolPattern);
+    if (tolMatch) {
+      const parsedTol = parseFloat(tolMatch[1]);
+      if (!isNaN(parsedTol)) {
+        tolerance = parsedTol;
+      }
+    }
+
     return {
       inputs: inputs.length > 0 ? inputs : undefined,
       outputs: outputs.length > 0 ? outputs : undefined,
+      comparison_mode,
+      tolerance,
     };
   };
 
@@ -558,6 +584,8 @@ export function AssignmentEditorProvider({
             ...item,
             inputs: parsed.inputs || item.inputs,
             outputs: parsed.outputs || item.outputs,
+            comparison_mode: parsed.comparison_mode || item.comparison_mode || "normalized",
+            tolerance: parsed.tolerance !== undefined ? parsed.tolerance : item.tolerance,
           };
         }
         return item;
@@ -579,6 +607,8 @@ export function AssignmentEditorProvider({
             rubric_group_key: null,
             inputs: parsed.inputs,
             outputs: parsed.outputs,
+            comparison_mode: parsed.comparison_mode || "normalized",
+            tolerance: parsed.tolerance ?? null,
           });
         }
       });

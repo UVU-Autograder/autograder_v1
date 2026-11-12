@@ -389,7 +389,7 @@ def test_invert():
     normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^/]+\/model-solution\/status$/) ||
     normalizedPath.match(/^\/staff\/courses\/[^/]+\/assignments\/[^/]+\/validation-status$/)
   ) {
-    return makeMockResponse({ status: "success", errors: [], score: 100, max_score: 100 }) as {
+    return makeMockResponse({ status: "success", errors: [], score: 100, max_score: 100, test_results: [] }) as {
       data: T;
       response: Response;
     };

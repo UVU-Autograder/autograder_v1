@@ -71,7 +71,7 @@ async def execute_local_calibration_runner(
     exec_dir: Path,
     *,
     test_filenames: list[str],
-    test_cases: dict[str, dict[str, list[str]]],
+    test_cases: dict[str, dict[str, Any]],
     entrypoint_module: str,
     language_id: int,
     cpu_time_limit: float,

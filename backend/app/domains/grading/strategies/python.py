@@ -113,12 +113,14 @@ class PythonPytestStrategy(LanguageStrategy):
             if f.is_file() and (f.name.startswith("test_") or f.name.endswith("_test.py") or f.name == "tests.py")
         ]
 
-        test_cases_map: dict[str, dict[str, list[str]]] = {}
+        test_cases_map: dict[str, dict[str, Any]] = {}
         for test in config.scoring_items:
             if test.inputs is not None and test.outputs is not None:
                 test_cases_map[test.key] = {
                     "inputs": test.inputs,
                     "outputs": test.outputs,
+                    "comparison_mode": test.comparison_mode,
+                    "tolerance": test.tolerance,
                 }
 
         entrypoint_module = Path(config.bundle.entrypoint).stem

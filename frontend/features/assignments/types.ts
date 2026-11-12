@@ -8,6 +8,8 @@ export function pytestMarkerForKey(key: string): string {
     return `ag_${key}`;
 }
 
+export type ComparisonMode = "normalized" | "exact" | "numeric_tolerance" | "regex";
+
 export type RubricItem = {
     id?: string;
     key: string;
@@ -20,6 +22,8 @@ export type RubricItem = {
     rubric_group_key: string | null;
     inputs?: string[] | null;
     outputs?: string[] | null;
+    comparison_mode?: ComparisonMode;
+    tolerance?: number | null;
 };
 
 export type RubricGroup = {
@@ -66,6 +70,8 @@ export type AssignmentConfigV1 = {
     concepts?: {
         denylist?: string[];
     };
+    comparison_mode?: ComparisonMode;
+    tolerance?: number | null;
 
     scoring_items: RubricItem[];
     rubric_groups?: RubricGroup[];

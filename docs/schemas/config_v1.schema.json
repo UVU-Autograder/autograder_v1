@@ -235,6 +235,30 @@
           ],
           "default": null,
           "title": "Outputs"
+        },
+        "comparison_mode": {
+          "default": "normalized",
+          "enum": [
+            "normalized",
+            "exact",
+            "numeric_tolerance",
+            "regex"
+          ],
+          "title": "Comparison Mode",
+          "type": "string"
+        },
+        "tolerance": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tolerance"
         }
       },
       "required": [
@@ -302,6 +326,30 @@
       ],
       "default": null,
       "title": "Description"
+    },
+    "comparison_mode": {
+      "default": "normalized",
+      "enum": [
+        "normalized",
+        "exact",
+        "numeric_tolerance",
+        "regex"
+      ],
+      "title": "Comparison Mode",
+      "type": "string"
+    },
+    "tolerance": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tolerance"
     }
   },
   "required": [

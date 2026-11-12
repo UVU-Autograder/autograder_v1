@@ -1,6 +1,7 @@
 """Generate a self-contained supervised pytest runner for Judge0 and local checks."""
 import functools
 from pathlib import Path
+from typing import Any
 
 
 @functools.lru_cache(maxsize=1)
@@ -10,7 +11,7 @@ def _load_pytest_runtime() -> str:
 
 def generate_runner_script(
     test_filenames: list[str],
-    test_cases: dict[str, dict[str, list[str]]],
+    test_cases: dict[str, dict[str, Any]],
     entrypoint_module: str,
     dependencies: list[str] | None = None,
 ) -> str:

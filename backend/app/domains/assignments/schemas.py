@@ -88,6 +88,8 @@ class ScoringItemConfig(BaseModel):
     rubric_group_key: str | None = Field(default=None, pattern=TEST_KEY_RE.pattern)
     inputs: list[str] | None = Field(default=None)
     outputs: list[str] | None = Field(default=None)
+    comparison_mode: Literal["normalized", "exact", "numeric_tolerance", "regex"] = "normalized"
+    tolerance: float | None = Field(default=None, ge=0.0)
 
     @model_validator(mode="after")
     def validate_inputs_outputs(self) -> "ScoringItemConfig":
@@ -128,6 +130,17 @@ class AssignmentConfigV1(BaseModel):
     dependencies: list[str] = Field(default_factory=list)
     rubric_groups: list[RubricGroupConfig] = Field(default_factory=list)
     description: str | None = None
+    comparison_mode: Literal["normalized", "exact", "numeric_tolerance", "regex"] = "normalized"
+    tolerance: float | None = Field(default=None, ge=0.0)
+
+    @model_validator(mode="after")
+    def apply_comparison_defaults(self) -> "AssignmentConfigV1":
+        for item in self.scoring_items:
+            if "comparison_mode" not in item.model_fields_set and self.comparison_mode != "normalized":
+                item.comparison_mode = self.comparison_mode
+            if "tolerance" not in item.model_fields_set and self.tolerance is not None:
+                item.tolerance = self.tolerance
+        return self
 
 
     @model_validator(mode="after")
@@ -206,6 +219,8 @@ class ScoringItem(BaseModel):
     is_private: bool = False
     pytest_marker: str | None = None
     rubric_group_key: str | None = None
+    comparison_mode: Literal["normalized", "exact", "numeric_tolerance", "regex"] = "normalized"
+    tolerance: float | None = None
 
 
 class RubricGroup(BaseModel):

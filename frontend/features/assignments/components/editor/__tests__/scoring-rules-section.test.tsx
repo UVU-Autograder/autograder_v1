@@ -233,4 +233,59 @@ def test_files():
       "Synced 1 new pytest marker(s) into the rubric."
     );
   });
+
+  it("renders comparison mode select and handles mode changes", () => {
+    const mockCtx = createMockContext();
+
+    render(
+      <AssignmentEditorContext.Provider value={mockCtx}>
+        <ScoringRulesSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    const modeSelects = screen.getAllByLabelText(/comparison mode/i);
+    expect(modeSelects.length).toBe(2);
+
+    fireEvent.change(modeSelects[0], { target: { value: "exact" } });
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith(
+      "part1_files",
+      "comparison_mode",
+      "exact"
+    );
+  });
+
+  it("renders tolerance input when numeric_tolerance mode is selected", () => {
+    const mockCtx = createMockContext({
+      scoringItems: [
+        {
+          key: "float_test",
+          label: "Float Test",
+          points: 10,
+          extra_credit: false,
+          item_type: "pytest",
+          pytest_marker: "ag_float_test",
+          rubric_group_key: null,
+          comparison_mode: "numeric_tolerance",
+          tolerance: 0.001,
+        },
+      ],
+    });
+
+    render(
+      <AssignmentEditorContext.Provider value={mockCtx}>
+        <ScoringRulesSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    const tolInput = screen.getByLabelText(/tolerance/i);
+    expect(tolInput).toBeDefined();
+    expect((tolInput as HTMLInputElement).value).toBe("0.001");
+
+    fireEvent.change(tolInput, { target: { value: "0.0005" } });
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith(
+      "float_test",
+      "tolerance",
+      0.0005
+    );
+  });
 });

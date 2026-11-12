@@ -6,6 +6,8 @@ from typing import TypedDict
 class ExpectedIO(TypedDict):
     expected_input: str | None
     expected_output: str | None
+    comparison_mode: str | None
+    tolerance: float | None
 
 
 def _get_string_constant(node: ast.AST | None) -> str | None:
@@ -15,25 +17,63 @@ def _get_string_constant(node: ast.AST | None) -> str | None:
     return None
 
 
-def _get_assignment_targets_and_value(stmt: ast.AST) -> Generator[tuple[str, str | None], None, None]:
-    """Yields (target_var_name, string_value) pairs for Assign and AnnAssign nodes."""
+def _get_numeric_constant(node: ast.AST | None) -> float | None:
+    """Helper to extract a numeric literal constant from an AST node."""
+    if node is not None and isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return float(node.value)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        val = _get_numeric_constant(node.operand)
+        return -val if val is not None else None
+    return None
+
+
+def _get_assignment_targets_and_node(stmt: ast.AST) -> Generator[tuple[str, ast.AST | None], None, None]:
+    """Yields (target_var_name, value_node) pairs for Assign and AnnAssign nodes."""
     if isinstance(stmt, ast.Assign):
-        val = _get_string_constant(stmt.value)
         for target in stmt.targets:
             if isinstance(target, ast.Name):
-                yield target.id, val
+                yield target.id, stmt.value
     elif isinstance(stmt, ast.AnnAssign):
-        if isinstance(stmt.target, ast.Name) and stmt.value is not None:
-            val = _get_string_constant(stmt.value)
-            yield stmt.target.id, val
+        if isinstance(stmt.target, ast.Name):
+            yield stmt.target.id, stmt.value
+
+
+def _process_assignment(
+    var_name: str,
+    val_node: ast.AST | None,
+) -> tuple[str | None, str | None, str | None, float | None]:
+    """Returns (input_val, output_val, comparison_mode, tolerance)."""
+    input_val = None
+    output_val = None
+    comparison_mode = None
+    tolerance = None
+
+    str_val = _get_string_constant(val_node)
+    num_val = _get_numeric_constant(val_node)
+
+    if str_val is not None:
+        if var_name in ("EXPECTED_INPUT", "EXPECTED_INPUTS", "INPUT", "INPUTS"):
+            input_val = str_val
+        elif var_name in ("EXPECTED_OUTPUT", "EXPECTED_OUTPUTS", "EXPECTED", "OUTPUT", "OUTPUTS"):
+            output_val = str_val
+        elif var_name in ("COMPARISON_MODE", "COMPARE_MODE", "MODE"):
+            norm_mode = str_val.lower().strip()
+            if norm_mode in ("normalized", "exact", "numeric_tolerance", "regex"):
+                comparison_mode = norm_mode
+
+    if num_val is not None:
+        if var_name in ("TOLERANCE", "TOL", "EPSILON", "ATOL", "RTOL"):
+            tolerance = num_val
+
+    return input_val, output_val, comparison_mode, tolerance
 
 
 def extract_expected_io(source_code: str) -> dict[str, ExpectedIO]:
-    """Parse python pytest source code to extract EXPECTED_INPUT and EXPECTED_OUTPUT
+    """Parse python pytest source code to extract EXPECTED_INPUT, EXPECTED_OUTPUT,
 
-    constants associated with @pytest.mark.ag_<key> decorated functions.
+    COMPARISON_MODE, and TOLERANCE constants associated with @pytest.mark.ag_<key> decorated functions.
 
-    Returns a dict mapping ag_marker name -> {"expected_input": ..., "expected_output": ...}
+    Returns a dict mapping ag_marker name -> {"expected_input": ..., "expected_output": ..., "comparison_mode": ..., "tolerance": ...}
     """
     results: dict[str, ExpectedIO] = {}
     try:
@@ -44,14 +84,20 @@ def extract_expected_io(source_code: str) -> dict[str, ExpectedIO]:
     # Track module-level assignments as fallbacks
     module_input: str | None = None
     module_output: str | None = None
+    module_mode: str | None = None
+    module_tolerance: float | None = None
 
     for stmt in tree.body:
-        for var_name, val in _get_assignment_targets_and_value(stmt):
-            if val is not None:
-                if var_name in ("EXPECTED_INPUT", "EXPECTED_INPUTS", "INPUT", "INPUTS"):
-                    module_input = val
-                elif var_name in ("EXPECTED_OUTPUT", "EXPECTED_OUTPUTS", "EXPECTED", "OUTPUT", "OUTPUTS"):
-                    module_output = val
+        for var_name, val_node in _get_assignment_targets_and_node(stmt):
+            inp, out, mode, tol = _process_assignment(var_name, val_node)
+            if inp is not None:
+                module_input = inp
+            if out is not None:
+                module_output = out
+            if mode is not None:
+                module_mode = mode
+            if tol is not None:
+                module_tolerance = tol
 
     def get_ag_markers(func_node: ast.AST) -> list[str]:
         markers = []
@@ -86,28 +132,42 @@ def extract_expected_io(source_code: str) -> dict[str, ExpectedIO]:
 
             func_input: str | None = None
             func_output: str | None = None
+            func_mode: str | None = None
+            func_tolerance: float | None = None
 
             for body_stmt in stmt.body:
-                for var_name, val in _get_assignment_targets_and_value(body_stmt):
-                    if val is not None:
-                        if var_name in ("EXPECTED_INPUT", "EXPECTED_INPUTS", "INPUT", "INPUTS"):
-                            func_input = val
-                        elif var_name in ("EXPECTED_OUTPUT", "EXPECTED_OUTPUTS", "EXPECTED", "OUTPUT", "OUTPUTS"):
-                            func_output = val
+                for var_name, val_node in _get_assignment_targets_and_node(body_stmt):
+                    inp, out, mode, tol = _process_assignment(var_name, val_node)
+                    if inp is not None:
+                        func_input = inp
+                    if out is not None:
+                        func_output = out
+                    if mode is not None:
+                        func_mode = mode
+                    if tol is not None:
+                        func_tolerance = tol
 
             effective_input = func_input if func_input is not None else module_input
             effective_output = func_output if func_output is not None else module_output
+            effective_mode = func_mode if func_mode is not None else module_mode
+            effective_tolerance = func_tolerance if func_tolerance is not None else module_tolerance
 
             for marker in markers:
                 if marker not in results:
                     results[marker] = {
                         "expected_input": effective_input,
                         "expected_output": effective_output,
+                        "comparison_mode": effective_mode,
+                        "tolerance": effective_tolerance,
                     }
                 else:
                     if results[marker]["expected_input"] is None and effective_input is not None:
                         results[marker]["expected_input"] = effective_input
                     if results[marker]["expected_output"] is None and effective_output is not None:
                         results[marker]["expected_output"] = effective_output
+                    if results[marker]["comparison_mode"] is None and effective_mode is not None:
+                        results[marker]["comparison_mode"] = effective_mode
+                    if results[marker]["tolerance"] is None and effective_tolerance is not None:
+                        results[marker]["tolerance"] = effective_tolerance
 
     return results

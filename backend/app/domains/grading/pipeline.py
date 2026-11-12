@@ -357,12 +357,14 @@ class GradingPipeline:
                 report.failure_message = "No pytest file artifacts found for this assignment."
                 return None
 
-        test_cases_map: dict[str, dict[str, list[str]]] = {}
+        test_cases_map: dict[str, dict[str, Any]] = {}
         for test in self.config.scoring_items:
             if test.inputs is not None and test.outputs is not None:
                 test_cases_map[test.key] = {
                     "inputs": test.inputs,
                     "outputs": test.outputs,
+                    "comparison_mode": test.comparison_mode,
+                    "tolerance": test.tolerance,
                 }
 
         return test_filenames, test_cases_map
@@ -371,7 +373,7 @@ class GradingPipeline:
         self,
         exec_dir: Path,
         test_filenames: list[str],
-        test_cases_map: dict[str, dict[str, list[str]]],
+        test_cases_map: dict[str, dict[str, Any]],
         stdin: str | None,
         report: EvaluationReport,
     ) -> PytestRunResult | None:

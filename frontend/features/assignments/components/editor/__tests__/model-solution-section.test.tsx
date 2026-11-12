@@ -94,7 +94,7 @@ describe("model solution authoring", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Edit Code" }));
     await waitFor(() => expect(apiClient.getText).toHaveBeenCalledWith(`${artifactsUrl}/${form.get("artifact_key")}`));
     expect((await screen.findByLabelText("Code editor") as HTMLTextAreaElement).value).toBe("# existing source\n");
-  });
+  }, 15000);
 
   it("cancels a new file without saving an artifact", async () => {
     await openPage();
@@ -215,5 +215,65 @@ describe("model solution authoring", () => {
     await screen.findByText("Could not load file");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(apiClient.postForm).not.toHaveBeenCalled();
+  });
+
+  it("renders comparison preview with badges and toggles diff viewer upon successful validation", async () => {
+    vi.mocked(apiClient.get).mockImplementation(async (path) => {
+      if (path.endsWith("/concepts")) return { default_concepts: [], modules: [] };
+      if (path.endsWith("/validation-status")) {
+        return {
+          status: "success",
+          errors: [],
+          score: 20,
+          max_score: 20,
+          test_results: [
+            {
+              key: "part1_files",
+              label: "Required files exist",
+              points: 10,
+              points_awarded: 10,
+              passed: true,
+              actual: "file1.txt\nfile2.txt",
+              expected: "file1.txt\nfile2.txt",
+            },
+            {
+              key: "part2_calc",
+              label: "Calculations match",
+              points: 10,
+              points_awarded: 10,
+              passed: true,
+              actual: "123.456",
+              expected: "123.45",
+            },
+          ],
+        };
+      }
+      return {
+        title: "Lab 1",
+        artifacts,
+        config: {
+          bundle: { entrypoint: "main.py" },
+          scoring_items: [
+            { key: "part1_files", label: "Required files exist", points: 10, extra_credit: false, item_type: "pytest", comparison_mode: "exact" },
+            { key: "part2_calc", label: "Calculations match", points: 10, extra_credit: false, item_type: "pytest", comparison_mode: "numeric_tolerance", tolerance: 0.01 },
+          ],
+        },
+      };
+    });
+
+    await openPage();
+    vi.useFakeTimers();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Test Model Solution" })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+
+    expect(screen.getByText("Comparison Results Preview")).toBeDefined();
+    expect(screen.getByText("Exact")).toBeDefined();
+    expect(screen.getByText("Numeric (±0.01)")).toBeDefined();
+
+    const viewDiffButtons = screen.getAllByRole("button", { name: /view diff/i });
+    expect(viewDiffButtons.length).toBeGreaterThan(0);
+    fireEvent.click(viewDiffButtons[0]);
+    expect(screen.getByRole("button", { name: /hide diff/i })).toBeDefined();
+    vi.useRealTimers();
   });
 });

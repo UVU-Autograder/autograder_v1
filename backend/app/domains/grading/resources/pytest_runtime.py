@@ -7,13 +7,102 @@ DEPENDENCIES = globals().get("DEPENDENCIES", [])
 import importlib
 import io
 import json
+import math
 import os
+import re
 import signal
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+
+NUMBER_PATTERN = re.compile(r"[-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?")
+DEFAULT_NUMERIC_TOLERANCE = 1e-4
+
+
+def normalize_output(text):
+    if not text:
+        return ""
+    lines = [stripped for line in text.splitlines() if (stripped := line.rstrip())]
+    return "\n".join(lines).strip()
+
+
+def compare_exact(actual, expected):
+    return (actual or "").replace("\r\n", "\n") == (expected or "").replace("\r\n", "\n")
+
+
+def compare_regex(actual, pattern):
+    norm_actual = (actual or "").replace("\r\n", "\n")
+    norm_pattern = (pattern or "").replace("\r\n", "\n")
+    if not norm_pattern:
+        return norm_actual == ""
+    try:
+        compiled = re.compile(norm_pattern, re.MULTILINE)
+        return compiled.search(norm_actual) is not None
+    except re.error:
+        return False
+
+
+def compare_numeric_tolerance(actual, expected, tolerance=None):
+    if tolerance is None:
+        tol = DEFAULT_NUMERIC_TOLERANCE
+    else:
+        try:
+            tol_f = float(tolerance)
+            tol = DEFAULT_NUMERIC_TOLERANCE if tol_f < 0 else tol_f
+        except (ValueError, TypeError):
+            tol = DEFAULT_NUMERIC_TOLERANCE
+    act_str = actual or ""
+    exp_str = expected or ""
+    if act_str.replace("\r\n", "\n") == exp_str.replace("\r\n", "\n"):
+        return True
+    try:
+        act_val = float(act_str.strip())
+        exp_val = float(exp_str.strip())
+        if math.isnan(act_val) and math.isnan(exp_val):
+            return True
+        return math.isclose(act_val, exp_val, rel_tol=tol, abs_tol=tol)
+    except (ValueError, TypeError):
+        pass
+    norm_act = normalize_output(act_str)
+    norm_exp = normalize_output(exp_str)
+    if norm_act == norm_exp:
+        return True
+    act_nums = NUMBER_PATTERN.findall(norm_act)
+    exp_nums = NUMBER_PATTERN.findall(norm_exp)
+    if len(act_nums) != len(exp_nums):
+        return False
+    act_parts = NUMBER_PATTERN.split(norm_act)
+    exp_parts = NUMBER_PATTERN.split(norm_exp)
+    if len(act_parts) != len(exp_parts):
+        return False
+    for a_part, e_part in zip(act_parts, exp_parts):
+        if re.sub(r"[ \t]+", " ", a_part) != re.sub(r"[ \t]+", " ", e_part):
+            return False
+    for a_num, e_num in zip(act_nums, exp_nums):
+        try:
+            a_f = float(a_num)
+            e_f = float(e_num)
+        except (ValueError, TypeError):
+            return False
+        if math.isnan(a_f) and math.isnan(e_f):
+            continue
+        if not math.isclose(a_f, e_f, rel_tol=tol, abs_tol=tol):
+            return False
+    return True
+
+
+def compare_outputs(actual, expected, mode="normalized", tolerance=None):
+    if mode == "exact":
+        return compare_exact(actual, expected)
+    elif mode == "numeric_tolerance":
+        return compare_numeric_tolerance(actual, expected, tolerance=tolerance)
+    elif mode == "regex":
+        return compare_regex(actual, expected)
+    else:
+        return normalize_output(actual or "") == normalize_output(expected or "")
+
 
 LIMIT = 65536
 REPORT_LIMIT = 1024 * 1024
@@ -333,11 +422,36 @@ def child_main(report_path):
                     else:
                         importlib.import_module(ENTRYPOINT_MODULE)
                     actual = capsys.readouterr().out
-                    request.node.user_properties.extend([("actual", actual), ("expected", params["case_output"]),
-                                                         ("expected_input", params["case_input"])])
-                    def normalize(value):
-                        return "\n".join(line.strip() for line in value.splitlines() if line.strip())
-                    assert normalize(actual) == normalize(params["case_output"])
+
+                    case_info = None
+                    for marker in request.node.iter_markers():
+                        if marker.name.startswith("ag_"):
+                            key = marker.name.removeprefix("ag_")
+                            if key in TEST_CASES:
+                                case_info = TEST_CASES[key]
+                                break
+
+                    mode = (case_info.get("comparison_mode") or "normalized") if case_info else "normalized"
+                    tolerance = case_info.get("tolerance") if case_info else None
+
+                    request.node.user_properties.extend([
+                        ("actual", actual),
+                        ("expected", params["case_output"]),
+                        ("expected_input", params["case_input"]),
+                        ("comparison_mode", mode),
+                    ])
+
+                    matched = compare_outputs(actual, params["case_output"], mode=mode, tolerance=tolerance)
+                    if not matched:
+                        if mode == "exact":
+                            assert (actual or "").replace("\r\n", "\n") == (params["case_output"] or "").replace("\r\n", "\n")
+                        elif mode == "numeric_tolerance":
+                            tol_val = DEFAULT_NUMERIC_TOLERANCE if (tolerance is None or tolerance < 0) else tolerance
+                            pytest.fail(f"Output did not match expected within tolerance {tol_val}.\nExpected: {params['case_output']!r}\nActual: {actual!r}")
+                        elif mode == "regex":
+                            pytest.fail(f"Output did not match regex pattern.\nPattern: {params['case_output']!r}\nActual: {actual!r}")
+                        else:
+                            assert normalize_output(actual) == normalize_output(params["case_output"])
                 return run
 
         plugin = Plugin()

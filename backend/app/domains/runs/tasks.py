@@ -289,6 +289,7 @@ def validate_assignment_model_solution(
             "errors": errors,
             "score": grading_result.score,
             "max_score": max_score,
+            "test_results": grading_result.test_results,
         }
         if passed:
             from app.domains.grading.report_contract import ValidatedManifest
@@ -326,6 +327,7 @@ def validate_assignment_model_solution(
             "errors": [f"Internal validation error: {type(exc).__name__}: {exc!s}"],
             "score": 0,
             "max_score": 0,
+            "test_results": [],
         }
         set_run_result(run_id, error_result)
         set_run_state(run_id, "failure")

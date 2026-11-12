@@ -180,9 +180,16 @@ def capture_package(course_code: str, assignment_slug: str) -> OfficialGradingPa
             )
             if errors:
                 raise PackageCaptureError("; ".join(errors))
-            test_cases = {item.key: {"inputs": item.inputs, "outputs": item.outputs}
-                          for item in config.scoring_items
-                          if item.inputs is not None and item.outputs is not None}
+            test_cases = {
+                item.key: {
+                    "inputs": item.inputs,
+                    "outputs": item.outputs,
+                    "comparison_mode": item.comparison_mode,
+                    "tolerance": item.tolerance,
+                }
+                for item in config.scoring_items
+                if item.inputs is not None and item.outputs is not None
+            }
             runner = generate_runner_script(pytest_filenames, test_cases,
                                            Path(config.bundle.entrypoint).stem, config.dependencies)
             payload = {

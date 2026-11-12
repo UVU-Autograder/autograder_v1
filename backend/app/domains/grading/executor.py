@@ -12,6 +12,7 @@ import logging
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from app.core.audit_log import current_audit_context, log_and_audit_error
 from app.domains.grading.result_parser import PytestRunResult, parse_pytest_json
@@ -52,7 +53,7 @@ async def execute_pytest_in_judge0(
     exec_dir: Path,
     *,
     test_filenames: list[str],
-    test_cases: dict[str, dict[str, list[str]]],
+    test_cases: dict[str, dict[str, Any]],
     entrypoint_module: str,
     language_id: int,
     cpu_time_limit: float,

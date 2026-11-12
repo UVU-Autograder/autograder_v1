@@ -180,18 +180,20 @@ def get_validation_status(
     run_id = f"val:{course_id}:{assignment_id}"
     state_data = get_run_state(run_id)
     if state_data is None:
-        return {"status": "idle", "errors": [], "score": 0, "max_score": 0}
+        return {"status": "idle", "errors": [], "score": 0, "max_score": 0, "test_results": []}
 
     status = state_data.get("state", "idle")
     result_data = get_run_result(run_id)
     errors = []
     score = 0
     max_score = 0
+    test_results = []
 
     if result_data:
         errors = result_data.get("errors", [])
         score = result_data.get("score", 0)
         max_score = result_data.get("max_score", 0)
+        test_results = result_data.get("test_results", [])
         # If task failed (e.g. timeout / exception) and we have state=failure,
         # ensure status is returned as failure
         if "errors" in result_data and status == "complete":
@@ -202,6 +204,7 @@ def get_validation_status(
         "errors": errors,
         "score": score,
         "max_score": max_score,
+        "test_results": test_results,
     }
 
 

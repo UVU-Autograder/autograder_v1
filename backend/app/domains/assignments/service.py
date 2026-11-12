@@ -206,6 +206,8 @@ def build_scoring_items(scoring_items: list[ScoringItemConfig]) -> list[ScoringI
             is_private=bool(item.is_private),
             pytest_marker=pytest_marker_for_key(item.key) if item.item_type == "pytest" else None,
             rubric_group_key=item.rubric_group_key,
+            comparison_mode=item.comparison_mode,
+            tolerance=item.tolerance,
         )
         for item in scoring_items
     ]

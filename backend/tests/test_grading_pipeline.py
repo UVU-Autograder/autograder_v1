@@ -149,3 +149,76 @@ async def test_pipeline_reserved_filename_blocked(base_config: AssignmentConfigV
     assert report.failure_category == "reserved_filename"
     assert "conftest.py" in (report.failure_message or "")
 
+
+@pytest.mark.anyio
+async def test_pipeline_propagates_comparison_mode_and_tolerance_to_executor(
+    tmp_path: Path,
+) -> None:
+    raw_config = {
+        "bundle": {"entrypoint": "main.py"},
+        "artifacts": {"assignment_tests": {"type": "pytest_file"}},
+        "comparison_mode": "exact",
+        "tolerance": 0.05,
+        "scoring_items": [
+            {
+                "key": "item_exact",
+                "label": "Exact Item",
+                "points": 10,
+                "extra_credit": False,
+                "inputs": ["in1"],
+                "outputs": ["out1"],
+            },
+            {
+                "key": "item_override",
+                "label": "Override Item",
+                "points": 10,
+                "extra_credit": False,
+                "inputs": ["in2"],
+                "outputs": ["out2"],
+                "comparison_mode": "numeric_tolerance",
+                "tolerance": 0.001,
+            },
+        ],
+    }
+    config = AssignmentConfigV1.model_validate(raw_config)
+
+    tests_file = tmp_path / "tests.py"
+    tests_file.write_text("def test_dummy(): pass", encoding="utf-8")
+    artifact_refs = {"assignment_tests": f"file://{tests_file.as_posix()}"}
+
+    captured_test_cases = {}
+
+    async def mock_executor(exec_dir, **kwargs):
+        nonlocal captured_test_cases
+        captured_test_cases = kwargs.get("test_cases", {})
+        return ExecutionOutcome(
+            success=True,
+            pytest_result=PytestRunResult(
+                tests=[
+                    PytestTestResult(nodeid="t1", outcome="passed", markers=["ag_item_exact"], duration=0.01, message=None),
+                    PytestTestResult(nodeid="t2", outcome="passed", markers=["ag_item_override"], duration=0.01, message=None),
+                ],
+                total=2,
+                passed=2,
+                exit_code=0,
+            ),
+        )
+
+    pipeline = GradingPipeline(
+        config=config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=["functions"],
+        executor_fn=mock_executor,
+    )
+
+    payload = SubmissionPayload.from_files({"main.py": b"pass"})
+    await pipeline.evaluate(payload)
+
+    assert "item_exact" in captured_test_cases
+    assert captured_test_cases["item_exact"]["comparison_mode"] == "exact"
+    assert captured_test_cases["item_exact"]["tolerance"] == 0.05
+
+    assert "item_override" in captured_test_cases
+    assert captured_test_cases["item_override"]["comparison_mode"] == "numeric_tolerance"
+    assert captured_test_cases["item_override"]["tolerance"] == 0.001
+

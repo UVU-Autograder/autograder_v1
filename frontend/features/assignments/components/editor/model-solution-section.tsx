@@ -19,18 +19,52 @@ import {
   ShieldAlertIcon,
   FileTextIcon,
   FilePlusIcon,
+  XCircleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from "lucide-react";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { apiClient } from "@/lib/api-client";
 import { staffArtifactPath } from "@/features/staff/api";
 import { makeUniqueKey, slugifyKey } from "@/lib/slugify";
 import { isTextFilename, validateFilename } from "@/features/assignments/workspace/file-utils";
+import VisualDiffViewer from "@/components/visual-diff-viewer";
+import { Badge } from "@/components/ui/badge";
+
+type TestCaseDetail = {
+  nodeid?: string;
+  outcome?: string;
+  duration?: number;
+  message?: string | null;
+  actual?: string | null;
+  expected?: string | null;
+  your_value?: string | null;
+  expected_value?: string | null;
+  expected_input?: string | null;
+};
+
+type ValidationTestResult = {
+  key: string;
+  label: string;
+  points: number;
+  points_awarded: number;
+  passed: boolean;
+  extra_credit?: boolean;
+  item_type?: string;
+  marker?: string;
+  actual?: string | null;
+  expected?: string | null;
+  your_value?: string | null;
+  expected_value?: string | null;
+  test_results?: TestCaseDetail[];
+};
 
 type ValidationStatus = {
   status: "idle" | "queue" | "run" | "success" | "failure";
   errors: string[];
   score: number;
   max_score: number;
+  test_results?: ValidationTestResult[];
 };
 
 import { Label } from "@/components/ui/label";
@@ -47,7 +81,13 @@ export function ModelSolutionSection() {
     entrypoint,
     dirty,
     saving,
+    scoringItems,
   } = useAssignmentEditor();
+
+  const [expandedDiffs, setExpandedDiffs] = useState<Record<string, boolean>>({});
+  const toggleDiff = (key: string) => {
+    setExpandedDiffs((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -421,6 +461,117 @@ export function ModelSolutionSection() {
                       <li key={idx}>{err}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {validation.test_results && validation.test_results.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Comparison Results Preview
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {validation.test_results.filter((t) => t.passed).length} of{" "}
+                      {validation.test_results.length} passed
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {validation.test_results.map((testRes) => {
+                      const itemConfig = scoringItems.find((s) => s.key === testRes.key);
+                      const mode = itemConfig?.comparison_mode || "normalized";
+                      const tol = itemConfig?.tolerance;
+                      const isExpanded = Boolean(expandedDiffs[testRes.key]);
+
+                      const actualOutput =
+                        testRes.actual ??
+                        testRes.your_value ??
+                        testRes.test_results?.[0]?.actual ??
+                        testRes.test_results?.[0]?.your_value ??
+                        null;
+                      const expectedOutput =
+                        testRes.expected ??
+                        testRes.expected_value ??
+                        testRes.test_results?.[0]?.expected ??
+                        testRes.test_results?.[0]?.expected_value ??
+                        (itemConfig?.outputs ? itemConfig.outputs.join("\n") : null);
+
+                      const hasDiffData = actualOutput !== null || expectedOutput !== null;
+
+                      let modeBadgeLabel = "Normalized";
+                      if (mode === "exact") modeBadgeLabel = "Exact";
+                      else if (mode === "numeric_tolerance") {
+                        modeBadgeLabel = tol !== null && tol !== undefined ? `Numeric (±${tol})` : "Numeric (±1e-4)";
+                      } else if (mode === "regex") {
+                        modeBadgeLabel = "Regex";
+                      }
+
+                      return (
+                        <div
+                          key={testRes.key}
+                          className="rounded-lg border border-border bg-card/60 p-2.5 text-xs text-card-foreground space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {testRes.passed ? (
+                                <CheckCircle2Icon className="w-4 h-4 text-success shrink-0" />
+                              ) : (
+                                <XCircleIcon className="w-4 h-4 text-destructive shrink-0" />
+                              )}
+                              <span className="font-semibold text-foreground truncate">
+                                {testRes.label || testRes.key}
+                              </span>
+                              <Badge
+                                variant={
+                                  mode === "exact"
+                                    ? "secondary"
+                                    : mode === "numeric_tolerance"
+                                      ? "info"
+                                      : mode === "regex"
+                                        ? "warning"
+                                        : "outline"
+                                }
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                {modeBadgeLabel}
+                              </Badge>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-mono text-xs">
+                                {testRes.points_awarded} / {testRes.points} pts
+                              </span>
+                              {hasDiffData && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+                                  onClick={() => toggleDiff(testRes.key)}
+                                  aria-label={isExpanded ? `Hide diff for ${testRes.key}` : `View diff for ${testRes.key}`}
+                                >
+                                  {isExpanded ? (
+                                    <>
+                                      <ChevronDownIcon className="w-3.5 h-3.5 mr-1" /> Hide Diff
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronRightIcon className="w-3.5 h-3.5 mr-1" /> View Diff
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          {isExpanded && hasDiffData && (
+                            <div className="mt-2 pt-2 border-t border-border">
+                              <VisualDiffViewer expected={expectedOutput} actual={actualOutput} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

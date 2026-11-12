@@ -92,3 +92,56 @@ def test_extract_expected_io_syntax_error() -> None:
     source_code = "def invalid_syntax(:"
     results = extract_expected_io(source_code)
     assert results == {}
+
+
+def test_extract_expected_io_comparison_modes_and_tolerance() -> None:
+    source_code = """
+import pytest
+
+COMPARISON_MODE = "exact"
+TOLERANCE = 0.01
+
+@pytest.mark.ag_exact_test
+def test_exact():
+    EXPECTED_OUTPUT = "exact\\nformat"
+
+@pytest.mark.ag_override_mode
+def test_override():
+    COMPARISON_MODE = "numeric_tolerance"
+    TOLERANCE = 0.0005
+    EXPECTED_OUTPUT = "3.14159"
+
+@pytest.mark.ag_regex_test
+def test_regex():
+    COMPARISON_MODE = "regex"
+    EXPECTED_OUTPUT = r"^Hello \\d+$"
+"""
+    results = extract_expected_io(source_code)
+    assert results["ag_exact_test"]["comparison_mode"] == "exact"
+    assert results["ag_exact_test"]["tolerance"] == 0.01
+    assert results["ag_exact_test"]["expected_output"] == "exact\nformat"
+
+    assert results["ag_override_mode"]["comparison_mode"] == "numeric_tolerance"
+    assert results["ag_override_mode"]["tolerance"] == 0.0005
+    assert results["ag_override_mode"]["expected_output"] == "3.14159"
+
+    assert results["ag_regex_test"]["comparison_mode"] == "regex"
+    assert results["ag_regex_test"]["tolerance"] == 0.01
+    assert results["ag_regex_test"]["expected_output"] == r"^Hello \d+$"
+
+
+def test_extract_expected_io_annotated_mode_and_tolerance() -> None:
+    source_code = """
+import pytest
+
+@pytest.mark.ag_annotated_mode
+def test_annotated():
+    COMPARISON_MODE: str = "exact"
+    TOLERANCE: float = 1e-5
+    EXPECTED_OUTPUT: str = "ok"
+"""
+    results = extract_expected_io(source_code)
+    assert results["ag_annotated_mode"]["comparison_mode"] == "exact"
+    assert results["ag_annotated_mode"]["tolerance"] == 1e-5
+    assert results["ag_annotated_mode"]["expected_output"] == "ok"
+
