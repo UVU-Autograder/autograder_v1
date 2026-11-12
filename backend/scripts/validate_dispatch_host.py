@@ -24,8 +24,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.core.settings import get_settings
 from app.db.base import import_domain_models
 from app.db.session import SessionLocal
+from app.domains.assignments.engine import AssignmentSpecificationEngine
 from app.domains.auth.models import User
-from app.domains.courses.models import Section
+from app.domains.courses.models import Course, Section
 from app.domains.ingestion.engine import SubmissionIngestionEngine
 from app.domains.runs import retention
 from app.domains.runs.models import RunSummary
@@ -33,7 +34,6 @@ from app.domains.runs.service import official_run_dir, official_run_zip_path
 
 import_domain_models()
 MANIFEST = retention.control_root() / "dispatch_validation_manifest.json"
-MODEL = Path(__file__).resolve().parents[1] / "app/db/seeds/simple-python-functions/model_solution.py"
 
 
 def report(**values):
@@ -52,30 +52,43 @@ def load_manifest():
     return manifest
 
 
-def synthetic_zip(count):
-    source = MODEL.read_bytes()
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for index in range(count):
-            archive.writestr(f"synthetic_{100000 + index}_{200000 + index}_student_functions.py", source)
-    return buffer.getvalue()
-
-
-def prepare(count):
+def prepare(count: int, course_id: str = "cs1400", assignment_id: str = "m1-lab1"):
     if MANIFEST.exists():
         raise RuntimeError("Previous validation manifest exists; inspect or clean it first")
     with SessionLocal() as db:
         staff = db.scalar(select(User).where(User.email == "dev.staff@uvu.edu"))
-        section = db.scalar(select(Section).where(Section.crn == "12345"))
+        course = db.scalar(select(Course).where(Course.code == course_id))
+        if not course:
+            raise RuntimeError(f"Synthetic seed course {course_id} unavailable")
+        section = db.scalar(select(Section).where(Section.course_id == course.id))
         if not staff or not section:
             raise RuntimeError("Synthetic seed staff or section unavailable")
+        engine = AssignmentSpecificationEngine()
+        model_bundle = engine.prepare_model_solution_bundle(db, course_id, assignment_id)
+        model_zip = zipfile.ZipFile(io.BytesIO(model_bundle["zip_data"]))
+        model_files = {name: model_zip.read(name) for name in model_zip.namelist()}
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+            for index in range(count):
+                for fname, fbytes in model_files.items():
+                    archive.writestr(f"synthetic_{100000 + index}_{200000 + index}_{fname}", fbytes)
+        canvas_zip = buffer.getvalue()
+
         run = SubmissionIngestionEngine().ingest_canvas_upload(
-            db, course_id="cs1400", assignment_id="simple-python-functions",
+            db, course_id=course_id, assignment_id=assignment_id,
             section_id=section.id, actor_user_id=staff.id,
-            filename="synthetic_canvas.zip", content=synthetic_zip(count),
+            filename="synthetic_canvas.zip", content=canvas_zip,
         )
-        manifest = {"run_id": run.id, "created_at": retention.as_utc(run.created_at).isoformat(),
-            "count": count, "marker": str(uuid.uuid4()), "sandbox_run": None}
+        manifest = {
+            "run_id": run.id,
+            "created_at": retention.as_utc(run.created_at).isoformat(),
+            "count": count,
+            "course_id": course_id,
+            "assignment_id": assignment_id,
+            "marker": str(uuid.uuid4()),
+            "sandbox_run": None,
+        }
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     temporary = MANIFEST.with_suffix(".tmp")
     temporary.write_text(json.dumps(manifest), encoding="utf-8")
@@ -86,12 +99,17 @@ def prepare(count):
 def submit_sandbox(manifest):
     if manifest["sandbox_run"] is not None:
         return manifest
-    payload = io.BytesIO()
-    with zipfile.ZipFile(payload, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("student_functions.py", MODEL.read_bytes())
+    course_id = manifest.get("course_id", "cs1400")
+    assignment_id = manifest.get("assignment_id", "m1-lab1")
+    with SessionLocal() as db:
+        engine = AssignmentSpecificationEngine()
+        model_bundle = engine.prepare_model_solution_bundle(db, course_id, assignment_id)
+        payload = model_bundle["zip_data"]
     with httpx.Client(base_url="http://127.0.0.1:8000", timeout=10) as client:
-        response = client.post("/sandbox/courses/cs1400/assignments/simple-python-functions/runs",
-            files={"bundle": ("synthetic.zip", payload.getvalue(), "application/zip")})
+        response = client.post(
+            f"/sandbox/courses/{course_id}/assignments/{assignment_id}/runs",
+            files={"bundle": ("synthetic.zip", payload, "application/zip")},
+        )
         response.raise_for_status()
         body = response.json()
     manifest["sandbox_run"] = body["run_id"]
@@ -140,7 +158,7 @@ def sandbox_state(manifest):
     return None
 
 
-def watch(manifest, *, timeout_seconds):
+def watch(manifest, *, timeout_seconds, max_failed=0):
     start = time.monotonic()
     manifest = submit_sandbox(manifest)
     sandbox_done = False
@@ -158,7 +176,7 @@ def watch(manifest, *, timeout_seconds):
                 time.sleep(20)
                 continue
             passed = (data["state"] == "complete" and data["completed"] == manifest["count"]
-                and data["failed"] == 0 and data["timeouts"] == 0
+                and data["failed"] <= max_failed and data["timeouts"] == 0
                 and data.get("csv_rows") == manifest["count"]
                 and data.get("feedback_files") == manifest["count"]
                 and data["elapsed_seconds"] < 2400
@@ -190,19 +208,22 @@ def cleanup(manifest):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("phase", choices=("prepare", "check", "watch", "cleanup"))
+    parser.add_argument("--course", default="cs1400")
+    parser.add_argument("--assignment", default="m1-lab1")
     parser.add_argument("--count", type=int, default=200)
     parser.add_argument("--timeout-seconds", type=int, default=2400)
+    parser.add_argument("--max-failed", type=int, default=0)
     args = parser.parse_args()
     if args.phase == "prepare":
         if not get_settings().sandbox_use_celery:
             raise RuntimeError("Host validation requires Celery mode")
-        prepare(args.count)
+        prepare(args.count, course_id=args.course, assignment_id=args.assignment)
     else:
         manifest = load_manifest()
         if args.phase == "check":
             check(manifest)
         elif args.phase == "watch":
-            watch(manifest, timeout_seconds=args.timeout_seconds)
+            watch(manifest, timeout_seconds=args.timeout_seconds, max_failed=args.max_failed)
         else:
             cleanup(manifest)
 

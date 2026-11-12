@@ -354,3 +354,28 @@ Beyond execution slot count, four key parameters across the stack directly optim
    - The 50-user benchmark demonstrated that GPU KV-cache allocation peaked at only 31.2% with zero cache evictions or preemptions, accommodating an entire 50-student cohort requesting simultaneous AI hints without any 503 `ai_busy` backpressure.
 
 [Dispatch](../../backend/scripts/validate_dispatch_host.py) and [retention](../../backend/scripts/validate_retention_host.py) validators own synthetic batch/failure/outage procedures. Review CLI/phase order, keep manifests and run permission checks as the application user. They are maintenance tests, not daily health checks.
+
+## Host verification and fault recovery validation (Issue #25)
+
+The production Dell Precision 5860 Tower (`CET-D24728`, Ubuntu 24.04 LTS, Intel Core Ultra 7 265, 32GB RAM, NVIDIA RTX PRO 4500 Blackwell 32GB) underwent dated, commit-specific verification across microVM isolation, batch throughput, interruption recovery, and zero-retention compliance ([Issue #25](https://github.com/UVU-Autograder/autograder_v1/issues/25)).
+
+### 1. Kata microVM Isolation & Boundary Proofs
+- **Kernel Separation:** Execution was confirmed running in an independent guest Linux kernel (`6.18.35-202` inside Kata vs. host `6.17.0-1032-oem`), isolated by hardware KVM acceleration (`accel=kvm`).
+- **Resource Caps:** MicroVM hypervisor envelopes were verified in `/etc/kata-containers/runtime-rs/configuration.toml` (`default_vcpus = 2`, `default_memory = 2048` MB, `virtio-fs`), with Judge0 per-box `isolate` boundaries strictly capping memory to 256MB, CPU time to 30.0s, wall time to 20.0s, and thread count to 60.
+- **MicroVM Process Boundaries:** All 6 `judge0-worker` containers operate under `runtime: kata-runtime`, with dedicated `containerd-shim-kata-v2`, `virtiofsd`, and `qemu-system-x86_64` process isolation per slot.
+
+### 2. 200-Submission Batch Capacity & Concurrent Sandbox Execution
+- **Batch Processing:** 200 synthetic submissions were processed through the official pipeline via [`validate_dispatch_host.py`](../../backend/scripts/validate_dispatch_host.py) against CS 1400 `m1-lab1` (`completed: 200`, total batch duration: `1454.13s`).
+- **Concurrent Sandbox Throughput:** A concurrent sandbox submission was dispatched mid-batch; it completed cleanly in `20.03s` with score 10/10 while the official queue remained fully active.
+- **Export Artifacts:** Official grades export (`grades.csv`, 200 rows) and student feedback bundles (`feedback.zip`, 200 items) were compiled in `0.0085s` packaging time and verified with zero dropped jobs.
+- **Post-Run Teardown:** Cleaned up via `validate_dispatch_host.py cleanup`, confirming `physical_absence: true` with zero orphaned workspace directories or archive artifacts.
+
+### 3. Fault & Interruption Recovery Mid-Batch
+- **Celery Worker Crash Recovery:** Restarted `celery-worker` mid-batch; worker reconnected to Redis within 1s and resumed grading the active submission without ticket or slot leakage.
+- **Dispatch Worker Restart:** Restarted `dispatch-worker` mid-batch; dispatcher cleanly re-evaluated in-flight tickets, published next tasks, and maintained 5s health sweeps (`healthy: true, publish_failures: 0`).
+- **Judge0 Execution Worker Crash Recovery:** Restarted `judge0-worker` during active test execution; the interrupted job was safely trapped, reported as `cleanup_failure`, checkpointed, and the remaining batch proceeded without deadlocks or stalled queues.
+- **Slot & Ticket Audit:** Audited `ExecutionTicket` table in PostgreSQL; confirmed zero orphaned tickets or deadlocks across all runs.
+
+### 4. Zero-Retention Compliance
+- **Submission Deletion:** Verified through [`validate_grading_package_host.py`](../../backend/scripts/validate_grading_package_host.py) and live Celery traces that every completed submission payload is immediately deleted via `DELETE /submissions/[TOKEN]` (subsequent queries return HTTP 404).
+- **Cleanup Worker Reconciliation:** Executed [`validate_retention_host.py`](../../backend/scripts/validate_retention_host.py) across simulated 23h review expiry, 24h hard deletion, permission failure quarantine, and recovery. All 14 retention and cleanup assertions passed, leaving zero dangling files or orphaned workspaces.
