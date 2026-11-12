@@ -6,6 +6,7 @@ and result persistence from Celery task worker wrappers.
 from __future__ import annotations
 
 import base64
+import fnmatch
 import io
 import json
 import logging
@@ -45,7 +46,16 @@ def build_model_solution_zip(
     model_files: dict[str, bytes],
 ) -> bytes:
     """Build a complete model bundle without synthetic placeholder files."""
-    missing = [path for path in required_files if path not in model_files]
+    missing = []
+    for req in required_files:
+        if req in model_files:
+            continue
+        if any(c in req for c in "*?[]") and any(
+            fnmatch.fnmatch(name, req) for name in model_files
+        ):
+            continue
+        missing.append(req)
+
     if missing:
         raise ValueError(
             "Missing model solution artifacts for required files: "

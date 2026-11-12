@@ -37,9 +37,13 @@ The dedicated on-prem workstation (`10.115.20.200`, hostname `CET-D24728`) opera
 | `ARTIFACT_STORAGE_DIR`, `SANDBOX_USE_CELERY` | `/data/artifacts`, `true` |
 | Production identity | `ENVIRONMENT=production`, `AUTH_PROVIDER=microsoft`, mock disabled, non-default JWT secret and institutional Entra configuration |
 
-Define this Bash helper from the checkout; use it for every stack operation:
+The workstation environment sets `COMPOSE_FILE=docker-compose.yml:docker-compose.kata.yml` in `.env` so standard `docker compose` invocations automatically load the Kata runtime overlay. Alternatively, use the provided wrapper script [`scripts/dc.sh`](../../scripts/dc.sh) or Bash helper for stack operations:
 
 ```bash
+# Using the wrapper script:
+bash scripts/dc.sh ps
+
+# Or via Bash helper function:
 dc() { docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.kata.yml "$@"; }
 ```
 
@@ -379,3 +383,156 @@ The production Dell Precision 5860 Tower (`CET-D24728`, Ubuntu 24.04 LTS, Intel 
 ### 4. Zero-Retention Compliance
 - **Submission Deletion:** Verified through [`validate_grading_package_host.py`](../../backend/scripts/validate_grading_package_host.py) and live Celery traces that every completed submission payload is immediately deleted via `DELETE /submissions/[TOKEN]` (subsequent queries return HTTP 404).
 - **Cleanup Worker Reconciliation:** Executed [`validate_retention_host.py`](../../backend/scripts/validate_retention_host.py) across simulated 23h review expiry, 24h hard deletion, permission failure quarantine, and recovery. All 14 retention and cleanup assertions passed, leaving zero dangling files or orphaned workspaces.
+
+## Operational support roles and responsibilities
+
+Formal operational support roles ensure clear accountability across workstation infrastructure, curriculum configuration, and instructional workflows:
+
+### 1. Host & Infrastructure Administrator
+- **Primary Contact:** Host Administrator (`dev@10.115.20.200`, host user `dev`).
+- **Core Responsibilities:**
+  - **Workstation & Hardware Telemetry:** Physical hardware oversight for Dell Precision 5860 Tower (`CET-D24728`, IP `10.115.20.200`). Continuous monitoring of thermal metrics, cooling fans, and GPU power consumption (`nvidia-smi`) on the NVIDIA RTX PRO 4500 Blackwell (32GB VRAM), ensuring sustained power ceilings (≤210W) and stable operating temperatures (<65°C).
+  - **Kata Containers & Kernel Lifecycle:** Maintenance and tuning of Kata Containers runtime-rs (`/etc/kata-containers/runtime-rs/configuration.toml`), `/dev/kvm` hardware virtualization permissions, and QEMU isolation parameters. Evaluation and testing of host OS kernel updates against guest microVM compatibility.
+  - **Local AI Service Maintenance:** Administration of `vllm-cs1410.service` on internal loopback `127.0.0.1:8001`. Manages storage and versioning for Gemma 4 12B QAT base model weights (`/data/models/gemma4-12b-qat-w4a16`) and reviewed LoRA adapter weights (`/data/models/adapters/`).
+  - **Data Persistence & Disaster Backups:** Oversight of daily `02:00` cron snapshot execution ([`backup_metadata.sh`](../../scripts/backup_metadata.sh)), validating metadata archive integrity in `/data/backups/metadata` and strictly maintaining FERPA zero-retention boundaries.
+  - **Network & Ingress Security:** Management of Nginx reverse proxy routing, TLS termination, Microsoft Entra ID OAuth integrations, and strict loopback listener enforcement (`127.0.0.1` for backend, frontend, vLLM, Judge0, PostgreSQL, and Redis).
+
+### 2. Course Coordinators (CS 1400 & CS 1410)
+- **Primary Contacts:** Lead Course Coordinators for CS 1400 (Intro to Programming) and CS 1410 (Object-Oriented Programming).
+- **Core Responsibilities:**
+  - **Assignment & Test Configuration:** Authoring and maintaining assignment grading packages, pytest test harnesses, AST syntactic inspection constraints, and rubric point allocations.
+  - **Reference Inventory Validation:** Execution of model reference solution validation ([`revalidate_references.py`](../../backend/scripts/revalidate_references.py)) before publishing assignments, ensuring all reference implementations score 100% under Kata microVM execution.
+  - **Scoring & Rubric Calibration:** Calibrating automated scoring tiers, AST rules, manual rubric point bounds, and reusable 1-click comment snippets for course grading staff.
+  - **Rollout Coordination:** Scheduling grading package deployment windows ([`rollout_grading_package.sh`](../../scripts/rollout_grading_package.sh)) and coordinating major assignment updates with the Host Administrator.
+
+### 3. Teaching Assistants (TAs) and Instructional Assistants (IAs)
+- **Primary Contacts:** Course Teaching Assistants and Lab Instructional Assistants.
+- **Core Responsibilities:**
+  - **First-Line Student Guidance:** Assisting students with sandbox test results, troubleshooting preflight file naming errors (e.g., missing mandatory submission files), and clarifying Socratic AI feedback without leaking reference solutions.
+  - **Live Queue Monitoring:** Observing sandbox admission rates, queue wait times, and system notices during scheduled lab sessions and peak submission windows.
+  - **Manual Rubric Adjudication:** Reviewing student test breakdowns, applying 1-click comment snippets, and entering manual rubric adjustments via the instructor interface ([`update_student_manual_grades`](../../backend/app/domains/runs/router.py#L541-L550)).
+  - **FERPA Zero-Retention Awareness:** Upholding student data privacy guidelines: never downloading student source code to personal machines, never saving student artifacts outside approved Canvas gradebook exports, and respecting the ephemeral 24-hour workspace retention window.
+  - **Anomaly Escalation:** Immediate reporting of unexpected sandbox grading errors, timeout loops, or test harness defects to the appropriate Course Coordinator and Host Administrator.
+
+## Emergency incident response playbooks
+
+The following runbooks provide immediate remediation procedures for common operational interruptions:
+
+### Playbook 1: Immediate Ingestion Halt & Queue Drainage
+Use this playbook when a critical issue (e.g., malformed assignment suite, grading bug, or security risk) requires stopping incoming traffic without aborting in-flight submissions.
+
+1. **Halt External Ingestion at Nginx:**
+   ```bash
+   sudo systemctl stop nginx
+   ```
+2. **Verify In-Flight Workload Drainage:**
+   Ensure background workers complete pending queue items without terminating mid-execution:
+   ```bash
+   bash scripts/rollout_grading_package.sh --dry-run
+   ```
+   Or inspect Celery worker queues directly:
+   ```bash
+   dc exec -T backend celery -A app.integrations.celery.app inspect active
+   ```
+3. **Keep Supporting Daemons Active:**
+   Maintain `postgres`, `redis`, `judge0`, `celery-worker`, `dispatch-worker`, and `cleanup-worker` until active tickets reach zero.
+4. **Resume Ingestion After Resolution:**
+   ```bash
+   sudo systemctl start nginx
+   curl -fsS http://127.0.0.1/api/health
+   ```
+
+### Playbook 2: Service Restart & Worker Recovery
+Use this playbook when background worker processes (Celery, dispatch, or cleanup) stall, disconnect from Redis, or fail health sweeps.
+
+1. **Inspect Service State:**
+   ```bash
+   dc ps
+   ```
+2. **Restart Worker Daemons:**
+   ```bash
+   dc restart celery-worker dispatch-worker cleanup-worker
+   ```
+3. **Verify Health Probes & Ping Heartbeats:**
+   ```bash
+   dc exec -T backend celery -A app.integrations.celery.app inspect ping
+   dc exec -T dispatch-worker python -m app.domains.runs.dispatch_worker --health
+   dc exec -T cleanup-worker python -m app.domains.runs.cleanup_worker --health
+   curl -fsS http://127.0.0.1:8000/api/health
+   ```
+
+### Playbook 3: Local AI Service (`vllm-cs1410.service`) Outage & Graceful Degradation
+Use this playbook when AI feedback generates 503 `ai_busy` backpressure errors, fails to generate tokens, or the Socratic AI panel displays an unavailable notice.
+
+1. **Verify Deterministic Grading Continuity:**
+   Deterministic grading (pytest test suite + AST analysis via Judge0) is architecturally decoupled from the LLM service and continues operating without interruption.
+2. **Inspect Host GPU & Daemon Telemetry:**
+   ```bash
+   nvidia-smi
+   systemctl status vllm-cs1410.service --no-pager
+   journalctl -u vllm-cs1410.service -n 50 --no-pager
+   ```
+3. **Restart the Local AI Daemon:**
+   ```bash
+   sudo systemctl restart vllm-cs1410.service
+   ```
+4. **Verify Model Inference Endpoint:**
+   ```bash
+   curl -fsS http://127.0.0.1:8001/v1/models
+   ```
+   Confirm that the active base model and LoRA adapter respond with HTTP 200.
+
+### Playbook 4: MicroVM Hypervisor / Sandbox Lockup Escalation
+Use this playbook if executions hang beyond configured timeout bounds (30s CPU / 40s wall time) or if Kata microVMs fail to launch.
+
+1. **Verify KVM Device & Kata Isolation Health:**
+   ```bash
+   docker run --rm --runtime kata-runtime busybox uname -a
+   ls -la /dev/kvm
+   ```
+2. **Inspect Active QEMU Hypervisor Processes:**
+   ```bash
+   ps aux | grep -E "qemu-system-x86_64|virtiofsd"
+   ```
+3. **Restart Judge0 Execution Pool:**
+   ```bash
+   dc restart judge0-worker judge0
+   ```
+4. **Re-Verify Judge0 Language Registration:**
+   ```bash
+   curl -fsS http://127.0.0.1:2358/languages
+   ```
+   If language ID 711 (`Python (3.11.9)`) is missing, re-seed:
+   ```bash
+   docker exec -i uvu-autograder-postgres-1 psql -U autograder -d judge0 < scripts/seed_judge0_language_311.sql
+   ```
+
+### Playbook 5: Database Disaster Recovery & Metadata Restoration
+Use this playbook to recover from database corruption, container volume failure, or accidental administrative deletion.
+
+1. **Inspect and Verify Available Snapshots:**
+   ```bash
+   ls -la /data/backups/metadata
+   ```
+   Verify that `manifest.json` confirms `"ferpa_compliant": true` and `"backup_scope": "metadata_only"`.
+2. **Initialize Fresh Database Volume & Bring Up Infrastructure:**
+   ```bash
+   dc up -d postgres backend
+   ```
+3. **Execute Metadata Restore Script:**
+   ```bash
+   bash scripts/backup_metadata.sh --restore /data/backups/metadata_YYYYMMDD
+   ```
+4. **Re-Validate Assignment Reference Inventory:**
+   ```bash
+   docker exec -i uvu-autograder-backend-1 python - --wait < backend/scripts/revalidate_references.py
+   dc exec -T backend python scripts/validate_grading_package_host.py --course cs1410 --assignment lab1
+   ```
+
+### Incident Escalation & Response Matrix
+
+| Severity Level | Definition / Criteria | Response SLA | Primary Responder | Escalation Contacts |
+| --- | --- | --- | --- | --- |
+| **Severity 1 (Critical)** | Entire platform unavailable; network isolation compromised; potential FERPA exposure risk. | `< 15 minutes` | Host & Infrastructure Administrator | Course Coordinators, Department Chair |
+| **Severity 2 (High / Degraded)** | Sandboxes queuing above high-load threshold; AI service degraded; single worker failure. | `< 1 hour` | Host & Infrastructure Administrator | Course Coordinators, TAs / IAs |
+| **Severity 3 (Standard / Minor)** | Non-blocking UI defect; single student syntax anomaly; non-critical test harness inquiry. | Next business day | Course Coordinators / TAs | Host & Infrastructure Administrator |

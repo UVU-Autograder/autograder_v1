@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import fnmatch
 import logging
 from typing import Any
 
@@ -153,6 +154,11 @@ class AssignmentSpecificationEngine:
                 if not any(p in model_filenames for p in req.paths):
                     errors.append(
                         f"Missing model solution artifact for file requirement (none of {req.paths} found)."
+                    )
+            elif req.pattern:
+                if not any(fnmatch.fnmatch(name, req.pattern) for name in model_filenames):
+                    errors.append(
+                        f"Missing model solution artifact for file requirement matching pattern '{req.pattern}'."
                     )
 
         for key in model_configs:

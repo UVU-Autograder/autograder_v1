@@ -48,6 +48,23 @@ def test_build_model_solution_zip_rejects_missing_required_file():
         )
 
 
+def test_build_model_solution_zip_accepts_pattern_matching_file():
+    payload = build_model_solution_zip(
+        ["*.py", "main.py"],
+        {"main.py": b"print('main')\n"},
+    )
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        assert archive.namelist() == ["main.py"]
+
+
+def test_build_model_solution_zip_rejects_unmatched_pattern():
+    with pytest.raises(ValueError, match=r"\*\.py"):
+        build_model_solution_zip(
+            ["*.py"],
+            {"readme.txt": b"notes\n"},
+        )
+
+
 def test_model_validation_accepts_only_explicitly_passed_items():
     passed = {"key": "behavior", "passed": True}
     failed = {"key": "style", "passed": False}
