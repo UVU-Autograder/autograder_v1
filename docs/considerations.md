@@ -67,7 +67,7 @@ All structured audit entries are emitted as single-line JSON records containing 
    * `python scripts/inspect_logs.py --file <path> --verify-pii`: Scans records against canonical FERPA regex rules, reporting zero residual Canvas filename, email, U-number, workspace-segment, or token patterns. Pattern scanning validates automated scrubbers; it does not detect unpatterned student names or grades.
 4. **Automated Verification**: Non-retention, sanitization, and context tagging guarantees are continuously verified by [`backend/tests/test_audit_log.py`](../backend/tests/test_audit_log.py) and [`backend/tests/test_audit_access_denial.py`](../backend/tests/test_audit_access_denial.py).
 
-Back up only approved persistent metadata and instructor assets, excluding student detail, workspaces, and broker/results (FERPA contract). [Recovery](guides/workstation.md#2-database-failure-and-ferpa-compliant-metadata-restore) describes verified metadata dump and container artifact extraction procedures; institutional offsite schedule and retention cadence remain open.
+Back up only approved persistent metadata and instructor assets, excluding student detail, workspaces, and broker/results (FERPA contract). [Recovery](guides/workstation.md#playbook-5-database-disaster-recovery--metadata-restoration) describes verified metadata dump and container artifact extraction procedures; institutional offsite schedule and retention cadence remain open.
 
 ## AI data and future changes
 

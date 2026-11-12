@@ -74,7 +74,7 @@ Run [seed integrity](../../backend/tests/test_seed_integrity.py)/[model validati
 
 A green model solution proves the reference passes current tests; it does not prove incorrect solutions fail the intended keys. Calibrate with canonical and alternate valid models, known mistakes, empty/boundary inputs, wrong interfaces, concept-policy violations, and—when required—student-authored pytest paths (passing, failing, none discovered, import shadowing). Keep failing mutations visible as unresolved gaps rather than dropping them from reports. The [mutation catalog](../../backend/eval/mutations.py) and [eval README](../../backend/eval/README.md) help, but AI case generation often uses a local subprocess instead of Judge0—treat those results as candidates, not runtime-parity proof. Course-owner acceptance remains separate from automated seed checks.
 
-Default I/O helpers normalize whitespace/blank lines. Mark secret regression checks with `is_private` (visibility control, not same-process secrecy). Deferred hints, comparison modes and related follow-ups live under [system integrity](../system.md#integrity-and-trust-boundaries).
+Default I/O helpers normalize whitespace/blank lines, with per-item comparison modes (`exact`, `normalized_whitespace`, `regex`, `numeric_tolerance`) configured in rubric items. Mark secret regression checks with `is_private` (visibility control, not same-process secrecy). Deferred instructor scoring hints live under [system integrity](../system.md#integrity-and-trust-boundaries).
 
 ## Essential test pitfalls
 

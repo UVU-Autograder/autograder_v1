@@ -65,7 +65,7 @@ Draft while serving; review/approve targets before the strict builder. Choose a 
 
 ### Adapter p3b (prompt v8)
 
-p2c was trained on v5 targets that repeated expected values and named the attribute to change. p3 retrained on the same cases rewritten to v8 and stopped giving answers away, but invented problems on two all-pass cases and ran over 80 words on 3-item cascades. p3b fixes the data: all-pass next steps are optional extensions, and targets stay at 65 words or fewer (the model writes about 10 words more than its targets) with next steps under 15. The builder enforces all of it and writes `training/data/p3`. Recipe (p2c's): rank 16, alpha 32, learning rate 1e-4, 66 steps.
+Adapter `cs1410-p3b` is the production baseline trained on prompt v8. Targets enforce non-leaking guidance, all-pass next steps as optional extensions, target explanations kept to 65 words or fewer (model output stays under 80 words), and next steps under 15 words. The builder enforces all constraints and writes `training/data/p3`. Recipe: rank 16, alpha 32, learning rate 1e-4, 66 steps.
 
 ```bash
 python -m training.build_p2_dataset
@@ -78,7 +78,7 @@ Ship only if, in both runs: hard metrics 100%, `no_answer_literal_pct` 100, `no_
 
 ### Adapter p4 (prompt v9: injection and arithmetic)
 
-p3b ignored the 7 comment-style injections in the eval but blamed `tax_percent` for a dropped `round()` that stock Gemma diagnoses correctly, and still ran long (15-17-word next steps on all-pass cases, 87-106 words on 3-item cascades). p4 trains on prompt v9 with 34 new cases (`p4_*`: 23 injections over the red-team routes, 11 arithmetic/rounding bugs whose test messages point elsewhere) and the 146 p3b targets, 43 of them trimmed (all-pass and concept next steps of 10 words or fewer, 3-item targets of 55 or fewer; the builder enforces both). Recipe: p3b's, with the step count the builder prints.
+Adapter `cs1410-p4` trains on prompt v9 with 34 new cases (`p4_*`: 23 injections across red-team routes, 11 arithmetic/rounding bugs) and 146 trimmed targets (all-pass and concept next steps ≤10 words, 3-item targets ≤55 words). Prompt v9 wraps student inputs in per-request random ID data blocks to defend against prompt injection while preserving diagnosis accuracy. Recipe: rank 16, alpha 32, learning rate 1e-4, with the step count printed by `build_p2_dataset`.
 
 ```bash
 python -m training.draft_p2 --endpoint vllm --model gemma4-12b-qat --prompt-version v9 --only p4_

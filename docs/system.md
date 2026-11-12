@@ -63,7 +63,7 @@ The Python grading path runs instructor tests and student imports in a supervise
 
 `is_private` scoring items redact labels, I/O and assertion detail across sandbox API, HTML feedback and AI inputs. Treat **execution selection**, **feedback detail visibility** and **test-source secrecy** as independent; stripping a UI field does not protect another channel, and the same-process harness cannot promise secret-test confidentiality from arbitrary student code.
 
-Deferred product follow-ups (tracked in Issues, not parallel docs): instructor scoring hints ([#39](https://github.com/UVU-Autograder/autograder_v1/issues/39)), comparison modes ([#43](https://github.com/UVU-Autograder/autograder_v1/issues/43)), reusable rubric comments ([#41](https://github.com/UVU-Autograder/autograder_v1/issues/41)).
+Deferred product follow-ups (tracked in Issues, not parallel docs): instructor scoring hints ([#39](https://github.com/UVU-Autograder/autograder_v1/issues/39)).
 
 ## Scheduling, status and limits
 
@@ -73,8 +73,8 @@ Durable tickets, checkpoints and ownership leases support bounded admission, fai
 | --- | --- |
 | Bundle | 50MiB; 100 files |
 | Official intake | 200 submissions/upload; 1,000 unfinished host-wide |
-| Waiting executions | Warn at 40; cap 50. Full capacity rejects new sandbox intake; valid official batches may remain retained |
-| Active executions | 2; higher concurrency needs host measurements |
+| Waiting executions | Warn at 50 (`HIGH_LOAD_THRESHOLD`); cap 75 (`FULL_QUEUE_THRESHOLD`). Full capacity rejects new sandbox intake; valid official batches may remain retained |
+| Active executions | 6 concurrent microVM execution slots (`JUDGE0_MAX_CONCURRENT`) |
 | Judge0 | 30-second grading timeout, 256MiB memory target, student networking disabled |
 | Sandbox quota | Compose default: 20 uploads/hour/session (`SANDBOX_UPLOAD_LIMIT`); bare Python settings default is effectively uncapped |
 

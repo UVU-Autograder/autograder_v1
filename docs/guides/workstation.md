@@ -224,75 +224,9 @@ Confirm all boolean checks report `"passed": true`:
 
 Once verified, reopen public intake (`sudo systemctl start nginx`). For a drained shutdown, use `dc down` without `-v`. Prefer forward fixes; older retention guards or restoring student artifacts can re-expose expired data.
 
-## Failure tolerance and disaster recovery runbook
-
-The autograder operates on a single on-premise workstation (`10.115.20.200`, `CET-D24728`). Operators follow these recovery objectives and procedures to restore service after process, database, AI, or power interruptions while strictly preserving the FERPA zero-retention boundary ([Issue #27](https://github.com/UVU-Autograder/autograder_v1/issues/27)):
-
-### Recovery Objectives (RTO / RPO)
-
-| Failure Domain | Recovery Time Objective (RTO) | Recovery Point Objective (RPO) | FERPA & Operational Impact |
-| --- | --- | --- | --- |
-| **Worker / Broker Process Crash** | `<= 5 minutes` (automated via Docker `restart: unless-stopped`) | `0` (durable PostgreSQL `OfficialDispatch` + Redis AOF) | In-flight official batches resume from last committed student checkpoint; expired sandbox tickets return retry prompt |
-| **Local AI Service (`vllm-cs1410.service`) Outage** | `0 minutes` (immediate graceful degradation) | `0` (stateless inference) | Deterministic pytest + AST grading and official exports continue normally; sandbox AI panel displays a temporary unavailable notice |
-| **Host Reboot / Power Outage** | `<= 15 minutes` (automated systemd + Compose startup) | `0` for committed DB state | Systemd and Docker restart all services on boot; `cleanup-worker` purges any expired workspaces immediately on startup |
-| **Database Corruption / Disk Failure** | `<= 2 hours` (schema migration + metadata restore) | `<= 24 hours` (daily `02:00` cron backup + pre-rollout snapshots) | Course, rubric, and instructor test artifacts restored; zero student PII stored in backups (interrupted official batches are re-uploaded from Canvas) |
-
-### 1. Worker and Broker Crash Recovery
-- **Automated Restart:** `redis`, `backend`, `celery-worker`, `dispatch-worker`, `cleanup-worker`, `judge0`, and `judge0-worker` run with `restart: unless-stopped` and bounded JSON logging (`50m` max, 5 files). Redis persists state with Append-Only File (`--appendonly yes`).
-- **Ticket & Dispatch Reconciliation:**
-  - If `celery-worker` or `redis` crashes mid-run, `ExecutionTicket` leases expire automatically (`expires_at`), preventing leaked capacity slots.
-  - `dispatch-worker` reconciles durable `OfficialDispatch` rows in PostgreSQL and resumes any unfinished official batch from its committed workspace checkpoint without duplicating completed student submissions.
-- **Manual Verification & Recovery:**
-  ```bash
-  dc ps
-  dc restart redis celery-worker dispatch-worker
-  dc exec -T backend celery -A app.integrations.celery.app inspect ping
-  dc exec -T dispatch-worker python -m app.domains.runs.dispatch_worker --health
-  ```
-
-### 2. Database Failure and FERPA-Compliant Metadata Restore
-[backup_metadata.sh](../../scripts/backup_metadata.sh) and [backup_metadata.ps1](../../scripts/backup_metadata.ps1) allowlist only persistent system and course metadata (`alembic_version`, `roles`, `users`, `courses`, `staff_access`, `sections`, `modules`, `assignments`, `assignment_configs`, `assignment_artifacts`, `audit_records`) and instructor-owned test fixtures (`/data/artifacts`), strictly excluding ephemeral runs, student submissions, execution logs, workspaces, and broker payloads.
-
-- **Scheduled Backup Cadence:** Run daily at `02:00` local time via host cron and before every deployment rollout, retaining 30 days of snapshots in `/data/backups/metadata`:
-  ```bash
-  bash scripts/backup_metadata.sh --backup --output-dir /data/backups/metadata_$(date +%Y%m%d)
-  ```
-- **Isolated Schema Verification & Restore Procedure:**
-  1. Verify backup manifest integrity (`manifest.json` must confirm `"ferpa_compliant": true` and `"backup_scope": "metadata_only"`).
-  2. Recreate or migrate the target PostgreSQL database to the matching Alembic revision (`dc up -d postgres backend`).
-  3. Restore persistent metadata and instructor artifacts:
-     ```bash
-     bash scripts/backup_metadata.sh --restore /data/backups/metadata_YYYYMMDD
-     ```
-  4. Verify schema parity and synthetic package grading before reopening intake:
-     ```bash
-     dc exec -T backend python scripts/validate_grading_package_host.py --course cs1410 --assignment lab1
-     ```
-
-### 3. Local AI Outage (`vllm-cs1410.service` / Ollama) Graceful Degradation
-- **Decoupled Architecture:** Deterministic grading (`GradingEngine` via Judge0 + AST analysis) and official batch exports never depend on the local LLM service (`127.0.0.1:8001`).
-- **Graceful Fallback Contract:** When `vllm-cs1410.service` is stopped, unreachable (`httpx.ConnectError`), or overloaded (`httpx.TimeoutException`), [`LocalLLMClient`](../../backend/app/integrations/llm/client.py) logs a warning and returns a safe, student-friendly unavailable notice while preserving full deterministic test results and scores.
-- **Service Recovery:**
-  ```bash
-  sudo systemctl restart vllm-cs1410.service
-  systemctl status vllm-cs1410.service --no-pager
-  curl -fsS http://127.0.0.1:8001/v1/models
-  ```
-
-### 4. Power Outage and Host Reboot Recovery
-- **Autostart Configuration:** Ensure host-level units are enabled across reboots:
-  ```bash
-  sudo systemctl enable docker.service nginx.service autograder-frontend.service vllm-cs1410.service
-  ```
-- **Post-Reboot Verification Checklist:** After an unexpected power loss or host reboot:
-  1. Confirm KVM device and Kata runtime availability (`docker run --rm --runtime kata-runtime busybox uname -a`).
-  2. Confirm all Compose containers recovered (`dc ps`) and language ID `711` is registered (`curl -fsS http://127.0.0.1:2358/languages`).
-  3. Confirm `cleanup-worker` completed its initial sweep of any workspaces that expired during the power outage (`dc exec -T cleanup-worker python -m app.domains.runs.cleanup_worker --health`).
-  4. Confirm API and frontend health (`curl -fsS http://127.0.0.1/api/health`).
-
 ## 50-active-user capacity benchmark and execution slot tuning
 
-The platform's bounded execution concurrency and queue admission model ([Issue #26](https://github.com/UVU-Autograder/autograder_v1/issues/26)) was benchmarked on the Dell Precision 5860 Tower (`10.115.20.200`, `CET-D24728`, NVIDIA RTX PRO 4500 Blackwell 32GB VRAM, Intel Xeon W-series, 32GB RAM).
+The platform's bounded execution concurrency and queue admission model ([Issue #26](https://github.com/UVU-Autograder/autograder_v1/issues/26)) was benchmarked on the Dell Precision 5860 Tower (`10.115.20.200`, `CET-D24728`, NVIDIA RTX PRO 4500 Blackwell 32GB VRAM, Intel Core Ultra 7 265, 32GB RAM).
 
 ### 1. Benchmark Execution and Results
 
@@ -359,30 +293,13 @@ Beyond execution slot count, four key parameters across the stack directly optim
 
 [Dispatch](../../backend/scripts/validate_dispatch_host.py) and [retention](../../backend/scripts/validate_retention_host.py) validators own synthetic batch/failure/outage procedures. Review CLI/phase order, keep manifests and run permission checks as the application user. They are maintenance tests, not daily health checks.
 
-## Host verification and fault recovery validation (Issue #25)
+## Host verification and release validation
 
-The production Dell Precision 5860 Tower (`CET-D24728`, Ubuntu 24.04 LTS, Intel Core Ultra 7 265, 32GB RAM, NVIDIA RTX PRO 4500 Blackwell 32GB) underwent dated, commit-specific verification across microVM isolation, batch throughput, interruption recovery, and zero-retention compliance ([Issue #25](https://github.com/UVU-Autograder/autograder_v1/issues/25)).
+The production Dell Precision 5860 Tower (`CET-D24728`, Ubuntu 24.04 LTS, Intel Core Ultra 7 265, 32GB RAM, NVIDIA RTX PRO 4500 Blackwell 32GB) underwent full synthetic verification across microVM isolation, batch throughput, interruption recovery, and zero-retention compliance.
 
-### 1. Kata microVM Isolation & Boundary Proofs
-- **Kernel Separation:** Execution was confirmed running in an independent guest Linux kernel (`6.18.35-202` inside Kata vs. host `6.17.0-1032-oem`), isolated by hardware KVM acceleration (`accel=kvm`).
-- **Resource Caps:** MicroVM hypervisor envelopes were verified in `/etc/kata-containers/runtime-rs/configuration.toml` (`default_vcpus = 2`, `default_memory = 2048` MB, `virtio-fs`), with Judge0 per-box `isolate` boundaries strictly capping memory to 256MB, CPU time to 30.0s, wall time to 20.0s, and thread count to 60.
-- **MicroVM Process Boundaries:** All 6 `judge0-worker` containers operate under `runtime: kata-runtime`, with dedicated `containerd-shim-kata-v2`, `virtiofsd`, and `qemu-system-x86_64` process isolation per slot.
-
-### 2. 200-Submission Batch Capacity & Concurrent Sandbox Execution
-- **Batch Processing:** 200 synthetic submissions were processed through the official pipeline via [`validate_dispatch_host.py`](../../backend/scripts/validate_dispatch_host.py) against CS 1400 `m1-lab1` (`completed: 200`, total batch duration: `1454.13s`).
-- **Concurrent Sandbox Throughput:** A concurrent sandbox submission was dispatched mid-batch; it completed cleanly in `20.03s` with score 10/10 while the official queue remained fully active.
-- **Export Artifacts:** Official grades export (`grades.csv`, 200 rows) and student feedback bundles (`feedback.zip`, 200 items) were compiled in `0.0085s` packaging time and verified with zero dropped jobs.
-- **Post-Run Teardown:** Cleaned up via `validate_dispatch_host.py cleanup`, confirming `physical_absence: true` with zero orphaned workspace directories or archive artifacts.
-
-### 3. Fault & Interruption Recovery Mid-Batch
-- **Celery Worker Crash Recovery:** Restarted `celery-worker` mid-batch; worker reconnected to Redis within 1s and resumed grading the active submission without ticket or slot leakage.
-- **Dispatch Worker Restart:** Restarted `dispatch-worker` mid-batch; dispatcher cleanly re-evaluated in-flight tickets, published next tasks, and maintained 5s health sweeps (`healthy: true, publish_failures: 0`).
-- **Judge0 Execution Worker Crash Recovery:** Restarted `judge0-worker` during active test execution; the interrupted job was safely trapped, reported as `cleanup_failure`, checkpointed, and the remaining batch proceeded without deadlocks or stalled queues.
-- **Slot & Ticket Audit:** Audited `ExecutionTicket` table in PostgreSQL; confirmed zero orphaned tickets or deadlocks across all runs.
-
-### 4. Zero-Retention Compliance
-- **Submission Deletion:** Verified through [`validate_grading_package_host.py`](../../backend/scripts/validate_grading_package_host.py) and live Celery traces that every completed submission payload is immediately deleted via `DELETE /submissions/[TOKEN]` (subsequent queries return HTTP 404).
-- **Cleanup Worker Reconciliation:** Executed [`validate_retention_host.py`](../../backend/scripts/validate_retention_host.py) across simulated 23h review expiry, 24h hard deletion, permission failure quarantine, and recovery. All 14 retention and cleanup assertions passed, leaving zero dangling files or orphaned workspaces.
+Complete benchmark measurements, Kata isolation profiles, and formal release acceptance are recorded in:
+- [`docs/releases/v1.0.0-pilot.md`](../releases/v1.0.0-pilot.md): Production release notes and verified signoff evidence.
+- [`docs/archive/host_validation_issue_25.md`](../archive/host_validation_issue_25.md): Historical synthetic drill logs for Issue #25.
 
 ## Operational support roles and responsibilities
 
@@ -415,6 +332,17 @@ Formal operational support roles ensure clear accountability across workstation 
   - **Anomaly Escalation:** Immediate reporting of unexpected sandbox grading errors, timeout loops, or test harness defects to the appropriate Course Coordinator and Host Administrator.
 
 ## Emergency incident response playbooks
+
+The autograder operates on a single on-premise workstation (`10.115.20.200`, `CET-D24728`). Operators follow these recovery objectives and procedures to restore service after process, database, AI, or power interruptions while strictly preserving the FERPA zero-retention boundary ([Issue #27](https://github.com/UVU-Autograder/autograder_v1/issues/27)):
+
+### Recovery Objectives (RTO / RPO)
+
+| Failure Domain | Recovery Time Objective (RTO) | Recovery Point Objective (RPO) | FERPA & Operational Impact |
+| --- | --- | --- | --- |
+| **Worker / Broker Process Crash** | `<= 5 minutes` (automated via Docker `restart: unless-stopped`) | `0` (durable PostgreSQL `OfficialDispatch` + Redis AOF) | In-flight official batches resume from last committed student checkpoint; expired sandbox tickets return retry prompt |
+| **Local AI Service (`vllm-cs1410.service`) Outage** | `0 minutes` (immediate graceful degradation) | `0` (stateless inference) | Deterministic pytest + AST grading and official exports continue normally; sandbox AI panel displays a temporary unavailable notice |
+| **Host Reboot / Power Outage** | `<= 15 minutes` (automated systemd + Compose startup) | `0` for committed DB state | Systemd and Docker restart all services on boot; `cleanup-worker` purges any expired workspaces immediately on startup |
+| **Database Corruption / Disk Failure** | `<= 2 hours` (schema migration + metadata restore) | `<= 24 hours` (daily `02:00` cron backup + pre-rollout snapshots) | Course, rubric, and instructor test artifacts restored; zero student PII stored in backups (interrupted official batches are re-uploaded from Canvas) |
 
 The following runbooks provide immediate remediation procedures for common operational interruptions:
 
@@ -528,6 +456,19 @@ Use this playbook to recover from database corruption, container volume failure,
    docker exec -i uvu-autograder-backend-1 python - --wait < backend/scripts/revalidate_references.py
    dc exec -T backend python scripts/validate_grading_package_host.py --course cs1410 --assignment lab1
    ```
+
+### Playbook 6: Power Outage and Host Reboot Recovery
+Use this playbook after an unexpected power interruption, hardware reboot, or physical maintenance window.
+
+1. **Autostart Configuration:** Ensure host-level units are enabled across reboots:
+   ```bash
+   sudo systemctl enable docker.service nginx.service autograder-frontend.service vllm-cs1410.service
+   ```
+2. **Post-Reboot Verification Checklist:**
+   - Confirm KVM device and Kata runtime availability (`docker run --rm --runtime kata-runtime busybox uname -a`).
+   - Confirm all Compose containers recovered (`dc ps`) and language ID `711` is registered (`curl -fsS http://127.0.0.1:2358/languages`).
+   - Confirm `cleanup-worker` completed its initial sweep of any workspaces that expired during the power outage (`dc exec -T cleanup-worker python -m app.domains.runs.cleanup_worker --health`).
+   - Confirm API and frontend health (`curl -fsS http://127.0.0.1/api/health`).
 
 ### Incident Escalation & Response Matrix
 
