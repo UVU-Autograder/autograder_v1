@@ -17,8 +17,8 @@ from app.domains.runs import retention
 from app.domains.runs.models import ExecutionTicket, OfficialDispatch
 from app.domains.runs.schemas import EtaBand, QueueBackpressure
 
-HIGH_LOAD_THRESHOLD = 40
-FULL_QUEUE_THRESHOLD = 50
+HIGH_LOAD_THRESHOLD = 50
+FULL_QUEUE_THRESHOLD = 75
 # Longer than the 180s hard task limit plus Judge0's maximum 45s wall time.
 ACTIVE_LEASE_SECONDS = 240
 # Scheduling transactions are a few milliseconds, but a burst of uploads queues up
@@ -68,7 +68,7 @@ def reserve_execution_slots(count: int, *, owner: str | None = None, ttl: int = 
         if owner and db.get(ExecutionTicket, owner):
             return current
         if current + count > FULL_QUEUE_THRESHOLD:
-            raise QueueFullError("Grading queue is full (50 waiting jobs). Retry later.")
+            raise QueueFullError(f"Grading queue is full ({FULL_QUEUE_THRESHOLD} waiting jobs). Retry later.")
         for _ in range(count):
             db.add(ExecutionTicket(
                 owner=owner or f"anonymous:{uuid4()}", token=str(uuid4()), state="waiting",

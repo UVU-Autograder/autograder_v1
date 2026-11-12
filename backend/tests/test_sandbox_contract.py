@@ -8,6 +8,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.settings import get_settings
+from app.domains.runs.queue_admission import FULL_QUEUE_THRESHOLD, HIGH_LOAD_THRESHOLD
 from app.domains.sandbox.service import sandbox_service
 pytestmark = pytest.mark.usefixtures("reset_sandbox_state")
 
@@ -125,8 +126,8 @@ def test_run_creation_returns_session_quota_urls_and_queue_state(client):
     assert body["initial_status"]["state"] == "queue"
     assert body["initial_status"]["queue_position"] == 1
     assert body["initial_status"]["eta_band"] == "under_1_min"
-    assert body["initial_status"]["backpressure"]["high_load_threshold"] == 40
-    assert body["initial_status"]["backpressure"]["full_queue_threshold"] == 50
+    assert body["initial_status"]["backpressure"]["high_load_threshold"] == HIGH_LOAD_THRESHOLD
+    assert body["initial_status"]["backpressure"]["full_queue_threshold"] == FULL_QUEUE_THRESHOLD
     assert body["file_preview"]["preview_kind"] == "metadata_only"
 
 

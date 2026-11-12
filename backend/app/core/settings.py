@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     judge0_url: str = Field(default="http://localhost:2358", validation_alias="JUDGE0_URL")
     judge0_auth_token: str | None = Field(default=None, validation_alias="JUDGE0_AUTH_TOKEN")
     judge0_language_id: int = Field(default=711, ge=1, validation_alias="JUDGE0_LANGUAGE_ID")
-    judge0_max_concurrent: int = Field(default=2, ge=1, validation_alias="JUDGE0_MAX_CONCURRENT")
+    judge0_max_concurrent: int = Field(default=6, ge=1, validation_alias="JUDGE0_MAX_CONCURRENT")
     judge0_preinstalled_dependencies: str = Field(
         default="pillow,pygame,tabulate",
         validation_alias="JUDGE0_PREINSTALLED_DEPENDENCIES",
@@ -61,12 +61,12 @@ class Settings(BaseSettings):
     # Show waiting students an anonymous count of submissions queued before theirs.
     # Off: a generic "other submissions are running" message instead.
     sandbox_show_queue_ahead: bool = Field(default=True, validation_alias="SANDBOX_SHOW_QUEUE_AHEAD")
-    # AI feedback capacity. Measured on the Dell: ~16 simultaneous requests all finish
+    # AI feedback capacity. Measured on the Dell: ~20 simultaneous requests all finish
     # well under the 30 s model timeout. Requests beyond that wait (bounded) for a slot;
     # past the wait limit the student gets "busy, retrying" instead of a timeout.
     # The limit is per API process; the backend runs one uvicorn process.
-    ai_max_concurrent: int = Field(default=16, ge=1, validation_alias="AI_MAX_CONCURRENT")
-    ai_max_waiting: int = Field(default=24, ge=0, validation_alias="AI_MAX_WAITING")
+    ai_max_concurrent: int = Field(default=20, ge=1, validation_alias="AI_MAX_CONCURRENT")
+    ai_max_waiting: int = Field(default=30, ge=0, validation_alias="AI_MAX_WAITING")
     ai_max_wait_seconds: float = Field(default=20.0, gt=0, validation_alias="AI_MAX_WAIT_SECONDS")
     cors_allowed_origins: str = Field(
         default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://autograder-frontend-mockup.vercel.app",

@@ -20,7 +20,7 @@ from app.domains.runs import retention
 from app.domains.runs.dispatcher import sweep
 from app.domains.runs.models import OfficialDispatch, RunSummary
 from app.domains.runs.queue_admission import (
-    QueueFullError, cancel_waiting, claim, release_execution_slots,
+    FULL_QUEUE_THRESHOLD, QueueFullError, cancel_waiting, claim, release_execution_slots,
     reserve_execution_slots, ticket_state, waiting_count,
 )
 from app.domains.runs.service import official_run_dir, official_run_zip_path
@@ -83,7 +83,7 @@ def test_bounded_batch_dispatch_and_exports(monkeypatch):
 
 
 def test_separate_intake_limits_and_no_execution_reservation():
-    reserve_execution_slots(50)
+    reserve_execution_slots(FULL_QUEUE_THRESHOLD)
     with pytest.raises(IngestError) as error:
         upload(201)
     assert error.value.status_code == 413
@@ -93,7 +93,7 @@ def test_separate_intake_limits_and_no_execution_reservation():
         upload()
     assert error.value.status_code == 429
     assert delivery() == []
-    assert waiting_count() == 50
+    assert waiting_count() == FULL_QUEUE_THRESHOLD
     assert len(list(retention.workspace_root().glob("*.zip"))) == 5
 
 
