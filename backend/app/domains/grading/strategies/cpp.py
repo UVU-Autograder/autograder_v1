@@ -26,6 +26,16 @@ GTEST_PASSED_RE = re.compile(r"\[\s*PASSED\s*\]\s*(\w+)\.(\w+)")
 GTEST_FAILED_RE = re.compile(r"\[\s*FAILED\s*\]\s*(\w+)\.(\w+)")
 
 
+def _matches_test_key(key: str, test_name: str) -> bool:
+    """Check if a scoring item key matches a test identifier (e.g. 'Suite.test_add' or 'test_add')."""
+    k = key.lower()
+    t = test_name.lower()
+    if t == k:
+        return True
+    parts = re.split(r"[\.\:\/]", t)
+    return k in parts
+
+
 def _build_additional_files_b64(exec_dir: Path) -> str:
     """ZIP *exec_dir* for Judge0 additional_files."""
     buffer = io.BytesIO()
@@ -86,24 +96,40 @@ class CppStrategy(LanguageStrategy):
         runner_source: str | None = None,
     ) -> ExecutionPayload:
         """Prepare C/C++ compilation script and package files."""
-        # Language ID 54 = C++ (GCC 9.2.0) or 75 = C++ (Clang 10.0.1) in Judge0
-        cpp_lang_id = language_id or 54
+        is_c = getattr(config.bundle, "language", "cpp").lower() == "c"
 
-        # Script that compiles student solution with GoogleTest and executes runner
-        compile_script = runner_source or (
-            "#!/usr/bin/env bash\n"
-            "set -e\n"
-            "g++ -std=c++17 -Wall -Wextra -O2 *.cpp -lgtest -lgtest_main -pthread -o test_runner\n"
-            "./test_runner\n"
-        )
+        # Language ID in Judge0:
+        # C: 50 = C (GCC 9.2.0), 75 = C (Clang 7.0.1)
+        # C++: 54 = C++ (GCC 9.2.0), 76 = C++ (Clang 7.0.1)
+        target_lang_id = language_id or (50 if is_c else 54)
+
+        # Script that compiles student solution with GoogleTest/test harness and executes runner
+        if runner_source:
+            compile_script = runner_source
+        elif (exec_dir / "runner.sh").is_file():
+            compile_script = (exec_dir / "runner.sh").read_text(encoding="utf-8", errors="replace")
+        elif is_c:
+            compile_script = (
+                "#!/usr/bin/env bash\n"
+                "set -e\n"
+                "gcc -std=c11 -Wall -Wextra -O2 *.c -o test_runner\n"
+                "./test_runner\n"
+            )
+        else:
+            compile_script = (
+                "#!/usr/bin/env bash\n"
+                "set -e\n"
+                "g++ -std=c++17 -Wall -Wextra -O2 *.cpp -lgtest -lgtest_main -pthread -o test_runner\n"
+                "./test_runner\n"
+            )
 
         additional_files = _build_additional_files_b64(exec_dir)
 
         return ExecutionPayload(
             source_code=compile_script,
-            language_id=cpp_lang_id,
+            language_id=target_lang_id,
             additional_files_b64=additional_files,
-            compile_cmd=self.compile_command(),
+            compile_cmd=self.compile_command(config=config),
             test_cmd=self.test_command(),
             cpu_time_limit=cpu_time_limit or 30.0,
             wall_time_limit=wall_time_limit or 60.0,
@@ -111,8 +137,15 @@ class CppStrategy(LanguageStrategy):
             stdin=stdin,
         )
 
-    def compile_command(self) -> ExecutionCommand:
-        """GCC C++17 compilation command."""
+    def compile_command(self, config: AssignmentConfigV1 | None = None) -> ExecutionCommand:
+        """GCC C11 or C++17 compilation command."""
+        is_c = bool(config and getattr(config.bundle, "language", "cpp").lower() == "c")
+        if is_c:
+            return ExecutionCommand(
+                command="gcc",
+                args=["-std=c11", "-Wall", "-Wextra", "-O2", "*.c", "-o", "test_runner"],
+                timeout_seconds=30.0,
+            )
         return ExecutionCommand(
             command="g++",
             args=["-std=c++17", "-Wall", "-Wextra", "-O2", "*.cpp", "-o", "test_runner"],
@@ -141,6 +174,14 @@ class CppStrategy(LanguageStrategy):
             filename, line_num, severity, message = match.groups()
             compiler_errors.append(f"{filename}:{line_num}: {severity}: {message.strip()}")
 
+        # Fallback: Check if compilation failed via status_id, exit_code, or compile_output
+        if not compiler_errors and (raw_result.status_id in (6, 14) or (raw_result.compile_output and raw_result.exit_code != 0)):
+            err_text = (raw_result.compile_output or raw_result.stderr).strip()
+            if err_text:
+                compiler_errors = [line.strip() for line in err_text.splitlines() if line.strip()][:20]
+            else:
+                compiler_errors = ["Compilation failed."]
+
         if compiler_errors:
             return ParsedOutcome(
                 success=False,
@@ -160,8 +201,8 @@ class CppStrategy(LanguageStrategy):
 
         for item in config.scoring_items:
             # Check match by key or case
-            matched_pass = any(item.key.lower() in t.lower() for t in passed_tests)
-            matched_fail = any(item.key.lower() in t.lower() for t in failed_tests)
+            matched_pass = any(_matches_test_key(item.key, t) for t in passed_tests)
+            matched_fail = any(_matches_test_key(item.key, t) for t in failed_tests)
             passed = matched_pass and not matched_fail
 
             if passed:

@@ -13,6 +13,7 @@ import {
   PencilIcon,
   CheckIcon,
   XIcon,
+  GlobeIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackLink } from "@/components/back-link";
@@ -45,6 +46,7 @@ export function AssignmentSidebar({
     uploadFiles,
     deleteFile,
     renameFile,
+    openLivePreview,
     assignment: contextAssignment,
   } = useAssignmentFile();
   const assignment = propAssignment ?? contextAssignment;
@@ -55,6 +57,14 @@ export function AssignmentSidebar({
   const [renamingFilename, setRenamingFilename] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
+
+  const isWebCoursework = useMemo(
+    () =>
+      assignment?.config?.bundle?.language === "web" ||
+      assignment?.language === "web" ||
+      Object.keys(files).some((f) => f.toLowerCase().endsWith(".html")),
+    [files, assignment]
+  );
 
   const workspaceFiles = useMemo(
     () =>
@@ -165,8 +175,8 @@ export function AssignmentSidebar({
         </BackLink>
       </div>
 
-      {/* Details Button */}
-      <div className="px-1">
+      {/* Details & Live Preview Buttons */}
+      <div className="px-1 space-y-1.5">
         <Button
           variant="outline"
           size="sm"
@@ -182,6 +192,18 @@ export function AssignmentSidebar({
           <FileTextIcon className="size-4 text-primary shrink-0" />
           <span>Details</span>
         </Button>
+
+        {isWebCoursework && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openLivePreview}
+            className="w-full justify-start text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+          >
+            <GlobeIcon className="size-4 shrink-0" />
+            <span>Live Preview</span>
+          </Button>
+        )}
       </div>
 
       {/* Direct Files List */}
@@ -208,7 +230,15 @@ export function AssignmentSidebar({
                 type="button"
                 variant="ghost"
                 size="xs"
-                onClick={() => void downloadZipBundle(files)}
+                onClick={() =>
+                  void downloadZipBundle(
+                    files,
+                    "workspace.zip",
+                    assignment?.config?.bundle?.language ||
+                      assignment?.language ||
+                      "python"
+                  )
+                }
                 className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 title="Download ZIP"
               >

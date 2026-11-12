@@ -15,7 +15,11 @@ from typing import Any, Callable
 
 from app.core.settings import get_settings
 from app.domains.assignments.schemas import AssignmentConfigV1
-from app.domains.grading.executor import ExecutionOutcome, execute_pytest_in_judge0
+from app.domains.grading.executor import (
+    ExecutionOutcome,
+    execute_payload_in_judge0,
+    execute_pytest_in_judge0,
+)
 from app.domains.grading.protocols import (
     LanguageStrategy,
     ParsedOutcome,
@@ -27,6 +31,7 @@ from app.domains.grading.runtime import (
     load_fallback_helper,
 )
 from app.domains.grading.strategies import get_strategy
+from app.integrations.judge0.client import Judge0Error, judge0_failure_for_status
 from app.domains.ingestion.extractor import (
     ExtractionError,
     safe_extract_zip,
@@ -247,7 +252,7 @@ class GradingPipeline:
                 stdin=payload.stdin,
                 report=report,
             )
-            if pytest_result is None:
+            if pytest_result is None and report.parsed_outcome is None:
                 return report
 
             # Stage 4: Normalization (Scoring & rubric evaluation)
@@ -384,34 +389,104 @@ class GradingPipeline:
             preinstalled_dependencies=sorted(self.settings.preinstalled_dependency_names),
         )
 
-        outcome: ExecutionOutcome = await self.executor_fn(
-            exec_dir,
-            test_filenames=test_filenames,
-            test_cases=test_cases_map,
-            entrypoint_module=Path(self.config.bundle.entrypoint).stem,
-            language_id=parameters.language_id,
+        # 1. Custom executor function path (e.g. unit test mocks, local calibration runners)
+        if self.executor_fn is not execute_pytest_in_judge0:
+            outcome: ExecutionOutcome = await self.executor_fn(
+                exec_dir,
+                test_filenames=test_filenames,
+                test_cases=test_cases_map,
+                entrypoint_module=Path(self.config.bundle.entrypoint).stem,
+                language_id=parameters.language_id,
+                cpu_time_limit=parameters.cpu_time_limit,
+                wall_time_limit=parameters.wall_time_limit,
+                memory_limit=parameters.memory_limit,
+                runner_source=self.runner_source,
+                dependencies=self.config.dependencies,
+                stdin=stdin,
+                expected_manifest=self.expected_manifest,
+            )
+
+            report.pytest_result = outcome.pytest_result
+            if outcome.pytest_result:
+                report.diagnostics = outcome.pytest_result.diagnostics
+                if isinstance(report.diagnostics, dict) and any(
+                    report.diagnostics.get(key) is True for key in ("stdout_truncated", "stderr_truncated")
+                ):
+                    report.warnings.append({"code": "output_truncated", "message": "Output was truncated at 64 KiB. Check for excessive printing or a loop."})
+            if hasattr(outcome, "parsed_outcome") and outcome.parsed_outcome is not None:
+                report.parsed_outcome = outcome.parsed_outcome
+            if not outcome.success:
+                report.failure_category = outcome.failure_category
+                report.failure_message = outcome.failure_message
+                return None
+
+            return outcome.pytest_result
+
+        # 2. Strategy-driven Python execution path
+        if self.strategy.language_name == "python":
+            outcome = await execute_pytest_in_judge0(
+                exec_dir,
+                test_filenames=test_filenames,
+                test_cases=test_cases_map,
+                entrypoint_module=Path(self.config.bundle.entrypoint).stem,
+                language_id=parameters.language_id,
+                cpu_time_limit=parameters.cpu_time_limit,
+                wall_time_limit=parameters.wall_time_limit,
+                memory_limit=parameters.memory_limit,
+                runner_source=self.runner_source,
+                dependencies=self.config.dependencies,
+                stdin=stdin,
+                expected_manifest=self.expected_manifest,
+            )
+
+            report.pytest_result = outcome.pytest_result
+            if outcome.pytest_result:
+                report.diagnostics = outcome.pytest_result.diagnostics
+                if isinstance(report.diagnostics, dict) and any(
+                    report.diagnostics.get(key) is True for key in ("stdout_truncated", "stderr_truncated")
+                ):
+                    report.warnings.append({"code": "output_truncated", "message": "Output was truncated at 64 KiB. Check for excessive printing or a loop."})
+            if not outcome.success:
+                report.failure_category = outcome.failure_category
+                report.failure_message = outcome.failure_message
+                return None
+
+            return outcome.pytest_result
+
+        # 3. Strategy-driven non-Python execution path (C, C++, Web Development)
+        payload = self.strategy.prepare_bundle(
+            exec_dir=exec_dir,
+            config=self.config,
+            support_artifacts={},
+            stdin=stdin,
+            language_id=self.execution_parameters.language_id if self.execution_parameters else None,
             cpu_time_limit=parameters.cpu_time_limit,
             wall_time_limit=parameters.wall_time_limit,
             memory_limit=parameters.memory_limit,
             runner_source=self.runner_source,
-            dependencies=self.config.dependencies,
-            stdin=stdin,
-            expected_manifest=self.expected_manifest,
         )
 
-        report.pytest_result = outcome.pytest_result
-        if outcome.pytest_result:
-            report.diagnostics = outcome.pytest_result.diagnostics
-            if isinstance(report.diagnostics, dict) and any(
-                report.diagnostics.get(key) is True for key in ("stdout_truncated", "stderr_truncated")
-            ):
-                report.warnings.append({"code": "output_truncated", "message": "Output was truncated at 64 KiB. Check for excessive printing or a loop."})
-        if not outcome.success:
-            report.failure_category = outcome.failure_category
-            report.failure_message = outcome.failure_message
+        try:
+            raw_result = await execute_payload_in_judge0(payload)
+        except Judge0Error as exc:
+            report.failure_category = "judge0_error"
+            report.failure_message = str(exc)
             return None
 
-        return outcome.pytest_result
+        failure = judge0_failure_for_status(raw_result.status_id)
+        if failure is not None and raw_result.status_id not in (3, 6):
+            report.failure_category, report.failure_message = failure
+            return None
+
+        parsed = self.strategy.parse_execution(raw_result, self.config)
+        report.parsed_outcome = parsed
+        if not parsed.success and parsed.failure_category:
+            report.failure_category = parsed.failure_category
+            report.failure_message = parsed.failure_message
+        if parsed.compiler_errors:
+            report.compiler_errors = parsed.compiler_errors
+
+        return None
 
     def _stage_normalization(
         self,

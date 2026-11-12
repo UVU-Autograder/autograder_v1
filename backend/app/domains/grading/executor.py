@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.audit_log import current_audit_context, log_and_audit_error
+from app.domains.grading.protocols import ExecutionPayload, ExecutionRawResult
 from app.domains.grading.result_parser import PytestRunResult, parse_pytest_json
 from app.domains.grading.runner_gen import generate_runner_script
 from app.integrations.judge0.client import (
@@ -37,6 +38,7 @@ class ExecutionOutcome:
     pytest_result: PytestRunResult | None = None
     failure_category: str | None = None
     failure_message: str | None = None
+    raw_result: ExecutionRawResult | None = None
 
 
 def _build_additional_files_b64(exec_dir: Path) -> str:
@@ -141,3 +143,56 @@ async def execute_pytest_in_judge0(
                     outcome.success = False
 
     return outcome
+
+
+async def execute_payload_in_judge0(
+    payload: ExecutionPayload,
+) -> ExecutionRawResult:
+    """Submit a generic language ExecutionPayload to Judge0, poll, and enforce zero-retention cleanup."""
+    token: str | None = None
+    async with create_judge0_client() as judge0:
+        try:
+            token = await judge0.create_submission(
+                source_code=payload.source_code,
+                language_id=payload.language_id,
+                additional_files_b64=payload.additional_files_b64,
+                cpu_time_limit=payload.cpu_time_limit,
+                memory_limit=payload.memory_limit,
+                wall_time_limit=payload.wall_time_limit,
+                stdin=payload.stdin if payload.stdin else None,
+            )
+            submission_result = await judge0.poll_submission(token)
+
+            status_id = submission_result.get("status", {}).get("id", 0)
+            stdout = submission_result.get("stdout", "") or ""
+            stderr = submission_result.get("stderr", "") or ""
+            compile_output = submission_result.get("compile_output", "") or ""
+            exit_code = submission_result.get("exit_code", 0) or 0
+            time_val = submission_result.get("time")
+            wall_time = float(time_val) if time_val is not None else None
+            memory_kb = submission_result.get("memory")
+
+            return ExecutionRawResult(
+                stdout=stdout,
+                stderr=stderr,
+                exit_code=exit_code,
+                status_id=status_id,
+                wall_time=wall_time,
+                memory_kb=memory_kb,
+                compile_output=compile_output,
+            )
+        finally:
+            if token is not None:
+                try:
+                    await judge0.delete_submission(token)
+                except Judge0CleanupError:
+                    log_and_audit_error(
+                        logger,
+                        "CLEANUP FAILURE: Could not delete Judge0 submission. "
+                        "This is a launch-blocking violation of the zero-retention contract.",
+                        event="judge0.cleanup_failed",
+                        failure_category="cleanup_failure",
+                        workflow_type=current_audit_context().get("workflow_type", "official"),
+                    )
+                    raise Judge0Error("Judge0 submission cleanup failed; submission was not deleted.")
+

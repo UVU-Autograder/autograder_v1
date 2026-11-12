@@ -218,14 +218,27 @@ export async function readFilesAsOpenFiles(files: File[]) {
   return openFiles;
 }
 
-export async function createSubmissionBundle(files: Record<string, OpenFile>) {
+export async function createSubmissionBundle(
+  files: Record<string, OpenFile>,
+  language = "python"
+) {
   const jszipModule = await import("jszip");
   const JSZip = (jszipModule.default ?? jszipModule) as unknown as typeof import("jszip");
   const zip = new JSZip();
   const workspaceFiles = Object.values(files).filter((file) => file.category === "workspace");
 
   if (workspaceFiles.length === 0) {
-    zip.file("main.py", "# No workspace files uploaded yet.\n");
+    const defaultName =
+      language === "web"
+        ? "index.html"
+        : language === "cpp"
+        ? "main.cpp"
+        : language === "c"
+        ? "main.c"
+        : "main.py";
+    const commentPrefix =
+      language === "cpp" || language === "c" || language === "web" ? "// " : "# ";
+    zip.file(defaultName, `${commentPrefix}No workspace files uploaded yet.\n`);
   } else {
     for (const file of workspaceFiles) {
       if (file.kind === 'image' || isImageFilename(file.filename)) {
@@ -260,8 +273,12 @@ export function downloadFile(filename: string, content: string, kind: OpenFile['
   URL.revokeObjectURL(url);
 }
 
-export async function downloadZipBundle(files: Record<string, OpenFile>, zipName = "workspace.zip") {
-  const blob = await createSubmissionBundle(files);
+export async function downloadZipBundle(
+  files: Record<string, OpenFile>,
+  zipName = "workspace.zip",
+  language = "python"
+) {
+  const blob = await createSubmissionBundle(files, language);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

@@ -250,7 +250,7 @@
         "tolerance": {
           "anyOf": [
             {
-              "minimum": 0,
+              "minimum": 0.0,
               "type": "number"
             },
             {
@@ -341,7 +341,7 @@
     "tolerance": {
       "anyOf": [
         {
-          "minimum": 0,
+          "minimum": 0.0,
           "type": "number"
         },
         {

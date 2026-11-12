@@ -9,11 +9,12 @@ const MonacoEditor = dynamic(() => import('@/components/monaco-editor'), {
   ),
 });
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { XIcon } from 'lucide-react';
+import { XIcon, GlobeIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useAssignmentFile } from './assignment-file-context';
 import ProblemOverview from './problem-overview';
+import { LivePreview } from './live-preview';
 import { getConceptsMetadata } from '@/features/assignments/api';
 import { ConceptMetadata } from '@/features/assignments/types';
 
@@ -73,12 +74,19 @@ export function EditorPane({ paneId }: { paneId: string }) {
     moveTabToPane,
     uploadFiles,
     updateFileContent,
+    openLivePreview,
   } = useAssignmentFile();
 
   const pane = panes[paneId];
   const [dropZone, setDropZone] = useState<DropZone>(null);
   const [isFileDropActive, setIsFileDropActive] = useState(false);
   const [conceptMeta, setConceptMeta] = useState<Record<string, ConceptMetadata>>({});
+
+  const isWebCoursework = Boolean(
+    assignment?.config?.bundle?.language === 'web' ||
+    assignment?.language === 'web' ||
+    Object.keys(files).some((f) => f.toLowerCase().endsWith('.html'))
+  );
 
   useEffect(() => {
     getConceptsMetadata().then(setConceptMeta).catch(console.error);
@@ -195,6 +203,17 @@ export function EditorPane({ paneId }: { paneId: string }) {
                 </button>
               </div>
             ))}
+            {isWebCoursework && !pane.tabs.includes('Live Preview') && (
+              <button
+                type="button"
+                onClick={openLivePreview}
+                className="ml-auto inline-flex items-center gap-1.5 px-3 h-full text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-background/80 transition-colors shrink-0"
+                title="Open Live HTML Preview"
+              >
+                <GlobeIcon className="size-3.5" />
+                <span>Live Preview</span>
+              </button>
+            )}
           </TabsList>
 
           <div className="relative mt-0 min-h-0 min-w-0 w-full flex-1 overflow-hidden">
@@ -214,6 +233,8 @@ export function EditorPane({ paneId }: { paneId: string }) {
                     ) : (
                       <div className="p-4 text-sm text-muted-foreground">{file.content}</div>
                     )
+                  ) : file.category === 'preview' || filename === 'Live Preview' ? (
+                    <LivePreview />
                   ) : file.kind === 'image' ? (
                     <div className="relative flex h-full w-full items-center justify-center overflow-auto bg-muted/20 p-4">
                       <Image

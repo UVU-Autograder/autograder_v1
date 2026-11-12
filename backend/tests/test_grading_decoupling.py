@@ -338,3 +338,257 @@ async def test_pipeline_with_cpp_assignment(tmp_path: Path) -> None:
 
     assert not report.success
     assert report.failure_category == "compilation_error"
+
+
+def test_c_strategy_compile_command_and_bundle(tmp_path: Path) -> None:
+    """Verify C strategy configures gcc compilation script and language ID 50."""
+    strat = CppStrategy()
+    config = AssignmentConfigV1.model_validate({
+        "bundle": {
+            "entrypoint": "solution.c",
+            "file_requirements": [{"paths": ["solution.c"]}],
+            "language": "c",
+        },
+        "artifacts": {"tests": {"type": "support_file", "display_filename": "test.c"}},
+        "scoring_items": [{"key": "test_ptr", "label": "Pointers", "points": 100, "extra_credit": False}],
+    })
+
+    (tmp_path / "solution.c").write_text("int main() { return 0; }", encoding="utf-8")
+    payload = strat.prepare_bundle(tmp_path, config, support_artifacts={})
+
+    assert payload.language_id == 50
+    assert "gcc -std=c11" in payload.source_code
+    cmd = strat.compile_command(config)
+    assert cmd.command == "gcc"
+    assert "-std=c11" in cmd.args
+
+
+@pytest.mark.anyio
+async def test_pipeline_with_c_assignment_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify GradingPipeline executes C coursework via generic execution payload."""
+    config = AssignmentConfigV1.model_validate({
+        "bundle": {
+            "entrypoint": "calc.c",
+            "file_requirements": [{"paths": ["calc.c"]}],
+            "language": "c",
+        },
+        "artifacts": {
+            "test_runner": {"type": "support_file", "display_filename": "test.c"},
+        },
+        "scoring_items": [
+            {"key": "test_add", "label": "Addition", "points": 40, "extra_credit": False},
+            {"key": "test_sub", "label": "Subtraction", "points": 60, "extra_credit": False},
+        ],
+    })
+
+    test_file = tmp_path / "test.c"
+    test_file.write_text("// c unit test", encoding="utf-8")
+    artifact_refs = {"test_runner": f"file://{test_file.as_posix()}"}
+
+    async def mock_execute_payload(payload):
+        return ExecutionRawResult(
+            stdout="[  PASSED  ] MathSuite.test_add\n[  PASSED  ] MathSuite.test_sub\n",
+            stderr="",
+            exit_code=0,
+            status_id=3,
+        )
+
+    monkeypatch.setattr("app.domains.grading.pipeline.execute_payload_in_judge0", mock_execute_payload)
+
+    pipeline = GradingPipeline(
+        config=config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=[],
+    )
+
+    payload = SubmissionPayload.from_files({"calc.c": b"int add(int a, int b) { return a + b; }"})
+    report = await pipeline.evaluate(payload)
+
+    assert report.success
+    assert report.score == 100
+    assert len(report.test_results) == 2
+    assert report.test_results[0]["passed"] is True
+    assert report.test_results[1]["passed"] is True
+
+
+@pytest.mark.anyio
+async def test_pipeline_with_web_assignment_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify GradingPipeline executes Web development coursework using WebDevelopmentStrategy."""
+    config = AssignmentConfigV1.model_validate({
+        "bundle": {
+            "entrypoint": "index.html",
+            "file_requirements": [
+                {"paths": ["index.html"]},
+                {"paths": ["app.js"]},
+            ],
+            "language": "web",
+        },
+        "artifacts": {
+            "test_harness": {"type": "support_file", "display_filename": "test_runner.js"},
+        },
+        "scoring_items": [
+            {"key": "dom_nav", "label": "Navbar exists", "points": 30, "extra_credit": False},
+            {"key": "dom_click", "label": "Click handler updates counter", "points": 70, "extra_credit": False},
+        ],
+    })
+
+    test_file = tmp_path / "test_runner.js"
+    test_file.write_text("// node dom harness", encoding="utf-8")
+    artifact_refs = {"test_harness": f"file://{test_file.as_posix()}"}
+
+    async def mock_execute_payload(payload):
+        return ExecutionRawResult(
+            stdout="[PASSED] dom_nav\n[PASSED] dom_click\n",
+            stderr="",
+            exit_code=0,
+            status_id=3,
+        )
+
+    monkeypatch.setattr("app.domains.grading.pipeline.execute_payload_in_judge0", mock_execute_payload)
+
+    pipeline = GradingPipeline(
+        config=config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=[],
+    )
+
+    payload = SubmissionPayload.from_files({
+        "index.html": b"<!DOCTYPE html><html><body><nav id='navbar'></nav></body></html>",
+        "app.js": b"console.log('ready');",
+    })
+    report = await pipeline.evaluate(payload)
+
+    assert report.success
+    assert report.score == 100
+    assert len(report.test_results) == 2
+    assert report.test_results[0]["passed"] is True
+    assert report.test_results[1]["passed"] is True
+
+
+@pytest.mark.anyio
+async def test_pipeline_with_web_assignment_syntax_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify GradingPipeline captures JavaScript syntax error failure."""
+    config = AssignmentConfigV1.model_validate({
+        "bundle": {
+            "entrypoint": "index.html",
+            "file_requirements": [{"paths": ["index.html"]}],
+            "language": "web",
+        },
+        "artifacts": {
+            "test_harness": {"type": "support_file", "display_filename": "test_runner.js"},
+        },
+        "scoring_items": [
+            {"key": "dom_check", "label": "DOM check", "points": 100, "extra_credit": False},
+        ],
+    })
+
+    test_file = tmp_path / "test_runner.js"
+    test_file.write_text("// node dom harness", encoding="utf-8")
+    artifact_refs = {"test_harness": f"file://{test_file.as_posix()}"}
+
+    async def mock_execute_syntax_error(payload):
+        return ExecutionRawResult(
+            stdout="",
+            stderr="app.js:5\nSyntaxError: Unexpected token ')'\n",
+            exit_code=1,
+            status_id=3,
+        )
+
+    monkeypatch.setattr("app.domains.grading.pipeline.execute_payload_in_judge0", mock_execute_syntax_error)
+
+    pipeline = GradingPipeline(
+        config=config,
+        artifact_refs=artifact_refs,
+        allowed_concepts=[],
+    )
+
+    payload = SubmissionPayload.from_files({
+        "index.html": b"<!DOCTYPE html><html><body><h1>Broken</h1></body></html>",
+    })
+    report = await pipeline.evaluate(payload)
+
+    assert not report.success
+    assert report.score == 0
+    assert report.failure_category == "syntax_error"
+
+
+def test_cpp_strategy_test_key_collision_avoidance() -> None:
+    """Verify test_1 does not pass when GoogleTest passes test_10."""
+    strat = CppStrategy()
+    config = AssignmentConfigV1.model_validate({
+        "bundle": {
+            "entrypoint": "main.cpp",
+            "file_requirements": [{"paths": ["main.cpp"]}],
+            "language": "cpp",
+        },
+        "artifacts": {"tests": {"type": "support_file"}},
+        "scoring_items": [
+            {"key": "test_1", "label": "Test 1", "points": 40, "extra_credit": False},
+            {"key": "test_10", "label": "Test 10", "points": 60, "extra_credit": False},
+        ],
+    })
+
+    gtest_stdout = (
+        "[  FAILED  ] Suite.test_1\n"
+        "[  PASSED  ] Suite.test_10\n"
+    )
+    raw = ExecutionRawResult(stdout=gtest_stdout, exit_code=1)
+    parsed = strat.parse_execution(raw, config)
+
+    assert parsed.score == 60
+    assert parsed.test_results[0]["passed"] is False
+    assert parsed.test_results[0]["points_awarded"] == 0
+    assert parsed.test_results[1]["passed"] is True
+    assert parsed.test_results[1]["points_awarded"] == 60
+
+
+def test_cpp_strategy_compilation_failure_on_linker_error() -> None:
+    """Verify linker errors without line numbers trigger compilation_error failure category."""
+    strat = CppStrategy()
+    config = AssignmentConfigV1.model_validate({
+        "bundle": {
+            "entrypoint": "main.cpp",
+            "file_requirements": [{"paths": ["main.cpp"]}],
+            "language": "cpp",
+        },
+        "artifacts": {"tests": {"type": "support_file"}},
+        "scoring_items": [{"key": "build", "label": "Build", "points": 100, "extra_credit": False}],
+    })
+
+    linker_output = (
+        "/usr/bin/ld: /tmp/ccABC.o: in function 'main':\n"
+        "undefined reference to 'solve()'\n"
+        "collect2: error: ld returned 1 exit status\n"
+    )
+    raw = ExecutionRawResult(
+        stdout="",
+        stderr=linker_output,
+        exit_code=1,
+        status_id=6,
+    )
+    parsed = strat.parse_execution(raw, config)
+
+    assert not parsed.success
+    assert parsed.score == 0
+    assert parsed.failure_category == "compilation_error"
+    assert len(parsed.compiler_errors) >= 1
+
+
+def test_cpp_strategy_resolves_runner_sh_from_exec_dir(tmp_path: Path) -> None:
+    """Verify prepare_bundle uses runner.sh from exec_dir when runner_source is None."""
+    strat = CppStrategy()
+    config = AssignmentConfigV1.model_validate({
+        "bundle": {
+            "entrypoint": "main.cpp",
+            "file_requirements": [{"paths": ["main.cpp"]}],
+            "language": "cpp",
+        },
+        "artifacts": {"test_runner": {"type": "support_file", "display_filename": "runner.sh"}},
+        "scoring_items": [{"key": "test_1", "label": "Test 1", "points": 100, "extra_credit": False}],
+    })
+
+    (tmp_path / "main.cpp").write_text("int main() { return 0; }", encoding="utf-8")
+    (tmp_path / "runner.sh").write_text("#!/bin/bash\necho custom runner\n", encoding="utf-8")
+
+    payload = strat.prepare_bundle(tmp_path, config, support_artifacts={})
+    assert payload.source_code == "#!/bin/bash\necho custom runner\n"

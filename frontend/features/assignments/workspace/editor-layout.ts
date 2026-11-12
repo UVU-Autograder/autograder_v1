@@ -1,4 +1,4 @@
-export type FileCategory = 'workspace' | 'constraint' | 'test_case' | 'overview';
+export type FileCategory = 'workspace' | 'constraint' | 'test_case' | 'overview' | 'preview';
 
 export type OpenFile = {
   filename: string;

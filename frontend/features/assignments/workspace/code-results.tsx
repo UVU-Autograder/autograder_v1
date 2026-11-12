@@ -372,7 +372,10 @@ export default function CodeResults({
     setWaitInfo(null);
 
     try {
-      const bundleBlob = await createSubmissionBundle(files);
+      const bundleBlob = await createSubmissionBundle(
+        files,
+        assignment?.config?.bundle?.language || assignment?.language || "python"
+      );
       const { run, sessionId } = await createSandboxRunWithRetry(
         courseId,
         assignmentId,

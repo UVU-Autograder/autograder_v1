@@ -96,7 +96,33 @@ export function MetadataSection() {
               <Select
                 value={language}
                 onValueChange={(val) => {
+                  const defaultEntrypoints: Record<string, string> = {
+                    python: "main.py",
+                    cpp: "main.cpp",
+                    c: "main.c",
+                    web: "index.html",
+                  };
+                  const oldDefault = defaultEntrypoints[language] || "main.py";
+                  const newDefault = defaultEntrypoints[val] || "main.py";
+                  const isUntouched =
+                    !entrypoint ||
+                    entrypoint === oldDefault ||
+                    Object.values(defaultEntrypoints).includes(entrypoint);
+
                   setLanguage(val);
+                  if (isUntouched) {
+                    setEntrypoint(newDefault);
+                    if (
+                      fileRequirements.length === 1 &&
+                      fileRequirements[0].paths?.length === 1 &&
+                      (fileRequirements[0].paths[0] === oldDefault ||
+                        Object.values(defaultEntrypoints).includes(
+                          fileRequirements[0].paths[0]
+                        ))
+                    ) {
+                      updateFileRequirementPath(0, 0, newDefault);
+                    }
+                  }
                   markDirty();
                 }}
               >
@@ -105,6 +131,9 @@ export function MetadataSection() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="python">Python</SelectItem>
+                  <SelectItem value="cpp">C++</SelectItem>
+                  <SelectItem value="c">C</SelectItem>
+                  <SelectItem value="web">Web Development (HTML/CSS/JS)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

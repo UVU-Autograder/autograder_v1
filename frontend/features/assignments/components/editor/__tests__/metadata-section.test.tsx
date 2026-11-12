@@ -197,4 +197,19 @@ describe("MetadataSection", () => {
 
     expect(mockCtx.addFileRequirementPath).toHaveBeenCalledWith(0);
   });
+
+  it("renders programming language selector with current language", () => {
+    const mockCtx = createMockContext({
+      language: "python",
+      entrypoint: "main.py",
+    });
+    render(
+      <AssignmentEditorContext.Provider value={mockCtx}>
+        <MetadataSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    expect(screen.getByText("Programming Language")).toBeDefined();
+    expect(screen.getByText("Python")).toBeDefined();
+  });
 });

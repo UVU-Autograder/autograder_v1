@@ -2,7 +2,7 @@ import fnmatch
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 TEST_KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 DEPENDENCY_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
@@ -37,6 +37,15 @@ class BundleConfig(BaseModel):
         default="python",
         description="Target programming language for execution (e.g. 'python', 'cpp', 'c', 'web')",
     )
+
+    @field_validator("language", mode="after")
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        norm = (v or "").strip().lower()
+        allowed = {"python", "cpp", "c", "web", "javascript", "html"}
+        if norm not in allowed:
+            raise ValueError(f"unsupported language '{v}'; must be one of {sorted(allowed)}")
+        return norm
 
     def derived_required_files(self) -> list[str]:
         paths: list[str] = []
@@ -287,6 +296,15 @@ class AssignmentCreate(BaseModel):
     sandbox_enabled: bool = Field(default=True)
     module_id: int | None = Field(default=None)
     description: str | None = Field(default=None)
+
+    @field_validator("language", mode="after")
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        norm = (v or "").strip().lower()
+        allowed = {"python", "cpp", "c", "web", "javascript", "html"}
+        if norm not in allowed:
+            raise ValueError(f"unsupported language '{v}'; must be one of {sorted(allowed)}")
+        return norm
 
 
 class ArtifactListResponse(BaseModel):

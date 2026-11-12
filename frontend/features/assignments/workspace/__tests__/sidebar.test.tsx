@@ -153,4 +153,29 @@ describe("AssignmentSidebar - Renaming & Bundle Indicators", () => {
     expect(screen.queryByDisplayValue("cancelled.py")).toBeNull();
     expect(screen.getByText("utils.py")).toBeDefined();
   });
+
+  it("renders Live Preview button when assignment language is web", async () => {
+    const webAssignment: Assignment = {
+      ...mockAssignment,
+      language: "web",
+      config: {
+        bundle: {
+          entrypoint: "index.html",
+          file_requirements: [],
+          language: "web",
+        },
+        scoring_items: [],
+      },
+    };
+
+    render(<TestWrapper initialFiles={["index.html"]} assignment={webAssignment} />);
+
+    expect(await screen.findByText("Live Preview")).toBeDefined();
+  });
+
+  it("renders Live Preview button when an HTML file exists in workspace", async () => {
+    render(<TestWrapper initialFiles={["index.html", "script.js"]} />);
+
+    expect(await screen.findByText("Live Preview")).toBeDefined();
+  });
 });

@@ -161,7 +161,10 @@ def student_failure_message(category: str | None, raw_message: str | None) -> st
         "timeout": "The submission ran out of time.",
         "memory": "The submission used too much memory.",
         "compile_error": "The submission did not compile.",
+        "compilation_error": "The submission did not compile.",
+        "syntax_error": "The submission had a syntax error.",
         "runtime_error": "The submission stopped with a runtime error.",
+        "runtime_exception": "The submission stopped with a runtime error.",
         "submission_error": "The submission could not be graded.",
         "output_truncated": "Program output was truncated and the run failed.",
     }

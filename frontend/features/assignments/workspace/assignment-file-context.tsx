@@ -9,6 +9,8 @@ import {
   DragTabData,
   EditorLayoutState,
   OpenFile,
+  PaneState,
+  splitPane,
 } from './editor-layout';
 import { readFilesAsOpenFiles } from './file-utils';
 import { WorkspaceVFS } from './vfs/workspace-vfs';
@@ -42,9 +44,10 @@ export type AssignmentFileContextType = {
   updateFileContent: (filename: string, content: string) => void;
   deleteFile: (filename: string) => void;
   renameFile: (oldFilename: string, newFilename: string) => boolean;
+  openLivePreview: () => void;
 };
 
-const AssignmentFileContext = createContext<AssignmentFileContextType | null>(null);
+export const AssignmentFileContext = createContext<AssignmentFileContextType | null>(null);
 
 const INITIAL_PANE_ID = createPaneId();
 
@@ -297,6 +300,58 @@ export function AssignmentFileProvider({
     return true;
   };
 
+  const openLivePreview = () => {
+    let file = vfs.readFile('Live Preview');
+    if (!file) {
+      vfs.writeFile('Live Preview', '', {
+        language: 'html',
+        category: 'preview',
+      });
+      setFiles(vfs.getAllFilesRecord());
+    }
+
+    // Check if Live Preview is already open in any pane
+    for (const [paneId, pane] of Object.entries(editorLayout.panes)) {
+      if (pane.tabs.includes('Live Preview')) {
+        setActivePane(paneId);
+        setActiveTab(paneId, 'Live Preview');
+        return;
+      }
+    }
+
+    const isWide = typeof window !== 'undefined' && window.innerWidth >= 1024;
+    if (isWide && Object.keys(editorLayout.panes).length <= 2) {
+      const targetPaneId = editorLayout.activePaneId;
+      const newPaneId = createPaneId();
+      const targetPane = editorLayout.panes[targetPaneId];
+      if (targetPane) {
+        setEditorLayout((prev) => {
+          const nextPanes: Record<string, PaneState> = {
+            ...prev.panes,
+            [newPaneId]: {
+              id: newPaneId,
+              tabs: ['Live Preview'],
+              activeTab: 'Live Preview',
+            },
+          };
+          const nextLayout = splitPane(prev.layout, targetPaneId, 'row', newPaneId);
+          return {
+            panes: nextPanes,
+            layout: nextLayout,
+            activePaneId: newPaneId,
+          };
+        });
+        return;
+      }
+    }
+
+    void openFileByName('Live Preview', {
+      content: '',
+      language: 'html',
+      category: 'preview',
+    });
+  };
+
   const { panes, layout, activePaneId } = editorLayout;
 
   return (
@@ -321,6 +376,7 @@ export function AssignmentFileProvider({
         updateFileContent,
         deleteFile,
         renameFile,
+        openLivePreview,
       }}
     >
       {children}
