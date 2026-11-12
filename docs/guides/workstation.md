@@ -344,14 +344,13 @@ Beyond execution slot count, four key parameters across the stack directly optim
    - Configured in `.env.local` and `.env.example`: `JUDGE0_MAX_CONCURRENT=6`.
    - Automatically provisions 6 `judge0-worker` replicas via Docker Compose (`deploy: replicas: ${JUDGE0_MAX_CONCURRENT:-6}`), sets Celery worker pool size (`worker_concurrency`), and adjusts the active ticket ceiling in [`queue_admission.py`](../../backend/app/domains/runs/queue_admission.py).
 2. **`FULL_QUEUE_THRESHOLD` & `HIGH_LOAD_THRESHOLD` ([`queue_admission.py`](../../backend/app/domains/runs/queue_admission.py)):**
-   - Currently: `HIGH_LOAD_THRESHOLD = 40`, `FULL_QUEUE_THRESHOLD = 50`.
-   - With 4–6 execution slots draining work 2–3x faster, `FULL_QUEUE_THRESHOLD` can be tuned to `75` (and `HIGH_LOAD_THRESHOLD` to `50`), allowing larger cohorts to enter the queue without receiving HTTP 503 `queue_full` retries.
+   - Configured: `HIGH_LOAD_THRESHOLD = 50`, `FULL_QUEUE_THRESHOLD = 75`.
+   - With 6 execution slots draining work at ~55–60 runs/min, `FULL_QUEUE_THRESHOLD = 75` accommodates full multi-section lab cohorts without turning away students with HTTP 503 `queue_full` retries.
 3. **Interactive Sandbox Timeout Bounds ([`docker-compose.yml`](../../docker-compose.yml)):**
-   - Currently: `CPU_TIME_LIMIT: "30"`, `WALL_TIME_LIMIT: "40"`, `MAX_WALL_TIME_LIMIT: "45"`.
-   - Normal student pytest suites complete in 1.5s–4.0s. Tightening sandbox limits (e.g. `WALL_TIME_LIMIT: "20"`) frees up blocked execution slots 2x faster when student submissions contain infinite loops or deadlocked I/O.
+   - Configured: `CPU_TIME_LIMIT: "30"`, `WALL_TIME_LIMIT: "40"`, `MAX_WALL_TIME_LIMIT: "45"`.
+   - Normal student pytest suites complete in 1.5s–4.0s; timeout bounds guarantee runaway student loops are terminated cleanly before blocking queue throughput.
 4. **AI Feedback Concurrency Limits ([`ai_capacity.py`](../../backend/app/domains/sandbox/ai_capacity.py)):**
-   - Currently: `ai_max_concurrent = 16`, `ai_max_waiting = 24` (40 total admitted).
-   - The 50-user benchmark demonstrated that GPU KV-cache allocation peaked at only 31.2% with zero cache evictions or preemptions.
-   - Raising `ai_max_concurrent` to `20` and `ai_max_waiting` to `30` accommodates an entire 50-student cohort requesting simultaneous AI hints without any 503 `ai_busy` backpressure.
+   - Configured in settings and Docker Compose: `ai_max_concurrent = 20`, `ai_max_waiting = 30` (50 total admitted).
+   - The 50-user benchmark demonstrated that GPU KV-cache allocation peaked at only 31.2% with zero cache evictions or preemptions, accommodating an entire 50-student cohort requesting simultaneous AI hints without any 503 `ai_busy` backpressure.
 
 [Dispatch](../../backend/scripts/validate_dispatch_host.py) and [retention](../../backend/scripts/validate_retention_host.py) validators own synthetic batch/failure/outage procedures. Review CLI/phase order, keep manifests and run permission checks as the application user. They are maintenance tests, not daily health checks.
