@@ -231,3 +231,56 @@ def test_extract_assertion_values():
     assert act == "false"
     assert exp == "true"
 
+
+def test_runner_report_path_isolated_from_student_code(tmp_path):
+    student_main = tmp_path / "main.py"
+    student_main.write_text(
+        "import os, sys\n"
+        "# Verify report target is not exposed in environment\n"
+        "assert '_AG_REPORT_TARGET' not in os.environ, 'Report target found in os.environ'\n"
+        "# Verify no report directory in current working directory\n"
+        "ag_dirs = [p for p in os.listdir('.') if p.startswith('.ag_report_')]\n"
+        "assert len(ag_dirs) == 0, f'Report dir leaked into cwd: {ag_dirs}'\n"
+        "# Verify sys.argv does not expose report path\n"
+        "for arg in sys.argv:\n"
+        "    assert 'results.json' not in arg, f'Report path leaked in sys.argv: {arg}'\n"
+        "print('clean_isolation_verified')\n",
+        encoding="utf-8",
+    )
+
+    test_main = tmp_path / "test_main.py"
+    test_main.write_text(
+        "import pytest\n"
+        "@pytest.mark.ag_iso\n"
+        "def test_isolation(case_input, case_output, run_case):\n"
+        "    run_case()\n",
+        encoding="utf-8",
+    )
+
+    test_cases = {
+        "iso": {
+            "inputs": ["test_input"],
+            "outputs": ["clean_isolation_verified"],
+        }
+    }
+    runner_code = generate_runner_script(["test_main.py"], test_cases, "main")
+    runner_file = tmp_path / "runner.py"
+    runner_file.write_text(runner_code, encoding="utf-8")
+
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(tmp_path)
+    result = subprocess.run(
+        [sys.executable, str(runner_file)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    parsed = parse_pytest_json(result.stdout)
+    assert parsed.total == 1
+    assert parsed.passed == 1
+    assert parsed.failed == 0
+
+

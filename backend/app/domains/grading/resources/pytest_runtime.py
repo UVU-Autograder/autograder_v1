@@ -1,4 +1,4 @@
-"""Embedded runtime: separates accidental console output, not deliberate tampering."""
+"""Embedded runtime: bounded console output, isolated report storage, and process supervision."""
 TEST_FILENAMES = globals().get("TEST_FILENAMES", [])
 TEST_CASES = globals().get("TEST_CASES", {})
 ENTRYPOINT_MODULE = globals().get("ENTRYPOINT_MODULE", "main")
@@ -505,13 +505,14 @@ def child_main(report_path):
 
 
 def supervisor_main():
-    with tempfile.TemporaryDirectory(prefix=".ag_report_", dir=".") as directory:
+    with tempfile.TemporaryDirectory(prefix=".ag_report_") as directory:
         report_path = os.path.join(directory, "results.json")
         # One malloc arena: otherwise each reader thread reserves its own 64 MB arena, and
         # under the address-space cap that comes out of the student code's memory.
-        process = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--ag-child", report_path],
+        child_env = {**os.environ, "MALLOC_ARENA_MAX": "1", "_AG_REPORT_TARGET": report_path}
+        process = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--ag-child"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=sys.stdin,
-                                   env={**os.environ, "MALLOC_ARENA_MAX": "1"})
+                                   env=child_env)
         readers = [PipeBuffer(process.stdout.fileno(), 1, account=False), PipeBuffer(process.stderr.fileno(), 2, account=False)]
         try:
             process.wait(timeout=35)
@@ -534,7 +535,12 @@ def supervisor_main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "--ag-child":
+    if len(sys.argv) == 2 and sys.argv[1] == "--ag-child":
+        target = os.environ.pop("_AG_REPORT_TARGET", None)
+        if not target:
+            sys.exit(3)
+        child_main(target)
+    elif len(sys.argv) == 3 and sys.argv[1] == "--ag-child":
         child_main(sys.argv[2])
     else:
         supervisor_main()
