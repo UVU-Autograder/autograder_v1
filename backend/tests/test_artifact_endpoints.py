@@ -307,6 +307,7 @@ def test_deleting_only_configured_artifact_keeps_setup_readable(client, admin_he
     assignment = get_assignment_for_course(db_session, "cs1400", "simple-python-functions")
     config = dict(assignment.config.config)
     config["bundle"] = {**config["bundle"], "language": "cpp"}
+    config["test_framework"] = "gtest"
     config["artifacts"] = {"model_solution": config["artifacts"]["model_solution"]}
     assignment.language = "cpp"
     upsert_assignment_config(db_session, assignment, config)

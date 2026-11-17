@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+import typing
 
 NUMBER_PATTERN = re.compile(r"[-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?")
 DEFAULT_NUMERIC_TOLERANCE = 1e-4
@@ -166,7 +167,7 @@ class BoundedOutput(io.TextIOWrapper):
                          errors="replace", newline="", write_through=True)
 
     def getvalue(self):
-        return self.buffer.getvalue().decode("utf-8", errors="ignore")
+        return typing.cast(io.BytesIO, self.buffer).getvalue().decode("utf-8", errors="ignore")
 
 
 class PipeBuffer:
@@ -176,7 +177,8 @@ class PipeBuffer:
         self.data = bytearray()
         self.lock = threading.Lock()
         self.finished = threading.Event()
-        os.set_blocking(read_fd, False)
+        # Typeshed omits set_blocking on win32; it exists on the Linux guest.
+        typing.cast(typing.Any, os).set_blocking(read_fd, False)
         previous = threading.stack_size(READER_STACK_BYTES)
         try:
             self.thread = threading.Thread(target=self.run, daemon=True)
@@ -220,13 +222,13 @@ def install_capture():
     original = (capture.SysCapture, capture.SysCaptureBinary, capture.FDCapture, capture.FDCaptureBinary)
 
     class BoundedSys:
-        EMPTY_BUFFER = ""
+        EMPTY_BUFFER: str | bytes = ""
         binary = False
 
         def __init__(self, fd):
             self.fd, self.name = fd, "stderr" if fd == 2 else "stdout"
             self.old = getattr(sys, self.name)
-            self.stream = BoundedOutput(self.name)
+            self.stream: io.TextIOWrapper = BoundedOutput(self.name)
             CAPTURES.append(self)
 
         def start(self):
@@ -238,9 +240,10 @@ def install_capture():
             setattr(sys, self.name, self.old)
 
         def snap(self):
-            data = self.stream.buffer.getvalue()
-            self.stream.buffer.seek(0)
-            self.stream.buffer.truncate(0)
+            buffer = typing.cast(io.BytesIO, self.stream.buffer)
+            data = buffer.getvalue()
+            buffer.seek(0)
+            buffer.truncate(0)
             return data if self.binary else data.decode("utf-8", errors="ignore")
 
         def flush(self):
@@ -303,14 +306,16 @@ def install_capture():
         EMPTY_BUFFER = b""
         binary = True
 
-    capture.SysCapture = lambda fd, **kw: original[0](fd, **kw) if fd == 0 else BoundedSys(fd)
-    capture.SysCaptureBinary = lambda fd, **kw: original[1](fd, **kw) if fd == 0 else BoundedSysBinary(fd)
-    capture.FDCapture = lambda fd, **kw: original[2](fd, **kw) if fd == 0 else BoundedFD(fd)
-    capture.FDCaptureBinary = lambda fd, **kw: original[3](fd, **kw) if fd == 0 else BoundedFDBinary(fd)
-    capture.SysCapture.EMPTY_BUFFER = ""
-    capture.SysCaptureBinary.EMPTY_BUFFER = b""
-    capture.FDCapture.EMPTY_BUFFER = ""
-    capture.FDCaptureBinary.EMPTY_BUFFER = b""
+    # Classes are replaced with factory callables on purpose; patch through an Any view.
+    patched: typing.Any = capture
+    patched.SysCapture = lambda fd, **kw: original[0](fd, **kw) if fd == 0 else BoundedSys(fd)
+    patched.SysCaptureBinary = lambda fd, **kw: original[1](fd, **kw) if fd == 0 else BoundedSysBinary(fd)
+    patched.FDCapture = lambda fd, **kw: original[2](fd, **kw) if fd == 0 else BoundedFD(fd)
+    patched.FDCaptureBinary = lambda fd, **kw: original[3](fd, **kw) if fd == 0 else BoundedFDBinary(fd)
+    patched.SysCapture.EMPTY_BUFFER = ""
+    patched.SysCaptureBinary.EMPTY_BUFFER = b""
+    patched.FDCapture.EMPTY_BUFFER = ""
+    patched.FDCaptureBinary.EMPTY_BUFFER = b""
     return BoundedFD
 
 
@@ -386,7 +391,8 @@ def child_main(report_path):
                 flush_captures()
                 LEDGER.nodeid = item.nodeid
                 if hasattr(signal, "alarm"):
-                    signal.signal(signal.SIGALRM, timeout_handler)
+                    # SIGALRM is POSIX-only (absent from win32 typeshed); alarm() gates it.
+                    signal.signal(getattr(signal, "SIGALRM"), timeout_handler)
                     signal.alarm(5)
                 try:
                     return (yield)
@@ -513,6 +519,7 @@ def supervisor_main():
         process = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--ag-child"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=sys.stdin,
                                    env=child_env)
+        assert process.stdout is not None and process.stderr is not None  # PIPE above
         readers = [PipeBuffer(process.stdout.fileno(), 1, account=False), PipeBuffer(process.stderr.fileno(), 2, account=False)]
         try:
             process.wait(timeout=35)

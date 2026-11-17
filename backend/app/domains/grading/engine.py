@@ -66,7 +66,7 @@ class GradingEngine:
         self.expected_manifest = expected_manifest
         self.reference_validation = reference_validation
         self.strategy = strategy
-        if execution_parameters is not None and (runner_source is None or fallback_helper is None):
+        if execution_parameters is not None and (runner_source is None or (config.bundle.language == "python" and fallback_helper is None)):
             raise ValueError("Frozen execution requires captured runner and helper inputs")
 
     def _create_pipeline(self) -> GradingPipeline:

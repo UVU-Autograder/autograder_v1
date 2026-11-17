@@ -552,6 +552,30 @@ def seed_assignment_artifacts(
     assignment: Assignment,
     slug: str,
 ) -> None:
+    if assignment.language != "python":
+        language = assignment.language
+        entrypoint = {"c": "main.c", "cpp": "main.cpp", "web": "index.html"}[language]
+        framework = {"c": "io", "cpp": "gtest", "web": "jsdom"}[language]
+        artifacts = {"model_entrypoint": {"type": "model_solution", "display_filename": entrypoint}}
+        item: dict = {"key": "main", "label": "Main behavior", "points": 10,
+                      "extra_credit": False, "item_type": "pytest"}
+        if framework == "io":
+            item.update(inputs=[""], outputs=["hello\n"])
+        else:
+            filename = "tests.cpp" if framework == "gtest" else "tests.cjs"
+            artifacts["assignment_tests"] = {"type": "test_file", "display_filename": filename}
+            db.add(AssignmentArtifact(assignment=assignment, artifact_key="assignment_tests",
+                                     artifact_type="test_file", display_filename=filename,
+                                     storage_ref=f"seed://starters/{filename}", content_type="text/plain"))
+        db.add(AssignmentArtifact(assignment=assignment, artifact_key="model_entrypoint",
+                                 artifact_type="model_solution", display_filename=entrypoint,
+                                 storage_ref=f"seed://starters/{entrypoint}", content_type="text/plain"))
+        upsert_assignment_config(db, assignment, {
+            "bundle": {"language": language, "entrypoint": entrypoint, "file_requirements": [{"paths": [entrypoint]}]},
+            "test_framework": framework, "artifacts": artifacts, "scoring_items": [item],
+            "description": assignment.description,
+        })
+        return
     seed_dir = resolve_seed_folder(slug)
     config_path = seed_dir / "config.json"
     if not config_path.exists():

@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from app.domains.grading.profiles import Framework, Language, runtime_id
 
 PROTOCOL_VERSION = 2
 MAX_REPORT_BYTES = 1024 * 1024
@@ -75,8 +76,8 @@ class RunnerPayload(StrictModel):
             raise ValueError("Incomplete execution")
         collected = {case.nodeid: case for case in self.collected}
         for test in self.tests:
-            case = collected.get(test.nodeid)
-            if case is None or sorted(case.markers) != sorted(test.markers) or case.xfail != test.xfail:
+            collected_case = collected.get(test.nodeid)
+            if collected_case is None or sorted(collected_case.markers) != sorted(test.markers) or collected_case.xfail != test.xfail:
                 raise ValueError("Result membership mismatch")
             if test.outcome == "passed" and (test.phase_failures or test.output_truncated or test.xfail):
                 raise ValueError("Invalid passing outcome")
@@ -90,13 +91,17 @@ class RunnerPayload(StrictModel):
 
 
 class ValidatedManifest(StrictModel):
-    protocol_version: Literal[2] = PROTOCOL_VERSION
-    runtime_id: Literal["python-3.11.9-pytest-8.4.2-report-2"] = RUNTIME_ID
+    protocol_version: Literal[2] = 2
+    language: Language = "python"
+    framework: Framework = "pytest"
+    runtime_id: str = RUNTIME_ID
     fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
     cases: list[ExpectedCase] = Field(min_length=1, max_length=MAX_CASES)
 
     @model_validator(mode="after")
     def unique(self) -> ValidatedManifest:
+        if self.runtime_id != runtime_id(self.language):
+            raise ValueError("Unsupported runtime profile")
         if len({case.nodeid for case in self.cases}) != len(self.cases):
             raise ValueError("Duplicate manifest cases")
         return self

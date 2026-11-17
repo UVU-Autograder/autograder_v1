@@ -22,6 +22,7 @@
     "@monaco-editor/react": "^4.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "es-module-lexer": "^3.0.5",
     "jszip": "^3.10.1",
     "lucide-react": "^1.17.0",
     "monaco-editor": "0.56.0",
@@ -46,13 +47,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.5",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.10",
-    "@vitest/coverage-v8": "^4.1.10"
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "dompurify": "^3.4.16"

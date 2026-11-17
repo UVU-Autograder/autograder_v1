@@ -126,7 +126,9 @@ def get_audit_stats(db: Session) -> dict[str, Any]:
         .order_by(func.count(AuditRecord.id).desc())
         .limit(10)
     )
-    event_counts = dict(db.execute(event_distribution_query).all())
+    event_counts: dict[str, int] = {
+        event: count for event, count in db.execute(event_distribution_query).all()
+    }
 
     return {
         "total_events": total_events,

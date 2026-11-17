@@ -305,8 +305,13 @@ def validate_assignment_model_solution(
                         passed = False
                         errors.append("Assignment changed during validation. Validate again.")
                     else:
-                        current.config.validated_test_manifest = ValidatedManifest(
-                            fingerprint=validation_fingerprint, cases=collected).model_dump(mode="json")
+                        assert current.config is not None
+                        from app.domains.grading.profiles import runtime_id
+                        current.config.validated_test_manifest = ValidatedManifest.model_validate({
+                            "fingerprint": validation_fingerprint, "cases": collected,
+                            "language": config.bundle.language, "framework": config.test_framework,
+                            "runtime_id": runtime_id(config.bundle.language),
+                        }).model_dump(mode="json")
                         db.commit()
             result_payload["passed"] = passed
         set_run_result(run_id, result_payload)

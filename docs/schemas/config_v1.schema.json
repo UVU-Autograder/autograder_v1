@@ -5,6 +5,7 @@
         "type": {
           "enum": [
             "pytest_file",
+            "test_file",
             "model_solution",
             "support_file"
           ],
@@ -281,6 +282,17 @@
   "properties": {
     "bundle": {
       "$ref": "#/$defs/BundleConfig"
+    },
+    "test_framework": {
+      "default": "pytest",
+      "enum": [
+        "pytest",
+        "io",
+        "gtest",
+        "jsdom"
+      ],
+      "title": "Test Framework",
+      "type": "string"
     },
     "artifacts": {
       "additionalProperties": {

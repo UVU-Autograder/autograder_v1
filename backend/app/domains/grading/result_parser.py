@@ -79,6 +79,11 @@ class PytestRunResult:
     """Diagnostic failure category derived from exit codes and stderr/message patterns."""
 
 
+# Compatibility names remain available to existing Python callers.
+TestRunResult = PytestRunResult
+TestCaseResult = PytestTestResult
+
+
 # ---------------------------------------------------------------------------
 # Parsing helpers
 # ---------------------------------------------------------------------------

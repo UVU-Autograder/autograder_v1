@@ -25,6 +25,7 @@ from app.domains.grading.protocols import (
     ParsedOutcome,
 )
 from app.domains.grading.result_parser import PytestRunResult, calculate_scores
+from app.domains.grading.multilang import parse_execution as parse_multilang
 from app.domains.grading.runtime import (
     ExecutionParameters,
     PreloadedArtifacts,
@@ -197,7 +198,7 @@ class GradingPipeline:
         self.fallback_helper = fallback_helper
         self.expected_manifest = expected_manifest
         self.reference_validation = reference_validation
-        if execution_parameters is not None and (runner_source is None or fallback_helper is None):
+        if execution_parameters is not None and (runner_source is None or (config.bundle.language == "python" and fallback_helper is None)):
             raise ValueError("Frozen execution requires captured runner and helper inputs")
 
         self.strategy = strategy or get_strategy(getattr(self.config.bundle, "language", "python"))
@@ -334,7 +335,7 @@ class GradingPipeline:
         self,
         exec_dir: Path,
         report: EvaluationReport,
-    ) -> tuple[list[str], dict[str, dict[str, list[str]]]] | None:
+    ) -> tuple[list[str], dict[str, dict[str, Any]]] | None:
         """Stage 2: Inject artifacts and helper scripts, build test cases map.
 
         Returns (test_filenames, test_cases_map) or None on configuration error.
@@ -390,7 +391,7 @@ class GradingPipeline:
         )
 
         # 1. Custom executor function path (e.g. unit test mocks, local calibration runners)
-        if self.executor_fn is not execute_pytest_in_judge0:
+        if self.executor_fn is not execute_pytest_in_judge0 or self.strategy.language_name == "python":
             outcome: ExecutionOutcome = await self.executor_fn(
                 exec_dir,
                 test_filenames=test_filenames,
@@ -422,37 +423,6 @@ class GradingPipeline:
 
             return outcome.pytest_result
 
-        # 2. Strategy-driven Python execution path
-        if self.strategy.language_name == "python":
-            outcome = await execute_pytest_in_judge0(
-                exec_dir,
-                test_filenames=test_filenames,
-                test_cases=test_cases_map,
-                entrypoint_module=Path(self.config.bundle.entrypoint).stem,
-                language_id=parameters.language_id,
-                cpu_time_limit=parameters.cpu_time_limit,
-                wall_time_limit=parameters.wall_time_limit,
-                memory_limit=parameters.memory_limit,
-                runner_source=self.runner_source,
-                dependencies=self.config.dependencies,
-                stdin=stdin,
-                expected_manifest=self.expected_manifest,
-            )
-
-            report.pytest_result = outcome.pytest_result
-            if outcome.pytest_result:
-                report.diagnostics = outcome.pytest_result.diagnostics
-                if isinstance(report.diagnostics, dict) and any(
-                    report.diagnostics.get(key) is True for key in ("stdout_truncated", "stderr_truncated")
-                ):
-                    report.warnings.append({"code": "output_truncated", "message": "Output was truncated at 64 KiB. Check for excessive printing or a loop."})
-            if not outcome.success:
-                report.failure_category = outcome.failure_category
-                report.failure_message = outcome.failure_message
-                return None
-
-            return outcome.pytest_result
-
         # 3. Strategy-driven non-Python execution path (C, C++, Web Development)
         payload = self.strategy.prepare_bundle(
             exec_dir=exec_dir,
@@ -474,12 +444,15 @@ class GradingPipeline:
             return None
 
         failure = judge0_failure_for_status(raw_result.status_id)
-        if failure is not None and raw_result.status_id not in (3, 6):
+        if failure is not None and raw_result.status_id not in (3, 6, 11):
             report.failure_category, report.failure_message = failure
             return None
 
-        parsed = self.strategy.parse_execution(raw_result, self.config)
+        parsed = parse_multilang(raw_result, self.config, self.expected_manifest)
         report.parsed_outcome = parsed
+        if isinstance(parsed.raw_data, PytestRunResult):
+            report.pytest_result = parsed.raw_data
+            report.diagnostics = parsed.raw_data.diagnostics
         if not parsed.success and parsed.failure_category:
             report.failure_category = parsed.failure_category
             report.failure_message = parsed.failure_message
@@ -513,7 +486,7 @@ class GradingPipeline:
         """Write assignment artifacts into exec_dir; return pytest filenames.
 
         Raises ``ArtifactLoadError`` if a configured non-model artifact cannot
-        be loaded (fail closed — never silently drop tests).
+        be loaded (fail closed â€” never silently drop tests).
         """
         if self.preloaded_artifacts is not None:
             for filename, content in self.preloaded_artifacts.files.items():

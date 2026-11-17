@@ -55,12 +55,15 @@ async def verify(course: str, assignment: str) -> None:
 
     class RecordingClient(Judge0Client):
         async def create_submission(
-            self, source_code: str, language_id: int, additional_files_b64: str | None = None,
+            self, source_code: str | None, language_id: int, additional_files_b64: str | None = None,
             stdin: str | None = None, cpu_time_limit: float = 10.0,
             wall_time_limit: float = DEFAULT_WALL_TIME_LIMIT, memory_limit: int = DEFAULT_MEMORY_LIMIT,
         ) -> str:
             calls.append((language_id, cpu_time_limit, wall_time_limit, memory_limit))
-            report("captured_runner_submitted", source_code == package.runner_source)
+            if parameters.language_id == 89:
+                report("captured_runner_submitted", source_code is None and bool(additional_files_b64))
+            else:
+                report("captured_runner_submitted", source_code == package.runner_source)
             report("captured_parameters_submitted", calls[-1] == (
                 parameters.language_id, parameters.cpu_time_limit, parameters.wall_time_limit, parameters.memory_limit,
             ))
@@ -89,7 +92,7 @@ async def verify(course: str, assignment: str) -> None:
     grader = GradingEngine(
         config=package.config, artifact_refs={}, allowed_concepts=package.concepts,
         preloaded_artifacts=package.preloaded_artifacts(), execution_parameters=parameters,
-        runner_source=package.runner_source, fallback_helper=package.fallback_helper.decode(),
+        runner_source=package.runner_source, fallback_helper=package.fallback_helper.decode() if package.fallback_helper is not None else None,
         expected_manifest=package.expected_manifest.model_dump(mode="json"),
     )
     try:

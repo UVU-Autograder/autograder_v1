@@ -45,7 +45,7 @@ class BundleConfig(BaseModel):
         allowed = {"python", "cpp", "c", "web", "javascript", "html"}
         if norm not in allowed:
             raise ValueError(f"unsupported language '{v}'; must be one of {sorted(allowed)}")
-        return norm
+        return "web" if norm in {"javascript", "html"} else norm
 
     def derived_required_files(self) -> list[str]:
         paths: list[str] = []
@@ -83,7 +83,7 @@ class BundleConfig(BaseModel):
 
 
 class ArtifactConfig(BaseModel):
-    type: Literal["pytest_file", "model_solution", "support_file"]
+    type: Literal["pytest_file", "test_file", "model_solution", "support_file"]
     display_filename: str | None = None
 
 
@@ -146,6 +146,7 @@ class ConceptsConfig(BaseModel):
 
 class AssignmentConfigV1(BaseModel):
     bundle: BundleConfig
+    test_framework: Literal["pytest", "io", "gtest", "jsdom"] = "pytest"
     artifacts: dict[str, ArtifactConfig] = Field(min_length=1)
     scoring_items: list[ScoringItemConfig] = Field(min_length=1)
     concepts: ConceptsConfig = Field(default_factory=ConceptsConfig)
@@ -155,6 +156,22 @@ class AssignmentConfigV1(BaseModel):
     description: str | None = None
     comparison_mode: Literal["normalized", "exact", "numeric_tolerance", "regex"] = "normalized"
     tolerance: float | None = Field(default=None, ge=0.0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_framework(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "test_framework" not in value:
+            bundle = value.get("bundle", {})
+            language = bundle.language if isinstance(bundle, BundleConfig) else bundle.get("language", "python")
+            value = {**value, "test_framework": {"python": "pytest", "c": "io", "cpp": "gtest"}.get(language, "jsdom")}
+        return value
+
+    @model_validator(mode="after")
+    def validate_framework(self) -> "AssignmentConfigV1":
+        allowed = {"python": {"pytest"}, "c": {"io", "gtest"}, "cpp": {"io", "gtest"}, "web": {"jsdom"}}
+        if self.test_framework not in allowed[self.bundle.language]:
+            raise ValueError("test_framework is incompatible with bundle.language")
+        return self
 
     @model_validator(mode="after")
     def apply_comparison_defaults(self) -> "AssignmentConfigV1":
@@ -319,7 +336,7 @@ class AssignmentCreate(BaseModel):
         allowed = {"python", "cpp", "c", "web", "javascript", "html"}
         if norm not in allowed:
             raise ValueError(f"unsupported language '{v}'; must be one of {sorted(allowed)}")
-        return norm
+        return "web" if norm in {"javascript", "html"} else norm
 
 
 class ArtifactListResponse(BaseModel):

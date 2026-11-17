@@ -54,7 +54,7 @@ class SelfReferenceVisitor(ast.NodeVisitor):
 def get_assignment_seed_dirs() -> list[Path]:
     if not SEEDS_DIR.exists():
         return []
-    return [d for d in SEEDS_DIR.iterdir() if d.is_dir() and d.name != "shared"]
+    return [d for d in SEEDS_DIR.iterdir() if d.is_dir() and d.name not in {"shared", "starters"}]
 
 
 @pytest.mark.parametrize("seed_dir", get_assignment_seed_dirs(), ids=lambda d: d.name)

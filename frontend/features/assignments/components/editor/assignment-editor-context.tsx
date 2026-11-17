@@ -7,6 +7,7 @@ import { slugifyKey, makeUniqueKey } from "@/lib/slugify";
 import {
   deleteStaffAssignment,
   getConceptsMetadata,
+  syncStaffTests,
 } from "@/features/assignments/api";
 import {
   StaffAssignmentSetup,
@@ -16,9 +17,36 @@ import {
   FileRequirementConfig,
   AssignmentConfigV1,
   ConceptMetadata,
-  ComparisonMode,
+  ArtifactType,
+  TestFramework,
+  TEST_FRAMEWORKS_BY_LANGUAGE,
+  defaultFrameworkForLanguage,
+  defaultSuiteFilename,
   pytestMarkerForKey,
 } from "@/features/assignments/types";
+
+const PYTHON_STUB = `import pytest\n\n# Prefer ordinary imports of student modules, e.g. \`import main\`.\n# Use View Python helpers only for collisions, import-time input(), or long CLI mocks.\n\n\n@pytest.mark.ag_main\ndef test_main_function():\n    import main\n\n    assert hasattr(main, "__name__"), "Expected the submission module to import cleanly."\n`;
+
+const GTEST_STUB = `#include <gtest/gtest.h>\n\n// Declare the public interface supplied by the student's implementation.\n// For C assignments, wrap C declarations/includes in extern "C" { ... }.\nextern int add(int, int);\n\nTEST(Assignment, ag_main) {\n    EXPECT_EQ(add(2, 3), 5);\n}\n`;
+
+const JSDOM_STUB = `module.exports = ({ test, loadSubmission, assert }) => {\n  test('main', 'page has a heading', async () => {\n    const { document } = await loadSubmission();\n    assert.ok(document.querySelector('h1'), 'The page needs an h1 heading.');\n  });\n};\n`;
+
+/** Starter suite for a missing test file. Never returns Python code for non-pytest frameworks. */
+function starterSuite(framework: TestFramework): string {
+  if (framework === "pytest") return PYTHON_STUB;
+  if (framework === "gtest") return GTEST_STUB;
+  if (framework === "jsdom") return JSDOM_STUB;
+  return "";
+}
+
+function resolveFramework(language: string, candidate: TestFramework | undefined): TestFramework {
+  const allowed = TEST_FRAMEWORKS_BY_LANGUAGE[language];
+  return candidate && allowed?.includes(candidate) ? candidate : defaultFrameworkForLanguage(language);
+}
+
+function isSuiteArtifact(a: StaffArtifact): boolean {
+  return a.artifact_type === "pytest_file" || a.artifact_type === "test_file" || a.artifact_key === "assignment_tests";
+}
 
 type CourseModule = {
   id: number;
@@ -57,6 +85,8 @@ export type AssignmentEditorContextType = {
   setSandboxEnabled: (s: boolean) => void;
   language: string;
   setLanguage: (l: string) => void;
+  testFramework: TestFramework;
+  setTestFramework: (f: TestFramework) => void;
 
   // Bundle / File requirements
   entrypoint: string;
@@ -76,7 +106,11 @@ export type AssignmentEditorContextType = {
   removeScoringItem: (key: string) => void;
   updateScoringItemField: (key: string, field: keyof RubricItem, val: unknown) => void;
   rubricGroups: RubricGroup[];
-  syncMarkersFromTestSuite: (sourceCode: string) => number;
+  /**
+   * Python only: asks the backend to parse the suite and merges the result into scoring items.
+   * Resolves to the number of newly added items, or null when nothing was applied (error surfaced).
+   */
+  syncTestsFromSource: (sourceCode: string) => Promise<number | null>;
 
 
   // Concepts & Dependencies
@@ -143,6 +177,8 @@ export function AssignmentEditorProvider({
   const [moduleId, setModuleId] = useState<number | null>(null);
   const [sandboxEnabled, setSandboxEnabled] = useState(true);
   const [language, setLanguage] = useState("python");
+  const [testFrameworkChoice, setTestFrameworkChoice] = useState<TestFramework | undefined>(undefined);
+  const testFramework = resolveFramework(language, testFrameworkChoice);
 
   // Bundle / File requirements
   const [entrypoint, setEntrypoint] = useState("main.py");
@@ -228,6 +264,7 @@ export function AssignmentEditorProvider({
       moduleId,
       sandboxEnabled,
       language,
+      testFramework,
       entrypoint,
       fileRequirements,
       scoringItems: scoringItems.map((item) => {
@@ -246,6 +283,7 @@ export function AssignmentEditorProvider({
     moduleId,
     sandboxEnabled,
     language,
+    testFramework,
     entrypoint,
     fileRequirements,
     scoringItems,
@@ -299,26 +337,30 @@ export function AssignmentEditorProvider({
       setDescription(setupData.description || setupData.config?.description || "");
       setModuleId(setupData.module_id ?? null);
       setSandboxEnabled(setupData.sandbox_enabled ?? true);
-      setLanguage(setupData.language || "python");
+      const loadedLanguage = setupData.language || "python";
+      const loadedFramework = resolveFramework(loadedLanguage, setupData.config?.test_framework);
+      setLanguage(loadedLanguage);
+      setTestFrameworkChoice(loadedFramework);
       setArtifacts(loadedArtifacts);
       setConceptMeta(metaData || {});
       setCourseDefaultConcepts(courseConcepts.default_concepts || []);
       setCourseModules(courseConcepts.modules || []);
 
-      const pytestArtifact = loadedArtifacts.find(
-        (a) => a.artifact_type === "pytest_file" || a.artifact_key === "assignment_tests"
-      );
-      const testArtifactKey = pytestArtifact?.artifact_key || "assignment_tests";
+      const suiteArtifact = loadedArtifacts.find(isSuiteArtifact);
+      const testArtifactKey = suiteArtifact?.artifact_key || "assignment_tests";
       setLoadingTestSuiteCode(true);
       try {
-        const text = await apiClient.getText(
-          `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${testArtifactKey}`
-        );
-        setTestSuiteCode(text);
+        if (loadedFramework === "io" && !suiteArtifact) {
+          // I/O cases live on the rubric; there is no suite file to load.
+          setTestSuiteCode("");
+        } else {
+          const text = await apiClient.getText(
+            `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${testArtifactKey}`
+          );
+          setTestSuiteCode(text);
+        }
       } catch {
-        setTestSuiteCode(
-          `import pytest\n\n# Prefer ordinary imports of student modules, e.g. \`import main\`.\n# Use View Python helpers only for collisions, import-time input(), or long CLI mocks.\n\n\n@pytest.mark.ag_main\ndef test_main_function():\n    import main\n\n    assert hasattr(main, "__name__"), "Expected the submission module to import cleanly."\n`
-        );
+        setTestSuiteCode(starterSuite(loadedFramework));
       } finally {
         setLoadingTestSuiteCode(false);
       }
@@ -520,108 +562,70 @@ export function AssignmentEditorProvider({
   };
 
 
-  const parseExpectedIO = (sourceCode: string, key: string) => {
-    const inputs: string[] = [];
-    const outputs: string[] = [];
-
-    // Match block following marker up to next marker or end of code
-    const markerRegex = new RegExp(`@(?:pytest\\.)?(?:mark\\.)?ag_${key}\\b([\\s\\S]*?)(?=(?:@(?:pytest\\.)?(?:mark\\.)?ag_|$))`, "i");
-    const match = sourceCode.match(markerRegex);
-    const block = match ? match[1] : sourceCode;
-
-    const inputMatches = block.matchAll(/EXPECTED_INPUT(?:S)?\s*=\s*(?:["']{3}([\s\S]*?)["']{3}|["']([^"'\r\n]*)["'])/g);
-    for (const m of inputMatches) {
-      const val = m[1] !== undefined ? m[1] : m[2];
-      if (val && !inputs.includes(val.trim())) inputs.push(val.trim());
-    }
-
-    const outputMatches = block.matchAll(/EXPECTED_OUTPUT(?:S)?\s*=\s*(?:["']{3}([\s\S]*?)["']{3}|["']([^"'\r\n]*)["'])/g);
-    for (const m of outputMatches) {
-      const val = m[1] !== undefined ? m[1] : m[2];
-      if (val && !outputs.includes(val.trim())) outputs.push(val.trim());
-    }
-
-    let comparison_mode: ComparisonMode | undefined = undefined;
-    const modePattern = /(?:COMPARISON_MODE|COMPARE_MODE|MODE)(?:\s*:\s*[^=\r\n]+)?\s*=\s*["'](normalized|exact|numeric_tolerance|regex)["']/i;
-    const modeMatch = block.match(modePattern) || sourceCode.match(modePattern);
-    if (modeMatch) {
-      comparison_mode = modeMatch[1].toLowerCase() as ComparisonMode;
-    }
-
-    let tolerance: number | null | undefined = undefined;
-    const tolPattern = /(?:TOLERANCE|TOL|EPSILON|ATOL|RTOL)(?:\s*:\s*[^=\r\n]+)?\s*=\s*([0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?)/i;
-    const tolMatch = block.match(tolPattern) || sourceCode.match(tolPattern);
-    if (tolMatch) {
-      const parsedTol = parseFloat(tolMatch[1]);
-      if (!isNaN(parsedTol)) {
-        tolerance = parsedTol;
+  const setTestFramework = (framework: TestFramework) => {
+    setTestFrameworkChoice(framework);
+    if (!testSuiteCode.trim()) {
+      const starter = starterSuite(framework);
+      if (starter) {
+        setTestSuiteCode(starter);
+        setTestSuiteDirty(true);
       }
     }
-
-    return {
-      inputs: inputs.length > 0 ? inputs : undefined,
-      outputs: outputs.length > 0 ? outputs : undefined,
-      comparison_mode,
-      tolerance,
-    };
+    markDirty();
   };
 
-  const syncMarkersFromTestSuite = (sourceCode: string) => {
-    const matches = sourceCode.match(/@(?:pytest\.)?(?:mark\.)?ag_([a-zA-Z0-9_]+)/g);
-    if (!matches) return 0;
+  const syncTestsFromSource = async (sourceCode: string): Promise<number | null> => {
+    if (language !== "python") return null;
+    setErrorMessage(null);
+    let response;
+    try {
+      response = await syncStaffTests(courseId, assignmentId, sourceCode);
+    } catch (err: unknown) {
+      // Nothing is merged on failure (e.g. 422 for invalid Python), so the rubric is never half-updated.
+      setErrorMessage(err instanceof Error ? err.message : "Failed to sync tests.");
+      return null;
+    }
 
-    const extractedKeys = Array.from(
-      new Set(matches.map((m) => m.replace(/^.*ag_/, "")))
-    );
+    const synced = response.items || [];
+    const existingKeys = new Set(scoringItems.map((item) => item.key));
+    const addedCount = new Set(synced.map((s) => s.key).filter((k) => !existingKeys.has(k))).size;
 
-    let addedCount = 0;
     setScoringItems((prev) => {
-      const existingKeys = new Set(prev.map((item) => item.key));
-      const updatedItems = prev.map((item) => {
-        if (extractedKeys.includes(item.key) && (item.item_type || "pytest") === "pytest") {
-          const parsed = parseExpectedIO(sourceCode, item.key);
-          return {
-            ...item,
-            inputs: parsed.inputs || item.inputs,
-            outputs: parsed.outputs || item.outputs,
-            comparison_mode: parsed.comparison_mode || item.comparison_mode || "normalized",
-            tolerance: parsed.tolerance !== undefined ? parsed.tolerance : item.tolerance,
-          };
-        }
-        return item;
+      const prevKeys = new Set(prev.map((item) => item.key));
+      const merged = prev.map((item) => {
+        const hit = synced.find((s) => s.key === item.key);
+        if (!hit || (item.item_type || "pytest") !== "pytest") return item;
+        return {
+          ...item,
+          inputs: hit.inputs ?? item.inputs,
+          outputs: hit.outputs ?? item.outputs,
+          comparison_mode: hit.comparison_mode ?? item.comparison_mode ?? "normalized",
+          tolerance: hit.tolerance ?? item.tolerance,
+        };
       });
-
-      const newItems: RubricItem[] = [];
-      extractedKeys.forEach((k) => {
-        if (!existingKeys.has(k)) {
-          addedCount++;
-          const parsed = parseExpectedIO(sourceCode, k);
-          newItems.push({
-            id: `marker_${k}_${Math.random().toString(36).slice(2, 7)}`,
-            key: k,
-            label: `${k.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} Test`,
-            points: 10,
-            extra_credit: false,
-            item_type: "pytest",
-            pytest_marker: pytestMarkerForKey(k),
-            rubric_group_key: null,
-            inputs: parsed.inputs,
-            outputs: parsed.outputs,
-            comparison_mode: parsed.comparison_mode || "normalized",
-            tolerance: parsed.tolerance ?? null,
-          });
-        }
+      const added: RubricItem[] = [];
+      synced.forEach((s) => {
+        if (prevKeys.has(s.key) || added.some((a) => a.key === s.key)) return;
+        added.push({
+          id: `marker_${s.key}_${Math.random().toString(36).slice(2, 7)}`,
+          key: s.key,
+          label: `${s.key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} Test`,
+          points: 10,
+          extra_credit: false,
+          item_type: "pytest",
+          pytest_marker: pytestMarkerForKey(s.key),
+          rubric_group_key: null,
+          inputs: s.inputs ?? undefined,
+          outputs: s.outputs ?? undefined,
+          comparison_mode: s.comparison_mode ?? "normalized",
+          tolerance: s.tolerance ?? null,
+        });
       });
-
-      if (addedCount > 0 || newItems.length > 0) {
-        markDirty();
-      }
-      return [...updatedItems, ...newItems];
+      return [...merged, ...added];
     });
-
+    markDirty();
     return addedCount;
   };
-
   // Code editor modal mutators
   const openCodeEditor = async (key: string, type: string, filename: string, initialText?: string) => {
     setErrorMessage(null);
@@ -662,7 +666,7 @@ export function AssignmentEditorProvider({
       formData.append("artifact_type", editArtifactType);
 
       await apiClient.postForm(`/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`, formData);
-      if (editArtifactType === "pytest_file" || editArtifactKey === "assignment_tests") {
+      if (editArtifactType === "pytest_file" || editArtifactType === "test_file" || editArtifactKey === "assignment_tests") {
         setTestSuiteCode(editCodeText);
         setTestSuiteDirty(false);
       }
@@ -682,38 +686,43 @@ export function AssignmentEditorProvider({
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      if (testSuiteDirty) {
-        const pytestArtifact = artifacts.find(
-          (a) => a.artifact_type === "pytest_file" || a.artifact_key === "assignment_tests"
-        );
-        const artifactKey = pytestArtifact?.artifact_key || "assignment_tests";
-        const filename = pytestArtifact?.display_filename || "tests.py";
+      // pytest suites are pytest_file; gtest/jsdom suites are test_file. io has no suite file.
+      const suiteType: ArtifactType = testFramework === "pytest" ? "pytest_file" : "test_file";
+      const hasSuiteFile = testFramework !== "io";
+
+      if (testSuiteDirty && hasSuiteFile) {
+        const suiteArtifact = artifacts.find(isSuiteArtifact);
+        const artifactKey = suiteArtifact?.artifact_key || "assignment_tests";
+        const filename = suiteArtifact?.display_filename || defaultSuiteFilename(testFramework);
         const file = new File([testSuiteCode], filename, { type: "text/plain" });
         const formData = new FormData();
         formData.append("file", file);
         formData.append("artifact_key", artifactKey);
-        formData.append("artifact_type", "pytest_file");
+        formData.append("artifact_type", suiteType);
         await apiClient.postForm(
           `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
           formData
         );
         setTestSuiteDirty(false);
+      } else if (testSuiteDirty) {
+        setTestSuiteDirty(false);
       }
 
       // Build artifacts dict for config reference check
-      const artifactsDict: Record<string, { type: "pytest_file" | "model_solution" | "support_file"; display_filename?: string }> = {};
+      const knownTypes: ArtifactType[] = ["pytest_file", "test_file", "model_solution", "support_file"];
+      const artifactsDict: Record<string, { type: ArtifactType; display_filename?: string }> = {};
       artifacts.forEach((art) => {
-        const artType = (["pytest_file", "model_solution", "support_file"].includes(art.artifact_type)
-          ? art.artifact_type
-          : "support_file") as "pytest_file" | "model_solution" | "support_file";
+        const artType = (knownTypes as string[]).includes(art.artifact_type)
+          ? (art.artifact_type as ArtifactType)
+          : "support_file";
         artifactsDict[art.artifact_key] = {
           type: artType,
           display_filename: art.display_filename || undefined,
         };
       });
 
-      if (language === "python" && !Object.values(artifactsDict).some((artifact) => artifact.type === "pytest_file")) {
-        artifactsDict["assignment_tests"] = { type: "pytest_file", display_filename: "tests.py" };
+      if (hasSuiteFile && !Object.values(artifactsDict).some((artifact) => artifact.type === suiteType)) {
+        artifactsDict["assignment_tests"] = { type: suiteType, display_filename: defaultSuiteFilename(testFramework) };
       }
 
 
@@ -726,6 +735,7 @@ export function AssignmentEditorProvider({
 
       const config: AssignmentConfigV1 = {
         ...loadedConfigRef.current,
+        test_framework: testFramework,
         description: finalDescription,
         bundle: {
           ...loadedConfigRef.current?.bundle,
@@ -810,6 +820,8 @@ export function AssignmentEditorProvider({
         setSandboxEnabled,
         language,
         setLanguage,
+        testFramework,
+        setTestFramework,
 
         entrypoint,
         setEntrypoint,
@@ -827,7 +839,7 @@ export function AssignmentEditorProvider({
         removeScoringItem,
         updateScoringItemField,
         rubricGroups,
-        syncMarkersFromTestSuite,
+        syncTestsFromSource,
 
 
         conceptDenylist,

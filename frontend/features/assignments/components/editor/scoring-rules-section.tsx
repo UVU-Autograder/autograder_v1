@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import MonacoEditor from "@/components/monaco-editor";
 import {
@@ -24,10 +25,9 @@ import {
   DownloadIcon,
   RefreshCwIcon,
   SparklesIcon,
-  AlertCircleIcon,
   Code2Icon,
 } from "lucide-react";
-import { pytestMarkerForKey } from "@/features/assignments/types";
+import { defaultSuiteFilename } from "@/features/assignments/types";
 import { apiClient } from "@/lib/api-client";
 import { useAssignmentEditor } from "./assignment-editor-context";
 import { AITestAssistantDialog } from "./ai-test-assistant-dialog";
@@ -39,21 +39,13 @@ interface PythonHelpersPayload {
   usage_notes: string;
 }
 
-const MARKER_RE = /@(?:pytest\.)?(?:mark\.)?ag_([a-zA-Z0-9_]+)/g;
-
-function extractMarkerKeys(sourceCode: string): string[] {
-  const keys = new Set<string>();
-  for (const match of sourceCode.matchAll(MARKER_RE)) {
-    if (match[1]) keys.add(match[1]);
-  }
-  return [...keys];
-}
-
 export function ScoringRulesSection() {
   const {
     courseId,
     assignmentId,
     description,
+    language,
+    testFramework,
     scoringItems,
     addScoringItem,
     removeScoringItem,
@@ -61,7 +53,7 @@ export function ScoringRulesSection() {
     testSuiteCode,
     updateTestSuiteCode,
     loadingTestSuiteCode,
-    syncMarkersFromTestSuite,
+    syncTestsFromSource,
     setSuccessMessage,
   } = useAssignmentEditor();
 
@@ -79,16 +71,12 @@ export function ScoringRulesSection() {
     0,
   );
 
-  const { missingFromRubric, orphanInRubric } = useMemo(() => {
-    const codeKeys = extractMarkerKeys(testSuiteCode);
-    const rubricKeys = new Set(pytestItems.map((i) => i.key).filter(Boolean));
-    return {
-      missingFromRubric: codeKeys.filter((k) => !rubricKeys.has(k)),
-      orphanInRubric: pytestItems
-        .map((i) => i.key)
-        .filter((k) => k && !codeKeys.includes(k)),
-    };
-  }, [testSuiteCode, pytestItems]);
+  const isPython = language === "python";
+  const usesSuiteFile = testFramework !== "io";
+  const usesComparison = testFramework === "pytest" || testFramework === "io";
+  const suiteFilename = defaultSuiteFilename(testFramework);
+  const monacoLanguage =
+    testFramework === "pytest" ? "python" : testFramework === "gtest" ? "cpp" : "javascript";
 
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isHelpersOpen, setIsHelpersOpen] = useState(false);
@@ -115,8 +103,9 @@ export function ScoringRulesSection() {
     }
   };
 
-  const handleSyncFromCode = () => {
-    const addedCount = syncMarkersFromTestSuite(testSuiteCode);
+  const handleSyncFromCode = async () => {
+    const addedCount = await syncTestsFromSource(testSuiteCode);
+    if (addedCount === null) return; // The context has surfaced the error; nothing was merged.
     if (addedCount > 0) {
       setSuccessMessage(
         `Synced ${addedCount} new pytest marker(s) into the rubric.`,
@@ -126,7 +115,7 @@ export function ScoringRulesSection() {
     }
   };
 
-  const handleInsertAiTests = (
+  const handleInsertAiTests = async (
     generatedCode: string,
     insertMode: "append" | "replace",
   ) => {
@@ -135,7 +124,8 @@ export function ScoringRulesSection() {
         ? generatedCode
         : `${testSuiteCode.trimEnd()}\n\n${generatedCode.replace(/^import pytest\s*\n*/i, "").trim()}\n`;
     updateTestSuiteCode(nextCode);
-    const added = syncMarkersFromTestSuite(nextCode);
+    const added = await syncTestsFromSource(nextCode);
+    if (added === null) return;
     setSuccessMessage(
       added > 0
         ? `Inserted AI tests and synced ${added} new rubric criterion(s).`
@@ -148,7 +138,7 @@ export function ScoringRulesSection() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "tests.py";
+    a.download = suiteFilename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -156,54 +146,65 @@ export function ScoringRulesSection() {
   return (
     <div className="space-y-6">
       {/* 1. Test suite first */}
-      <Card size="sm" className="gap-1.5 py-3">
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 py-0">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileTextIcon className="h-4 w-4 text-primary" />
-            tests.py
-          </CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleViewPythonHelpers()}
-            >
-              <Code2Icon className="mr-1.5 h-4 w-4" />
-              View Python helpers
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAiAssistantOpen(true)}
-            >
-              <SparklesIcon className="mr-1.5 h-4 w-4 text-primary" />
-              Tests with AI
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <DownloadIcon className="mr-1.5 h-4 w-4" />
-              Download
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 py-0">
-          <div className="h-[420px] overflow-hidden rounded-lg border border-border bg-card">
-            {loadingTestSuiteCode ? (
-              <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground animate-pulse">
-                Loading tests.py…
-              </div>
-            ) : (
-              <MonacoEditor
-                height="100%"
-                width="100%"
-                defaultLanguage="python"
-                value={testSuiteCode}
-                onChange={(val) => updateTestSuiteCode(val || "")}
-              />
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
+      {usesSuiteFile ? (
+        <Card size="sm" className="gap-1.5 py-3">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 py-0">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileTextIcon className="h-4 w-4 text-primary" />
+              {suiteFilename}
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              {isPython && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleViewPythonHelpers()}
+                  >
+                    <Code2Icon className="mr-1.5 h-4 w-4" />
+                    View Python helpers
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAiAssistantOpen(true)}
+                  >
+                    <SparklesIcon className="mr-1.5 h-4 w-4 text-primary" />
+                    Tests with AI
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <DownloadIcon className="mr-1.5 h-4 w-4" />
+                Download
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 py-0">
+            <div className="h-[420px] overflow-hidden rounded-lg border border-border bg-card">
+              {loadingTestSuiteCode ? (
+                <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground animate-pulse">
+                  Loading {suiteFilename}…
+                </div>
+              ) : (
+                <MonacoEditor
+                  height="100%"
+                  width="100%"
+                  defaultLanguage={monacoLanguage}
+                  language={monacoLanguage}
+                  value={testSuiteCode}
+                  onChange={(val) => updateTestSuiteCode(val || "")}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+          Input/output tests have no suite file. Each automated test below holds its own
+          stdin inputs and expected stdout cases.
+        </p>
+      )}
       <Dialog open={isHelpersOpen} onOpenChange={setIsHelpersOpen}>
         <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col gap-3 overflow-hidden">
           <DialogHeader>
@@ -237,11 +238,11 @@ export function ScoringRulesSection() {
         </DialogContent>
       </Dialog>
 
-      {/* 2. Autograded criteria */}
+      {/* 2. Automated tests */}
       <Card size="sm" className="gap-1.5 py-3">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 px-4 py-0">
           <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-base">Autograded criteria</CardTitle>
+            <CardTitle className="text-base">Automated tests</CardTitle>
             <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
               {totalBasePoints} pts
               {totalExtraCreditPoints > 0
@@ -250,10 +251,16 @@ export function ScoringRulesSection() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSyncFromCode}>
-              <RefreshCwIcon className="mr-1.5 h-4 w-4" />
-              Sync from tests
-            </Button>
+            {isPython && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleSyncFromCode()}
+              >
+                <RefreshCwIcon className="mr-1.5 h-4 w-4" />
+                Sync from tests
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -265,47 +272,9 @@ export function ScoringRulesSection() {
           </div>
         </CardHeader>
         <CardContent className="space-y-2 px-4 py-0">
-          {(missingFromRubric.length > 0 || orphanInRubric.length > 0) && (
-            <div className="flex flex-wrap items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              <AlertCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <div className="min-w-0 flex-1 space-y-0.5">
-                {missingFromRubric.length > 0 && (
-                  <p>
-                    <span className="font-medium text-foreground">
-                      {missingFromRubric.length}
-                    </span>{" "}
-                    marker
-                    {missingFromRubric.length === 1 ? "" : "s"} in tests.py not
-                    in the rubric
-                    <span className="text-muted-foreground">
-                      {" "}
-                      ({missingFromRubric.map((k) => pytestMarkerForKey(k)).join(", ")})
-                    </span>
-                    .
-                  </p>
-                )}
-                {orphanInRubric.length > 0 && (
-                  <p>
-                    <span className="font-medium text-foreground">
-                      {orphanInRubric.length}
-                    </span>{" "}
-                    rubric key
-                    {orphanInRubric.length === 1 ? "" : "s"} missing from
-                    tests.py
-                    <span className="text-muted-foreground">
-                      {" "}
-                      ({orphanInRubric.map((k) => pytestMarkerForKey(k)).join(", ")})
-                    </span>
-                    .
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
           {pytestItems.length > 0 && (
             <div className="hidden grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)_4.5rem_5.5rem_4rem_2rem] gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:grid">
-              <span>Marker</span>
+              <span>{testFramework === "pytest" ? "Marker" : "Key"}</span>
               <span>Description</span>
               <span>Points</span>
               <span className="text-center">Extra credit</span>
@@ -317,15 +286,10 @@ export function ScoringRulesSection() {
           <div className="space-y-2">
             {pytestItems.map((item) => {
               const rowId = item.id || item.key;
-              const isOrphan = Boolean(item.key) && orphanInRubric.includes(item.key);
               return (
                 <div
                   key={rowId}
-                  className={`rounded-lg border bg-card p-2 text-sm ${
-                    isOrphan
-                      ? "border-amber-500/40 bg-amber-500/5"
-                      : "border-border"
-                  }`}
+                  className="rounded-lg border border-border bg-card p-2 text-sm"
                 >
                   <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)_4.5rem_5.5rem_4rem_2rem]">
                     <div className="relative flex items-center">
@@ -334,7 +298,7 @@ export function ScoringRulesSection() {
                       </span>
                       <Input
                         id={`scoring-key-${rowId}`}
-                        aria-label="Pytest marker key"
+                        aria-label={testFramework === "pytest" ? "Pytest marker key" : "Test key"}
                         value={item.key}
                         onChange={(e) =>
                           updateScoringItemField(rowId, "key", e.target.value)
@@ -410,6 +374,7 @@ export function ScoringRulesSection() {
                     </Button>
                   </div>
 
+                  {usesComparison && (
                   <div className="mt-2 flex flex-wrap items-center gap-2.5 border-t border-border pt-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <span className="font-semibold text-foreground text-[11px]">Mode:</span>
@@ -457,7 +422,8 @@ export function ScoringRulesSection() {
                       </div>
                     )}
 
-                    {((item.inputs && item.inputs.length > 0) ||
+                    {testFramework === "pytest" &&
+                      ((item.inputs && item.inputs.length > 0) ||
                       (item.outputs && item.outputs.length > 0)) && (
                       <div className="flex flex-wrap items-center gap-2 pl-2 border-l border-border">
                         <span className="flex items-center gap-1 font-semibold text-foreground">
@@ -477,13 +443,25 @@ export function ScoringRulesSection() {
                       </div>
                     )}
                   </div>
+                  )}
+
+                  {testFramework === "io" && (
+                    <IoCasesEditor
+                      inputs={item.inputs || []}
+                      outputs={item.outputs || []}
+                      onChange={(inputs, outputs) => {
+                        updateScoringItemField(rowId, "inputs", inputs);
+                        updateScoringItemField(rowId, "outputs", outputs);
+                      }}
+                    />
+                  )}
                 </div>
               );
             })}
 
             {pytestItems.length === 0 && (
               <p className="rounded-lg border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
-                None yet. Sync from tests or add.
+                {isPython ? "None yet. Sync from tests or add." : "None yet. Add a test."}
               </p>
             )}
           </div>
@@ -589,15 +567,85 @@ export function ScoringRulesSection() {
 
       <ConceptDenylistSection />
 
-      <AITestAssistantDialog
-        isOpen={isAiAssistantOpen}
-        onOpenChange={setIsAiAssistantOpen}
-        courseId={courseId}
-        assignmentId={assignmentId}
-        assignmentDescription={description}
-        currentTestCode={testSuiteCode}
-        onInsertTests={handleInsertAiTests}
-      />
+      {isPython && (
+        <AITestAssistantDialog
+          isOpen={isAiAssistantOpen}
+          onOpenChange={setIsAiAssistantOpen}
+          courseId={courseId}
+          assignmentId={assignmentId}
+          assignmentDescription={description}
+          currentTestCode={testSuiteCode}
+          onInsertTests={handleInsertAiTests}
+        />
+      )}
+    </div>
+  );
+}
+
+interface IoCasesEditorProps {
+  inputs: string[];
+  outputs: string[];
+  onChange: (inputs: string[], outputs: string[]) => void;
+}
+
+/** Editable stdin / expected-stdout case rows for the `io` framework. */
+function IoCasesEditor({ inputs, outputs, onChange }: IoCasesEditorProps) {
+  const count = Math.max(inputs.length, outputs.length);
+  const pad = (arr: string[]) => Array.from({ length: count }, (_, i) => arr[i] ?? "");
+  const setCase = (idx: number, field: "in" | "out", value: string) => {
+    const nextIn = pad(inputs);
+    const nextOut = pad(outputs);
+    (field === "in" ? nextIn : nextOut)[idx] = value;
+    onChange(nextIn, nextOut);
+  };
+  const removeCase = (idx: number) =>
+    onChange(pad(inputs).filter((_, i) => i !== idx), pad(outputs).filter((_, i) => i !== idx));
+
+  return (
+    <div className="mt-2 space-y-1.5 border-t border-border pt-2 text-xs">
+      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+        <span>I/O cases ({count})</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => onChange([...pad(inputs), ""], [...pad(outputs), ""])}
+        >
+          <PlusIcon className="mr-1 h-3 w-3" />
+          Add case
+        </Button>
+      </div>
+      {pad(inputs).map((input, idx) => (
+        <div key={idx} className="grid grid-cols-1 items-start gap-2 md:grid-cols-[1fr_1fr_2rem]">
+          <Textarea
+            aria-label={`Case ${idx + 1} input`}
+            placeholder="stdin"
+            rows={2}
+            value={input}
+            onChange={(e) => setCase(idx, "in", e.target.value)}
+            className="font-mono text-xs"
+          />
+          <Textarea
+            aria-label={`Case ${idx + 1} expected output`}
+            placeholder="expected stdout"
+            rows={2}
+            value={pad(outputs)[idx]}
+            onChange={(e) => setCase(idx, "out", e.target.value)}
+            className="font-mono text-xs"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            aria-label={`Remove case ${idx + 1}`}
+            onClick={() => removeCase(idx)}
+          >
+            <Trash2Icon className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ))}
     </div>
   );
 }

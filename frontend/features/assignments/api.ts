@@ -35,6 +35,8 @@ import {
   AssignmentCreatePayload,
   AssignmentListItem,
   AssignmentListResponse,
+  SyncTestsRequest,
+  SyncTestsResponse,
 } from "@/features/assignments/types";
 
 
@@ -402,4 +404,13 @@ export function createStaffAssignment(courseId: string, payload: AssignmentCreat
 
 export function deleteStaffAssignment(courseId: string, assignmentId: string) {
   return apiClient.delete<void>(`/staff/courses/${courseId}/assignments/${assignmentId}`);
+}
+
+/** Extract rubric metadata from an unsaved Python test suite (backend AST parse; never executes it). */
+export function syncStaffTests(courseId: string, assignmentId: string, source: string) {
+  const body: SyncTestsRequest = { source };
+  return apiClient.post<SyncTestsResponse>(
+    `/staff/courses/${courseId}/assignments/${assignmentId}/sync-tests`,
+    body,
+  );
 }

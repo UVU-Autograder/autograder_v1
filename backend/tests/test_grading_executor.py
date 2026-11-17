@@ -102,7 +102,7 @@ async def test_executor_uses_status_map_for_timeout(tmp_path):
 
 @pytest.mark.asyncio
 async def test_executor_runtime_error_uses_status_map(tmp_path):
-    """NZEC (11) → runtime_exception; SIGSEGV (7) → resource_limit_exceeded."""
+    """SIGSEGV (7) → resource_limit_exceeded; NZEC (11) is accepted only with a complete report."""
     client = _mock_judge0_client(
         submission_result={"status": {"id": 11}, "stdout": ""}
     )
@@ -118,7 +118,9 @@ async def test_executor_runtime_error_uses_status_map(tmp_path):
             cpu_time_limit=10.0,
         )
 
-    assert outcome.failure_category == "runtime_exception"
+    # A nonzero exit without a complete protocol-2 report is an invalid report, not a scored run.
+    assert outcome.success is False
+    assert outcome.failure_category == "invalid_runner_report"
 
     client_segv = _mock_judge0_client(
         submission_result={"status": {"id": 7}, "stdout": ""}
@@ -135,6 +137,39 @@ async def test_executor_runtime_error_uses_status_map(tmp_path):
             cpu_time_limit=10.0,
         )
     assert segv.failure_category == "resource_limit_exceeded"
+
+
+@pytest.mark.asyncio
+async def test_executor_nonzero_exit_with_complete_report_is_accepted(tmp_path):
+    """Assertion failures exit nonzero (status 11); the complete report still wins and is cleaned up."""
+    stdout = (
+        '{"protocol_version": 2, "collected": [{"nodeid": "tests.py::test_fail", "markers": ["ag_test"], "xfail": false}], '
+        '"tests": [{"nodeid": "tests.py::test_fail", "markers": ["ag_test"], "xfail": false, "outcome": "failed", '
+        '"duration": 0.01, "message": "AssertionError"}], '
+        '"summary": {"total": 1, "passed": 0, "failed": 1, "errors": 0, "skipped": 0, "duration": 0.01, "exit_code": 1}, '
+        '"completed": true, "diagnostics": {}, "infrastructure_error": null}'
+    )
+    client = _mock_judge0_client(
+        submission_result={"status": {"id": 11}, "stdout": stdout, "exit_code": 1}
+    )
+    with patch(
+        "app.domains.grading.executor.create_judge0_client", return_value=client
+    ):
+        outcome = await execute_pytest_in_judge0(
+            tmp_path,
+            test_filenames=["tests.py"],
+            test_cases={},
+            entrypoint_module="main",
+            language_id=71,
+            cpu_time_limit=10.0,
+        )
+
+    assert outcome.success is True
+    assert outcome.failure_category is None
+    assert outcome.pytest_result is not None
+    assert outcome.pytest_result.failed == 1
+    assert outcome.raw_result is not None and outcome.raw_result.status_id == 11
+    client.delete_submission.assert_awaited_once_with("tok-1")
 
 
 @pytest.mark.asyncio

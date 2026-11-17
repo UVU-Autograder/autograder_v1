@@ -66,13 +66,10 @@ async def execute_pytest_in_judge0(
     runner_source: str | None = None,
     expected_manifest: dict | None = None,
 ) -> ExecutionOutcome:
-    """Generate runner, submit to Judge0, parse stdout, enforce cleanup.
+    """Generate runner, submit via the shared Judge0 lifecycle, and parse stdout.
 
-    Args:
-        stdin: Optional raw stdin text string passed to the Judge0 execution environment.
-
-    Zero-retention: a Judge0 delete failure overrides any prior success and
-    sets ``failure_category`` to ``cleanup_failure``.
+    Status 11 (nonzero exit) is accepted when the bounded report is complete and
+    valid so assertion failures can still award partial credit.
     """
     outcome = ExecutionOutcome()
     runner_source = runner_source if runner_source is not None else generate_runner_script(
@@ -81,67 +78,44 @@ async def execute_pytest_in_judge0(
         entrypoint_module,
         dependencies,
     )
-    # runner.py is Judge0 source_code only; exclude it from additional_files.
-    additional_files_b64 = _build_additional_files_b64(exec_dir)
-
-    token: str | None = None
-    async with create_judge0_client() as judge0:
-        try:
-            token = await judge0.create_submission(
-                source_code=runner_source,
-                language_id=language_id,
-                additional_files_b64=additional_files_b64,
-                cpu_time_limit=cpu_time_limit,
-                memory_limit=memory_limit,
-                wall_time_limit=wall_time_limit,
-                stdin=stdin if stdin else None,
+    payload = ExecutionPayload(
+        source_code=runner_source,
+        language_id=language_id,
+        additional_files_b64=_build_additional_files_b64(exec_dir),
+        cpu_time_limit=cpu_time_limit,
+        memory_limit=memory_limit,
+        wall_time_limit=wall_time_limit,
+        stdin=stdin if stdin else None,
+    )
+    try:
+        raw = await execute_payload_in_judge0(payload)
+    except Judge0Error as exc:
+        if "cleanup failed" in str(exc).lower():
+            outcome.failure_category = "cleanup_failure"
+            outcome.failure_message = (
+                "Judge0 submission cleanup failed. "
+                "This is a zero-retention violation."
             )
-            submission_result = await judge0.poll_submission(token)
-
-            status_id = submission_result.get("status", {}).get("id", 0)
-            failure = judge0_failure_for_status(status_id)
-            if failure is not None:
-                outcome.failure_category, outcome.failure_message = failure
-                return outcome
-
-            stdout = submission_result.get("stdout", "") or ""
-            pytest_result = parse_pytest_json(stdout, expected_manifest=expected_manifest)
-            outcome.pytest_result = pytest_result
-
-            if pytest_result.error_message:
-                outcome.failure_category = pytest_result.failure_category
-                outcome.failure_message = pytest_result.error_message
-                return outcome
-
-            outcome.success = True
             return outcome
+        outcome.failure_category = "judge0_error"
+        outcome.failure_message = str(exc)
+        return outcome
 
-        except Judge0Error as exc:
-            outcome.failure_category = "judge0_error"
-            outcome.failure_message = str(exc)
-            return outcome
+    outcome.raw_result = raw
+    failure = judge0_failure_for_status(raw.status_id)
+    if failure is not None and raw.status_id not in (3, 11):
+        outcome.failure_category, outcome.failure_message = failure
+        return outcome
 
-        finally:
-            if token is not None:
-                try:
-                    await judge0.delete_submission(token)
-                except Judge0CleanupError:
-                    log_and_audit_error(
-                        logger,
-                        "CLEANUP FAILURE: Could not delete Judge0 submission. "
-                        "This is a launch-blocking violation of the zero-retention contract.",
-                        event="judge0.cleanup_failed",
-                        failure_category="cleanup_failure",
-                        # Sandbox runs set workflow_type="sandbox" around grading (runs/orchestrator.py).
-                        workflow_type=current_audit_context().get("workflow_type", "official"),
-                    )
-                    outcome.failure_category = "cleanup_failure"
-                    outcome.failure_message = (
-                        "Judge0 submission cleanup failed. "
-                        "This is a zero-retention violation."
-                    )
-                    outcome.success = False
-
+    pytest_result = parse_pytest_json(
+        raw.stdout, stderr=raw.stderr, exit_code=raw.exit_code, expected_manifest=expected_manifest,
+    )
+    outcome.pytest_result = pytest_result
+    if pytest_result.error_message:
+        outcome.failure_category = pytest_result.failure_category
+        outcome.failure_message = pytest_result.error_message
+        return outcome
+    outcome.success = True
     return outcome
 
 

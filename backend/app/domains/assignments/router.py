@@ -44,6 +44,23 @@ router = APIRouter(
     dependencies=[Depends(require_staff)],
 )
 
+from app.domains.assignments.test_sync import TestSuiteSyncRequest, TestSuiteSyncResponse, synchronize_python_suite
+
+
+@router.post("/{assignment_id}/sync-tests", response_model=TestSuiteSyncResponse, response_model_exclude_unset=True)
+def sync_tests(course_id: str, assignment_id: str, payload: TestSuiteSyncRequest, db: DbSession,
+               current_user: User = Depends(require_staff)) -> TestSuiteSyncResponse:
+    assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
+    setup = get_staff_setup(db, course_id, assignment_id)
+    if setup is None:
+        raise HTTPException(404, "Assignment not found.")
+    if setup.language != "python":
+        raise HTTPException(422, "Source synchronization is available for Python suites.")
+    try:
+        return synchronize_python_suite(payload.source)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+
 
 
 @router.post(
@@ -241,7 +258,7 @@ async def upload_assignment_artifact(
     current_user: User = Depends(require_staff),
 ) -> ArtifactMetadata:
     assert_course_access(db, current_user, course_code=course_id, allow_ia=False, write_access=True)
-    if artifact_type not in {"pytest_file", "model_solution", "support_file"}:
+    if artifact_type not in {"pytest_file", "test_file", "model_solution", "support_file"}:
         raise HTTPException(status_code=400, detail="Unsupported artifact type.")
     content = await file.read()
     if artifact_type == "model_solution" and (

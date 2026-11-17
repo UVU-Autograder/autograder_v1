@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ScoringRulesSection } from "../scoring-rules-section";
 import {
@@ -48,6 +48,8 @@ function createMockContext(
     setSandboxEnabled: vi.fn(),
     language: "python",
     setLanguage: vi.fn(),
+    testFramework: "pytest",
+    setTestFramework: vi.fn(),
 
     entrypoint: "main.py",
     setEntrypoint: vi.fn(),
@@ -84,7 +86,7 @@ function createMockContext(
     removeScoringItem: vi.fn(),
     updateScoringItemField: vi.fn(),
     rubricGroups: [],
-    syncMarkersFromTestSuite: vi.fn(),
+    syncTestsFromSource: vi.fn(),
 
     conceptDenylist: [],
     toggleConceptDenylist: vi.fn(),
@@ -171,53 +173,20 @@ describe("ScoringRulesSection", () => {
     expect(mockCtx.addScoringItem).toHaveBeenCalledWith("pytest");
   });
 
-  it("detects and displays warnings when tests.py contains markers not in rubric", () => {
-    const mockCtx = createMockContext({
-      testSuiteCode: `
-@pytest.mark.ag_part1_files
-def test_files():
-    pass
-
-@pytest.mark.ag_untracked_test
-def test_untracked():
-    pass
-`,
-    });
-
+  it("labels the automated item section as Automated tests", () => {
     render(
-      <AssignmentEditorContext.Provider value={mockCtx}>
+      <AssignmentEditorContext.Provider value={createMockContext()}>
         <ScoringRulesSection />
       </AssignmentEditorContext.Provider>
     );
 
-    expect(screen.getByText(/in tests\.py not in the rubric/i)).toBeDefined();
-    expect(screen.getByText(/\(ag_untracked_test\)/i)).toBeDefined();
+    expect(screen.getByText("Automated tests")).toBeDefined();
+    expect(screen.getByText("tests.py")).toBeDefined();
   });
 
-  it("detects and displays warnings when rubric items have no matching marker in tests.py", () => {
-    const mockCtx = createMockContext({
-      testSuiteCode: `
-@pytest.mark.ag_part1_files
-def test_files():
-    pass
-`,
-    });
-
-    render(
-      <AssignmentEditorContext.Provider value={mockCtx}>
-        <ScoringRulesSection />
-      </AssignmentEditorContext.Provider>
-    );
-
-    expect(
-      screen.getByText(/rubric key missing from tests\.py/i)
-    ).toBeDefined();
-    expect(screen.getByText(/\(ag_bonus_challenge\)/i)).toBeDefined();
-  });
-
-  it("calls syncMarkersFromTestSuite when Sync from tests button is clicked", () => {
+  it("calls syncTestsFromSource when Sync from tests button is clicked", async () => {
     const mockCtx = createMockContext();
-    vi.mocked(mockCtx.syncMarkersFromTestSuite).mockReturnValue(1);
+    vi.mocked(mockCtx.syncTestsFromSource).mockResolvedValue(1);
 
     render(
       <AssignmentEditorContext.Provider value={mockCtx}>
@@ -225,15 +194,98 @@ def test_files():
       </AssignmentEditorContext.Provider>
     );
 
-    const syncBtn = screen.getByRole("button", { name: /sync from tests/i });
-    fireEvent.click(syncBtn);
+    fireEvent.click(screen.getByRole("button", { name: /sync from tests/i }));
 
-    expect(mockCtx.syncMarkersFromTestSuite).toHaveBeenCalled();
-    expect(mockCtx.setSuccessMessage).toHaveBeenCalledWith(
-      "Synced 1 new pytest marker(s) into the rubric."
+    expect(mockCtx.syncTestsFromSource).toHaveBeenCalledWith(mockCtx.testSuiteCode);
+    await waitFor(() =>
+      expect(mockCtx.setSuccessMessage).toHaveBeenCalledWith(
+        "Synced 1 new pytest marker(s) into the rubric."
+      )
     );
   });
 
+  it("does not report success when the sync fails", async () => {
+    const mockCtx = createMockContext();
+    vi.mocked(mockCtx.syncTestsFromSource).mockResolvedValue(null);
+
+    render(
+      <AssignmentEditorContext.Provider value={mockCtx}>
+        <ScoringRulesSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /sync from tests/i }));
+    await waitFor(() => expect(mockCtx.syncTestsFromSource).toHaveBeenCalled());
+    expect(mockCtx.setSuccessMessage).not.toHaveBeenCalled();
+  });
+
+  it("hides Python helpers, AI assistant and sync for non-Python languages", () => {
+    render(
+      <AssignmentEditorContext.Provider
+        value={createMockContext({ language: "cpp", testFramework: "gtest", testSuiteCode: "TEST(A, ag_main) {}" })}
+      >
+        <ScoringRulesSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    expect(screen.getByText("tests.cpp")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /view python helpers/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /tests with ai/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /sync from tests/i })).toBeNull();
+    expect(screen.queryByTestId("ai-assistant-dialog-mock")).toBeNull();
+  });
+
+  it.each([
+    ["gtest", "cpp", "tests.cpp"],
+    ["jsdom", "web", "tests.cjs"],
+  ] as const)("hides comparison controls for the %s framework", (framework, language, filename) => {
+    render(
+      <AssignmentEditorContext.Provider value={createMockContext({ language, testFramework: framework })}>
+        <ScoringRulesSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    expect(screen.getByText(filename)).toBeDefined();
+    expect(screen.queryAllByLabelText(/comparison mode/i)).toHaveLength(0);
+  });
+
+  it("edits I/O case rows and hides the suite editor for the io framework", () => {
+    const mockCtx = createMockContext({
+      language: "c",
+      testFramework: "io",
+      scoringItems: [
+        {
+          key: "hello",
+          label: "Prints hello",
+          points: 10,
+          extra_credit: false,
+          item_type: "pytest",
+          pytest_marker: null,
+          rubric_group_key: null,
+          inputs: ["Ada"],
+          outputs: ["Hello Ada"],
+          comparison_mode: "normalized",
+        },
+      ],
+    });
+
+    render(
+      <AssignmentEditorContext.Provider value={mockCtx}>
+        <ScoringRulesSection />
+      </AssignmentEditorContext.Provider>
+    );
+
+    expect(screen.queryByTestId("monaco-mock")).toBeNull();
+    expect(screen.getAllByLabelText(/comparison mode/i)).toHaveLength(1);
+
+    fireEvent.change(screen.getByLabelText("Case 1 expected output"), { target: { value: "Hi Ada" } });
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith("hello", "inputs", ["Ada"]);
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith("hello", "outputs", ["Hi Ada"]);
+
+    fireEvent.click(screen.getByRole("button", { name: /add case/i }));
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith("hello", "inputs", ["Ada", ""]);
+    expect(mockCtx.updateScoringItemField).toHaveBeenCalledWith("hello", "outputs", ["Hello Ada", ""]);
+  });
   it("renders comparison mode select and handles mode changes", () => {
     const mockCtx = createMockContext();
 

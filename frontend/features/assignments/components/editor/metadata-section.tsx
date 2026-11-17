@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PlusCircleIcon, Trash2Icon, PlusIcon, XIcon } from "lucide-react";
+import type { TestFramework } from "@/features/assignments/types";
 import { useAssignmentEditor } from "./assignment-editor-context";
 
 export function MetadataSection() {
@@ -33,6 +34,8 @@ export function MetadataSection() {
     setSandboxEnabled,
     language,
     setLanguage,
+    testFramework,
+    setTestFramework,
     courseModules,
     entrypoint,
     setEntrypoint,
@@ -137,6 +140,24 @@ export function MetadataSection() {
                 </SelectContent>
               </Select>
             </div>
+
+            {(language === "c" || language === "cpp") && (
+              <div className="space-y-2">
+                <Label>Test Framework</Label>
+                <Select
+                  value={testFramework}
+                  onValueChange={(val) => setTestFramework(val as TestFramework)}
+                >
+                  <SelectTrigger className="w-full" aria-label="Test framework">
+                    <SelectValue placeholder="Select framework" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="io">Input / output cases</SelectItem>
+                    <SelectItem value="gtest">GoogleTest (tests.cpp)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2 pt-2 border-t border-border">

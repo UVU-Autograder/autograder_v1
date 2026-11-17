@@ -34,6 +34,8 @@ function createMockContext(
     setSandboxEnabled: vi.fn(),
     language: "python",
     setLanguage: vi.fn(),
+    testFramework: "pytest",
+    setTestFramework: vi.fn(),
 
     entrypoint: "solution.py",
     setEntrypoint: vi.fn(),
@@ -53,7 +55,7 @@ function createMockContext(
     removeScoringItem: vi.fn(),
     updateScoringItemField: vi.fn(),
     rubricGroups: [],
-    syncMarkersFromTestSuite: vi.fn(),
+    syncTestsFromSource: vi.fn(),
 
     conceptDenylist: [],
     toggleConceptDenylist: vi.fn(),

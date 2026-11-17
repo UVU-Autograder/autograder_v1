@@ -117,7 +117,7 @@ class Judge0Client:
 
     async def create_submission(
         self,
-        source_code: str,
+        source_code: str | None,
         language_id: int,
         additional_files_b64: str | None = None,
         stdin: str | None = None,
@@ -155,12 +155,16 @@ class Judge0Client:
             If the POST request fails or the response is missing a token.
         """
         body: dict[str, Any] = {
-            "source_code": source_code,
             "language_id": language_id,
             "cpu_time_limit": cpu_time_limit,
             "wall_time_limit": wall_time_limit,
             "memory_limit": memory_limit,
         }
+
+        if source_code is not None:
+            body["source_code"] = source_code
+        elif language_id != 89 or additional_files_b64 is None:
+            raise Judge0SubmissionError("Multi-file submissions require language 89 and additional files")
 
         if additional_files_b64 is not None:
             body["additional_files"] = additional_files_b64

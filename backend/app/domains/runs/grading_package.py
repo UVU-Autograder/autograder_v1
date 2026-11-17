@@ -17,6 +17,8 @@ from app.domains.assignments.engine import AssignmentSpecificationEngine
 from app.domains.assignments.schemas import AssignmentConfigV1
 from app.domains.assignments.service import effective_allowed_concepts, get_assignment_for_course
 from app.domains.grading.runner_gen import generate_runner_script
+from app.domains.grading.multilang import adapter_source, RESERVED
+from app.domains.grading.profiles import runtime_id
 from app.domains.grading.runtime import ExecutionParameters, PreloadedArtifacts, load_fallback_helper
 from app.domains.runs.service import official_run_dir
 from app.domains.grading.report_contract import ValidatedManifest
@@ -38,7 +40,7 @@ class GradingPackageError(ValueError):
 def execution_filename(key: str, display_filename: str | None) -> str:
     # Preserve the grader's historical basename placement on both platforms.
     name = (display_filename or key).replace("\\", "/").rsplit("/", 1)[-1]
-    if name in {"", ".", ".."} or name.casefold() in {"runner.py", "script.py", "autograder_capture.py", ".ag_results.json"} or name.casefold().startswith(".ag_report_") or ":" in name:
+    if name in {"", ".", ".."} or name.casefold() in {"runner.py", "script.py", "autograder_capture.py", ".ag_results.json"} or name.casefold() in RESERVED or name.casefold().startswith(".ag_report_") or ":" in name:
         raise ValueError("Invalid or reserved grading filename")
     return name
 
@@ -67,16 +69,16 @@ def package_digest(payload: dict) -> str:
 
 class OfficialGradingPackage(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-    version: Literal[2]
+    version: Literal[3]
     assignment_id: int = Field(ge=1)
     config_version: int = Field(ge=1)
     config: AssignmentConfigV1
     concepts: list[str] | None = None
     description: str | None
     files: dict[str, PackageFile]
-    pytest_filenames: list[str] = Field(min_length=1)
+    pytest_filenames: list[str]
     runner_source: str = Field(min_length=1)
-    fallback_helper: PackageFile
+    fallback_helper: PackageFile | None
     expected_manifest: ValidatedManifest
     execution_parameters: ExecutionParameters
     digest: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -102,7 +104,16 @@ class OfficialGradingPackage(BaseModel):
                 expected_pytest.append(name)
         if set(self.files) != expected_files or self.pytest_filenames != expected_pytest:
             raise ValueError("Grading file membership mismatch")
-        self.fallback_helper.decode()
+        if self.config.bundle.language == "python":
+            if self.fallback_helper is None or not self.pytest_filenames:
+                raise ValueError("Python package is missing runner inputs")
+            self.fallback_helper.decode()
+        elif self.fallback_helper is not None or self.execution_parameters.language_id != 89:
+            raise ValueError("Native/Web package has invalid execution inputs")
+        if (self.expected_manifest.language != self.config.bundle.language
+                or self.expected_manifest.framework != self.config.test_framework
+                or self.expected_manifest.runtime_id != runtime_id(self.config.bundle.language)):
+            raise ValueError("Grading package runtime profile mismatch")
         # Model readiness was checked during capture; model bytes are never packaged.
         model_keys = {key for key, art in self.config.artifacts.items() if art.type == "model_solution"}
         errors = AssignmentSpecificationEngine().validate_captured_specification(
@@ -171,7 +182,7 @@ def capture_package(course_code: str, assignment_slug: str) -> OfficialGradingPa
                 if artifact.type == "pytest_file":
                     pytest_filenames.append(name)
             parameters = ExecutionParameters(
-                language_id=settings.judge0_language_id,
+                language_id=settings.judge0_language_id if config.bundle.language == "python" else 89,
                 cpu_time_limit=float(settings.test_execution_timeout_seconds),
                 preinstalled_dependencies=sorted(settings.preinstalled_dependency_names),
             )
@@ -190,15 +201,16 @@ def capture_package(course_code: str, assignment_slug: str) -> OfficialGradingPa
                 for item in config.scoring_items
                 if item.inputs is not None and item.outputs is not None
             }
-            runner = generate_runner_script(pytest_filenames, test_cases,
+            runner = (generate_runner_script(pytest_filenames, test_cases,
                                            Path(config.bundle.entrypoint).stem, config.dependencies)
+                      if config.test_framework == "pytest" else adapter_source())
             payload = {
-                "version": 2, "assignment_id": assignment.id,
+                "version": 3, "assignment_id": assignment.id,
                 "config_version": assignment.config.version, "config": config.model_dump(mode="json"),
                 "concepts": effective_allowed_concepts(assignment), "description": assignment.description,
                 "files": {name: file.model_dump() for name, file in files.items()},
                 "pytest_filenames": pytest_filenames, "runner_source": runner,
-                "fallback_helper": PackageFile.from_bytes(load_fallback_helper()).model_dump(),
+                "fallback_helper": PackageFile.from_bytes(load_fallback_helper()).model_dump() if config.bundle.language == "python" else None,
                 "expected_manifest": expected_manifest.model_dump(mode="json"),
                 "execution_parameters": parameters.model_dump(),
             }

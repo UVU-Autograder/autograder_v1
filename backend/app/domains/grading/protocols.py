@@ -27,7 +27,7 @@ class ExecutionCommand:
 class ExecutionPayload:
     """Prepared payload ready for sandbox execution in Judge0 or container."""
 
-    source_code: str
+    source_code: str | None
     language_id: int
     additional_files_b64: str
     compile_cmd: ExecutionCommand | None = None

@@ -60,7 +60,7 @@ def test_intake_persists_package_before_dispatch():
     assert official_run_zip_path(run_id).is_file()
     snapshot = official_run_dir(run_id) / "grading_snapshot.json"
     assert snapshot.is_file(), "A dispatchable batch must already have its grading package"
-    assert json.loads(snapshot.read_text(encoding="utf-8"))["version"] == 2
+    assert json.loads(snapshot.read_text(encoding="utf-8"))["version"] == 3
 
 
 def test_grading_and_package_import_without_api_initialization():

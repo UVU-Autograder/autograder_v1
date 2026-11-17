@@ -79,10 +79,13 @@ The execution sandbox operates on a single pinned grading profile to ensure exac
 | Parameter | Specification | Source of truth |
 | --- | --- | --- |
 | **Base Image** | `judge0/judge0:1.13.1` (`linux/amd64`, Debian Buster archive mirrors) | [judge0.Dockerfile](../../judge0.Dockerfile) |
-| **Language ID** | `711` (`Python (3.11.9)`) | [scripts/seed_judge0_language_311.sql](../../scripts/seed_judge0_language_311.sql) |
+| **Python Language ID** | `711` (`Python (3.11.9)`) | [scripts/seed_judge0_language_311.sql](../../scripts/seed_judge0_language_311.sql) |
+| **Multi-file Language ID** | `89` (C/C++/Web adapters via `additional_files`) | [multilang.py](../../backend/app/domains/grading/multilang.py) |
 | **Python Binary** | `/usr/local/python-3.11.9/bin/python3.11` (compiled CPython 3.11.9) | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Package Installer** | `pip==24.3.1`, `setuptools==75.8.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
-| **Test Runner** | `pytest==8.4.2` | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Python Test Runner** | `pytest==8.4.2` | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Native compilers / GoogleTest** | `gcc-8`/`g++-8`, GoogleTest `1.17.0` (checksum-pinned) | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Web runtime** | Node `24.22.3`, jsdom `29.1.1`, esbuild `0.28.2` under `/opt/autograder` | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Allowlisted Packages** | `pillow==11.3.0`, `pygame==2.6.1`, `tabulate==0.9.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Memory Cap (Sandbox)** | `256 MB` (`262144 KB`), container hard limit `256 MB` | `DEFAULT_MEMORY_LIMIT` in [client.py](../../backend/app/integrations/judge0/client.py) |
 | **Execution Timeouts** | Per-run `30s` (host cap `<= 60s`), wall time `20s` | `TEST_EXECUTION_TIMEOUT_SECONDS` in [docker-compose.yml](../../docker-compose.yml) |
@@ -331,7 +334,7 @@ Formal operational support roles ensure clear accountability across workstation 
   - **FERPA Zero-Retention Awareness:** Upholding student data privacy guidelines: never downloading student source code to personal machines, never saving student artifacts outside approved Canvas gradebook exports, and respecting the ephemeral 24-hour workspace retention window.
   - **Anomaly Escalation:** Immediate reporting of unexpected sandbox grading errors, timeout loops, or test harness defects to the appropriate Course Coordinator and Host Administrator.
 
-## Emergency incident response playbooks
+## Failure tolerance and disaster recovery runbook
 
 The autograder operates on a single on-premise workstation (`10.115.20.200`, `CET-D24728`). Operators follow these recovery objectives and procedures to restore service after process, database, AI, or power interruptions while strictly preserving the FERPA zero-retention boundary ([Issue #27](https://github.com/UVU-Autograder/autograder_v1/issues/27)):
 

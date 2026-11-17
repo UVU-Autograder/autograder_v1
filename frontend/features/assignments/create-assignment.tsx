@@ -226,6 +226,9 @@ export default function CreateAssignment({ courseId }: { courseId: string }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="python">Python</SelectItem>
+                  <SelectItem value="c">C</SelectItem>
+                  <SelectItem value="cpp">C++</SelectItem>
+                  <SelectItem value="web">Web (HTML/CSS/JS)</SelectItem>
                 </SelectContent>
               </Select>
             )}

@@ -18,7 +18,7 @@ import { apiClient } from "@/lib/api-client";
 import { staffArtifactPath } from "@/features/staff/api";
 import MonacoEditor from "@/components/monaco-editor";
 
-type ArtifactType = "pytest_file" | "model_solution" | "support_file";
+type ArtifactType = "pytest_file" | "test_file" | "model_solution" | "support_file";
 
 type ArtifactMetadata = {
   artifact_key: string;
@@ -40,7 +40,8 @@ type PageProps = {
 function typeLabel(type: ArtifactType): string {
   switch (type) {
     case "pytest_file":
-      return "Tests";
+    case "test_file":
+      return "Automated tests";
     case "model_solution":
       return "Model solution";
     case "support_file":
@@ -283,7 +284,8 @@ export default function ArtifactsPage({ params }: PageProps) {
                 setArtifactKey(defaultKeyForType(val));
               }}
             >
-              <option value="pytest_file">Tests</option>
+              <option value="pytest_file">Automated tests (Python)</option>
+              <option value="test_file">Automated tests (native/Web)</option>
               <option value="model_solution">Model solution</option>
               <option value="support_file">Support file</option>
             </select>

@@ -18,6 +18,7 @@ RESERVED_HARNESS_FILENAMES: frozenset[str] = frozenset(
         ".ag_results.json",
         "conftest.py",
         "ag_test_helpers.py",
+        "compile", "run", "ag_adapter.py", "ag_config.json", "ag_web_runner.cjs", "ag_program",
     }
 )
 

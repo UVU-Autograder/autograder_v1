@@ -2545,6 +2545,72 @@
         }
       }
     },
+    "/staff/courses/{course_id}/assignments/{assignment_id}/sync-tests": {
+      "post": {
+        "tags": [
+          "staff-assignments"
+        ],
+        "summary": "Sync Tests",
+        "operationId": "sync_tests_staff_courses__course_id__assignments__assignment_id__sync_tests_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestSuiteSyncRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestSuiteSyncResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/staff/courses/{course_id}/assignments/{assignment_id}": {
       "delete": {
         "tags": [
@@ -3407,6 +3473,7 @@
             "type": "string",
             "enum": [
               "pytest_file",
+              "test_file",
               "model_solution",
               "support_file"
             ],
@@ -3569,6 +3636,17 @@
         "properties": {
           "bundle": {
             "$ref": "#/components/schemas/BundleConfig"
+          },
+          "test_framework": {
+            "type": "string",
+            "enum": [
+              "pytest",
+              "io",
+              "gtest",
+              "jsdom"
+            ],
+            "title": "Test Framework",
+            "default": "pytest"
           },
           "artifacts": {
             "additionalProperties": {
@@ -6925,6 +7003,69 @@
         ],
         "title": "StaffSectionSummary"
       },
+      "SyncedScoringItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputs"
+          },
+          "outputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputs"
+          },
+          "comparison_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Mode"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "title": "SyncedScoringItem"
+      },
       "SystemActivityResponse": {
         "properties": {
           "window_hours": {
@@ -7001,6 +7142,36 @@
         ],
         "title": "SystemActivityResponse",
         "description": "System-wide operational and pedagogical activity telemetry for staff administrators."
+      },
+      "TestSuiteSyncRequest": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "maxLength": 262144,
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "TestSuiteSyncRequest"
+      },
+      "TestSuiteSyncResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SyncedScoringItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "TestSuiteSyncResponse"
       },
       "TestSummary": {
         "properties": {

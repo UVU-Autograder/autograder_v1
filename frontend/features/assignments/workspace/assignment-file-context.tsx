@@ -301,7 +301,7 @@ export function AssignmentFileProvider({
   };
 
   const openLivePreview = () => {
-    let file = vfs.readFile('Live Preview');
+    const file = vfs.readFile('Live Preview');
     if (!file) {
       vfs.writeFile('Live Preview', '', {
         language: 'html',

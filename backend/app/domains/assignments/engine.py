@@ -131,9 +131,17 @@ class AssignmentSpecificationEngine:
 
         pytest_artifacts = [key for key, art in config.artifacts.items()
                             if art.type == "pytest_file" and key in contents]
-        if not pytest_artifacts:
+        if config.test_framework == "pytest" and not pytest_artifacts:
             errors.append("At least one 'pytest_file' artifact is required.")
             return errors
+        if config.test_framework in {"gtest", "jsdom"} and not any(
+            art.type == "test_file" and key in contents for key, art in config.artifacts.items()
+        ):
+            errors.append("At least one instructor test_file artifact is required.")
+        if config.test_framework == "io":
+            for item in config.scoring_items:
+                if item.item_type != "manual" and (not item.inputs or item.outputs is None):
+                    errors.append(f"I/O scoring item '{item.key}' requires input/output cases.")
 
         model_configs = {
             key: artifact
@@ -141,7 +149,7 @@ class AssignmentSpecificationEngine:
             if artifact.type == "model_solution" and artifact.display_filename
         }
         model_filenames = {
-            artifact.display_filename for artifact in model_configs.values()
+            artifact.display_filename for artifact in model_configs.values() if artifact.display_filename is not None
         }
 
         if config.bundle.entrypoint not in model_filenames:
@@ -170,6 +178,9 @@ class AssignmentSpecificationEngine:
         for key, artifact in config.artifacts.items():
             if artifact.type != "model_solution" and key not in contents:
                 errors.append(f"Required grading artifact '{key}' is unavailable.")
+
+        if config.test_framework != "pytest":
+            return errors
 
         pytest_markers = set()
         for key in pytest_artifacts:

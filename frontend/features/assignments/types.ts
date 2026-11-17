@@ -59,14 +59,37 @@ export type BundleConfig = {
     language?: string;
 };
 
+export type TestFramework = "pytest" | "io" | "gtest" | "jsdom";
+
+/** Frameworks each language may use; the first entry is the language default. Mirrors backend validation. */
+export const TEST_FRAMEWORKS_BY_LANGUAGE: Record<string, TestFramework[]> = {
+    python: ["pytest"],
+    c: ["io", "gtest"],
+    cpp: ["gtest", "io"],
+    web: ["jsdom"],
+};
+
+export function defaultFrameworkForLanguage(language: string): TestFramework {
+    return TEST_FRAMEWORKS_BY_LANGUAGE[language]?.[0] ?? "jsdom";
+}
+
+export function defaultSuiteFilename(framework: TestFramework): string {
+    if (framework === "pytest") return "tests.py";
+    if (framework === "gtest") return "tests.cpp";
+    return "tests.cjs";
+}
+
+export type ArtifactType = "pytest_file" | "test_file" | "model_solution" | "support_file";
+
 export type ArtifactConfig = {
-    type: "pytest_file" | "model_solution" | "support_file";
+    type: ArtifactType;
     display_filename?: string | null;
 };
 
 export type AssignmentConfigV1 = {
     description?: string | null;
     bundle: BundleConfig;
+    test_framework?: TestFramework;
     artifacts?: Record<string, ArtifactConfig>;
     concepts?: {
         denylist?: string[];
@@ -247,6 +270,22 @@ export type StaffAssignmentSetup = {
     config: AssignmentConfigV1;
     module_id?: number | null;
     effective_allowed_concepts?: string[];
+};
+
+export type SyncTestsRequest = {
+    source: string;
+};
+
+export type SyncedScoringItem = {
+    key: string;
+    inputs?: string[] | null;
+    outputs?: string[] | null;
+    comparison_mode?: ComparisonMode | null;
+    tolerance?: number | null;
+};
+
+export type SyncTestsResponse = {
+    items: SyncedScoringItem[];
 };
 
 export type AssignmentCreatePayload = {
