@@ -228,11 +228,11 @@ export default function AccessPage() {
 
       {/* --- GRANT ACCESS DIALOG --- */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Grant Staff Access</DialogTitle>
-            <DialogDescription>
-              Enter the UVU email address and assign a course-wide or section-wide role.
+            <DialogDescription className="sr-only">
+              Grant staff access to course or section
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleGrantSubmit} className="space-y-4 py-2">

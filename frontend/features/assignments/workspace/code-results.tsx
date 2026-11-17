@@ -592,9 +592,7 @@ export default function CodeResults({
             aria-label="Console input / stdin"
             value={stdinInput}
             onChange={(e) => setStdinInput(e.target.value)}
-            placeholder={
-              "Each line will be fed as keyboard input (Enter)\ne.g.\nAlice\n3"
-            }
+            placeholder="Console input (stdin)..."
             rows={3}
             className="w-full max-w-full resize-y rounded border border-input bg-background text-foreground p-2 font-mono text-xs leading-relaxed focus:border-primary focus:outline-none"
           />

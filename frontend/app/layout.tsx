@@ -29,8 +29,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${fontSans.variable} ${fontMono.variable} font-sans h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="h-full flex flex-col">
+      <body className="h-full flex flex-col" suppressHydrationWarning>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-3 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-md focus:outline-none"

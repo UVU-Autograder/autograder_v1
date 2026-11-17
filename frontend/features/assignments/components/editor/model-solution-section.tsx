@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -69,6 +69,49 @@ type ValidationStatus = {
 
 import { Label } from "@/components/ui/label";
 
+interface ZipFileEntry {
+  path: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entry: any;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function cleanZipEntries(zipFiles: Record<string, any>): { name: string; entry: any }[] {
+  const validEntries: ZipFileEntry[] = [];
+
+  for (const [rawPath, entry] of Object.entries(zipFiles)) {
+    if (entry.dir) continue;
+    const normalized = rawPath.replace(/\\/g, "/").replace(/^\/+/, "");
+    const parts = normalized.split("/");
+    if (parts.some((p) => p.startsWith(".") || p === "__MACOSX" || p === "Thumbs.db")) {
+      continue;
+    }
+    const filename = parts[parts.length - 1];
+    if (!filename || filename.startsWith(".")) continue;
+    validEntries.push({ path: normalized, entry });
+  }
+
+  // If all files share a common single root folder (e.g. "my_solution/file.py"), strip that root folder
+  if (validEntries.length > 0) {
+    const firstParts = validEntries[0].path.split("/");
+    if (firstParts.length > 1) {
+      const candidatePrefix = firstParts[0] + "/";
+      const allSharePrefix = validEntries.every((e) => e.path.startsWith(candidatePrefix));
+      if (allSharePrefix) {
+        return validEntries.map((e) => ({
+          name: e.path.slice(candidatePrefix.length).split("/").pop() || e.path,
+          entry: e.entry,
+        }));
+      }
+    }
+  }
+
+  return validEntries.map((e) => ({
+    name: e.path.split("/").pop() || e.path,
+    entry: e.entry,
+  }));
+}
+
 export function ModelSolutionSection() {
   const {
     courseId,
@@ -89,7 +132,8 @@ export function ModelSolutionSection() {
     setExpandedDiffs((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [newFilename, setNewFilename] = useState("");
   const [filenameError, setFilenameError] = useState<string | null>(null);
@@ -190,47 +234,100 @@ export function ModelSolutionSection() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) {
-      setErrorMessage("Please select a solution file to upload.");
-      return;
-    }
-    if (selectedFile.name.toLowerCase().endsWith(".zip")) {
-      setErrorMessage("ZIP model solution uploads are not supported. Upload individual solution files instead.");
+    if (selectedFiles.length === 0) {
+      setErrorMessage("Please select a solution file or ZIP archive to upload.");
       return;
     }
 
     setUploading(true);
     setErrorMessage(null);
     try {
-      const filename = selectedFile.name;
-      const existing = artifacts.find((artifact) => artifact.display_filename === filename);
-      if (existing?.artifact_type === "pytest_file") {
-        throw new Error("Edit the test suite on Tests & Rubric.");
+      // 1. Expand any ZIP files among the selected files
+      const rawExtractedFiles: File[] = [];
+
+      for (const file of selectedFiles) {
+        if (file.name.toLowerCase().endsWith(".zip")) {
+          const jszipModule = await import("jszip");
+          const JSZip = (jszipModule.default ?? jszipModule) as unknown as typeof import("jszip");
+          const zip = await JSZip.loadAsync(file);
+
+          const entries = cleanZipEntries(zip.files);
+          for (const { name, entry } of entries) {
+            const blob = await entry.async("blob");
+            rawExtractedFiles.push(
+              new File([blob], name, {
+                type: blob.type || "application/octet-stream",
+              })
+            );
+          }
+        } else {
+          rawExtractedFiles.push(file);
+        }
       }
-      const artifactKey = existing?.artifact_key || makeUniqueKey(
-        `solution_${slugifyKey(filename)}`,
-        artifacts.map((artifact) => artifact.artifact_key),
-      );
 
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("artifact_key", artifactKey);
-      formData.append("artifact_type", existing?.artifact_type || "model_solution");
+      if (rawExtractedFiles.length === 0) {
+        throw new Error("No valid solution files found in the selected upload.");
+      }
 
-      await apiClient.postForm(
-        `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
-        formData,
-      );
+      // Deduplicate by filename (later file in list wins)
+      const fileMap = new Map<string, File>();
+      for (const file of rawExtractedFiles) {
+        fileMap.set(file.name, file);
+      }
+      const filesToUpload = Array.from(fileMap.values());
+
+      // 2. Validate and upload each file
+      let uploadedCount = 0;
+      const currentArtifacts = [...artifacts];
+
+      for (const file of filesToUpload) {
+        const filename = file.name;
+        const existing = currentArtifacts.find((artifact) => artifact.display_filename === filename);
+        if (existing?.artifact_type === "pytest_file") {
+          throw new Error(`Cannot overwrite test suite '${filename}'. Edit tests on Tests & Rubric.`);
+        }
+        const artifactKey = existing?.artifact_key || makeUniqueKey(
+          `solution_${slugifyKey(filename)}`,
+          currentArtifacts.map((artifact) => artifact.artifact_key),
+        );
+        const artifactType = existing?.artifact_type || "model_solution";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("artifact_key", artifactKey);
+        formData.append("artifact_type", artifactType);
+
+        await apiClient.postForm(
+          `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
+          formData,
+        );
+
+        if (!existing) {
+          currentArtifacts.push({
+            artifact_key: artifactKey,
+            artifact_type: artifactType,
+            display_filename: filename,
+            size_bytes: file.size,
+          });
+        }
+        uploadedCount++;
+      }
+
       setSuccessMessage(
-        `Uploaded model solution file '${filename}' successfully.`,
+        uploadedCount === 1
+          ? `Uploaded model solution file '${filesToUpload[0].name}' successfully.`
+          : `Uploaded ${uploadedCount} model solution file(s) successfully.`
       );
-      setSelectedFile(null);
+      setSelectedFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       await refreshArtifacts();
     } catch (err: unknown) {
       setErrorMessage(
         err instanceof Error
           ? err.message
-          : "Failed to upload model solution file.",
+          : "Failed to upload model solution file(s).",
       );
     } finally {
       setUploading(false);
@@ -298,9 +395,6 @@ export function ModelSolutionSection() {
                 {filenameError}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Create a file to write your solution here, or upload existing files below. Save in the editor to keep your changes.
-            </p>
           </form>
           <form
             onSubmit={handleUpload}
@@ -308,23 +402,27 @@ export function ModelSolutionSection() {
           >
             <div className="space-y-1 grow">
               <Label htmlFor="solution-upload" className="pl-0 text-xs">
-                Upload Solution File
+                Upload Solution Files or ZIP Archive
               </Label>
               <Input
                 id="solution-upload"
                 type="file"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                multiple
+                ref={fileInputRef}
+                aria-label="Upload Solution File"
+                onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
                 className="text-xs cursor-pointer"
               />
             </div>
             <Button type="submit" disabled={uploading}>
               <UploadIcon className="w-4 h-4 mr-1.5" />
-              {uploading ? "Uploading..." : "Upload File"}
+              {uploading
+                ? "Uploading..."
+                : selectedFiles.length > 1
+                ? `Upload ${selectedFiles.length} Files`
+                : "Upload File"}
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground">
-            Upload files individually. ZIP archives are not supported.
-          </p>
 
           {/* Solution Files List */}
           <div className="space-y-3 pt-2">

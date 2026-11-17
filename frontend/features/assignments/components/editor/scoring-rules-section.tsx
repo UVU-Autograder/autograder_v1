@@ -26,6 +26,8 @@ import {
   RefreshCwIcon,
   SparklesIcon,
   Code2Icon,
+  CopyIcon,
+  CheckIcon,
 } from "lucide-react";
 import { defaultSuiteFilename } from "@/features/assignments/types";
 import { apiClient } from "@/lib/api-client";
@@ -83,6 +85,7 @@ export function ScoringRulesSection() {
   const [helpersPayload, setHelpersPayload] = useState<PythonHelpersPayload | null>(null);
   const [helpersError, setHelpersError] = useState<string | null>(null);
   const [helpersLoading, setHelpersLoading] = useState(false);
+  const [copiedHelpers, setCopiedHelpers] = useState(false);
 
   const handleViewPythonHelpers = async () => {
     setIsHelpersOpen(true);
@@ -100,6 +103,17 @@ export function ScoringRulesSection() {
       );
     } finally {
       setHelpersLoading(false);
+    }
+  };
+
+  const handleCopyHelpers = async () => {
+    if (!helpersPayload?.source) return;
+    try {
+      await navigator.clipboard.writeText(helpersPayload.source);
+      setCopiedHelpers(true);
+      setTimeout(() => setCopiedHelpers(false), 2000);
+    } catch {
+      // Fallback if clipboard API is not available in insecure contexts
     }
   };
 
@@ -199,39 +213,60 @@ export function ScoringRulesSection() {
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-          Input/output tests have no suite file. Each automated test below holds its own
-          stdin inputs and expected stdout cases.
-        </p>
-      )}
+      ) : null}
       <Dialog open={isHelpersOpen} onOpenChange={setIsHelpersOpen}>
-        <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col gap-3 overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>
-              {helpersPayload?.filename ?? "python_autograder_helpers.py"}
-            </DialogTitle>
-            <DialogDescription className="whitespace-pre-wrap text-left text-xs leading-relaxed">
-              {helpersPayload?.usage_notes
-                ?? "Prefer ordinary pytest. Import symbols from this injected helper only when required for collisions, import-time input(), or long CLI mocks."}
-            </DialogDescription>
+        <DialogContent className="flex h-[min(88vh,54rem)] w-[min(96vw,72rem)] max-w-none flex-col gap-3 overflow-hidden p-6 sm:max-w-none">
+          <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4 pr-8">
+            <div className="flex items-center gap-2">
+              <Code2Icon className="h-4 w-4 text-primary" />
+              <DialogTitle className="text-base font-semibold">
+                {helpersPayload?.filename ?? "python_autograder_helpers.py"}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Injected Python helper utilities
+              </DialogDescription>
+            </div>
+            {helpersPayload?.source && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleCopyHelpers()}
+                aria-label="Copy helper source"
+              >
+                {copiedHelpers ? (
+                  <>
+                    <CheckIcon className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon className="mr-1.5 h-3.5 w-3.5" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            )}
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-card">
             {helpersLoading ? (
-              <div className="flex h-72 items-center justify-center font-mono text-xs text-muted-foreground animate-pulse">
+              <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground animate-pulse">
                 Loading helper source…
               </div>
             ) : helpersError ? (
-              <div className="flex h-72 items-center justify-center px-4 text-sm text-destructive">
+              <div className="flex h-full items-center justify-center px-4 text-sm text-destructive">
                 {helpersError}
               </div>
             ) : (
               <MonacoEditor
-                height="420px"
+                height="100%"
                 width="100%"
                 defaultLanguage="python"
                 value={helpersPayload?.source ?? ""}
-                options={{ readOnly: true }}
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                }}
               />
             )}
           </div>
@@ -713,7 +748,7 @@ function ManualCommentTemplatesManager({
               handleAdd();
             }
           }}
-          placeholder={`Add snippet for ${criterionLabel || "criterion"} (e.g. Missing docstrings)...`}
+          placeholder={`Add snippet for ${criterionLabel || "criterion"}...`}
           className="h-7 text-xs"
         />
         <Button

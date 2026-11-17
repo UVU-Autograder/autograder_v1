@@ -104,15 +104,39 @@ describe("model solution authoring", () => {
     expect(apiClient.postForm).not.toHaveBeenCalled();
   });
 
-  it("rejects ZIP uploads before sending them to the server", async () => {
+  it("extracts ZIP archives and uploads the contained solution files", async () => {
+    await openPage();
+    const jszipModule = await import("jszip");
+    const JSZip = (jszipModule.default ?? jszipModule) as unknown as typeof import("jszip");
+    const zip = new JSZip();
+    zip.file("candy.py", "class Candy: pass\n");
+    zip.file("cookie.py", "class Cookie: pass\n");
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const zipFile = new File([zipBlob], "solution.zip", { type: "application/zip" });
+
+    const input = document.querySelector('input[type="file"]')!;
+    fireEvent.change(input, {
+      target: { files: [zipFile] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload File" }));
+    await waitFor(() => expect(apiClient.postForm).toHaveBeenCalledTimes(2));
+    await screen.findByText(/Uploaded 2 model solution file\(s\) successfully/);
+  });
+
+  it("uploads multiple selected solution files in one batch", async () => {
     await openPage();
     const input = document.querySelector('input[type="file"]')!;
     fireEvent.change(input, {
-      target: { files: [new File(["archive"], "solution.ZIP", { type: "application/zip" })] },
+      target: {
+        files: [
+          new File(["print(1)"], "main.py"),
+          new File(["print(2)"], "utils.py"),
+        ],
+      },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Upload File" }));
-    await screen.findByText(/ZIP.*individual/);
-    expect(apiClient.postForm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Upload 2 Files/ }));
+    await waitFor(() => expect(apiClient.postForm).toHaveBeenCalledTimes(2));
+    await screen.findByText(/Uploaded 2 model solution file\(s\) successfully/);
   });
 
   it("does not overwrite another file with the same basename and a different extension", async () => {

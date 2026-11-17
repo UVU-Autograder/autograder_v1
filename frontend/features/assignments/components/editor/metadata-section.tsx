@@ -174,7 +174,7 @@ export function MetadataSection() {
                 markDirty();
               }}
               rows={8}
-              placeholder="Enter markdown instructions for the assignment (e.g. ## Overview, specifications, functions to implement)..."
+              placeholder="Markdown assignment specifications..."
               className="font-mono text-xs"
             />
           </div>
@@ -265,6 +265,7 @@ export function MetadataSection() {
                       <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
                         <input
                           type="checkbox"
+                          aria-label="Treat as glob pattern"
                           checked={
                             req.pattern !== undefined && req.pattern !== null
                           }
@@ -273,7 +274,7 @@ export function MetadataSection() {
                           }
                           className="w-3.5 h-3.5 rounded border-input text-primary focus:ring-ring"
                         />
-                        <span>Treat as glob pattern (e.g. *.py, lab?.txt)</span>
+                        <span>Glob pattern</span>
                       </label>
                     </div>
 

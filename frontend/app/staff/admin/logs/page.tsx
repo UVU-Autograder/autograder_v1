@@ -416,7 +416,7 @@ export default function AdminLogsPage() {
           if (!open) setInspectingRecord(null);
         }}
       >
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <span>Record #{inspectingRecord?.id}</span>

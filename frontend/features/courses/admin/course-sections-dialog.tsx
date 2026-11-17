@@ -122,9 +122,7 @@ function CourseSectionsDialogSession({
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Manage Sections — {course?.code.toUpperCase()}</DialogTitle>
-          <DialogDescription>
-            Add or deactivate course CRNs for {course?.title}.
-          </DialogDescription>
+          <DialogDescription className="sr-only">Manage sections</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleAddSection} className="flex gap-2 pt-2">

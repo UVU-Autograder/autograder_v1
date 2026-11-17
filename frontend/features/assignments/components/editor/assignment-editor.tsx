@@ -224,7 +224,7 @@ export function AssignmentEditor() {
             <div className="grow bg-muted overflow-hidden relative flex items-center justify-center">
               {isLoadingCode ? (
                 <p className="text-xs text-muted-foreground animate-pulse font-mono">
-                  Fetching file content from server...
+                  Loading...
                 </p>
               ) : (
                 <MonacoEditor

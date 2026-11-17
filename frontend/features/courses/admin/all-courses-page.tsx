@@ -381,9 +381,7 @@ export default function AllCoursesPage({
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Course</DialogTitle>
-            <DialogDescription>
-              Fill out the details below to register a new course in the system.
-            </DialogDescription>
+            <DialogDescription className="sr-only">Add new course</DialogDescription>
           </DialogHeader>
           <CourseForm
             code={code}
@@ -430,9 +428,7 @@ export default function AllCoursesPage({
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
-            <DialogDescription>
-              Update course details, active status, or assign instructors and IAs.
-            </DialogDescription>
+            <DialogDescription className="sr-only">Edit course</DialogDescription>
           </DialogHeader>
           <CourseForm
             code={code}
@@ -476,7 +472,7 @@ export default function AllCoursesPage({
 
       {/* --- CONFIRM DELETE DIALOG --- */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Deactivate Course</DialogTitle>
             <DialogDescription className="py-2 text-sm text-muted-foreground block">
