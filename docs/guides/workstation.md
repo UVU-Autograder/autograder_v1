@@ -84,7 +84,7 @@ The execution sandbox operates on a single pinned grading profile to ensure exac
 | **Python Binary** | `/usr/local/python-3.11.9/bin/python3.11` (compiled CPython 3.11.9) | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Package Installer** | `pip==24.3.1`, `setuptools==75.8.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Python Test Runner** | `pytest==8.4.2` | [judge0.Dockerfile](../../judge0.Dockerfile) |
-| **Native compilers / GoogleTest** | `gcc-8`/`g++-8`, GoogleTest `1.17.0` (checksum-pinned) | [judge0.Dockerfile](../../judge0.Dockerfile) |
+| **Native compilers / GoogleTest** | `gcc-8`/`g++-8`, CMake `3.28.3`, GoogleTest `1.17.0` (checksum-pinned) | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Web runtime** | Node `24.22.3`, jsdom `29.1.1`, esbuild `0.28.2` under `/opt/autograder` | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Allowlisted Packages** | `pillow==11.3.0`, `pygame==2.6.1`, `tabulate==0.9.0` | [judge0.Dockerfile](../../judge0.Dockerfile) |
 | **Memory Cap (Sandbox)** | `256 MB` (`262144 KB`), container hard limit `256 MB` | `DEFAULT_MEMORY_LIMIT` in [client.py](../../backend/app/integrations/judge0/client.py) |

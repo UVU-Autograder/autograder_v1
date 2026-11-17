@@ -11,6 +11,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     text,
+    true,
 )
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,7 +27,7 @@ class Course(Base):
     title: Mapped[str] = mapped_column(String(255))
     term: Mapped[str] = mapped_column(String(80))
     default_concepts: Mapped[list[str]] = mapped_column(MutableList.as_mutable(JSON), default=list)
-    use_allowed_concepts: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    use_allowed_concepts: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     visibility: Mapped[str] = mapped_column(String(40), default="everyone", server_default="everyone")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     instructor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

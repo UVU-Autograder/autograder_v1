@@ -114,6 +114,8 @@ def main() -> int:
     try:
         asyncio.run(verify(args.course, args.assignment))
     except Exception:
+        import traceback
+        traceback.print_exc()
         print(json.dumps({"check": "host_package_smoke", "passed": False}), flush=True)
         return 1
     return 0

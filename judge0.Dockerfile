@@ -42,6 +42,15 @@ RUN /usr/local/python-3.11.9/bin/python3.11 -m pip install --no-cache-dir --upgr
     pygame==2.6.1 \
     tabulate==0.9.0
 
+# CMake 3.28.3 (checksum-pinned) required to configure GoogleTest 1.17.0+
+ARG CMAKE_VERSION=3.28.3
+ARG CMAKE_SHA256=804d231460ab3c8b556a42d2660af4ac7a0e21c98a7f8ee3318a74b4a9a187a6
+RUN cd /tmp \
+    && wget -O cmake.tar.gz "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" \
+    && echo "${CMAKE_SHA256}  cmake.tar.gz" | sha256sum -c - \
+    && tar -xzf cmake.tar.gz --strip-components=1 -C /usr/local \
+    && rm -f cmake.tar.gz
+
 # GoogleTest 1.17.0 (checksum-pinned) for native unit-test grading.
 ARG GTEST_VERSION=1.17.0
 ARG GTEST_SHA256=65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c
@@ -71,11 +80,12 @@ RUN cd /tmp \
     && mv "/opt/autograder/node-v${NODE_VERSION}-linux-x64" /opt/autograder/node \
     && mkdir -p /opt/autograder/web \
     && cd /opt/autograder/web \
-    && /opt/autograder/node/bin/npm init -y \
-    && /opt/autograder/node/bin/npm install --omit=dev --no-fund --no-audit \
+    && export PATH="/opt/autograder/node/bin:$PATH" \
+    && npm init -y \
+    && npm install --omit=dev --no-fund --no-audit \
         "jsdom@${JSDOM_VERSION}" \
         "esbuild@${ESBUILD_VERSION}" \
-    && /opt/autograder/node/bin/node -e "require('jsdom'); require('esbuild')" \
+    && node -e "require('jsdom'); require('esbuild')" \
     && rm -rf /tmp/node.tar.xz /root/.npm
 
 USER judge0
