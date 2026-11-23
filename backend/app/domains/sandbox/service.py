@@ -1,6 +1,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
+from time import monotonic
 from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
@@ -188,6 +189,7 @@ class SandboxService:
         store: RunStateStore | None = None,
     ) -> None:
         self._use_celery = use_celery
+        self._counter_snapshot: tuple[float, RunCounters] | None = None
         if store is not None:
             self._store = store
         elif use_celery:
@@ -245,6 +247,8 @@ class SandboxService:
         except Exception:
             redis_state = None
         record = self._store.get_run(run_id)
+        if record is None and isinstance(self._store, RedisRunStateStore):
+            return None
         if redis_state is None and record is None:
             return None
         if redis_state is not None:
@@ -323,15 +327,20 @@ class SandboxService:
         if not cancel_waiting(run_id):
             return "not_cancelable"
         record.state = "failure"
+        record.zip_data_b64 = None
+        record.code_files.clear()
 
         try:
             if self._use_celery:
                 try:
                     from app.domains.runs.orchestrator import mark_run_cancelled, set_run_state
+                    from app.domains.sandbox.store import delete_pending_submission
                     from app.integrations.celery.app import celery_app
 
                     mark_run_cancelled(run_id)
                     set_run_state(run_id, "failure", {"failure_category": "cancelled"})
+                    self._store.save_run(record)
+                    delete_pending_submission(run_id)
                     if record.celery_task_id:
                         celery_app.control.revoke(record.celery_task_id, terminate=False)
                 except Exception:
@@ -348,25 +357,6 @@ class SandboxService:
         )
 
     def _prepare_ai_feedback_context(self, record: SandboxRunRecord) -> dict[str, Any]:
-        # Extract files from stored submission zip
-        code_files: dict[str, str] = {}
-        if record.zip_data_b64:
-            try:
-                import base64
-                import io
-                import zipfile
-
-                raw_zip = base64.b64decode(record.zip_data_b64)
-                with zipfile.ZipFile(io.BytesIO(raw_zip)) as zf:
-                    for name in zf.namelist():
-                        if name.endswith(".py") and not name.startswith("__MACOSX"):
-                            try:
-                                code_files[name] = zf.read(name).decode("utf-8", errors="replace")
-                            except Exception:
-                                pass
-            except Exception:
-                pass
-
         # Retrieve test results and execution failure details
         test_results = []
         warnings = []
@@ -400,7 +390,7 @@ class SandboxService:
 
         return {
             "assignment_title": assignment_title,
-            "code_files": code_files,
+            "code_files": record.code_files,
             "test_results": test_results,
             "allowed_concepts": record.allowed_concepts,
             "warnings": warnings,
@@ -530,12 +520,14 @@ class SandboxService:
 
                 redis_result = get_run_result(run_id)
                 if redis_result is None:
-                    return "not_ready"
+                    if state != "failure":
+                        return "not_ready"
+                    redis_result = redis_state
 
                 if state == "failure":
                     from app.domains.grading.result_parser import student_safe_diagnostics
 
-                    category = redis_result.get("failure_category", "internal_error")
+                    category = redis_result.get("failure_category") or "internal_error"
                     return SandboxRunResultResponse(
                         run_id=run_id,
                         state="failure",
@@ -591,6 +583,7 @@ class SandboxService:
                     diagnostics=student_safe_diagnostics(redis_result.get("diagnostics")),
                     warnings=warnings,
                     test_summaries=test_summaries,
+                    completion_objectives=redis_result.get("completion_objectives", []),
                     rubric_groups=rubric_groups,
                     sanitized_feedback="Review your results above.",
                     file_preview=self._file_preview(),
@@ -635,6 +628,8 @@ class SandboxService:
                 )
             except Exception:
                 logger.exception("Synchronous sandbox evaluation failed for %s", run_id)
+            finally:
+                record.zip_data_b64 = None
 
         # Check stored result from execution
         if record.result is not None:
@@ -678,6 +673,7 @@ class SandboxService:
                 diagnostics=student_safe_diagnostics(res_data.get("diagnostics")),
                 warnings=warnings,
                 test_summaries=test_summaries,
+                completion_objectives=res_data.get("completion_objectives", []),
                 sanitized_feedback=sanitized,
                 file_preview=self._file_preview(),
                 raw_output=None,
@@ -737,6 +733,29 @@ class SandboxService:
         }[state]
 
     def _counters(self) -> RunCounters:
+        if isinstance(self._store, RedisRunStateStore):
+            from collections import Counter
+
+            from app.domains.runs.orchestrator import get_run_states
+
+            now = monotonic()
+            if self._counter_snapshot and self._counter_snapshot[0] > now:
+                return self._counter_snapshot[1]
+            try:
+                run_ids = self._store.list_run_ids()
+                states = get_run_states(run_ids)
+            except Exception:
+                return self._counter_snapshot[1] if self._counter_snapshot else RunCounters(
+                    total=0, queued=0, running=0, completed=0, failed=0, warnings=0,
+                )
+            counts = Counter(states.get(run_id, {}).get("state", "queue") for run_id in run_ids)
+            counters = RunCounters(
+                total=len(run_ids), queued=counts["queue"], running=counts["run"],
+                completed=counts["complete"], failed=counts["failure"], warnings=counts["complete"],
+            )
+            self._counter_snapshot = (now + 2, counters)
+            return counters
+
         values = self._store.list_runs()
         if self._use_celery and values:
             try:
@@ -778,6 +797,8 @@ class SandboxService:
         return f"sandbox_{token_urlsafe(18)}"
 
     def _expire_old_runs(self) -> None:
+        if isinstance(self._store, RedisRunStateStore):
+            return  # Redis expires records independently of traffic.
         now = datetime.now(UTC)
         for run in self._store.list_runs():
             if run.expires_at < now:

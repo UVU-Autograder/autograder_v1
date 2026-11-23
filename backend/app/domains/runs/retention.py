@@ -73,15 +73,23 @@ def validate_root() -> Path:
     return root
 
 
-def validate_tree(path: Path) -> None:
-    """Reject links/reparse points before reads, writes, or recursive deletion."""
+def validate_path(path: Path) -> None:
+    """Validate a workspace file or directory and all its ancestors."""
     root = validate_root()
-    path.absolute().relative_to(root)
+    try:
+        path.absolute().relative_to(root)
+    except ValueError:
+        raise OSError("unsafe_workspace_path") from None
     current = path.absolute()
     while current != root:
         if _unsafe_link(current):
             raise OSError("unsafe_workspace_path")
         current = current.parent
+
+
+def validate_tree(path: Path) -> None:
+    """Reject links and reparse points throughout a workspace tree."""
+    validate_path(path)
     if path.is_dir():
         for directory, directories, files in os.walk(path, followlinks=False):
             for name in directories + files:
@@ -175,7 +183,7 @@ def load_run(db: Session, run_id: int) -> RunSummary:
 
 
 @contextmanager
-def access(run_id: int, db: Session | None = None) -> Iterator[RunSummary]:
+def access(run_id: int, db: Session | None = None, *, path: Path | None = None) -> Iterator[RunSummary]:
     """Call only after route authorization. Fail closed on missing DB or expiry."""
     from app.db.session import SessionLocal
 
@@ -186,8 +194,20 @@ def access(run_id: int, db: Session | None = None) -> Iterator[RunSummary]:
             run = load_run(session, run_id)
             if not available(run):
                 raise HTTPException(410, "Official review data has expired or been cleaned up.")
-            validate_tree(workspace_root() / f"official_{run_id}")
-            validate_tree(workspace_root() / f"official_{run_id}.zip")
+            run_dir = workspace_root() / f"official_{run_id}"
+            zip_path = workspace_root() / f"official_{run_id}.zip"
+            if path is None:
+                validate_tree(run_dir)
+                validate_tree(zip_path)
+            else:
+                try:
+                    relative = path.absolute().relative_to(run_dir.absolute())
+                    if ".." in relative.parts:
+                        raise OSError("unsafe_workspace_path")
+                except ValueError:
+                    if path.absolute() != zip_path.absolute():
+                        raise OSError("unsafe_workspace_path") from None
+                validate_path(path)
             yield run
     except SQLAlchemyError:
         session.rollback()

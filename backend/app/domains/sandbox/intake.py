@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import base64
+import io
 import logging
+import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from secrets import token_urlsafe
@@ -34,8 +36,35 @@ from app.domains.sandbox.service import (
     SandboxService,
     sandbox_service,
 )
+from app.domains.sandbox.store import delete_pending_submission, save_pending_submission
 
 logger = logging.getLogger(__name__)
+
+
+def _coaching_source(zip_data: bytes) -> dict[str, str]:
+    """Keep only the bounded Python context the coaching prompt can use."""
+    from app.integrations.ai.prompts import MAX_FILE_CHARS, MAX_TOTAL_CODE_CHARS
+
+    files: dict[str, str] = {}
+    remaining = MAX_TOTAL_CODE_CHARS
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_data)) as archive:
+            for entry in archive.infolist():
+                if remaining == 0 or len(files) == 32:
+                    break
+                name = entry.filename
+                if entry.is_dir() or not name.endswith(".py") or "__MACOSX" in name or len(name) > 255:
+                    continue
+                try:
+                    with archive.open(entry) as source:
+                        text = source.read(min(MAX_FILE_CHARS, remaining)).decode("utf-8", errors="replace")
+                except (OSError, RuntimeError, ValueError, zipfile.BadZipFile):
+                    continue
+                files[name] = text
+                remaining -= len(text)
+    except (OSError, ValueError, zipfile.BadZipFile):
+        pass  # Grading reports an unreadable archive independently of coaching.
+    return files
 
 
 class SandboxIntakeError(Exception):
@@ -240,7 +269,16 @@ class SandboxIntakeEngine:
             assignment_id=assignment_id,
             queue_position=max(1, waiting),
             max_score=max_score,
+            config=run_config,
+            expected_manifest=expected_manifest,
+            artifact_refs=artifact_refs,
+            allowed_concepts=allowed_concepts,
+            stdin=stdin,
         )
+        if run_config.get("bundle", {}).get("language", "python") == "python":
+            record.code_files = _coaching_source(zip_data)
+        if not self._service._use_celery:
+            record.zip_data_b64 = base64.b64encode(zip_data).decode("ascii")
 
         try:
             self._service._store.save_run(record)
@@ -254,14 +292,6 @@ class SandboxIntakeEngine:
                 retry_after_seconds=60,
                 session_id=session,
             ) from exc
-
-        zip_b64 = base64.b64encode(zip_data).decode("ascii")
-        record.zip_data_b64 = zip_b64
-        record.config = run_config
-        record.expected_manifest = expected_manifest
-        record.artifact_refs = artifact_refs
-        record.allowed_concepts = allowed_concepts
-        record.stdin = stdin
 
         if self._service._use_celery:
             from app.domains.runs.tasks import grade_sandbox_run, set_run_state
@@ -279,30 +309,38 @@ class SandboxIntakeEngine:
                 pass
 
             try:
-                self._service._store.save_run(record)
+                save_pending_submission(run_id, zip_data, record.expires_at)
                 grade_result = grade_sandbox_run.delay(
                     run_id=run_id,
-                    zip_data_b64=zip_b64,
                     config=run_config,
                     artifact_refs=artifact_refs,
                     allowed_concepts=allowed_concepts,
                     stdin=stdin,
                     expected_manifest=expected_manifest,
                 )
-                record.celery_task_id = grade_result.id
-                self._service._store.save_run(record)
             except Exception as exc:
                 from app.domains.runs.queue_admission import cancel_waiting
 
                 cancel_waiting(run_id)
                 ip_limit.refund(client_ip)
                 self._service._store.unrecord_upload(session)
+                try:
+                    self._service._store.delete_run(run_id)
+                    delete_pending_submission(run_id)
+                except Exception:
+                    pass  # The initial record has an absolute expiry.
                 raise GraderServiceUnavailableError(
                     code="grader_unavailable",
                     message="The grader could not start your run. Please try again in a minute.",
                     retry_after_seconds=60,
                     session_id=session,
                 ) from exc
+            record.celery_task_id = grade_result.id
+            try:
+                self._service._store.save_run(record)
+            except Exception:
+                # Cancellation also checks the durable ticket, even without the broker task ID.
+                pass
 
         if self._service._use_celery:
             status = self._service._build_status(

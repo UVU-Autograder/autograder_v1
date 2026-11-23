@@ -1,7 +1,9 @@
 import json
 import zipfile
+from unittest.mock import patch
 
 from app.domains.runs.models import RunSummary
+from app.domains.runs.service import mutate_run_details
 
 
 def test_list_official_runs_empty(client, admin_headers):
@@ -56,6 +58,8 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, admin_head
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
+    run.assignment.canvas_ref = "https://canvas.example.edu/courses/42/assignments/9001"
+    db_session.commit()
 
     # Set up mock workspace files
     from app.core.settings import get_settings
@@ -135,7 +139,20 @@ def test_run_details_and_exports(client, db_session, temp_workspaces, admin_head
     )
     assert response.status_code == 200
     assert "grades.csv" in response.headers["content-disposition"]
-    assert response.text.replace("\r\n", "\n").rstrip("\n") == "Student Identifier,Score\nstudenta,100"
+    assert response.text.splitlines() == [
+        "Student,ID,Section,Simple Python Functions (9001)",
+        "studenta,11111,,100",
+    ]
+    csv_url = f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run.id}/export/csv"
+
+    def change_score(data):
+        data["student_results"]["11111"]["score"] = 95
+
+    with patch("app.domains.runs.router.write_run_grades_csv", side_effect=OSError("synthetic write failure")):
+        assert client.get(csv_url, headers=admin_headers).text == response.text
+        mutate_run_details(run.id, change_score, canvas_id="11111")
+        assert client.get(csv_url, headers=admin_headers).status_code == 503
+    assert client.get(csv_url, headers=admin_headers).text.splitlines()[-1] == "studenta,11111,,95"
 
     # Request Feedback ZIP export
     response = client.get(

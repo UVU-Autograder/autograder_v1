@@ -37,6 +37,7 @@ export function AssignmentEditor() {
     successMessage,
     title,
     handleSave,
+    loadingTestSuiteCode,
     handleDiscard,
     handleDelete,
     handleCopyStudentLink,
@@ -106,7 +107,7 @@ export function AssignmentEditor() {
               variant="default"
               size="sm"
               onClick={handleSave}
-              disabled={saving || !dirty}
+              disabled={saving || loadingTestSuiteCode || !dirty}
               className="min-w-[5.5rem]"
             >
               <SaveIcon className="h-4 w-4" />

@@ -1,6 +1,7 @@
+import asyncio
 import logging
 from collections.abc import AsyncGenerator, Callable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import cast
 
 from fastapi import FastAPI, Request, Response
@@ -48,7 +49,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                         logger.info("Successfully seeded Judge0 language %d.", settings.judge0_language_id)
         except Exception as exc:
             logger.debug("Judge0 startup readiness check skipped or failed: %s", exc)
-    yield
+    if settings.sandbox_use_celery:
+        yield
+        return
+
+    from app.domains.sandbox.service import sandbox_service
+
+    async def sweep_local_sandbox() -> None:
+        while True:
+            await asyncio.sleep(60)
+            sandbox_service._expire_old_runs()
+
+    sweeper = asyncio.create_task(sweep_local_sandbox())
+    try:
+        yield
+    finally:
+        sweeper.cancel()
+        with suppress(asyncio.CancelledError):
+            await sweeper
 
 class PrivateNetworkCORSMiddleware(CORSMiddleware):
     async def __call__(self, scope, receive, send) -> None:

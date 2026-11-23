@@ -40,6 +40,8 @@ function createMockContext(
 
     title: "Lab 1",
     setTitle: vi.fn(),
+    canvasRef: "",
+    setCanvasRef: vi.fn(),
     description: "Lab description",
     setDescription: vi.fn(),
     moduleId: 1,

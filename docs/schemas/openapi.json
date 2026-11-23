@@ -4196,6 +4196,39 @@
         ],
         "title": "BundleConfig"
       },
+      "CompletionObjectiveResult": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "passed_count": {
+            "type": "integer",
+            "title": "Passed Count"
+          },
+          "minimum_passed": {
+            "type": "integer",
+            "title": "Minimum Passed"
+          },
+          "met": {
+            "type": "boolean",
+            "title": "Met"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "passed_count",
+          "minimum_passed",
+          "met"
+        ],
+        "title": "CompletionObjectiveResult"
+      },
       "CompletionRequirement": {
         "properties": {
           "key": {
@@ -6113,6 +6146,13 @@
             },
             "type": "array",
             "title": "Test Summaries"
+          },
+          "completion_objectives": {
+            "items": {
+              "$ref": "#/components/schemas/CompletionObjectiveResult"
+            },
+            "type": "array",
+            "title": "Completion Objectives"
           },
           "rubric_groups": {
             "items": {

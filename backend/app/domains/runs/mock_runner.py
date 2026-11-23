@@ -4,8 +4,6 @@ Simulates official run execution without requiring live Judge0 or Celery workers
 """
 from __future__ import annotations
 
-import json
-
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
@@ -17,8 +15,7 @@ from app.domains.runs.queue_admission import release_execution_slots
 from app.domains.runs.service import (
     init_manual_results,
     official_run_dir,
-    write_feedback_zip,
-    write_run_grades_csv,
+    write_run_details_json,
 )
 
 
@@ -104,9 +101,7 @@ def run_mock_official_run(run_id: int) -> None:
                     "intake_acknowledged": True,
                     "student_results": student_results,
                 }
-                (run_dir / "run_details.json").write_text(json.dumps(details_payload, indent=2))
-                write_run_grades_csv(run_dir, student_results)
-                write_feedback_zip(run_dir, student_results)
+                write_run_details_json(run_dir, details_payload)
 
                 run.success_count = success_count
                 run.warning_count = warning_count

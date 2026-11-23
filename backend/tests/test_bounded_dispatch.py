@@ -1,4 +1,5 @@
 import csv
+import io
 import json
 import os
 import subprocess
@@ -23,7 +24,7 @@ from app.domains.runs.queue_admission import (
     FULL_QUEUE_THRESHOLD, QueueFullError, cancel_waiting, claim, release_execution_slots,
     reserve_execution_slots, ticket_state, waiting_count,
 )
-from app.domains.runs.service import official_run_dir, official_run_zip_path
+from app.domains.runs.service import load_run_details_json, mutate_run_details, official_run_dir, official_run_zip_path
 from app.domains.runs.tasks import grade_official_run
 from test_ingestion_extractor import create_zip_bytes
 
@@ -53,7 +54,7 @@ def delivery():
     return messages
 
 
-def test_bounded_batch_dispatch_and_exports(monkeypatch):
+def test_bounded_batch_dispatch_and_exports(monkeypatch, client, admin_headers):
     count = 10
     run_id = upload(count)
     assert waiting_count() == 0
@@ -75,9 +76,15 @@ def test_bounded_batch_dispatch_and_exports(monkeypatch):
         assert run.success_count == count and run.status == "complete"
         assert run.failure_count == run.timeout_count == 0
     directory = official_run_dir(run_id)
-    with (directory / "grades.csv").open(encoding="utf-8", newline="") as handle:
-        assert len(list(csv.reader(handle))) == count + 1
-    with zipfile.ZipFile(directory / "feedback.zip") as archive:
+    assert len(list(directory.glob("graded-*.json"))) == count
+    assert not list(directory.glob("export-*"))
+    base = f"/staff/courses/cs1400/assignments/simple-python-functions/runs/{run_id}/export"
+    grades = client.get(f"{base}/csv", headers=admin_headers)
+    assert grades.status_code == 200
+    assert len(list(csv.reader(io.StringIO(grades.text)))) == count + 1
+    feedback = client.get(f"{base}/feedback", headers=admin_headers)
+    assert feedback.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(feedback.content)) as archive:
         assert len(archive.namelist()) == count
     assert waiting_count() == 0
 
@@ -144,7 +151,14 @@ def test_crash_after_checkpoint_recovers_without_regrading(monkeypatch):
     grader = AsyncMock(return_value=GradingResult(success=True, score=100, max_score=100))
     first = delivery()[0]
     with patch("app.domains.grading.engine.GradingEngine.grade_submission", grader):
-        with patch("app.domains.runs.official_execution.write_run_grades_csv", side_effect=OSError("synthetic failure")):
+        from app.domains.runs.official_execution import write_run_details_json
+
+        def fail_after_student_checkpoint(directory, details):
+            if details["student_checkpoints"]:
+                raise OSError("synthetic failure")
+            write_run_details_json(directory, details)
+
+        with patch("app.domains.runs.official_execution.write_run_details_json", side_effect=fail_after_student_checkpoint):
             assert grade_official_run(*first)["failure_category"] == "execution_unavailable"
         now += timedelta(seconds=241)
         second = delivery()[0]
@@ -192,16 +206,19 @@ def test_manual_edit_during_next_submission_is_preserved():
     async def execute(**kwargs):
         path = official_run_dir(run_id) / "run_details.json"
         with retention.access(run_id):
-            payload = json.loads(path.read_text())
+            payload = load_run_details_json(path)
             if payload["student_results"]:
-                next(iter(payload["student_results"].values()))["overall_comment"] = "Staff edit during execution"
-                from app.domains.runs.service import write_run_details_json
-                write_run_details_json(official_run_dir(run_id), payload)
+                canvas_id = next(iter(payload["student_results"]))
+
+                def edit(data):
+                    data["student_results"][canvas_id]["overall_comment"] = "Staff edit during execution"
+
+                mutate_run_details(run_id, edit, canvas_id=canvas_id)
         return GradingResult(success=True, score=100, max_score=100)
     with patch("app.domains.grading.engine.GradingEngine.grade_submission", AsyncMock(side_effect=execute)):
         grade_official_run(*delivery()[0])
         grade_official_run(*delivery()[0])
-    payload = json.loads((official_run_dir(run_id) / "run_details.json").read_text())
+    payload = load_run_details_json(official_run_dir(run_id) / "run_details.json")
     assert next(iter(payload["student_results"].values()))["overall_comment"] == "Staff edit during execution"
 
 

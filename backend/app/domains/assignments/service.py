@@ -159,7 +159,7 @@ def update_staff_setup(
         assignment.title = payload.title
     if payload.sandbox_enabled is not None:
         assignment.sandbox_enabled = payload.sandbox_enabled
-    if payload.canvas_ref is not None:
+    if "canvas_ref" in payload.model_fields_set:
         assignment.canvas_ref = payload.canvas_ref
     if payload.language is not None:
         assignment.language = payload.language

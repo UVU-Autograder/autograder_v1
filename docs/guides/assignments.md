@@ -8,6 +8,7 @@
 2. On **Automated tests**, author the framework suite or I/O cases: Python uses `tests.py` ([Python test runtime](#python-test-runtime)); C/C++ I/O edits cases on the rubric; GoogleTest uses `tests.cpp`; Web uses `tests.cjs` with the supplied `test`/`loadSubmission` helpers. **View Python helpers** and **Tests with AI** remain Python-only. On **Model Solution**, [create or edit reference files](#model-solution-files) in the browser, or upload existing files.
 3. Save assignment setup and file contents, then choose **Test Model Solution** on **Model Solution**. This runs preflight before queuing reference execution through Judge0. Successful reference validation for every language makes `inventory_status` `ready` ([system scoring](../system.md#assignment-setup-and-scoring)).
 4. Exercise synthetic sandbox/official submissions, manual completion and exports; obtain instructor calibration for correct, incorrect and partial-credit work. Web assignments also use the sandboxed live preview (DOM/data-URL bundling without same-origin access).
+5. For Gradebook imports, set **Canvas assignment URL or ID** in General Metadata. Without an ID, Canvas matches the CSV column by the exact assignment title. Review the assignment and scores on the Canvas import screen before saving.
 
 IAs read setup without editing it. Student workspace editing is separate from instructor grading assets.
 
@@ -48,6 +49,8 @@ Creation accepts the extensions in the [editor's filename map](../../frontend/fe
 
 The editor's **Save** persists that file and its grading configuration reference together. Uploads also register their file references immediately, and deleting a model/support file removes its reference. No extra assignment save is needed for those file changes. **Cancel** or the close button discards unsaved editor changes; canceling a new file creates no artifact. A failed save leaves the draft open for retry. The assignment header's **Save** separately persists setup and the primary test suite; **Discard** reloads setup and does not undo file saves, uploads, or deletions. Editing an existing support file preserves its artifact type.
 
+The Model Solution uploader checks all selected filenames for test-suite collisions before uploading any files. When you change language or framework, review the compatible or starter suite in **Tests & Rubric**, save it with the setup, and validate the reference solution again.
+
 Uploading the same filename replaces that file while preserving its key and type; different filenames, including files sharing a basename such as `main.py` and `main.txt`, receive separate keys. The API rejects attempts to reuse an existing artifact key for a different type. It also rejects deletion of the sole configured non-pytest artifact: add a replacement first so setup remains valid and editable.
 
 The [artifact service](../../backend/app/domains/assignments/service.py) updates stored file metadata and `config.artifacts` in the same database transaction, preserving other assignment settings. The [reference bundle builder](../../backend/app/domains/assignments/engine.py) selects models from that saved configuration. Offline mock mode retains file contents and references until the page is reloaded; it simulates validation and does not run Judge0.
@@ -58,7 +61,7 @@ Save pending setup/test changes and file edits before choosing **Test Model Solu
 
 The [CS1410 catalog](../../backend/app/db/seeds/cs1410_catalog.json) owns all 17 titles/module placements, and the [CS1400 catalog](../../backend/app/db/seeds/cs1400_catalog.json) defines 44 course assignments across 14 modules. [Packages](../../backend/app/db/seeds/) contain configs, markdown descriptions (`description.md`), explicit tests, standalone models and resources.
 
-Use [AssignmentConfigV1](../../backend/app/domains/assignments/schemas.py) and an [actual config](../../backend/app/db/seeds/simple-python-functions/config.json). Use `scoring_items`, `completion_requirements` (for "pass at least X of Y" objectives), top-level dependencies and `pytest_file`/`test_file`/`model_solution`/`support_file` artifacts. Python scoring keys map to pytest markers; GoogleTest/jsdom suite names use the same `ag_<key>` convention:
+Use [AssignmentConfigV1](../../backend/app/domains/assignments/schemas.py) and an [actual config](../../backend/app/db/seeds/simple-python-functions/config.json). Use `scoring_items`, `completion_requirements` (for "pass at least X of Y" objectives, evaluated during normalization and reported in feedback separately from rubric points), top-level dependencies and `pytest_file`/`test_file`/`model_solution`/`support_file` artifacts. Python scoring keys map to pytest markers; GoogleTest/jsdom suite names use the same `ag_<key>` convention:
 
 ```python
 @pytest.mark.ag_calculate_cost
@@ -74,7 +77,7 @@ Run [seed integrity](../../backend/tests/test_seed_integrity.py)/[model validati
 
 A green model solution proves the reference passes current tests; it does not prove incorrect solutions fail the intended keys. Calibrate with canonical and alternate valid models, known mistakes, empty/boundary inputs, wrong interfaces, concept-policy violations, and—when required—student-authored pytest paths (passing, failing, none discovered, import shadowing). Keep failing mutations visible as unresolved gaps rather than dropping them from reports. The [mutation catalog](../../backend/eval/mutations.py) and [eval README](../../backend/eval/README.md) help, but AI case generation often uses a local subprocess instead of Judge0—treat those results as candidates, not runtime-parity proof. Course-owner acceptance remains separate from automated seed checks.
 
-Default I/O helpers normalize whitespace/blank lines, with per-item comparison modes (`exact`, `normalized_whitespace`, `regex`, `numeric_tolerance`) configured in rubric items. Mark secret regression checks with `is_private` (visibility control, not same-process secrecy). Deferred instructor scoring hints live under [system integrity](../system.md#integrity-and-trust-boundaries).
+Default I/O helpers normalize whitespace/blank lines, with per-item comparison modes (`exact`, `normalized`, `regex`, `numeric_tolerance`) configured in rubric items. Mark secret regression checks with `is_private` (visibility control, not same-process secrecy). Deferred instructor scoring hints live under [system integrity](../system.md#integrity-and-trust-boundaries).
 
 ## Essential test pitfalls
 

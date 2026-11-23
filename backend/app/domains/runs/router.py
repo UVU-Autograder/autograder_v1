@@ -1,5 +1,7 @@
 import base64
+import hashlib
 import mimetypes
+from collections.abc import Callable
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,6 +17,7 @@ from app.core.dependencies import (
     require_staff,
 )
 from app.domains.auth.models import User
+from app.domains.courses.models import Section
 from app.domains.runs.models import RunSummary
 from app.domains.runs import retention
 from app.domains.runs.orchestrator import get_run_state
@@ -30,6 +33,7 @@ from app.domains.runs.schemas import (
     UpdateManualGradesRequest,
 )
 from app.domains.runs.service import (
+    canvas_gradebook_column,
     intake_summary_from_details,
     is_listable_student_file,
     load_run_details_json,
@@ -40,6 +44,8 @@ from app.domains.runs.service import (
     student_detail_from_result,
     student_workspace_dir,
     update_student_manual_result,
+    write_feedback_zip,
+    write_run_grades_csv,
 )
 from app.domains.sandbox.service import sandbox_service
 
@@ -95,7 +101,7 @@ def _progress_for_details(data: dict, *, run_status: str) -> dict:
     )
 
 
-def _require_exports_ready(run_id: int, *, run_status: str) -> None:
+def _require_exports_ready(run_id: int, *, run_status: str) -> dict:
     data = _load_official_run_details(run_id)
     progress = _progress_for_details(data, run_status=run_status)
     if not progress["exports_ready"]:
@@ -107,6 +113,28 @@ def _require_exports_ready(run_id: int, *, run_status: str) -> None:
                 "every manual rubric score is set."
             ),
         )
+    return data
+
+
+def _revision_export(
+    run_id: int, data: dict, *, filename: str, write: Callable[[Path], None], variant: str = "",
+) -> Path:
+    original = Path(filename)
+    prefix = f"export-{original.stem}-"
+    fingerprint = hashlib.sha256(f"{data.get('details_revision', 0)}\0{variant}".encode()).hexdigest()
+    path = official_run_dir(run_id) / f"{prefix}{fingerprint}{original.suffix}"
+    if not path.exists():
+        try:
+            write(path)
+        except OSError:
+            raise HTTPException(503, "Could not prepare the export. Try again.") from None
+    for previous in path.parent.glob(f"{prefix}*{original.suffix}"):
+        if previous != path:
+            try:
+                previous.unlink()
+            except OSError:
+                pass  # A concurrent download can still be closing this file.
+    return path
 
 
 def _retained_download(run_id: int, *, path: Path, filename: str, media_type: str) -> StreamingResponse:
@@ -116,7 +144,7 @@ def _retained_download(run_id: int, *, path: Path, filename: str, media_type: st
     def chunks():
         offset = 0
         while offset < length:
-            with retention.access(run_id):
+            with retention.access(run_id, path=path):
                 current = path.stat()
                 if (current.st_ino, current.st_mtime_ns, current.st_size) != (snapshot.st_ino, snapshot.st_mtime_ns, snapshot.st_size):
                     raise RuntimeError("Export changed. Download again.")
@@ -361,14 +389,16 @@ def export_official_run_csv(
         db, course_id, assignment_id, run_id, user=current_user
     )
     with retention.access(run_id, db):
-        _require_exports_ready(run_id, run_status=run.status)
-        csv_file = official_run_dir(run_id) / "grades.csv"
-
-        if not csv_file.exists():
-            raise HTTPException(
-                status_code=404,
-                detail="Grades CSV file is not available or have been cleaned up.",
-            )
+        data = _require_exports_ready(run_id, run_status=run.status)
+        column = canvas_gradebook_column(run.assignment.title, run.assignment.canvas_ref)
+        section = db.get(Section, run.section_id) if run.section_id is not None else None
+        crn = section.crn if section else ""
+        csv_file = _revision_export(
+            run_id, data, filename="grades.csv", variant=f"{column}\0{crn}",
+            write=lambda path: write_run_grades_csv(
+                path, data.get("student_results", {}), assignment_column=column, section=crn,
+            ),
+        )
 
         return _retained_download(run_id,
             path=csv_file,
@@ -389,14 +419,11 @@ def export_official_run_feedback(
         db, course_id, assignment_id, run_id, user=current_user
     )
     with retention.access(run_id, db):
-        _require_exports_ready(run_id, run_status=run.status)
-        zip_file = official_run_dir(run_id) / "feedback.zip"
-
-        if not zip_file.exists():
-            raise HTTPException(
-                status_code=404,
-                detail="Feedback ZIP file is not available or have been cleaned up.",
-            )
+        data = _require_exports_ready(run_id, run_status=run.status)
+        zip_file = _revision_export(
+            run_id, data, filename="feedback.zip",
+            write=lambda path: write_feedback_zip(path, data.get("student_results", {})),
+        )
 
         return _retained_download(run_id,
             path=zip_file,
@@ -449,9 +476,8 @@ def list_student_files(
     require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    with retention.access(run_id, db):
-        student_dir = student_workspace_dir(run_id, canvas_id)
-
+    student_dir = student_workspace_dir(run_id, canvas_id)
+    with retention.access(run_id, db, path=student_dir):
         if not student_dir.exists():
             raise HTTPException(
                 status_code=404,
@@ -488,22 +514,21 @@ def get_student_file_content(
     require_official_run_for_assignment(
         db, course_id, assignment_id, run_id, user=current_user
     )
-    with retention.access(run_id, db):
-        student_dir = student_workspace_dir(run_id, canvas_id).resolve()
+    student_dir = student_workspace_dir(run_id, canvas_id).resolve()
+    target_path = (student_dir / filepath).resolve()
+    try:
+        target_path.relative_to(student_dir)
+    except ValueError:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Directory traversal detected.",
+        )
 
+    with retention.access(run_id, db, path=target_path):
         if not student_dir.exists():
             raise HTTPException(
                 status_code=404,
                 detail="Student workspace files are not available or have been cleaned up.",
-            )
-
-        target_path = (student_dir / filepath).resolve()
-        try:
-            target_path.relative_to(student_dir)
-        except ValueError:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied: Directory traversal detected.",
             )
 
         if not target_path.is_file():
@@ -553,6 +578,7 @@ def update_student_manual_grades(
     )
     with retention.access(run_id, db):
         from app.domains.grading.engine import GradingResult
+        from app.domains.grading.schemas import CompletionObjectiveResult
         from app.domains.runs.feedback_formatter import generate_pedagogical_feedback_html
 
         def apply_update(data: dict) -> dict:
@@ -581,6 +607,10 @@ def update_student_manual_grades(
                 score=result["score"] or 0,
                 max_score=result["max_score"],
                 test_results=result["test_results"],
+                completion_objectives=[
+                    CompletionObjectiveResult.model_validate(item)
+                    for item in result.get("completion_objectives", [])
+                ],
                 warnings=result["warnings"],
             )
             result["feedback_html"] = generate_pedagogical_feedback_html(
@@ -596,6 +626,7 @@ def update_student_manual_grades(
             run_id,
             apply_update,
             expected_revision=req.details_revision,
+            canvas_id=canvas_id,
         )
         response = student_detail_from_result(canvas_id, result)
         response["manual_progress"] = _progress_for_details(data, run_status=run.status)

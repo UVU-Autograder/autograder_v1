@@ -172,10 +172,7 @@ export function ModelSolutionSection() {
 
   // Filter model solution artifacts
   const solutionArtifacts = artifacts.filter(
-    (a) =>
-      a.artifact_type === "model_solution" ||
-      (a.artifact_key !== "assignment_tests" &&
-        a.artifact_type !== "pytest_file"),
+    (a) => a.artifact_type === "model_solution" || a.artifact_type === "support_file",
   );
 
   // Poll validation status if queued or running
@@ -276,6 +273,17 @@ export function ModelSolutionSection() {
       }
       const filesToUpload = Array.from(fileMap.values());
 
+      const suiteFilenames = new Set(
+        artifacts
+          .filter((artifact) => artifact.artifact_type === "pytest_file" || artifact.artifact_type === "test_file")
+          .map((artifact) => artifact.display_filename?.toLowerCase()),
+      );
+      for (const file of filesToUpload) {
+        if (suiteFilenames.has(file.name.toLowerCase())) {
+          throw new Error(`Cannot overwrite test suite '${file.name}'. Edit tests on Tests & Rubric.`);
+        }
+      }
+
       // 2. Validate and upload each file
       let uploadedCount = 0;
       const currentArtifacts = [...artifacts];
@@ -283,9 +291,6 @@ export function ModelSolutionSection() {
       for (const file of filesToUpload) {
         const filename = file.name;
         const existing = currentArtifacts.find((artifact) => artifact.display_filename === filename);
-        if (existing?.artifact_type === "pytest_file") {
-          throw new Error(`Cannot overwrite test suite '${filename}'. Edit tests on Tests & Rubric.`);
-        }
         const artifactKey = existing?.artifact_key || makeUniqueKey(
           `solution_${slugifyKey(filename)}`,
           currentArtifacts.map((artifact) => artifact.artifact_key),

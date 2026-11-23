@@ -26,6 +26,14 @@ def generate_pedagogical_feedback_html(
 ) -> str:
     """Generate a clean HTML pedagogical feedback page for the student."""
     safe_student_identifier = escape(str(student_identifier))
+    objectives_html = ""
+    if result.completion_objectives:
+        items = "".join(
+            f"<li>{escape(objective.label)}: {'Met' if objective.met else 'Unmet'} "
+            f"({objective.passed_count} passed, {objective.minimum_passed} required)</li>"
+            for objective in result.completion_objectives
+        )
+        objectives_html = f"<h2>Completion objectives</h2><ul>{items}</ul>"
     tests_html = ""
     for test in redact_private_test_details(list(result.test_results or [])):
         status_color = "#16a34a" if test.get("passed") else "#dc2626"
@@ -158,6 +166,7 @@ def generate_pedagogical_feedback_html(
             {overall_failure_html}
             
             {warnings_html}
+            {objectives_html}
             
             <h2 style="border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 15px;">Test Cases</h2>
             {tests_html}

@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-from app.domains.assignments.schemas import AssignmentConfigV1
+from app.domains.assignments.schemas import AssignmentConfigV1, CompletionRequirementConfig
 from app.domains.grading.executor import ExecutionOutcome
 from app.domains.grading.pipeline import (
     GradingPipeline,
@@ -85,6 +85,11 @@ async def test_pipeline_concept_blocked(base_config: AssignmentConfigV1) -> None
 
 @pytest.mark.anyio
 async def test_pipeline_evaluate_success_and_sync(base_config: AssignmentConfigV1, tmp_path: Path) -> None:
+    base_config.completion_requirements = [
+        CompletionRequirementConfig(
+            key="objective", label="One passing test", test_keys=["test_pass"], minimum_passed=1,
+        )
+    ]
     tests_file = tmp_path / "tests.py"
     tests_file.write_text("def test_pass(): pass", encoding="utf-8")
     artifact_refs = {"assignment_tests": f"file://{tests_file.as_posix()}"}
@@ -127,11 +132,14 @@ async def test_pipeline_evaluate_success_and_sync(base_config: AssignmentConfigV
     assert len(report.test_results) == 1
     assert report.pytest_result is not None
     assert report.pytest_result.passed == 1
+    objective, = report.completion_objectives
+    assert objective.met and objective.passed_count == 1
 
     # Verify sync execution
     sync_report = pipeline.evaluate_sync(payload)
     assert sync_report.success
     assert sync_report.score == 10
+    assert sync_report.to_dict()["completion_objectives"] == [objective.model_dump()]
 
 
 @pytest.mark.anyio

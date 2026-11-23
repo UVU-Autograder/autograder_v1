@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.domains.grading.schemas import CompletionObjectiveResult
 from app.domains.runs.schemas import QueueBackpressure, RunCounters, RunState, RunStatusResponse
 
 SESSION_TTL = timedelta(hours=1)
@@ -27,6 +28,7 @@ class SandboxRunRecord:
     celery_task_id: str | None = None
     result: dict | None = None
     zip_data_b64: str | None = None
+    code_files: dict[str, str] = field(default_factory=dict)
     config: dict | None = None
     artifact_refs: dict | None = None
     allowed_concepts: list | None = None
@@ -159,6 +161,7 @@ class SandboxRunResultResponse(BaseModel):
     failure_category: str | None = None
     warnings: list[SandboxWarning]
     test_summaries: list[TestSummary]
+    completion_objectives: list[CompletionObjectiveResult] = Field(default_factory=list)
     rubric_groups: list[RubricGroupResultResponse] = Field(default_factory=list)
     sanitized_feedback: str
     ai_feedback: str | None = None

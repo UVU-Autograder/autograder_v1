@@ -31,6 +31,7 @@ from app.domains.grading.runtime import (
     PreloadedArtifacts,
     load_fallback_helper,
 )
+from app.domains.grading.schemas import CompletionObjectiveResult
 from app.domains.grading.strategies import get_strategy
 from app.integrations.judge0.client import Judge0Error, judge0_failure_for_status
 from app.domains.ingestion.extractor import (
@@ -106,6 +107,7 @@ class EvaluationReport:
     pytest_result: PytestRunResult | None = None
     parsed_outcome: ParsedOutcome | None = None
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    completion_objectives: list[CompletionObjectiveResult] = field(default_factory=list)
 
     def to_dict(self, run_id: str | None = None) -> dict[str, Any]:
         """Serialize EvaluationReport into a standardized dictionary for state tracking and Redis."""
@@ -119,6 +121,8 @@ class EvaluationReport:
             "failure_message": self.failure_message,
             "diagnostics": self.diagnostics,
         }
+        if self.completion_objectives:
+            data["completion_objectives"] = [item.model_dump() for item in self.completion_objectives]
         if self.compiler_errors:
             data["compiler_errors"] = self.compiler_errors
         if run_id is not None:
@@ -258,6 +262,14 @@ class GradingPipeline:
 
             # Stage 4: Normalization (Scoring & rubric evaluation)
             self._stage_normalization(pytest_result, report)
+            if report.success:
+                passed = {item["key"] for item in report.test_results if item.get("key") and item.get("passed") is True}
+                for requirement in self.config.completion_requirements:
+                    count = len(passed.intersection(requirement.test_keys))
+                    report.completion_objectives.append(CompletionObjectiveResult(
+                        key=requirement.key, label=requirement.label, passed_count=count,
+                        minimum_passed=requirement.minimum_passed, met=count >= requirement.minimum_passed,
+                    ))
 
         finally:
             shutil.rmtree(workspace, ignore_errors=True)

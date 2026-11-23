@@ -106,17 +106,18 @@ def test_get_system_and_course_activity_summary(reset_database):
             total_submission_count=1,
             success_count=1,
             failure_count=0,
+            failure_summary={"rubric_passed": True},
             created_at=now - timedelta(hours=2),
         )
         r2 = RunSummary(
             workflow_type="sandbox",
             assignment_id=assignment.id,
             sandbox_session_hash=hash_a,
-            status="failure",
+            status="complete",
             total_submission_count=1,
             success_count=0,
             failure_count=1,
-            failure_summary={"failure_category": "assertion", "failed_keys": ["ag_test_math"]},
+            failure_summary={"rubric_passed": False, "failed_keys": ["ag_test_math"]},
             created_at=now - timedelta(hours=1),
         )
         r3 = RunSummary(
@@ -152,7 +153,8 @@ def test_get_system_and_course_activity_summary(reset_database):
 
         # Check that top bottlenecks caught the test failure
         bottleneck_keys = [b.key for b in sys_summary.top_bottlenecks]
-        assert "ag_test_math" in bottleneck_keys or "Syntax Error" in bottleneck_keys
+        assert "ag_test_math" in bottleneck_keys
+        assert "Syntax Error" in bottleneck_keys
 
         # Test Course Summary
         course_summary = get_course_activity_summary(db, "cs1400", window_hours=24)
@@ -160,6 +162,7 @@ def test_get_system_and_course_activity_summary(reset_database):
         assert course_summary.course_code == "cs1400"
         assert course_summary.total_sandbox_runs >= 3
         assert course_summary.active_student_sessions >= 2
+        assert course_summary.overall_pass_rate == 33.3
 
 
 def test_admin_activity_endpoint(client):

@@ -24,7 +24,7 @@ The dedicated on-prem workstation (`10.115.20.200`, hostname `CET-D24728`) opera
   - Docker Named Volumes:
     - `uvu-autograder_backend_data`: mounted at `/data` in backend and worker containers for instructor artifacts (`/data/artifacts`), zero-retention workspaces (`/data/workspaces`), and retention manifests (`/data/retention`).
     - `uvu-autograder_postgres_data`: persistent PostgreSQL 16 database storage (`/var/lib/postgresql/data`).
-    - `uvu-autograder_redis_data`: persistent Redis 7 AOF store (`/data`).
+  - Redis 7 uses a memory-backed `/data` mount with AOF and snapshots disabled.
 - **Active Checkout & Runtime User:**
   - Path: `/home/dev/autograder_v1` on branch `dev`.
   - Service user: `dev` (uid 1003, gid 1003, groups: `sudo`, `docker`, `ollama`).
@@ -188,6 +188,8 @@ When an official Canvas batch is uploaded, intake captures and validates an immu
 
 ### 1. Intake Pause & Queue Drainage
 1. **Pause External Intake:** Restrict new uploads at the Nginx reverse proxy (`sudo systemctl stop nginx` during a scheduled maintenance window) while retaining `postgres`, `redis`, `judge0`, `celery-worker`, `dispatch-worker`, and `cleanup-worker` so in-flight work finishes cleanly.
+
+   Drain sandbox and official work before switching from the legacy Redis AOF volume. Sandbox sessions expire when Redis restarts. Retire the old Redis volume under the workstation's approved data disposal procedure.
 2. **Wait for Queue Drain (Never Purge Queues):** Verify that all queued/running official runs (`RunSummary.status IN ('queue', 'run')`) and active sandbox execution tickets (`ExecutionTicket.state IN ('waiting', 'active')`) reach zero:
    ```bash
    bash scripts/rollout_grading_package.sh --dry-run

@@ -45,7 +45,15 @@ function resolveFramework(language: string, candidate: TestFramework | undefined
 }
 
 function isSuiteArtifact(a: StaffArtifact): boolean {
-  return a.artifact_type === "pytest_file" || a.artifact_type === "test_file" || a.artifact_key === "assignment_tests";
+  return a.artifact_type === "pytest_file" || a.artifact_type === "test_file";
+}
+
+function isCompatibleSuite(artifact: StaffArtifact, framework: TestFramework): boolean {
+  const filename = artifact.display_filename?.toLowerCase() || "";
+  if (framework === "pytest") return artifact.artifact_type === "pytest_file";
+  if (artifact.artifact_type !== "test_file") return false;
+  if (framework === "gtest") return /\.(cpp|cc|cxx|c)$/.test(filename);
+  return framework === "jsdom" && /\.(cjs|js|mjs)$/.test(filename);
 }
 
 type CourseModule = {
@@ -77,6 +85,8 @@ export type AssignmentEditorContextType = {
   // Metadata
   title: string;
   setTitle: (t: string) => void;
+  canvasRef: string;
+  setCanvasRef: (reference: string) => void;
   description: string;
   setDescription: (d: string) => void;
   moduleId: number | null;
@@ -173,10 +183,11 @@ export function AssignmentEditorProvider({
 
   // General Metadata
   const [title, setTitle] = useState("");
+  const [canvasRef, setCanvasRef] = useState("");
   const [description, setDescription] = useState("");
   const [moduleId, setModuleId] = useState<number | null>(null);
   const [sandboxEnabled, setSandboxEnabled] = useState(true);
-  const [language, setLanguage] = useState("python");
+  const [language, setLanguageState] = useState("python");
   const [testFrameworkChoice, setTestFrameworkChoice] = useState<TestFramework | undefined>(undefined);
   const testFramework = resolveFramework(language, testFrameworkChoice);
 
@@ -241,6 +252,8 @@ export function AssignmentEditorProvider({
   const [testSuiteCode, setTestSuiteCode] = useState("");
   const [loadingTestSuiteCode, setLoadingTestSuiteCode] = useState(true);
   const [testSuiteDirty, setTestSuiteDirty] = useState(false);
+  const suiteLoadRef = useRef(0);
+  const suiteDraftsRef = useRef<Partial<Record<TestFramework, string>>>({});
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [editArtifactKey, setEditArtifactKey] = useState<string | null>(null);
   const [editArtifactType, setEditArtifactType] = useState<string>("pytest_file");
@@ -260,6 +273,7 @@ export function AssignmentEditorProvider({
   const buildSnapshot = useCallback(() => {
     return JSON.stringify({
       title,
+      canvasRef,
       description,
       moduleId,
       sandboxEnabled,
@@ -279,6 +293,7 @@ export function AssignmentEditorProvider({
     });
   }, [
     title,
+    canvasRef,
     description,
     moduleId,
     sandboxEnabled,
@@ -322,6 +337,7 @@ export function AssignmentEditorProvider({
 
   // Load configuration and data
   const loadSetup = useCallback(async () => {
+    suiteLoadRef.current++;
     setLoading(true);
     pendingBaselineRef.current = true;
     setErrorMessage(null);
@@ -333,31 +349,31 @@ export function AssignmentEditorProvider({
       ]);
 
       const loadedArtifacts = setupData.artifacts || [];
+      suiteDraftsRef.current = {};
       setTitle(setupData.title || "");
+      setCanvasRef(setupData.canvas_ref || "");
       setDescription(setupData.description || setupData.config?.description || "");
       setModuleId(setupData.module_id ?? null);
       setSandboxEnabled(setupData.sandbox_enabled ?? true);
       const loadedLanguage = setupData.language || "python";
       const loadedFramework = resolveFramework(loadedLanguage, setupData.config?.test_framework);
-      setLanguage(loadedLanguage);
+      setLanguageState(loadedLanguage);
       setTestFrameworkChoice(loadedFramework);
       setArtifacts(loadedArtifacts);
       setConceptMeta(metaData || {});
       setCourseDefaultConcepts(courseConcepts.default_concepts || []);
       setCourseModules(courseConcepts.modules || []);
 
-      const suiteArtifact = loadedArtifacts.find(isSuiteArtifact);
-      const testArtifactKey = suiteArtifact?.artifact_key || "assignment_tests";
+      const suiteArtifact = loadedArtifacts.find((artifact) => isCompatibleSuite(artifact, loadedFramework));
       setLoadingTestSuiteCode(true);
       try {
-        if (loadedFramework === "io" && !suiteArtifact) {
-          // I/O cases live on the rubric; there is no suite file to load.
-          setTestSuiteCode("");
-        } else {
+        if (suiteArtifact) {
           const text = await apiClient.getText(
-            `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${testArtifactKey}`
+            `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${suiteArtifact.artifact_key}`
           );
           setTestSuiteCode(text);
+        } else {
+          setTestSuiteCode(starterSuite(loadedFramework));
         }
       } catch {
         setTestSuiteCode(starterSuite(loadedFramework));
@@ -564,14 +580,32 @@ export function AssignmentEditorProvider({
 
   const setTestFramework = (framework: TestFramework) => {
     setTestFrameworkChoice(framework);
-    if (!testSuiteCode.trim()) {
-      const starter = starterSuite(framework);
-      if (starter) {
-        setTestSuiteCode(starter);
-        setTestSuiteDirty(true);
+    if (framework !== testFramework) {
+      const loadId = ++suiteLoadRef.current;
+      if (testSuiteDirty) suiteDraftsRef.current[testFramework] = testSuiteCode;
+      const draft = suiteDraftsRef.current[framework];
+      const artifact = artifacts.find((item) => isCompatibleSuite(item, framework));
+      setTestSuiteCode(draft ?? starterSuite(framework));
+      setTestSuiteDirty(draft !== undefined);
+      setLoadingTestSuiteCode(Boolean(artifact) && draft === undefined);
+      if (artifact && draft === undefined) {
+        void apiClient.getText(
+          `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts/${artifact.artifact_key}`,
+        ).then((source) => {
+          if (suiteLoadRef.current === loadId) setTestSuiteCode(source);
+        }).catch(() => {
+          if (suiteLoadRef.current === loadId) setErrorMessage("Could not load the test suite. Reload before editing it.");
+        }).finally(() => {
+          if (suiteLoadRef.current === loadId) setLoadingTestSuiteCode(false);
+        });
       }
     }
     markDirty();
+  };
+
+  const setLanguage = (nextLanguage: string) => {
+    setLanguageState(nextLanguage);
+    setTestFramework(resolveFramework(nextLanguage, testFrameworkChoice));
   };
 
   const syncTestsFromSource = async (sourceCode: string): Promise<number | null> => {
@@ -682,6 +716,7 @@ export function AssignmentEditorProvider({
 
   // Save full assignment setup
   const handleSave = async () => {
+    if (loadingTestSuiteCode) return;
     setSaving(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -690,9 +725,19 @@ export function AssignmentEditorProvider({
       const suiteType: ArtifactType = testFramework === "pytest" ? "pytest_file" : "test_file";
       const hasSuiteFile = testFramework !== "io";
 
-      if (testSuiteDirty && hasSuiteFile) {
-        const suiteArtifact = artifacts.find(isSuiteArtifact);
-        const artifactKey = suiteArtifact?.artifact_key || "assignment_tests";
+      const savedArtifacts = [...artifacts];
+      const suiteArtifact = artifacts.find((artifact) => isCompatibleSuite(artifact, testFramework));
+      if (hasSuiteFile && (testSuiteDirty || !suiteArtifact)) {
+        const occupied = new Set([
+          ...artifacts.map((artifact) => artifact.artifact_key),
+          ...Object.keys(loadedConfigRef.current?.artifacts || {}),
+        ]);
+        const baseKey = occupied.has("assignment_tests") ? `assignment_tests_${testFramework}` : "assignment_tests";
+        let availableKey = baseKey;
+        for (let suffix = 2; occupied.has(availableKey); suffix++) {
+          availableKey = `${baseKey}_${suffix}`;
+        }
+        const artifactKey = suiteArtifact?.artifact_key || availableKey;
         const filename = suiteArtifact?.display_filename || defaultSuiteFilename(testFramework);
         const file = new File([testSuiteCode], filename, { type: "text/plain" });
         const formData = new FormData();
@@ -703,6 +748,12 @@ export function AssignmentEditorProvider({
           `/staff/courses/${courseId}/assignments/${assignmentId}/artifacts`,
           formData
         );
+        if (!suiteArtifact) {
+          savedArtifacts.push({
+            artifact_key: artifactKey, artifact_type: suiteType, display_filename: filename, size_bytes: file.size,
+          });
+          setArtifacts(savedArtifacts);
+        }
         setTestSuiteDirty(false);
       } else if (testSuiteDirty) {
         setTestSuiteDirty(false);
@@ -711,7 +762,8 @@ export function AssignmentEditorProvider({
       // Build artifacts dict for config reference check
       const knownTypes: ArtifactType[] = ["pytest_file", "test_file", "model_solution", "support_file"];
       const artifactsDict: Record<string, { type: ArtifactType; display_filename?: string }> = {};
-      artifacts.forEach((art) => {
+      savedArtifacts.forEach((art) => {
+        if (isSuiteArtifact(art) && !isCompatibleSuite(art, testFramework)) return;
         const artType = (knownTypes as string[]).includes(art.artifact_type)
           ? (art.artifact_type as ArtifactType)
           : "support_file";
@@ -720,11 +772,6 @@ export function AssignmentEditorProvider({
           display_filename: art.display_filename || undefined,
         };
       });
-
-      if (hasSuiteFile && !Object.values(artifactsDict).some((artifact) => artifact.type === suiteType)) {
-        artifactsDict["assignment_tests"] = { type: suiteType, display_filename: defaultSuiteFilename(testFramework) };
-      }
-
 
       const derivedRubricGroups = rubricGroups.length > 0
         ? rubricGroups
@@ -756,6 +803,7 @@ export function AssignmentEditorProvider({
 
       await apiClient.put(`/staff/courses/${courseId}/assignments/${assignmentId}/setup`, {
         title,
+        canvas_ref: canvasRef.trim() || null,
         description: finalDescription,
         sandbox_enabled: sandboxEnabled,
         module_id: moduleId,
@@ -812,6 +860,8 @@ export function AssignmentEditorProvider({
 
         title,
         setTitle,
+        canvasRef,
+        setCanvasRef,
         description,
         setDescription,
         moduleId,

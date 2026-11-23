@@ -85,7 +85,7 @@ def test_assignment_detail_returns_contract_metadata(client):
 from unittest.mock import MagicMock
 
 
-def test_create_run_passes_zip_to_celery_when_enabled(client, monkeypatch):
+def test_create_run_queues_only_a_reference_to_the_pending_zip(client, monkeypatch, mock_redis_global):
     mock_delay = MagicMock()
     monkeypatch.setattr("app.domains.runs.tasks.grade_sandbox_run.delay", mock_delay)
     monkeypatch.setattr("app.domains.runs.tasks.set_run_state", lambda *args, **kwargs: None)
@@ -110,8 +110,44 @@ def test_create_run_passes_zip_to_celery_when_enabled(client, monkeypatch):
         assert call_kwargs["config"] is not None
         assert call_kwargs["config"].get("description") is not None
         assert call_kwargs["artifact_refs"]
+        assert "zip_data_b64" not in call_kwargs
+        key = f"sandbox:submission:{call_kwargs['run_id']}"
+        assert mock_redis_global.get(key) == zip_bytes
+        assert key in mock_redis_global.expirations
     finally:
         sandbox_service._use_celery = False
+
+
+def test_celery_result_survives_api_store_restart_and_expires(client, monkeypatch, mock_redis_global):
+    from app.domains.runs.orchestrator import RUN_RESULT_PREFIX, get_run_result, set_run_result, set_run_state
+    from app.domains.sandbox.store import RUN_RECORD_PREFIX, RedisRunStateStore
+    from test_ingestion_extractor import create_zip_bytes
+
+    monkeypatch.setattr(sandbox_service, "_use_celery", True)
+    monkeypatch.setattr(sandbox_service, "_store", RedisRunStateStore())
+    monkeypatch.setattr("app.domains.runs.tasks.grade_sandbox_run.delay", MagicMock(return_value=MagicMock(id="synthetic")))
+    response = client.post(
+        "/sandbox/courses/cs1400/assignments/simple-python-functions/runs",
+        files={"bundle": ("submission.zip", create_zip_bytes({"main.py": b"x" * 20000}), "application/zip")},
+    )
+    assert response.status_code == 202
+    body = response.json()
+    run_id = body["run_id"]
+    set_run_result(run_id, {"score": 7, "max_score": 20, "test_results": []})
+    set_run_state(run_id, "complete")
+    replacement = RedisRunStateStore()
+    monkeypatch.setattr(sandbox_service, "_store", replacement)
+    record = replacement.get_run(run_id)
+    assert record is not None and record.zip_data_b64 is None
+    assert 0 < len(record.code_files["main.py"]) < 20000
+    headers = {"X-Sandbox-Session": body["sandbox_session"]}
+    assert client.get(body["result_url"], headers=headers).json()["projected_score"] == 7
+
+    mock_redis_global.expirations[f"{RUN_RESULT_PREFIX}{run_id}"] = 0
+    assert get_run_result(run_id) is None
+    mock_redis_global.expirations[f"{RUN_RECORD_PREFIX}{run_id}"] = 0
+    assert client.get(body["result_url"], headers=headers).status_code == 404
+    assert client.get(body["status_url"]).status_code == 404
 
 
 def test_run_creation_returns_session_quota_urls_and_queue_state(client):

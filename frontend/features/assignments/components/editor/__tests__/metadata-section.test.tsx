@@ -26,6 +26,8 @@ function createMockContext(
 
     title: "Lab 1: Control Flow",
     setTitle: vi.fn(),
+    canvasRef: "",
+    setCanvasRef: vi.fn(),
     description: "Write functions to solve problems.",
     setDescription: vi.fn(),
     moduleId: 1,

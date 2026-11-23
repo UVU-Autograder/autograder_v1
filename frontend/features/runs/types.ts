@@ -1,3 +1,5 @@
+import type { CompletionObjectiveResult } from "@/features/assignments/types";
+
 export type StudentFile = {
   filepath: string;
   size_bytes: number;
@@ -58,6 +60,7 @@ export type StudentRunDetail = {
     points: number;
   }[];
   automated_score: number | null;
+  completion_objectives?: CompletionObjectiveResult[];
   automated_max_score: number;
 };
 

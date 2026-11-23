@@ -26,6 +26,8 @@ export function MetadataSection() {
   const {
     title,
     setTitle,
+    canvasRef,
+    setCanvasRef,
     description,
     setDescription,
     moduleId,
@@ -58,7 +60,7 @@ export function MetadataSection() {
           <CardTitle>General Metadata</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 px-4 py-0">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Assignment Title *</Label>
               <Input
@@ -68,6 +70,17 @@ export function MetadataSection() {
                   markDirty();
                 }}
                 placeholder="e.g. Lab 1: Functions & Control Flow"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="canvas-assignment-reference">Canvas assignment URL or ID</Label>
+              <Input
+                id="canvas-assignment-reference"
+                value={canvasRef}
+                onChange={(event) => setCanvasRef(event.target.value)}
+                placeholder="For Gradebook exports"
+                maxLength={255}
               />
             </div>
 

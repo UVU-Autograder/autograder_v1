@@ -218,6 +218,14 @@ export type SandboxWarning = {
     message: string;
 };
 
+export type CompletionObjectiveResult = {
+    key: string;
+    label: string;
+    passed_count: number;
+    minimum_passed: number;
+    met: boolean;
+};
+
 export type SandboxRunResultResponse = {
     diagnostics?: { stdout: string; stderr: string; stdout_truncated: boolean; stderr_truncated: boolean };
     run_id: string;
@@ -227,6 +235,7 @@ export type SandboxRunResultResponse = {
     failure_category?: string | null;
     warnings: SandboxWarning[];
     test_summaries: SandboxTestSummary[];
+    completion_objectives?: CompletionObjectiveResult[];
     rubric_groups?: RubricGroupResultResponse[];
     sanitized_feedback: string;
     retention_notice?: string | null;

@@ -32,11 +32,11 @@ services:
     <<: *default-logging
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
     ports:
       - "${REDIS_BIND_IP:-127.0.0.1}:6379:6379"
-    volumes:
-      - redis_data:/data
+    tmpfs:
+      - /data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -331,7 +331,5 @@ services:
 volumes:
   postgres_data:
     name: ${POSTGRES_VOLUME_NAME:-uvu-autograder_postgres_data}
-  redis_data:
-    name: ${REDIS_VOLUME_NAME:-uvu-autograder_redis_data}
   backend_data:
     name: ${BACKEND_VOLUME_NAME:-uvu-autograder_backend_data}

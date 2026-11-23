@@ -3,6 +3,16 @@ from __future__ import annotations
 
 from enum import Enum
 
+from pydantic import BaseModel
+
+
+class CompletionObjectiveResult(BaseModel):
+    key: str
+    label: str
+    passed_count: int
+    minimum_passed: int
+    met: bool
+
 
 class ExecutionFailureCategory(str, Enum):
     """Evidence-based taxonomy for test execution and grading failures."""

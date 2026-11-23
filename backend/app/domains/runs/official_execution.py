@@ -1,8 +1,8 @@
 """One official submission per invocation, with workspace-only checkpoints."""
 import asyncio
 import shutil
-import time
 from contextlib import contextmanager
+from pathlib import Path
 
 from fastapi import HTTPException
 
@@ -22,8 +22,8 @@ from app.domains.runs.grading_package import GradingPackageError, load_package
 from app.domains.runs.models import ExecutionTicket
 from app.domains.runs.queue_admission import transaction
 from app.domains.runs.service import (
-    init_manual_results, list_bundle_files, load_run_details_json, official_run_dir,
-    official_run_zip_path, write_feedback_zip, write_run_details_json, write_run_grades_csv,
+    init_manual_results, list_bundle_files, load_checkpoint, load_run_details_json,
+    official_run_dir, official_run_zip_path, write_checkpoint, write_run_details_json,
 )
 
 
@@ -37,6 +37,24 @@ def attempt_access(run_id: int, token: str):
                 raise HTTPException(409, "Execution attempt is no longer current.")
         # Keep the run guard, but release scheduling authority before file reads.
         yield run
+
+
+def _save_result(directory: Path, canvas_id: str, student: dict) -> dict:
+    filename = f"graded-{canvas_id}.json"
+    path = directory / filename
+    if not path.exists():
+        write_checkpoint(path, student)
+    category = None
+    if student["success"]:
+        has_warning = student["warnings"] or student["score"] < student["automated_max_score"]
+        outcome = "warning" if has_warning else "success"
+    else:
+        # Coarse allowlist: never persist grader exception text in operational metadata.
+        category = student.get("failure_category")
+        if category not in {"timeout", "preparation_error", "internal_error", "validation_error", "execution_error"}:
+            category = "execution_error"
+        outcome = "timeout" if category == "timeout" else "failure"
+    return {"file": filename, "outcome": outcome, "category": category}
 
 
 def step(run_id: int, token: str) -> dict:
@@ -60,31 +78,37 @@ def step(run_id: int, token: str) -> dict:
         config = package.config
         concepts = package.concepts
         preloaded = package.preloaded_artifacts()
-        if not details_path.exists():
+        details = load_run_details_json(details_path, include_students=False) if details_path.exists() else {}
+        if not details:
             safe_extract_zip(official_run_zip_path(run_id).read_bytes(), extracted)
+        if "roster" not in details:
             groups, unmatched = group_canvas_files(extracted)
-            collisions = detect_filename_collisions(groups)
-            unmatched_names = [p.name for p in unmatched]
-            write_run_details_json(
-                directory,
-                {
+            if not groups:
+                raise ValueError("submission_checkpoint_unavailable")
+            if not details:
+                collisions = detect_filename_collisions(groups)
+                unmatched_names = [p.name for p in unmatched]
+                details = {
                     "unmatched_files": unmatched_names,
                     "filename_collisions": collisions,
                     "intake_acknowledged": not (unmatched_names or collisions),
-                    "student_results": {},
                     "run_status": "running",
-                },
-            )
-        else:
-            groups, _ = group_canvas_files(extracted)
-        if not groups:
-            raise ValueError("submission_checkpoint_unavailable")
-        details = load_run_details_json(details_path)
-        remaining = [(key, paths) for key, paths in groups.items() if key not in details["student_results"]]
-        selected = remaining[0] if remaining else None
-        if selected:
-            canvas_id, paths = selected
-            parsed = next((parse_canvas_filename(p.name) for p in paths if parse_canvas_filename(p.name)), None)
+                }
+            details["roster"] = {canvas_id: [p.name for p in paths] for canvas_id, paths in groups.items()}
+            details["student_checkpoints"] = {
+                canvas_id: _save_result(directory, canvas_id, student)
+                for canvas_id, student in details.pop("student_results", {}).items()
+            }
+            write_run_details_json(directory, details)
+        roster = details["roster"]
+        canvas_id = next((key for key in roster if key not in details["student_checkpoints"]), None)
+        checkpoint = directory / f"graded-{canvas_id}.json" if canvas_id is not None else None
+        needs_execution = checkpoint is not None and not checkpoint.exists()
+        if canvas_id is not None and needs_execution:
+            if not extracted.exists():
+                safe_extract_zip(official_run_zip_path(run_id).read_bytes(), extracted)
+            paths = [extracted / name for name in roster[canvas_id]]
+            parsed = parse_canvas_filename(paths[0].name)
             if parsed is None:
                 raise ValueError("submission_unavailable")
             name, _, submission_id, _ = parsed
@@ -102,7 +126,7 @@ def step(run_id: int, token: str) -> dict:
 
     # No locks span execution or network waits. Engine copies the input under
     # retention access and always cleans its separate execution workspace.
-    if selected:
+    if canvas_id is not None and needs_execution:
         automated_max = sum(item.points for item in config.scoring_items if item.item_type == "pytest" and not item.extra_credit)
         if prepared:
             engine = GradingEngine(config=config, artifact_refs={}, allowed_concepts=concepts,
@@ -125,55 +149,39 @@ def step(run_id: int, token: str) -> dict:
             "score": None if infra_failed else result.score, "max_score": result.max_score, "automated_max_score": automated_max,
             "requires_adjudication": infra_failed,
             "test_results": result.test_results, "warnings": [dict(w) for w in result.warnings],
+            "completion_objectives": [item.model_dump() for item in result.completion_objectives],
             "failure_category": result.failure_category, "failure_message": result.failure_message,
             "feedback_html": generate_pedagogical_feedback_html(name, result, manual, requires_adjudication=infra_failed),
             "manual_results": manual, "overall_comment": ""}
+    elif checkpoint is not None:
+        student = load_checkpoint(checkpoint)
 
     with attempt_access(run_id, token):
         # Reload to preserve manual grading performed while execution was in flight.
-        details = load_run_details_json(details_path)
-        results = details["student_results"]
-        if selected:
-            results.setdefault(canvas_id, student)
-        complete = len(results) == len(groups)
-        details["run_status"] = "complete" if complete else "running"
-        write_run_details_json(directory, details)
-        packaging_seconds = None
-        if complete:
-            packaging_start = time.perf_counter()
-            write_run_grades_csv(directory, results)
-            write_feedback_zip(directory, results)
-            packaging_seconds = time.perf_counter() - packaging_start
+        details = load_run_details_json(details_path, include_students=False)
+        results = details["student_checkpoints"]
+        complete = len(results) + (canvas_id is not None) == len(roster)
+        if canvas_id is not None:
+            results[canvas_id] = _save_result(directory, canvas_id, student)
+            details["run_status"] = "complete" if complete else "running"
+            write_run_details_json(directory, details)
         # Recompute from the atomic checkpoint, including after a crash between
         # filesystem replacement and DB commit. Never count a submission twice.
-        successes = warnings = failures = timeouts = 0
+        outcomes = {"success": 0, "warning": 0, "failure": 0, "timeout": 0}
         categories: dict[str, int] = {}
         for value in results.values():
-            if value["success"]:
-                if value["warnings"] or value["score"] < value["automated_max_score"]:
-                    warnings += 1
-                else:
-                    successes += 1
-            else:
-                category = value.get("failure_category") or "unknown_failure"
-                # Coarse allowlist: never persist grader exception text.
-                if category not in {"timeout", "preparation_error", "internal_error", "validation_error", "execution_error"}:
-                    category = "execution_error"
+            outcomes[value["outcome"]] += 1
+            category = value["category"]
+            if category:
                 categories[category] = categories.get(category, 0) + 1
-                if category == "timeout":
-                    timeouts += 1
-                else:
-                    failures += 1
         with SessionLocal() as db:
             run = retention.load_run(db, run_id)
-            run.total_submission_count = len(groups)
-            run.success_count, run.warning_count = successes, warnings
-            run.failure_count, run.timeout_count = failures, timeouts
+            run.total_submission_count = len(roster)
+            run.success_count, run.warning_count = outcomes["success"], outcomes["warning"]
+            run.failure_count, run.timeout_count = outcomes["failure"], outcomes["timeout"]
             run.failure_summary = categories
-            if packaging_seconds is not None:
-                run.export_packaging_seconds = packaging_seconds
             run.status = "complete" if complete else "run"
             db.commit()
         if complete and extracted.exists():
             shutil.rmtree(extracted)
-    return {"run_id": run_id, "state": "complete" if complete else "run", "total": len(groups)}
+    return {"run_id": run_id, "state": "complete" if complete else "run", "total": len(roster)}

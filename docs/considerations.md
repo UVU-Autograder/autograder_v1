@@ -15,7 +15,7 @@ Use synthetic or completely anonymized validation data; mapped pseudonyms are no
 | Staff/grants, course/assignment setup, instructor assets | Persistent approved database/artifact storage |
 | Operational records | Aggregate counts, scheduling metadata, sanitized usage/errors, and zero-PII sandbox activity telemetry (`run_summaries` with `sandbox_session_hash`) only |
 | Student execution files and Judge0 payloads/results/tokens | Delete immediately after result handling; verify non-retrievability |
-| Sandbox bundle/files | Clean after results/failure/cancellation; session results remain transient |
+| Sandbox bundle/files | Pending bundle expires in Redis and is removed when claimed or canceled. Keep only bounded Python coaching context with the session record for up to one hour. |
 | Official ZIP, review detail, names/identifiers and exports | Review ends 23h after intake; physical deletion by 24h or earlier staff cleanup |
 
 The independent [cleanup worker](../backend/app/domains/runs/cleanup_worker.py) reconciles at startup/every 60 seconds, tombstones access, retries deletion and reports overdue files. Database outages fail closed. Downtime preventing physical deletion remains a violation to resolve. Institutional handling applies to staff-downloaded exports.

@@ -137,12 +137,12 @@ def test_infrastructure_failures_do_not_record_zero_score_in_grades_csv(tmp_path
             "manual_results": {},
         },
     }
-    write_run_grades_csv(tmp_path, student_results)
+    write_run_grades_csv(tmp_path / "grades.csv", student_results, assignment_column="Lab 1 (123)", section="A")
 
     with open(tmp_path / "grades.csv", "r", encoding="utf-8") as f:
         rows = list(csv.reader(f))
 
-    assert rows[0] == ["Student Identifier", "Canvas User ID", "Submission ID", "Score", "Max Score"]
-    assert rows[1] == ["student_ok", "1001", "5001", "85", "100"]
+    assert rows[0] == ["Student", "ID", "Section", "Lab 1 (123)"]
+    assert rows[1] == ["student_ok", "1001", "A", "85"]
     # Infrastructure failure must leave Score blank rather than recording an earned 0
-    assert rows[2] == ["student_infra_crash", "1002", "5002", "", "100"]
+    assert rows[2] == ["student_infra_crash", "1002", "A", ""]

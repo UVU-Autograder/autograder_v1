@@ -165,17 +165,36 @@ def reset_database() -> Generator[None, None, None]:
 class FakeRedis:
     def __init__(self) -> None:
         self.data: dict[str, Any] = {}
+        self.expirations: dict[str, float] = {}
 
-    def get(self, key: str) -> str | None:
+    def get(self, key: str) -> Any:
+        from time import time
+
+        if key in self.expirations and time() >= self.expirations[key]:
+            self.delete(key)
         return self.data.get(key)
 
     def set(self, key: str, value: Any, *args: Any, **kwargs: Any) -> bool:
-        self.data[key] = str(value)
+        self.data[key] = value if isinstance(value, bytes) else str(value)
+        self.expirations.pop(key, None)
+        if (expiry := kwargs.get("exat")) is not None:
+            self.expirations[key] = expiry.timestamp() if hasattr(expiry, "timestamp") else expiry
         return True
 
     def setex(self, key: str, time: int, value: Any) -> bool:
-        self.data[key] = str(value)
-        return True
+        from datetime import UTC, datetime
+
+        return self.set(key, value, exat=datetime.now(UTC).timestamp() + time)
+
+    def getdel(self, key: str) -> Any:
+        value = self.get(key)
+        self.delete(key)
+        return value
+
+    def scan_iter(self, *, match: str):
+        from fnmatch import fnmatch
+
+        return (key for key in list(self.data) if fnmatch(key, match) and self.get(key) is not None)
 
     def decrby(self, key: str, count: int) -> int:
         val = int(self.data.get(key) or 0) - count
@@ -193,6 +212,7 @@ class FakeRedis:
     def delete(self, *keys: str) -> int:
         count = 0
         for k in keys:
+            self.expirations.pop(k, None)
             if k in self.data:
                 self.data.pop(k)
                 count += 1
@@ -211,7 +231,7 @@ class FakeRedis:
         return True
 
     def mget(self, keys: list[str]) -> list[str | None]:
-        return [self.data.get(k) if not isinstance(self.data.get(k), list) else None for k in keys]
+        return [value if isinstance(value := self.get(key), str) else None for key in keys]
 
     def lpush(self, key: str, *values: Any) -> int:
         lst = self.data.setdefault(key, [])

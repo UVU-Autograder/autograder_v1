@@ -139,6 +139,20 @@ describe("model solution authoring", () => {
     await screen.findByText(/Uploaded 2 model solution file\(s\) successfully/);
   });
 
+  it.each(["pytest_file", "test_file"])("rejects a whole ZIP that collides with a %s", async (type) => {
+    artifacts = [{ artifact_key: "suite", artifact_type: type, display_filename: "tests.cjs", size_bytes: 10 }];
+    await openPage();
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("index.html", "<h1>Sample solution</h1>");
+    zip.file("TESTS.CJS", "module.exports = () => {};");
+    const archive = new File([await zip.generateAsync({ type: "blob" })], "solution.zip");
+    fireEvent.change(screen.getByLabelText("Upload Solution File"), { target: { files: [archive] } });
+    fireEvent.click(screen.getByRole("button", { name: "Upload File" }));
+    await screen.findByText(/Cannot overwrite test suite/);
+    expect(apiClient.postForm).not.toHaveBeenCalled();
+  });
+
   it("does not overwrite another file with the same basename and a different extension", async () => {
     artifacts = [{ artifact_key: "solution_main", artifact_type: "model_solution", display_filename: "main.py", size_bytes: 10 }];
     await openPage();

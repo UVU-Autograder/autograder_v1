@@ -264,6 +264,10 @@ def group_canvas_files(extract_dir: Path) -> tuple[dict[str, list[Path]], list[P
     return grouped_files, unmatched_files
 
 
+def _canvas_file_rank(path: Path) -> tuple[int, str]:
+    return path.stat().st_size, path.name
+
+
 def detect_filename_collisions(
     grouped_files: dict[str, list[Path]],
 ) -> list[dict[str, object]]:
@@ -289,11 +293,7 @@ def detect_filename_collisions(
         for clean_filename, candidates in by_clean.items():
             if len(candidates) < 2:
                 continue
-            ranked = sorted(
-                candidates,
-                key=lambda p: (p.stat().st_size, p.name),
-                reverse=True,
-            )
+            ranked = sorted(candidates, key=_canvas_file_rank, reverse=True)
             collisions.append(
                 {
                     "canvas_user_id": canvas_user_id,
@@ -338,18 +338,27 @@ def prepare_student_bundle(student_files: list[Path], student_dir: Path) -> None
     student_dir = Path(student_dir).resolve()
     student_dir.mkdir(parents=True, exist_ok=True)
 
+    entries: list[tuple[Path, str]] = []
+    loose_winners: dict[str, Path] = {}
     for path in student_files:
         parsed = parse_canvas_filename(path.name)
         if not parsed:
             continue
         _, _, _, original_filename = parsed
+        entries.append((path, original_filename))
+        if not original_filename.lower().endswith(".zip"):
+            normalized = normalize_canvas_original_filename(original_filename)
+            previous = loose_winners.get(normalized)
+            if previous is None or _canvas_file_rank(path) > _canvas_file_rank(previous):
+                loose_winners[normalized] = path
 
+    for path, original_filename in entries:
         if original_filename.lower().endswith(".zip"):
             try:
                 safe_extract_zip(path.read_bytes(), student_dir)
             except Exception as e:
                 raise ValueError(f"Failed to extract student ZIP '{original_filename}': {e}")
-        else:
+        elif loose_winners[normalize_canvas_original_filename(original_filename)] == path:
             _copy_canvas_file(path, student_dir, original_filename)
 
     normalize_canvas_file_suffixes(student_dir)

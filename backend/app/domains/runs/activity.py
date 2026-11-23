@@ -205,15 +205,28 @@ def _build_velocity_timeseries(
     ]
 
 
+def _rubric_pass_rate(runs: list[RunSummary]) -> float:
+    """Legacy completion status alone cannot establish that any tests passed."""
+    outcomes = []
+    for run in runs:
+        summary = run.failure_summary or {}
+        passed = summary.get("rubric_passed")
+        if isinstance(passed, bool):
+            outcomes.append(passed)
+        elif run.status == "failure":
+            outcomes.append(False)
+    return round(100 * sum(outcomes) / len(outcomes), 1) if outcomes else 0.0
+
+
 def _extract_bottlenecks(runs: list[RunSummary], limit: int = 8) -> list[BottleneckItem]:
     """Rank the most frequent failure markers and categories across failed runs."""
     counter: Counter[tuple[str, str]] = Counter()
 
     for run in runs:
-        if run.status != "failure" or not run.failure_summary:
-            continue
         fs = run.failure_summary
         if not isinstance(fs, dict):
+            continue
+        if run.status != "failure" and not isinstance(fs.get("rubric_passed"), bool):
             continue
 
         category = fs.get("failure_category", "assertion")
@@ -226,8 +239,8 @@ def _extract_bottlenecks(runs: list[RunSummary], limit: int = 8) -> list[Bottlen
                     counter[(item, "assertion")] += 1
                 elif isinstance(item, dict) and "key" in item:
                     counter[(item["key"], "assertion")] += 1
-        else:
-            category_label = str(category).replace("_", " ").title()
+        elif run.status == "failure" and isinstance(category, str):
+            category_label = category.replace("_", " ").title()
             counter[(category_label, category)] += 1
 
     bottlenecks: list[BottleneckItem] = []
@@ -268,7 +281,6 @@ def get_system_activity_summary(
 
     total_sandbox_runs = len(sandbox_runs)
     session_attempts: dict[str, int] = defaultdict(int)
-    success_count = 0
     total_tokens = 0
 
     for r in runs:
@@ -278,11 +290,9 @@ def get_system_activity_summary(
     for r in sandbox_runs:
         if r.sandbox_session_hash:
             session_attempts[r.sandbox_session_hash] += 1
-        if r.status == "complete":
-            success_count += 1
 
     active_sessions = len(session_attempts)
-    pass_rate = round((success_count / total_sandbox_runs) * 100, 1) if total_sandbox_runs > 0 else 0.0
+    pass_rate = _rubric_pass_rate(sandbox_runs)
 
     velocity = _build_velocity_timeseries(sandbox_runs, window_start, window_hours)
     attempt_distribution = _build_attempt_distribution(session_attempts)
@@ -305,7 +315,6 @@ def get_system_activity_summary(
             db_a = db_assignments.get(aid)
             if not db_a:
                 continue
-            a_success = sum(1 for r in a_runs if r.status == "complete")
             a_sessions = {r.sandbox_session_hash for r in a_runs if r.sandbox_session_hash}
             a_bottlenecks = _extract_bottlenecks(a_runs, limit=1)
             top_bn = a_bottlenecks[0].key if a_bottlenecks else None
@@ -317,7 +326,7 @@ def get_system_activity_summary(
                     title=db_a.title,
                     total_runs=len(a_runs),
                     active_students=len(a_sessions),
-                    pass_rate=round((a_success / len(a_runs)) * 100, 1) if a_runs else 0.0,
+                    pass_rate=_rubric_pass_rate(a_runs),
                     top_bottleneck=top_bn,
                 )
             )
@@ -387,7 +396,6 @@ def get_course_activity_summary(
 
     total_sandbox_runs = len(sandbox_runs)
     session_attempts: dict[str, int] = defaultdict(int)
-    success_count = 0
     total_tokens = 0
 
     for r in runs:
@@ -397,11 +405,9 @@ def get_course_activity_summary(
     for r in sandbox_runs:
         if r.sandbox_session_hash:
             session_attempts[r.sandbox_session_hash] += 1
-        if r.status == "complete":
-            success_count += 1
 
     active_sessions = len(session_attempts)
-    pass_rate = round((success_count / total_sandbox_runs) * 100, 1) if total_sandbox_runs > 0 else 0.0
+    pass_rate = _rubric_pass_rate(sandbox_runs)
 
     velocity = _build_velocity_timeseries(sandbox_runs, window_start, window_hours)
     attempt_distribution = _build_attempt_distribution(session_attempts)
@@ -414,7 +420,6 @@ def get_course_activity_summary(
     assignments_summary: list[AssignmentActivitySummary] = []
     for a in course_assignments:
         a_runs = assignment_runs.get(a.id, [])
-        a_success = sum(1 for r in a_runs if r.status == "complete")
         a_sessions = {r.sandbox_session_hash for r in a_runs if r.sandbox_session_hash}
         a_bottlenecks = _extract_bottlenecks(a_runs, limit=1)
         top_bn = a_bottlenecks[0].key if a_bottlenecks else None
@@ -426,7 +431,7 @@ def get_course_activity_summary(
                 title=a.title,
                 total_runs=len(a_runs),
                 active_students=len(a_sessions),
-                pass_rate=round((a_success / len(a_runs)) * 100, 1) if a_runs else 0.0,
+                pass_rate=_rubric_pass_rate(a_runs),
                 top_bottleneck=top_bn,
             )
         )

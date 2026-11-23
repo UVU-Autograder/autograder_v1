@@ -2,11 +2,39 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
+from pydantic import TypeAdapter
+from redis import Redis
+from redis.exceptions import RedisError
+
 from app.core.settings import get_settings
 from app.domains.sandbox.schemas import SandboxRunRecord, UploadQuota
+
+RUN_RECORD_PREFIX = "sandbox:record:"
+_SUBMISSION_PREFIX = "sandbox:submission:"
+_record_codec = TypeAdapter(SandboxRunRecord)
+
+
+def _submission_client():
+    return Redis.from_url(get_settings().redis_url, socket_timeout=2, socket_connect_timeout=2)
+
+
+def save_pending_submission(run_id: str, contents: bytes, expires_at: datetime) -> None:
+    _submission_client().set(f"{_SUBMISSION_PREFIX}{run_id}", contents, exat=expires_at)
+
+
+def take_pending_submission(run_id: str) -> bytes | None:
+    return _submission_client().getdel(f"{_SUBMISSION_PREFIX}{run_id}")
+
+
+def delete_pending_submission(run_id: str) -> None:
+    try:
+        _submission_client().delete(f"{_SUBMISSION_PREFIX}{run_id}")
+    except RedisError:
+        pass
 
 
 class RunStateStore(Protocol):
@@ -87,22 +115,44 @@ class RedisRunStateStore:
 
     def __init__(self, in_memory_fallback: InMemoryRunStateStore | None = None) -> None:
         self._fallback = in_memory_fallback or InMemoryRunStateStore()
+        self._client = Redis.from_url(
+            get_settings().redis_url, decode_responses=True, socket_timeout=2, socket_connect_timeout=2,
+        )
 
     def _redis_conn(self):
-        import redis
-        return redis.Redis.from_url(get_settings().redis_url, decode_responses=True)
+        return self._client
 
     def save_run(self, record: SandboxRunRecord) -> None:
-        self._fallback.save_run(record)
+        expiry = int(record.expires_at.timestamp())
+        if expiry <= datetime.now(UTC).timestamp():
+            return
+        shared = replace(record, zip_data_b64=None, stdin=None, expected_manifest=None, result=None)
+        self._redis_conn().set(f"{RUN_RECORD_PREFIX}{record.run_id}", _record_codec.dump_json(shared), exat=expiry)
 
     def get_run(self, run_id: str) -> SandboxRunRecord | None:
-        return self._fallback.get_run(run_id)
+        try:
+            raw = self._redis_conn().get(f"{RUN_RECORD_PREFIX}{run_id}")
+            record = _record_codec.validate_json(raw) if raw is not None else None
+        except RedisError:
+            return None
+        if record is not None and record.expires_at <= datetime.now(UTC):
+            return None
+        return record
+
+    def list_run_ids(self) -> list[str]:
+        try:
+            return [key.removeprefix(RUN_RECORD_PREFIX) for key in self._redis_conn().scan_iter(match=f"{RUN_RECORD_PREFIX}*")]
+        except RedisError:
+            return []
 
     def list_runs(self) -> list[SandboxRunRecord]:
-        return self._fallback.list_runs()
+        return [record for run_id in self.list_run_ids() if (record := self.get_run(run_id)) is not None]
 
     def delete_run(self, run_id: str) -> None:
-        self._fallback.delete_run(run_id)
+        try:
+            self._redis_conn().delete(f"{RUN_RECORD_PREFIX}{run_id}")
+        except RedisError:
+            pass
 
     def record_upload(self, session_id: str, timestamp: datetime) -> None:
         # One transaction: append, keep only the newest `limit` uploads (older ones can

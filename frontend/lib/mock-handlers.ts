@@ -331,7 +331,7 @@ export async function handleMockRequest<T>(
       const key = String(init.body.get("artifact_key"));
       const type = String(init.body.get("artifact_type"));
       if (!(file instanceof File)) throw new Error("Please select a file.");
-      if (!["pytest_file", "model_solution", "support_file"].includes(type)) throw new Error("Unsupported artifact type.");
+      if (!["pytest_file", "test_file", "model_solution", "support_file"].includes(type)) throw new Error("Unsupported artifact type.");
       if (type === "model_solution" && file.name.toLowerCase().endsWith(".zip")) {
         throw new Error("ZIP model solution uploads are not supported. Upload individual solution files instead.");
       }
@@ -665,7 +665,7 @@ export async function handleMockDownload(path: string): Promise<Blob | null> {
   }
 
   if (normalizedPath.includes("/export/grades.csv") || normalizedPath.includes("/export/csv")) {
-    const csvContent = "Student,Canvas ID,Score,Max Score,Status\nJohn Doe,1001,100,100,success\nJane Smith,1002,80,100,warning\n";
+    const csvContent = "Student,ID,Section,Mock assignment (123)\nJohn Doe,1001,12345,100\nJane Smith,1002,12345,80\n";
     return new Blob([csvContent], { type: "text/csv" });
   }
 

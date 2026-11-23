@@ -1,6 +1,4 @@
-import csv
 import io
-import json
 import sys
 import zipfile
 from pathlib import Path
@@ -16,6 +14,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from app.core.settings import get_settings
 from app.domains.grading.engine import GradingResult
 from app.domains.runs.mock_runner import run_mock_official_run
+from app.domains.runs.service import load_run_details_json
 from app.domains.runs.models import RunSummary
 from app.domains.runs.tasks import (
     build_model_solution_zip,
@@ -114,16 +113,8 @@ def test_run_mock_official_run_success(db_session: Session, temp_workspaces: Pat
     workspaces_dir = settings.artifact_storage_path.parent / "workspaces"
     run_dir = workspaces_dir / f"official_{run.id}"
 
-    assert (run_dir / "run_details.json").exists()
-    assert (run_dir / "grades.csv").exists()
-    assert (run_dir / "feedback.zip").exists()
-
-    # Check grades CSV contents
-    with open(run_dir / "grades.csv", "r", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        rows = list(reader)
-        assert rows[0] == ["Student Identifier", "Canvas User ID", "Submission ID", "Score", "Max Score"]
-        assert len(rows) == 4  # Header + 3 students
+    assert len(load_run_details_json(run_dir / "run_details.json")["student_results"]) == 3
+    assert not list(run_dir.glob("export-*"))
 
 
 def test_grade_official_run_pipeline_success(db_session: Session, temp_workspaces: Path) -> None:
@@ -187,9 +178,8 @@ def test_grade_official_run_pipeline_success(db_session: Session, temp_workspace
 
     run_dir = workspaces_dir / f"official_{run.id}"
     assert (run_dir / "run_details.json").exists()
-    assert (run_dir / "grades.csv").exists()
-    assert (run_dir / "feedback.zip").exists()
-    details = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    assert not list(run_dir.glob("export-*"))
+    details = load_run_details_json(run_dir / "run_details.json")
     assert details["run_status"] == "complete"
     assert len(details["student_results"]) == 2
 
@@ -229,7 +219,7 @@ def test_grade_official_run_writes_incremental_details(
     async def grade_and_observe(*args, **kwargs):
         details_file = run_dir / "run_details.json"
         assert details_file.exists()
-        payload = json.loads(details_file.read_text(encoding="utf-8"))
+        payload = load_run_details_json(details_file)
         seen_counts.append(len(payload.get("student_results", {})))
         return mock_result
 
@@ -242,7 +232,7 @@ def test_grade_official_run_writes_incremental_details(
 
     assert seen_counts[0] == 0
     assert 1 in seen_counts
-    final = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    final = load_run_details_json(run_dir / "run_details.json")
     assert len(final["student_results"]) == 2
     assert final["run_status"] == "complete"
 
@@ -487,7 +477,7 @@ def test_official_run_infra_failure_gates_exports_until_adjudicated(
         drain(run.id)
 
     run_dir = workspaces_dir / f"official_{run.id}"
-    details = json.loads((run_dir / "run_details.json").read_text(encoding="utf-8"))
+    details = load_run_details_json(run_dir / "run_details.json")
     student_res = details["student_results"]["11111"]
 
     assert student_res["score"] is None

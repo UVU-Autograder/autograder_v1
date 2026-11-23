@@ -55,16 +55,17 @@ logger = logging.getLogger(__name__)
     time_limit=180,
     default_retry_delay=5,
     acks_late=True,
+    ignore_result=True,
 )
 def grade_sandbox_run(
     self,
     run_id: str,
-    zip_data_b64: str,
     config: dict,
     artifact_refs: dict[str, str],
     allowed_concepts: list[str],
     stdin: str | None = None,
     expected_manifest: dict | None = None,
+    zip_data_b64: str | None = None,
 ) -> dict:
     """Execute a sandbox grading run through the orchestrator pipeline."""
     from app.domains.runs.queue_admission import claim, QueueFullError
@@ -80,6 +81,22 @@ def grade_sandbox_run(
         raise self.retry(countdown=2 + random.random() * 3, max_retries=None) from None
     if token is None:
         return {"run_id": run_id, "state": "ignored"}
+    if zip_data_b64 is None:
+        import base64
+
+        from app.domains.sandbox.store import take_pending_submission
+
+        try:
+            contents = take_pending_submission(run_id)
+        except Exception:
+            contents = None
+        if contents is None:
+            try:
+                set_run_state(run_id, "failure", {"failure_category": "execution_interrupted"})
+            finally:
+                release_execution_slots(owner=run_id, token=token)
+            return {"run_id": run_id, "state": "failure"}
+        zip_data_b64 = base64.b64encode(contents).decode("ascii")
     return execute_sandbox_run(
         run_id=run_id,
         zip_data_b64=zip_data_b64,

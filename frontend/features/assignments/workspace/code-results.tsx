@@ -727,6 +727,20 @@ export default function CodeResults({
               </div>
             </div>
 
+            {Boolean(result.completion_objectives?.length) && (
+              <div className="mt-4">
+                <h3 className="mb-2 text-lg font-bold">Completion objectives</h3>
+                <ul className="space-y-1 text-sm">
+                  {result.completion_objectives?.map((objective) => (
+                    <li key={objective.key}>
+                      {objective.label} · {objective.met ? "Met" : "Unmet"}
+                      {" "}({objective.passed_count} passed, {objective.minimum_passed} required)
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="mb-3 mt-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-lg font-bold">Test Cases:</p>
               <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-semibold text-muted-foreground">

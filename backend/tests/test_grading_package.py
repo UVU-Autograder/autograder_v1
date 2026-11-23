@@ -24,7 +24,7 @@ from app.domains.runs import grading_package, retention
 from app.domains.runs.dispatcher import sweep
 from app.domains.runs.grading_package import GradingPackageError, PackageCaptureError, capture_package, load_package
 from app.domains.runs.models import ExecutionTicket, OfficialDispatch, RunSummary
-from app.domains.runs.service import official_run_dir, official_run_zip_path
+from app.domains.runs.service import load_run_details_json, official_run_dir, official_run_zip_path
 from app.domains.runs.tasks import grade_official_run
 from test_grading_executor import _mock_judge0_client
 from test_ingestion_extractor import create_zip_bytes
@@ -149,7 +149,7 @@ def test_every_submission_and_retry_uses_admitted_inputs(monkeypatch):
 
     def crash_at_first_checkpoint(directory, details):
         nonlocal interrupted
-        if details["student_results"] and not interrupted:
+        if details["student_checkpoints"] and not interrupted:
             interrupted = True
             raise OSError("synthetic interruption after execution")
         return write_details(directory, details)
@@ -165,7 +165,7 @@ def test_every_submission_and_retry_uses_admitted_inputs(monkeypatch):
         now += timedelta(seconds=10)
         assert grade_official_run(*delivery())["state"] == "complete"
         assert grade_official_run(*first)["state"] == "ignored"
-    assert client.create_submission.await_count == client.delete_submission.await_count == 3
+    assert client.create_submission.await_count == client.delete_submission.await_count == 2
     for call in client.create_submission.await_args_list:
         kwargs = call.kwargs
         assert kwargs["source_code"] == original.runner_source
@@ -178,7 +178,7 @@ def test_every_submission_and_retry_uses_admitted_inputs(monkeypatch):
                 assert files.read(name) == artifact.decode()
             helper = original.files.get("python_autograder_helpers.py", original.fallback_helper)
             assert files.read("python_autograder_helpers.py") == helper.decode()
-    details = json.loads((official_run_dir(run_id) / "run_details.json").read_text())
+    details = load_run_details_json(official_run_dir(run_id) / "run_details.json")
     for student in details["student_results"].values():
         assert student["score"] == sum(item.points for item in original.config.scoring_items
                                        if item.item_type == "pytest")

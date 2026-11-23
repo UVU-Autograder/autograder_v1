@@ -10,7 +10,6 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
-    text,
     true,
 )
 from sqlalchemy.ext.mutable import MutableList

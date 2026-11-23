@@ -21,6 +21,7 @@ function Controls() {
   if (editor.loading) return <p>Loading</p>;
   return <>
     <button onClick={() => editor.setTitle("Updated title")}>Change title</button>
+    <button onClick={() => editor.setLanguage("web")}>Switch to Web</button>
     <button onClick={() => editor.updateTestSuiteCode("# updated tests\n")}>Change tests</button>
     <button onClick={() => void editor.syncTestsFromSource("def test(): pass")}>Sync tests</button>
     <span data-testid="error">{editor.errorMessage}</span>
@@ -188,6 +189,22 @@ describe("assignment setup saves", () => {
     await openEditor();
     expect(screen.getByTestId("framework").textContent).toBe("jsdom");
     expect(screen.getByTestId("suite-code").textContent).toBe("module.exports = () => {};\n");
+  });
+
+  it("saves a compatible suite under a new key when changing language", async () => {
+    setup.artifacts[0].artifact_key = "assignment_tests";
+    setup.config.artifacts = { assignment_tests: { type: "pytest_file", display_filename: "test_main.py" } };
+    await openEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Web" }));
+    expect(screen.getByTestId("suite-code").textContent).toContain("module.exports");
+    const payload = await saveTitle();
+    const form = vi.mocked(apiClient.postForm).mock.calls[0][1];
+    expect(form.get("artifact_key")).toBe("assignment_tests_jsdom");
+    expect(form.get("artifact_type")).toBe("test_file");
+    expect((form.get("file") as File).name).toBe("tests.cjs");
+    expect(payload.config.artifacts).toEqual({
+      assignment_tests_jsdom: { type: "test_file", display_filename: "tests.cjs" },
+    });
   });
 
   it("does not load or upload a suite file for the io framework", async () => {

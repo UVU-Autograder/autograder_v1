@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import re
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
@@ -230,6 +231,7 @@ def mutate_run_details(
     mutator: Callable[[dict], Any],
     *,
     expected_revision: int | None = None,
+    canvas_id: str | None = None,
 ) -> tuple[dict, Any]:
     """Mutate review data under the cross-process retention guard.
 
@@ -264,13 +266,26 @@ def mutate_run_details(
                     },
                 )
         result = mutator(data)
-        bump_details_revision(data)
-        temp_file = details_file.with_suffix(".json.tmp")
-        temp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        os.replace(temp_file, details_file)
-        student_results = data.get("student_results", {})
-        write_run_grades_csv(run_dir, student_results)
-        write_feedback_zip(run_dir, student_results)
+        checkpoints = data.get("student_checkpoints")
+        if checkpoints is None:
+            write_run_details_json(run_dir, data)
+        else:
+            previous = None
+            if canvas_id is not None:
+                checkpoint = checkpoints[canvas_id]
+                previous = checkpoint["file"]
+                suffix = int(data.get("details_revision") or 0) + 1
+                filename = f"review-{canvas_id}-{suffix}.json"
+                write_checkpoint(run_dir / filename, data["student_results"][canvas_id])
+                checkpoint["file"] = filename
+            students = data.pop("student_results")
+            write_run_details_json(run_dir, data)
+            data["student_results"] = students
+            if previous:
+                try:
+                    (run_dir / previous).unlink(missing_ok=True)
+                except OSError:
+                    pass  # Retention will remove any superseded checkpoint.
         return data, result
 
 
@@ -328,60 +343,71 @@ def student_detail_from_result(
     }
     if res.get("failure_category") is not None:
         detail["failure_category"] = res.get("failure_category")
+    if res.get("completion_objectives"):
+        detail["completion_objectives"] = res["completion_objectives"]
     if requires_adjudication:
         detail["requires_adjudication"] = True
     return detail
 
 
-def load_run_details_json(details_file: Path) -> dict:
+def load_checkpoint(path: Path) -> dict:
     try:
-        return json.loads(details_file.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         raise HTTPException(status_code=500, detail="Failed to load run details.")
 
 
+def load_run_details_json(details_file: Path, *, include_students: bool = True) -> dict:
+    data = load_checkpoint(details_file)
+    if include_students and "student_checkpoints" in data:
+        data["student_results"] = {
+            canvas_id: load_checkpoint(details_file.parent / entry["file"])
+            for canvas_id, entry in data["student_checkpoints"].items()
+        }
+    return data
+
+
+def write_checkpoint(path: Path, payload: dict) -> None:
+    temp = path.with_suffix(".json.tmp")
+    temp.write_text(json.dumps(payload), encoding="utf-8")
+    os.replace(temp, path)
+
+
 def write_run_details_json(run_dir: Path, payload: dict) -> None:
     """Atomically write ephemeral official run details and bump details_revision."""
-    try:
-        current = int(payload.get("details_revision") or 0)
-    except (TypeError, ValueError):
-        current = 0
-    payload["details_revision"] = current + 1
-    details_file = run_dir / "run_details.json"
-    temp_file = details_file.with_suffix(".json.tmp")
-    temp_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    os.replace(temp_file, details_file)
+    bump_details_revision(payload)
+    write_checkpoint(run_dir / "run_details.json", payload)
 
 
-def write_run_grades_csv(run_dir: Path, student_results: dict) -> None:
-    output = run_dir / "grades.csv"
+def canvas_gradebook_column(title: str, canvas_ref: str | None) -> str:
+    reference = (canvas_ref or "").strip()
+    match = re.fullmatch(r"(?:canvas:)?([1-9][0-9]*)", reference)
+    if match is None:
+        match = re.fullmatch(r"https?://[^/]+/courses/[0-9]+/assignments/([1-9][0-9]*)/?(?:[?#].*)?", reference)
+    return f"{title} ({match[1]})" if match else title
+
+
+def write_run_grades_csv(output: Path, student_results: dict, *, assignment_column: str, section: str) -> None:
     temp = output.with_suffix(".csv.tmp")
     with open(temp, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["Student Identifier", "Canvas User ID", "Submission ID", "Score", "Max Score"])
+        writer.writerow(["Student", "ID", "Section", assignment_column])
         for canvas_id, res in student_results.items():
             raw_score = res.get("score")
             if raw_score is None and res.get("requires_adjudication"):
                 score_cell: int | str = ""
             else:
                 score_cell = (raw_score or 0) + manual_score_sum(res.get("manual_results"))
-            writer.writerow([
-                res["student_identifier"],
-                canvas_id,
-                res["submission_id"],
-                score_cell,
-                res["max_score"],
-            ])
+            writer.writerow([res.get("student_identifier", ""), canvas_id, section, score_cell])
     os.replace(temp, output)
 
 
-def write_feedback_zip(run_dir: Path, student_results: dict) -> None:
-    output = run_dir / "feedback.zip"
+def write_feedback_zip(output: Path, student_results: dict) -> None:
     temp = output.with_suffix(".zip.tmp")
     with zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as z_out:
         for canvas_id, res in student_results.items():
-            filename = f"{res['student_identifier']}_{canvas_id}_feedback.html"
-            z_out.writestr(filename, res["feedback_html"])
+            filename = f"{res.get('student_identifier', '')}_{canvas_id}_feedback.html"
+            z_out.writestr(filename, res.get("feedback_html") or "")
     os.replace(temp, output)
 
 

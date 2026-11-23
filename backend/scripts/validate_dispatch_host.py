@@ -7,6 +7,8 @@ this script and verifies its ZIP and workspace are absent.
 from __future__ import annotations
 
 import argparse
+import asyncio
+import csv
 import io
 import json
 import sys
@@ -30,6 +32,7 @@ from app.domains.courses.models import Course, Section
 from app.domains.ingestion.engine import SubmissionIngestionEngine
 from app.domains.runs import retention
 from app.domains.runs.models import RunSummary
+from app.domains.runs.router import export_official_run_csv, export_official_run_feedback
 from app.domains.runs.service import official_run_dir, official_run_zip_path
 
 import_domain_models()
@@ -130,18 +133,25 @@ def check(manifest):
         data = {"state": run.status, "completed": completed, "total": run.total_submission_count,
             "success": run.success_count, "warnings": run.warning_count,
             "failed": run.failure_count, "timeouts": run.timeout_count,
-            "packaging_seconds": run.export_packaging_seconds,
             "elapsed_seconds": round((datetime.now(UTC) - retention.as_utc(run.created_at)).total_seconds(), 2)}
-    if data["state"] == "complete":
-        with retention.access(manifest["run_id"]):
-            directory = official_run_dir(manifest["run_id"])
-            with (directory / "grades.csv").open(encoding="utf-8", newline="") as handle:
-                import csv
-                data["csv_rows"] = len(list(csv.reader(handle))) - 1
-            with zipfile.ZipFile(directory / "feedback.zip") as archive:
+        if data["state"] == "complete":
+            actor = db.get(User, run.actor_user_id)
+            if actor is None:
+                raise RuntimeError("Synthetic run owner is unavailable")
+            arguments = (manifest["course_id"], manifest["assignment_id"], run.id, db, actor)
+            start = time.monotonic()
+            grades = asyncio.run(read_download(export_official_run_csv(*arguments)))
+            feedback = asyncio.run(read_download(export_official_run_feedback(*arguments)))
+            data["packaging_seconds"] = time.monotonic() - start
+            data["csv_rows"] = len(list(csv.reader(io.StringIO(grades.decode("utf-8"))))) - 1
+            with zipfile.ZipFile(io.BytesIO(feedback)) as archive:
                 data["feedback_files"] = len(archive.namelist())
     report(phase="official_check", **data)
     return data
+
+
+async def read_download(response) -> bytes:
+    return b"".join([chunk async for chunk in response.body_iterator])
 
 
 def sandbox_state(manifest):

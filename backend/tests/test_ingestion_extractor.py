@@ -424,6 +424,21 @@ def test_detect_filename_collisions_keeps_larger(tmp_path: Path):
     assert large.name in collisions[0]["candidates"]
 
 
+def test_equal_size_collision_report_and_bundle_choose_the_same_file(tmp_path: Path):
+    from app.domains.ingestion.extractor import detect_filename_collisions
+
+    earlier = tmp_path / "student_123_456_main-1.py"
+    later = tmp_path / "student_123_456_main-2.py"
+    earlier.write_bytes(b"first\n")
+    later.write_bytes(b"other\n")
+
+    for index, paths in enumerate(([earlier, later], [later, earlier])):
+        collision, = detect_filename_collisions({"123": paths})
+        bundle = tmp_path / f"bundle-{index}"
+        prepare_student_bundle(paths, bundle)
+        assert collision["kept"] == later.name
+        assert (bundle / "main.py").read_bytes() == later.read_bytes()
+
 def test_prepare_student_bundle_loose_files(tmp_path: Path):
     src_dir = tmp_path / "src"
     src_dir.mkdir()

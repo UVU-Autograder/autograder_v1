@@ -83,17 +83,11 @@ def failing_automated_items(test_results: list[dict]) -> list[dict]:
     ]
 
 
-_local_state_cache: dict[str, dict] = {}
-_local_result_cache: dict[str, dict] = {}
-_local_cancelled_set: set[str] = set()
 _local_grade_seconds: list[float] = []
 _local_completions: list[float] = []
 
 
 def clear_local_orchestrator_cache() -> None:
-    _local_state_cache.clear()
-    _local_result_cache.clear()
-    _local_cancelled_set.clear()
     _local_grade_seconds.clear()
     _local_completions.clear()
 
@@ -146,15 +140,14 @@ def mean_grade_seconds() -> float:
 def _get_redis():
     """Get a Redis connection from the Celery broker."""
     settings = get_settings()
-    return redis.Redis.from_url(settings.redis_url, decode_responses=True)
+    return redis.Redis.from_url(settings.redis_url, decode_responses=True, socket_timeout=2, socket_connect_timeout=2)
 
 
 def set_run_state(run_id: str, state: str, extra: dict | None = None) -> None:
-    """Store run state in Redis or local cache with TTL."""
+    """Store run state in Redis with TTL."""
     data = {"state": state, "updated_at": datetime.now(UTC).isoformat()}
     if extra:
         data.update(extra)
-    _local_state_cache[run_id] = data
     try:
         r = _get_redis()
         r.setex(f"{RUN_STATE_PREFIX}{run_id}", RUN_STATE_TTL, json.dumps(data))
@@ -163,7 +156,7 @@ def set_run_state(run_id: str, state: str, extra: dict | None = None) -> None:
 
 
 def get_run_state(run_id: str) -> dict | None:
-    """Read run state from Redis or local cache."""
+    """Read the shared run state."""
     try:
         r = _get_redis()
         raw = r.get(f"{RUN_STATE_PREFIX}{run_id}")
@@ -171,7 +164,7 @@ def get_run_state(run_id: str) -> dict | None:
             return json.loads(raw)
     except Exception:
         pass
-    return _local_state_cache.get(run_id)
+    return None
 
 
 def get_run_states(run_ids: list[str]) -> dict[str, dict]:
@@ -186,15 +179,11 @@ def get_run_states(run_ids: list[str]) -> dict[str, dict]:
                 states[run_id] = json.loads(raw)
     except Exception:
         pass
-    for run_id in run_ids:
-        if run_id not in states and run_id in _local_state_cache:
-            states[run_id] = _local_state_cache[run_id]
     return states
 
 
 def mark_run_cancelled(run_id: str) -> None:
     """Durable cancel marker so workers skip release after cancel_run."""
-    _local_cancelled_set.add(run_id)
     try:
         r = _get_redis()
         r.setex(f"{RUN_CANCELLED_PREFIX}{run_id}", RUN_STATE_TTL, "1")
@@ -204,8 +193,6 @@ def mark_run_cancelled(run_id: str) -> None:
 
 def is_run_cancelled(run_id: str) -> bool:
     try:
-        if run_id in _local_cancelled_set:
-            return True
         r = _get_redis()
         if bool(r.get(f"{RUN_CANCELLED_PREFIX}{run_id}")):
             return True
@@ -216,8 +203,7 @@ def is_run_cancelled(run_id: str) -> bool:
 
 
 def set_run_result(run_id: str, result: dict) -> None:
-    """Store grading result in Redis or local cache with TTL."""
-    _local_result_cache[run_id] = result
+    """Store grading result in Redis with TTL."""
     try:
         r = _get_redis()
         r.setex(f"{RUN_RESULT_PREFIX}{run_id}", RUN_STATE_TTL, json.dumps(result))
@@ -226,7 +212,7 @@ def set_run_result(run_id: str, result: dict) -> None:
 
 
 def get_run_result(run_id: str) -> dict | None:
-    """Read grading result from Redis or local cache."""
+    """Read the shared grading result."""
     try:
         r = _get_redis()
         raw = r.get(f"{RUN_RESULT_PREFIX}{run_id}")
@@ -234,7 +220,7 @@ def get_run_result(run_id: str) -> dict | None:
             return json.loads(raw)
     except Exception:
         pass
-    return _local_result_cache.get(run_id)
+    return None
 
 
 def _cancelled_response(run_id: str, message: str = "Sandbox run was cancelled before execution.") -> dict:
@@ -305,11 +291,8 @@ def execute_sandbox_run(
         try:
             from app.domains.runs.activity import record_sandbox_telemetry
 
-            failed_keys = [
-                tr.get("marker") or tr.get("key") or tr.get("label")
-                for tr in result_dict.get("test_results", [])
-                if tr.get("outcome") != "passed"
-            ]
+            failed_items = failing_automated_items(result_dict.get("test_results", []))
+            failed_keys = [item.get("marker") or item.get("key") for item in failed_items]
             record_sandbox_telemetry(
                 assignment_id=config.get("_relational_assignment_id") if isinstance(config, dict) else None,
                 session_id=config.get("_session_id") if isinstance(config, dict) else None,
@@ -318,6 +301,7 @@ def execute_sandbox_run(
                 failure_summary={
                     "failure_category": grading_result.failure_category,
                     "failed_keys": [k for k in failed_keys if k],
+                    "rubric_passed": grading_result.success and all(item.get("extra_credit") for item in failed_items),
                 },
                 grade_seconds=time.monotonic() - started,
             )
