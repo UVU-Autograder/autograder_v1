@@ -41,9 +41,7 @@ def attempt_access(run_id: int, token: str):
 
 def _save_result(directory: Path, canvas_id: str, student: dict) -> dict:
     filename = f"graded-{canvas_id}.json"
-    path = directory / filename
-    if not path.exists():
-        write_checkpoint(path, student)
+    write_checkpoint(directory / filename, student)
     category = None
     if student["success"]:
         has_warning = student["warnings"] or student["score"] < student["automated_max_score"]

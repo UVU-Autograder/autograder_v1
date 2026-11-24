@@ -222,6 +222,27 @@ def test_manual_edit_during_next_submission_is_preserved():
     assert next(iter(payload["student_results"].values()))["overall_comment"] == "Staff edit during execution"
 
 
+def test_legacy_checkpoint_recovery_uses_latest_saved_manual_review():
+    from app.domains.ingestion.extractor import safe_extract_zip
+    from app.domains.runs.service import write_checkpoint, write_run_details_json
+
+    run_id = upload(2)
+    directory = official_run_dir(run_id)
+    safe_extract_zip(official_run_zip_path(run_id).read_bytes(), directory / "extracted")
+    record = {"score": 100, "automated_max_score": 100, "success": True, "warnings": []}
+    write_checkpoint(directory / "graded-10000.json", {**record, "overall_comment": "Earlier draft"})
+    write_run_details_json(directory, {
+        "student_results": {"10000": {**record, "overall_comment": "Latest saved review"}},
+    })
+
+    grader = AsyncMock(return_value=GradingResult(success=True, score=100, max_score=100))
+    with patch("app.domains.grading.engine.GradingEngine.grade_submission", grader):
+        assert grade_official_run(*delivery()[0])["state"] == "complete"
+    assert grader.call_count == 1
+    results = load_run_details_json(directory / "run_details.json")["student_results"]
+    assert results["10000"]["overall_comment"] == "Latest saved review"
+
+
 def test_database_outage_fails_closed():
     from sqlalchemy.exc import OperationalError
     with patch("app.domains.runs.queue_admission.SessionLocal", side_effect=OperationalError("private", {}, Exception())):

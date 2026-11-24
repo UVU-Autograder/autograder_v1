@@ -11,6 +11,10 @@ test.describe("Official Review Acceptance Suite", () => {
     const submitBtn = page.getByRole("button", { name: "Dev Mock Sign In" });
     await submitBtn.click();
     await expect(page).toHaveURL(/\/staff\/courses/, { timeout: 15000 });
+    await page.route("http://127.0.0.1:8000/auth/me", (route) => route.fulfill({
+      json: { email: "dev.staff@uvu.edu", display_name: "Development Staff", roles: ["admin", "instructor"] },
+    }));
+    await page.evaluate(() => window.sessionStorage.setItem("mock_api", "false"));
 
     // Mock API run details on backend port 8000
     await page.route(
@@ -21,7 +25,8 @@ test.describe("Official Review Acceptance Suite", () => {
           contentType: "application/json",
           body: JSON.stringify({
             run_id: 1,
-            status: "done",
+            status: "complete",
+            details_revision: 1,
             requires_manual_grading: true,
             completed_students: 1,
             total_students: 2,
@@ -122,7 +127,7 @@ test.describe("Official Review Acceptance Suite", () => {
           contentType: "application/json",
           body: JSON.stringify({
             id: 1,
-            status: "done",
+            status: "complete",
             total_submission_count: 2,
             success_count: 2,
             warning_count: 0,
@@ -195,13 +200,13 @@ test.describe("Official Review Acceptance Suite", () => {
     await page.goto(runPath);
 
     // Verify heading and student names
-    await expect(page.getByText("Run #1 Details")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Run #1" })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Alice Smith")).toBeVisible();
     await expect(page.getByText("Bob Jones")).toBeVisible();
 
     // Verify score summaries
-    await expect(page.getByText("20 / 25 pts")).toBeVisible();
-    await expect(page.getByText("25 / 25 pts")).toBeVisible();
+    await expect(page.getByText("20 / 25", { exact: true })).toBeVisible();
+    await expect(page.getByText("25 / 25", { exact: true })).toBeVisible();
   });
 
   test("filtering by Needs Grading isolates students with pending manual rubrics", async ({ page }) => {
@@ -249,6 +254,7 @@ test.describe("Official Review Acceptance Suite", () => {
             automated_results: [],
             automated_score: 20,
             automated_max_score: 20,
+            details_revision: 2,
             manual_progress: {
               requires_manual_grading: true,
               completed_students: 2,
@@ -279,16 +285,26 @@ test.describe("Official Review Acceptance Suite", () => {
 
     const saveBtn = dialog.getByRole("button", { name: "Save", exact: true });
     await expect(saveBtn).toBeVisible();
+    const saved = page.waitForResponse((response) => response.url().includes("/manual-grades"));
     await saveBtn.click();
+    expect((await saved).status()).toBe(200);
   });
 
   test("export buttons are available for grades CSV and feedback ZIP", async ({ page }) => {
+    await page.route("**/runs/1/export/csv", (route) => route.fulfill({
+      contentType: "text/csv",
+      body: "Student,ID,Section,Lab 1 (9001)\nAlice Smith,1001,12345,20\n",
+    }));
     await page.goto(runPath);
 
-    const exportCsvBtn = page.getByRole("button", { name: /Export Grades CSV/i });
-    await expect(exportCsvBtn).toBeVisible({ timeout: 10000 });
+    const exportCsvBtn = page.getByRole("button", { name: "Grades CSV" });
+    await expect(exportCsvBtn).toBeEnabled({ timeout: 10000 });
 
-    const exportFeedbackBtn = page.getByRole("button", { name: /Export Feedback ZIP/i });
-    await expect(exportFeedbackBtn).toBeVisible();
+    const exportFeedbackBtn = page.getByRole("button", { name: "Feedback ZIP" });
+    await expect(exportFeedbackBtn).toBeEnabled();
+
+    const download = page.waitForEvent("download");
+    await exportCsvBtn.click();
+    expect((await download).suggestedFilename()).toBe("run-1-grades.csv");
   });
 });

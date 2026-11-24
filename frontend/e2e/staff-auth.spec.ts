@@ -40,14 +40,17 @@ test.describe("Staff Authentication Acceptance Suite", () => {
   });
 
   test("auth_handoff cookie from Microsoft callback safely provisions session and clears cookie", async ({ context, page }) => {
-    // Intercept backend calls on port 8000 so the session is not invalidated by 401
+    await page.addInitScript(() => window.sessionStorage.setItem("mock_api", "false"));
+    // Use a fixed profile so the session token stays the one delivered by the handoff.
     await page.route(
       (url) => url.port === "8000",
       async (route) => {
+        const isProfile = new URL(route.request().url()).pathname === "/auth/me";
         await route.fulfill({
           status: 200,
-          contentType: "application/json",
-          body: JSON.stringify([]),
+          json: isProfile
+            ? { email: "faculty@uvu.edu", display_name: "Faculty Member", roles: ["instructor"] }
+            : { courses: [] },
         });
       }
     );

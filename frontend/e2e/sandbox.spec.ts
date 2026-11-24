@@ -1,13 +1,6 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Sandbox Student Acceptance Suite", () => {
-  // These tests run against the real backend on :8000 (the playwright webServer), and the
-  // run test intercepts its requests there. `npm run dev` defaults to the in-browser mock
-  // API, which never calls :8000, so switch it off for this page (lib/api-client.ts reads it).
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => window.sessionStorage.setItem("mock_api", "false"));
-  });
-
   test("catalog displays available sandbox courses", async ({ page }) => {
     await page.goto("/sandbox");
     await expect(page.getByText("Fundamentals of Programming")).toBeVisible();
@@ -33,7 +26,7 @@ test.describe("Sandbox Student Acceptance Suite", () => {
     // Verify code runner controls
     const runBtn = page.getByRole("button", { name: "Run Code" });
     await expect(runBtn).toBeVisible();
-    await expect(page.getByText("Run tests to see your projected score and test summaries.")).toBeVisible();
+    await expect(page.getByText("sum_two_numbers.py", { exact: true }).first()).toBeVisible();
   });
 
   test("executing sandbox run displays test results and rubric scoring", async ({ page }) => {
@@ -106,6 +99,9 @@ test.describe("Sandbox Student Acceptance Suite", () => {
             state: "complete",
             projected_score: 25,
             max_score: 25,
+            completion_objectives: [
+              { key: "core", label: "Pass one core test", passed_count: 1, minimum_passed: 1, met: true },
+            ],
             warnings: [],
             test_summaries: [
               {
@@ -140,10 +136,16 @@ test.describe("Sandbox Student Acceptance Suite", () => {
 
     const runBtn = page.getByRole("button", { name: "Run Code" });
     await expect(runBtn).toBeVisible({ timeout: 10000 });
+    await page.locator("#workspace-file-upload-input").setInputFiles({
+      name: "sum_two_numbers.py",
+      mimeType: "text/x-python",
+      buffer: Buffer.from("print(1 + 2)\n"),
+    });
+    // Load the synthetic catalog first, then route grading through the HTTP fixtures.
+    await page.evaluate(() => window.sessionStorage.setItem("mock_api", "false"));
     await runBtn.click();
 
-    // Verify scored rubric results are rendered
-    await expect(page.getByText(/\d+\s*\/\s*\d+/).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("AST Safety Check").first()).toBeVisible();
+    await expect(page.getByText("25 / 25", { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Pass one core test · Met/)).toBeVisible();
   });
 });

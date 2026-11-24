@@ -45,6 +45,13 @@ export default defineConfig({
       url: "http://127.0.0.1:3000",
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
+      env: {
+        ...process.env,
+        NEXT_PUBLIC_MOCK_API: "true",
+        NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8000",
+        INTERNAL_BACKEND_URL: "http://127.0.0.1:8000",
+        NEXT_PUBLIC_AUTH_PROVIDER: "mock",
+      },
     },
   ],
 });
